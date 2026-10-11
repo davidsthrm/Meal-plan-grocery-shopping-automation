@@ -142,6 +142,43 @@ describe("schema", () => {
     await expect(insertSlot("away", "Oma Heidrun")).resolves.toBeDefined();
   });
 
+  it("keeps one open proposal per unknown ingredient, however it is capitalised", async () => {
+    const propose = (name: string) =>
+      db.query(
+        `insert into public.ingredient_proposal (household_id, name, aisle_group_id, preferred_shop_id, default_unit)
+         select household_id, $1, aisle_group_id, preferred_shop_id, 'g' from public.ingredient limit 1`,
+        [name],
+      );
+    await propose("Pak Choi");
+    await expect(propose("pak choi")).rejects.toThrow(/ingredient_proposal_open_name_idx/);
+    // Once it is decided, the same name may be proposed again.
+    await db.query(
+      "update public.ingredient_proposal set status = 'rejected' where name = 'Pak Choi'",
+    );
+    await expect(propose("pak choi")).resolves.toBeDefined();
+  });
+
+  it("keeps an import job when its recipe is deleted, without the link", async () => {
+    const batch = await db.query<{ id: string }>(
+      "insert into public.import_batch (household_id, source_book) values ($1, 'Speed Cooking') returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const recipe = await db.query<{ id: string }>(
+      "insert into public.recipe (household_id, title, servings_min, servings_max) values ($1, 'Probe', 2, 2) returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const job = await db.query<{ id: string }>(
+      "insert into public.import_job (household_id, batch_id, status, recipe_id) values ($1, $2, 'approved', $3) returning id",
+      [SEED_HOUSEHOLD_ID, batch.rows[0].id, recipe.rows[0].id],
+    );
+    await db.query("delete from public.recipe where id = $1", [recipe.rows[0].id]);
+    const after = await db.query(
+      "select household_id, recipe_id from public.import_job where id = $1",
+      [job.rows[0].id],
+    );
+    expect(after.rows).toEqual([{ household_id: SEED_HOUSEHOLD_ID, recipe_id: null }]);
+  });
+
   it("does not let a row point into another household", async () => {
     // Even with full rights: a recipe line of one household cannot use another's ingredient.
     await db.query(

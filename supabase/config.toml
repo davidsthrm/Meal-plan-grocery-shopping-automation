@@ -118,12 +118,12 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Uncomment to configure local storage buckets
-# [storage.buckets.images]
-# public = false
-# file_size_limit = "50MiB"
-# allowed_mime_types = ["image/png", "image/jpeg"]
-# objects_path = "./images"
+# Recipe photos. Private: the server hands out signed URLs for uploading and viewing, and
+# there are no storage policies, so nothing else can reach the files.
+[storage.buckets.recipe-photos]
+public = false
+file_size_limit = "20MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]
 
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
