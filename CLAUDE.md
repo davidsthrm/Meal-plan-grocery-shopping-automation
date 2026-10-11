@@ -25,6 +25,8 @@ is easier than pen and paper.
 | Format                                                          | `npm run format`                          |
 | Print the sample week list and compare with the handwritten one | `npm run sample-week`                     |
 | Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`        | `npm run seed:build`                      |
+| Check the Supabase project in `.env.local`                      | `npm run db:check`                        |
+| Apply new migrations to the linked Supabase project             | `npx supabase db push`                    |
 
 Docker is not required for tests. Migrations, seed and RLS run against an embedded Postgres
 (PGlite) in `supabase/tests/`.
@@ -44,11 +46,18 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 
 - Next.js 16 (App Router, TypeScript), Tailwind 4, installable as a PWA.
 - Supabase in Frankfurt: Postgres, Auth, private Storage bucket, RLS on every table.
+- Supabase no longer grants table privileges automatically. Every migration that creates a
+  table must grant to `authenticated` and `service_role` explicitly and revoke from `anon`.
+- Keys are the new Supabase ones: the publishable key for the browser, the secret key for the
+  server only.
 - Hosting on Vercel. Login with email and password, accounts by invite only, sign-up disabled.
 - The shopping list must work offline in the shop: cached list, queued check-offs.
 - Vitest for unit tests, Playwright for a few end-to-end flows.
 - Recipe import uses the Anthropic API, server side only. Model IDs come from
   `ANTHROPIC_EXTRACT_MODEL` and `ANTHROPIC_VERIFY_MODEL`. Never hard-code a model ID.
+- Recipes are added on an upload tab in the app. The model detects title and kind. The
+  household enters what a photo cannot show: cookbook and, if not printed, the page. The
+  cookbook is asked once per batch and pre-filled from the folder name when a folder is chosen.
 - Photo uploads go from the browser straight to Storage. The server converts HEIC, applies the
   EXIF rotation, strips metadata (the photos carry GPS) and converts to sRGB.
 
@@ -133,8 +142,9 @@ Import (phase 2)
 - Recipes still to come from the household: Tomate Mozzarella, Pestonudeln, Leberkässalat,
   Garnelen-Salat mit Feldsalat, Schafskäseauflauf, Hawaiitoast, Apfelkuchen, and homemade
   Spätzle as a side. "Reste" and "Vesper" never have a recipe.
-- Two seed recipes have no title because the facing page was not photographed (book pages 97
-  and 88). They are seeded as "Ohne Titel" with status `needs_review`.
+- Three seed recipes have no cookbook name yet: the steak (a magazine page) and the two from
+  the book with pages 82 and 84. The two from "Speed Cooking" have their title from the
+  household, because the printed title was not photographed.
 - The Anthropic API is billed separately from a Claude Pro subscription. An API key with
   prepaid credits is needed before phase 2 can run against real photos.
 - Shelf life, pack sizes and default shops in the catalog are estimates. The household
