@@ -12,6 +12,7 @@ import fixtures from "../tests/fixtures/sample-week/recipes.json";
  *   npm run import:eval                                   model from ANTHROPIC_EXTRACT_MODEL
  *   npm run import:eval -- --model claude-haiku-5-5 --tiles
  *   npm run import:eval -- --model claude-haiku-5-5,claude-sonnet-5-5 --effort high
+ *   npm run import:eval -- --runs 3                       repeat, to see how stable a model is
  *
  * --tiles also sends enlarged parts of the page at full resolution. More input tokens, and
  * possibly fewer misread fractions. Every run calls the API and costs money.
@@ -35,6 +36,7 @@ const models = (argument("model") ?? process.env.ANTHROPIC_EXTRACT_MODEL ?? "")
   .filter(Boolean);
 const useTiles = process.argv.includes("--tiles");
 const effort = (argument("effort") ?? "medium") as "low" | "medium" | "high";
+const repetitions = Number(argument("runs") ?? 1);
 const recipes = fixtures.recipes as (ExpectedRecipe & { photo: string })[];
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -54,6 +56,8 @@ if (missingPhotos.length > 0) {
 interface Run {
   id: string;
   score: Score | null;
+  /** What the model said it was not sure about. Any entry would send the recipe to review. */
+  uncertain: string[];
   error: string | null;
   inputTokens: number;
   outputTokens: number;
@@ -82,6 +86,7 @@ async function evaluate(model: string): Promise<Run[]> {
       runs.push({
         id: expected.id,
         score: scoreExtraction(expected, reading.recipe),
+        uncertain: reading.recipe.uncertain.map((u) => `${u.field}: ${u.reason}`),
         error: null,
         inputTokens: reading.usage.inputTokens,
         outputTokens: reading.usage.outputTokens,
@@ -93,6 +98,7 @@ async function evaluate(model: string): Promise<Run[]> {
       runs.push({
         id: expected.id,
         score: null,
+        uncertain: [],
         error: `${error.failure}: ${error.message}`,
         inputTokens: 0,
         outputTokens: 0,
@@ -130,6 +136,7 @@ function report(model: string, runs: Run[]) {
     }
     for (const line of score.missing) console.log(`    missing: ${line}`);
     for (const line of score.extra) console.log(`    not in the recipe: ${line}`);
+    for (const reason of run.uncertain) console.log(`    model is unsure -> review: ${reason}`);
   }
   const scored = runs.filter((r) => r.score);
   const perfect = scored.filter((r) => r.score!.perfect).length;
@@ -137,14 +144,20 @@ function report(model: string, runs: Run[]) {
     (sum, r) => sum + (costOf(model, r.inputTokens, r.outputTokens) ?? 0),
     0,
   );
+  const unsure = runs.filter((r) => r.uncertain.length > 0).length;
   console.log(
-    `=> ${perfect} of ${runs.length} recipes read without a mistake, ` +
+    `=> ${perfect} of ${runs.length} recipes read without a mistake, ${unsure} sent to review by the model, ` +
       `${((total / runs.length) * 100).toFixed(2)} ct per recipe for one pass.`,
   );
 }
 
 async function main() {
-  for (const model of models) report(model, await evaluate(model));
+  for (const model of models) {
+    for (let run = 1; run <= repetitions; run++) {
+      if (repetitions > 1) console.log(`\nRun ${run} of ${repetitions}`);
+      report(model, await evaluate(model));
+    }
+  }
   console.log("\nThe model's raw answers are in samples/eval/ (not committed).");
 }
 

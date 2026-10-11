@@ -42,7 +42,7 @@ export const extractedIngredientSchema = z.object({
   name: z.string(),
   /** Preparation or quality words from the line ("gehackt", "reif"). Empty if none. */
   note: z.string(),
-  /** Printed with "etwa", "ca." or similar. */
+  /** The main amount is printed with "etwa", "ca." or similar. */
   approximate: z.boolean(),
   /** The recipe says it can be left out. */
   optional: z.boolean(),
@@ -73,8 +73,13 @@ export const extractedRecipeSchema = z.object({
   dishType: z.enum(DISH_TYPES),
   proteinType: z.enum(PROTEIN_TYPES),
   ingredients: z.array(extractedIngredientSchema),
-  /** Anything a person should look at before the recipe is trusted. */
-  flags: z.array(z.object({ field: z.string(), reason: z.string() })),
+  /**
+   * What the model could not read or decide with certainty. Any entry sends the recipe to the
+   * review queue, so observations that need no decision do not belong here.
+   */
+  uncertain: z.array(z.object({ field: z.string(), reason: z.string() })),
+  /** Observations that need no decision: ignored tip boxes, a neighbouring recipe, and so on. */
+  notes: z.array(z.string()),
 });
 
 export type ExtractedIngredient = z.infer<typeof extractedIngredientSchema>;

@@ -29,7 +29,8 @@ const recipe: ExtractedRecipe = {
   dishType: "hauptgericht",
   proteinType: "vegetarian",
   ingredients: [],
-  flags: [],
+  uncertain: [],
+  notes: [],
 };
 
 /** A stand-in for the API client that records the request and returns a canned answer. */

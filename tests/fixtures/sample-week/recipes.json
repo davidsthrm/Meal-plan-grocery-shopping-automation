@@ -6,6 +6,7 @@
     "name": "The ingredient as printed, without descriptors that only describe preparation or quality. Those go to `note`. Descriptors that select a different product stay in the name. This split is a judgment call; tests should compare quantity, unit and raw text strictly and the name loosely.",
     "providedByHousehold": "What the household entered by hand because the photo does not show it. The import must leave these fields null and take them from the upload form.",
     "secondary": "A second printed measure for the same line, for example '(etwa 200 g)' or 'à 150 g'. `scope` is 'perPiece', 'total', or null if the print does not say.",
+    "optional": "Set to true only where the recipe says the ingredient can be left out. Absent means false.",
     "combinedLine": "One printed line naming two ingredients ('Salz, Pfeffer') becomes two entries sharing the same `raw`."
   },
   "recipes": [
@@ -118,7 +119,7 @@
         { "raw": "Olivenöl 2 EL", "quantity": 2, "quantityMax": null, "unit": "EL", "name": "Olivenöl", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "Avocado ½", "quantity": 0.5, "quantityMax": null, "unit": "Stück", "name": "Avocado", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "Schafskäse 50 g", "quantity": 50, "quantityMax": null, "unit": "g", "name": "Schafskäse", "note": null, "approx": false, "secondary": null, "alternative": null },
-        { "raw": "Chiliflocken ¼ TL", "quantity": 0.25, "quantityMax": null, "unit": "TL", "name": "Chiliflocken", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Chiliflocken ¼ TL", "quantity": 0.25, "quantityMax": null, "unit": "TL", "name": "Chiliflocken", "note": null, "approx": false, "optional": true, "secondary": null, "alternative": null },
         { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Pfeffer", "note": null, "approx": false, "secondary": null, "alternative": null }
       ],

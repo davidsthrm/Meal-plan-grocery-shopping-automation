@@ -13,7 +13,7 @@ function flawless(expected: ExpectedRecipe): ExtractedRecipe {
     const base = {
       raw: line.raw,
       note: "",
-      optional: false,
+      optional: line.optional ?? false,
       unclear: false,
     };
     ingredients.push({
@@ -36,6 +36,7 @@ function flawless(expected: ExpectedRecipe): ExtractedRecipe {
         unit: line.alternative.unit,
         name: line.alternative.name,
         approximate: false,
+        optional: false,
         secondaryQuantity: null,
         secondaryUnit: null,
         secondaryScope: "none",
@@ -54,7 +55,8 @@ function flawless(expected: ExpectedRecipe): ExtractedRecipe {
     dishType: "unbekannt",
     proteinType: "unknown",
     ingredients,
-    flags: [],
+    uncertain: [],
+    notes: [],
   };
 }
 
@@ -123,6 +125,14 @@ describe("scoreExtraction", () => {
     reading.ingredients.find((i) => i.name === "Möhren")!.secondaryScope = "total";
     expect(scoreExtraction(byId("IMG_5683"), reading).mistakes).toMatchObject([
       { field: "secondaryScope", expected: "unknown", actual: "total" },
+    ]);
+  });
+
+  it("catches an ingredient the steps call optional but the reading does not", () => {
+    const reading = flawless(byId("IMG_5684"));
+    reading.ingredients.find((i) => i.name === "Chiliflocken")!.optional = false;
+    expect(scoreExtraction(byId("IMG_5684"), reading).mistakes).toMatchObject([
+      { field: "optional", expected: true, actual: false },
     ]);
   });
 

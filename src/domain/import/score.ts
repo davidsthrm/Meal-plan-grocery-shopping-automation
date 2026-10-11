@@ -18,6 +18,8 @@ export interface ExpectedIngredient {
   unit: string | null;
   name: string;
   approx: boolean;
+  /** Present and true only where the recipe says the ingredient can be left out. */
+  optional?: boolean;
   secondary: { quantity: number; unit: string; scope: string | null } | null;
   alternative: {
     quantity: number | null;
@@ -64,6 +66,7 @@ interface ExpectedLine {
   quantityMax: number | null;
   unit: string | null;
   approximate: boolean | null;
+  optional: boolean;
   secondary: ExpectedIngredient["secondary"];
   isAlternative: boolean;
 }
@@ -78,6 +81,7 @@ function expectedLines(recipe: ExpectedRecipe): ExpectedLine[] {
       quantityMax: line.quantityMax,
       unit: line.unit,
       approximate: line.approx,
+      optional: line.optional ?? false,
       secondary: line.secondary,
       isAlternative: false,
     };
@@ -91,6 +95,7 @@ function expectedLines(recipe: ExpectedRecipe): ExpectedLine[] {
         quantityMax: line.alternative.quantityMax,
         unit: line.alternative.unit,
         approximate: null,
+        optional: false,
         secondary: null,
         isAlternative: true,
       },
@@ -188,6 +193,7 @@ export function scoreExtraction(expected: ExpectedRecipe, actual: ExtractedRecip
     check(where, "quantityMax", line.quantityMax, got.quantityMax);
     if (!sameUnit(line, got)) check(where, "unit", line.unit, got.unit);
     if (line.approximate !== null) check(where, "approximate", line.approximate, got.approximate);
+    check(where, "optional", line.optional, got.optional);
     check(where, "secondaryQuantity", line.secondary?.quantity ?? null, got.secondaryQuantity);
     check(where, "secondaryUnit", line.secondary?.unit ?? null, got.secondaryUnit);
     check(
