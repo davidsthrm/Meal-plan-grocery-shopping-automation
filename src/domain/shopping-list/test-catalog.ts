@@ -128,6 +128,7 @@ export function line(
     quantity,
     quantityMax: null,
     unit,
+    approximate: false,
     secondary: null,
     alternativeTo: null,
     optional: false,

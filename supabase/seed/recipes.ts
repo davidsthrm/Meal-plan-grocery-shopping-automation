@@ -1,0 +1,223 @@
+import type { Recipe, RecipeIngredient, SecondaryMeasure } from "@/domain/recipe";
+import type { Unit } from "@/domain/units";
+
+/**
+ * Seed recipes: the five sample recipes, mapped by hand to the catalog. The printed lines
+ * come from tests/fixtures/sample-week/recipes.json and stay untouched in `originalText`.
+ */
+
+export type ProteinType = "red_meat" | "poultry" | "fish" | "vegetarian" | "vegan" | "none";
+
+export interface SeedTag {
+  id: string;
+  name: string;
+  group: string;
+}
+
+export interface SeedRecipe extends Recipe {
+  /** Photo this recipe was read from, as in the fixtures. */
+  sampleId: string;
+  /** Title as printed. Null when it was not on the photographed page. */
+  sourceTitle: string | null;
+  sourceBook: string | null;
+  sourcePage: number | null;
+  prepMinutes: number | null;
+  proteinType: ProteinType;
+  tagIds: string[];
+  /** A recipe with an open question stays in the review queue. */
+  status: "approved" | "needs_review";
+}
+
+export const tags: SeedTag[] = [
+  { id: "hauptgericht", name: "Hauptgericht", group: "Mahlzeit" },
+  { id: "suppe-eintopf", name: "Suppe & Eintopf", group: "Mahlzeit" },
+  { id: "salat", name: "Salat", group: "Mahlzeit" },
+  { id: "vesper", name: "Vesper", group: "Mahlzeit" },
+  { id: "kuchen", name: "Kuchen & Süßes", group: "Mahlzeit" },
+  { id: "pasta", name: "Pasta", group: "Art" },
+  { id: "auflauf", name: "Auflauf", group: "Art" },
+  { id: "fleisch", name: "Fleisch", group: "Art" },
+  { id: "fisch", name: "Fisch", group: "Art" },
+  { id: "vegetarisch", name: "vegetarisch", group: "Ernährung" },
+  { id: "vegan", name: "vegan", group: "Ernährung" },
+  { id: "huelsenfruechte", name: "Hülsenfrüchte", group: "Ernährung" },
+  { id: "schnell", name: "schnell", group: "Aufwand" },
+  { id: "fuer-gaeste", name: "für Gäste", group: "Aufwand" },
+];
+
+interface LineExtra {
+  max?: number;
+  approx?: boolean;
+  note?: string;
+  secondary?: SecondaryMeasure;
+  optional?: boolean;
+  /** Index of the line this one may replace. */
+  alternativeTo?: number;
+}
+
+function line(
+  originalText: string,
+  ingredientId: string,
+  quantity: number | null = null,
+  unit: Unit | null = null,
+  extra: LineExtra = {},
+): RecipeIngredient {
+  return {
+    ingredientId,
+    quantity,
+    quantityMax: extra.max ?? null,
+    unit,
+    approximate: extra.approx ?? false,
+    secondary: extra.secondary ?? null,
+    alternativeTo: extra.alternativeTo ?? null,
+    optional: extra.optional ?? false,
+    originalText,
+    note: extra.note ?? null,
+  };
+}
+
+// prettier-ignore
+export const seedRecipes: SeedRecipe[] = [
+  {
+    id: "steak-pfefferrahm-spaetzle",
+    sampleId: "IMG_5680",
+    title: "Steak mit Pfefferrahmsoße, Pilzen und Spätzle",
+    sourceTitle: "Steak mit Pfefferrahmsoße, Pilzen und Spätzle",
+    kind: "cookbook",
+    sourceBook: null,
+    sourcePage: null,
+    servings: { min: 4, max: 4 },
+    prepMinutes: null,
+    proteinType: "red_meat",
+    tagIds: ["hauptgericht", "fleisch", "fuer-gaeste"],
+    status: "approved",
+    ingredients: [
+      line("4 Rindersteaks, 2 cm dick, à 150 g", "rindersteaks", 4, "Stück", { note: "2 cm dick", secondary: { quantity: 150, unit: "g", scope: "perPiece" } }),
+      line("250 g braune Champignons", "champignons", 250, "g", { note: "braune" }),
+      line("200 g Kräuterseitlinge", "kraeuterseitlinge", 200, "g"),
+      line("1 Knoblauchzehe", "knoblauch", 1, "Zehe"),
+      line("500 g frische Spätzle", "spaetzle", 500, "g"),
+      line("Salz, Pfeffer", "salz"),
+      line("Salz, Pfeffer", "pfeffer"),
+      line("3 EL Rapsöl", "rapsoel", 3, "EL"),
+      line("½ TL Thymianblättchen", "thymian", 0.5, "TL"),
+      line("70 ml Gemüsebrühe", "gemuesebruehe", 70, "ml"),
+      line("150 ml Sahne", "sahne", 150, "ml"),
+      line("4 TL eingelegter grüner Pfeffer", "gruener-pfeffer", 4, "TL"),
+    ],
+  },
+  {
+    id: "kartoffel-avocado-suppe",
+    sampleId: "IMG_5682",
+    title: "Kartoffel-Avocado-Suppe",
+    sourceTitle: "Kartoffel-Avocado-Suppe",
+    kind: "cookbook",
+    sourceBook: null,
+    sourcePage: 82,
+    servings: { min: 4, max: 4 },
+    prepMinutes: 45,
+    proteinType: "vegan",
+    tagIds: ["suppe-eintopf", "vegan"],
+    status: "approved",
+    ingredients: [
+      line("500 g Kartoffeln (mehligkochende Sorte)", "kartoffeln", 500, "g", { note: "mehligkochende Sorte" }),
+      line("1 mittelgroße Zwiebel", "zwiebeln", 1, "Stück", { note: "mittelgroße" }),
+      line("1 EL Öl", "oel", 1, "EL"),
+      line("¾ l milde Gemüsebrühe", "gemuesebruehe", 0.75, "l", { note: "milde" }),
+      line("Salz", "salz"),
+      line("schwarzer Pfeffer aus der Mühle", "pfeffer", null, null, { note: "aus der Mühle" }),
+      line("1 EL frisches Koriandergrün (oder 2–3 EL gehackte Petersilie)", "koriander", 1, "EL", { note: "frisches" }),
+      line("1 EL frisches Koriandergrün (oder 2–3 EL gehackte Petersilie)", "petersilie", 2, "EL", { max: 3, note: "gehackte", alternativeTo: 6 }),
+      line("2 kleine, feste Tomaten", "tomaten", 2, "Stück", { note: "kleine, feste" }),
+      line("1 reife Avocado", "avocados", 1, "Stück", { note: "reife" }),
+      line("2 EL Zitronensaft", "zitronensaft", 2, "EL"),
+    ],
+  },
+  {
+    id: "linsen-eintopf",
+    sampleId: "IMG_5683",
+    title: "Linsen-Eintopf",
+    sourceTitle: "Linsen-Eintopf",
+    kind: "cookbook",
+    sourceBook: null,
+    sourcePage: 84,
+    servings: { min: 4, max: 6 },
+    prepMinutes: 75,
+    proteinType: "red_meat",
+    tagIds: ["suppe-eintopf", "huelsenfruechte"],
+    status: "approved",
+    ingredients: [
+      line("300 g braune Linsen", "braune-linsen", 300, "g"),
+      line("50 g durchwachsener Speck", "speck", 50, "g", { note: "durchwachsener" }),
+      line("1 walnußgroßes Stückchen frischer Ingwer", "ingwer", 1, "Stück", { note: "walnußgroßes Stückchen" }),
+      line("2–3 Frühlingszwiebeln", "fruehlingszwiebeln", 2, "Stück", { max: 3 }),
+      line("2 El Öl", "oel", 2, "EL"),
+      line("1 Knoblauchzehe", "knoblauch", 1, "Zehe"),
+      line("etwa 100 ml Weißweinessig", "weissweinessig", 100, "ml", { approx: true }),
+      line("1 ¼ l Hühnerbrühe", "huehnerbruehe", 1.25, "l"),
+      line("1 getrocknete Chilischote", "getrocknete-chilischoten", 1, "Stück"),
+      // The print does not say whether "(etwa 200 g)" is the total or per piece.
+      line("2 Kartoffeln (etwa 200 g)", "kartoffeln", 2, "Stück", { secondary: { quantity: 200, unit: "g", scope: null } }),
+      line("2 Möhren (etwa 200 g)", "karotten", 2, "Stück", { secondary: { quantity: 200, unit: "g", scope: null } }),
+      line("Salz", "salz"),
+      line("schwarzer Pfeffer aus der Mühle", "pfeffer", null, null, { note: "aus der Mühle" }),
+      line("1 Bund Schnittlauch", "schnittlauch", 1, "Bund"),
+    ],
+  },
+  {
+    id: "ohne-titel-s97",
+    sampleId: "IMG_5684",
+    // The title is on the facing page, which was not photographed.
+    title: "Ohne Titel (S. 97)",
+    sourceTitle: null,
+    kind: "cookbook",
+    sourceBook: null,
+    sourcePage: 97,
+    servings: { min: 2, max: 2 },
+    prepMinutes: 20,
+    proteinType: "vegetarian",
+    tagIds: ["hauptgericht", "pasta", "vegetarisch", "schnell"],
+    status: "needs_review",
+    ingredients: [
+      line("Spaghetti 200 g", "spaghetti", 200, "g"),
+      line("Knoblauchzehe 1", "knoblauch", 1, "Zehe"),
+      line("Basilikum 4 Stängel", "basilikum", 4, "Stängel"),
+      line("Zitronensaft 3½ EL", "zitronensaft", 3.5, "EL"),
+      line("Pinienkerne 1 EL", "pinienkerne", 1, "EL"),
+      line("Olivenöl 2 EL", "olivenoel", 2, "EL"),
+      line("Avocado ½", "avocados", 0.5, "Stück"),
+      line("Schafskäse 50 g", "schafskaese", 50, "g"),
+      line("Chiliflocken ¼ TL", "chiliflocken", 0.25, "TL", { optional: true }),
+      line("Salz & Pfeffer", "salz"),
+      line("Salz & Pfeffer", "pfeffer"),
+    ],
+  },
+  {
+    id: "ohne-titel-s88",
+    sampleId: "IMG_5685",
+    // The title is on the facing page, which was not photographed.
+    title: "Ohne Titel (S. 88)",
+    sourceTitle: null,
+    kind: "cookbook",
+    sourceBook: null,
+    sourcePage: 88,
+    servings: { min: 2, max: 2 },
+    prepMinutes: 15,
+    proteinType: "red_meat",
+    tagIds: ["salat", "huelsenfruechte", "schnell"],
+    status: "needs_review",
+    ingredients: [
+      line("Kurzkoch-Linsen 2 Beutel (à 62 g)", "kurzkoch-linsen", 2, "Beutel", { secondary: { quantity: 62, unit: "g", scope: "perPiece" } }),
+      line("Oliven (entsteint) 8", "oliven", 8, "Stück", { note: "entsteint" }),
+      line("Mini-Salami 70 g", "mini-salami", 70, "g"),
+      line("Mini-Mozzarella 100 g", "mini-mozzarella", 100, "g"),
+      line("Kirschtomaten 100 g", "kleine-tomaten", 100, "g"),
+      line("rote Zwiebel 1", "rote-zwiebeln", 1, "Stück"),
+      line("Olivenöl 3 EL", "olivenoel", 3, "EL"),
+      line("Aceto balsamico 1 EL", "balsamico", 1, "EL"),
+      line("ital. TK-Kräuter 2 TL", "tk-kraeuter", 2, "TL"),
+      line("Salz & Pfeffer", "salz"),
+      line("Salz & Pfeffer", "pfeffer"),
+    ],
+  },
+];

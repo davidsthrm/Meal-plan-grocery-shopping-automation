@@ -22,6 +22,8 @@ export interface RecipeIngredient {
   /** Upper bound of a printed range such as "2-3". */
   quantityMax: number | null;
   unit: Unit | null;
+  /** Printed with "etwa" or "ca.". Shown with the recipe, irrelevant for sums. */
+  approximate: boolean;
   secondary: SecondaryMeasure | null;
   /** Index of the line this one may replace ("oder Petersilie"). Null for normal lines. */
   alternativeTo: number | null;
