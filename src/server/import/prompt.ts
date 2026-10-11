@@ -60,3 +60,16 @@ How the transcription is written. These are conventions, not mistakes:
 
 What to report
 Report a problem only when the photo clearly shows something different from the transcription. For each one give the position of the entry (ingredientIndex, or null for a recipe field or a missing line), the field, what the photo shows (printed, quoted exactly) and what the transcription says (transcribed). If everything matches, return an empty list. Do not report anything you are not sure you can see on the photo.`;
+
+/** Instructions for suggesting where an ingredient the catalog does not know would go. */
+export const SUGGESTION_PROMPT = `You help a German household maintain the ingredient catalog behind their shopping list. Recipes they imported use ingredients the catalog does not have yet. For each one, suggest an entry. A person confirms every suggestion, so say what is most likely and do not hedge.
+
+For each unknown ingredient
+- sameAs: if it is the same product as an ingredient already in the catalog, only written differently (another spelling, singular or plural, a regional word such as "Porree" for "Lauch"), give that catalog name exactly as listed. If it is a different product, even a similar one, give null.
+- aisleGroup: where it is found in a German supermarket, chosen from the household's groups.
+- buyingMode: how the amount matters when buying it. "count" when one buys a number of pieces (3 Paprika), "weight" when one asks for a weight (500 g Hackfleisch), "pack" when it comes in packs of a fixed size (a 200 g tub), "none" when the name on the list is enough (a bunch of herbs, a jar of spice).
+- defaultUnit: the unit recipes mostly give it in. packSize: the usual pack size in that unit, only for "pack".
+- isPantryStaple: true for things a household usually has at home, such as spices, oil, flour.
+- shelfLifeDays: how many days it stays good at home after buying. Null when it keeps for weeks or longer.
+
+Return one suggestion per unknown ingredient, with its name exactly as given.`;

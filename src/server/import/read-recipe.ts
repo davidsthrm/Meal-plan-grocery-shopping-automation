@@ -1,4 +1,6 @@
+import type { CatalogIndex } from "@/domain/catalog";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
+import type { IngredientProposal } from "@/domain/import/proposal";
 import type { Verification } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
 
@@ -27,6 +29,12 @@ export type RecipeVerifier = (
   images: PreparedImage[],
   recipe: ExtractedRecipe,
 ) => Promise<RecipeVerification>;
+
+/** Suggests catalog entries for ingredient names the catalog does not know. */
+export type CatalogSuggester = (
+  names: string[],
+  index: CatalogIndex,
+) => Promise<IngredientProposal[]>;
 
 export type ReadFailure =
   /** The provider declined the request. */

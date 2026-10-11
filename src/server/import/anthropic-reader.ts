@@ -7,8 +7,14 @@ import {
   type Verification,
 } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
-import { EXTRACTION_PROMPT, VERIFICATION_PROMPT } from "./prompt";
-import { RecipeReadError, type RecipeReader, type RecipeVerifier } from "./read-recipe";
+import { suggestionSchema, toProposals, type Suggestions } from "@/domain/import/proposal";
+import { EXTRACTION_PROMPT, SUGGESTION_PROMPT, VERIFICATION_PROMPT } from "./prompt";
+import {
+  RecipeReadError,
+  type CatalogSuggester,
+  type RecipeReader,
+  type RecipeVerifier,
+} from "./read-recipe";
 
 export interface AnthropicReaderOptions {
   /** Model ID. Comes from configuration, never from code. */
@@ -89,5 +95,29 @@ export function createAnthropicVerifier(options: AnthropicReaderOptions): Recipe
       zodOutputFormat(verificationSchema),
     );
     return { verification: output, model, usage };
+  };
+}
+
+/** Suggests catalog entries for unknown ingredients with a Claude model. Text only. */
+export function createAnthropicSuggester(options: AnthropicReaderOptions): CatalogSuggester {
+  return async (names, index) => {
+    if (names.length === 0) return [];
+    const { catalog } = index;
+    const { output } = await ask<Suggestions>(
+      options,
+      SUGGESTION_PROMPT,
+      [
+        {
+          type: "text",
+          text: [
+            `Aisle groups: ${catalog.aisleGroups.map((a) => a.name).join("; ")}`,
+            `Catalog: ${catalog.ingredients.map((i) => i.name).join("; ")}`,
+            `Unknown ingredients: ${names.join("; ")}`,
+          ].join("\n\n"),
+        },
+      ],
+      zodOutputFormat(suggestionSchema(catalog.aisleGroups.map((a) => a.name))),
+    );
+    return toProposals(names, output.suggestions, index);
   };
 }
