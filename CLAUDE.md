@@ -31,8 +31,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 
 ## Workflow
 
-- Work in phases (see the brief in the first commit of each phase branch). One branch per
-  phase, named `phase-N-topic`. Small commits, one concern each.
+- Work in phases: 0 scaffold, 1 schema and domain logic, 2 recipe import, 3 auth and UI,
+  4 recurring items, leftovers, at-home step, history, 5 recommendations, 6 deployment, PWA,
+  export. One branch per phase, named `phase-N-topic`, stacked on the previous one. Small
+  commits, one concern each.
 - After each phase: stop, summarize, and say how to test it manually.
 - Never commit secrets or anything from `samples/`. That folder holds private photos with GPS
   data and stays gitignored.
@@ -57,8 +59,23 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - `src/server/`: database access, import pipeline, PDF. `src/app/`: routes and UI.
 - `supabase/migrations/`: schema. `supabase/seed/*.ts` is the single source for the catalog
   and seed recipes; `supabase/seed.sql` is generated from it.
-- `tests/fixtures/sample-week/`: the handwritten plan, list and recipes, transcribed. They are
-  the acceptance test.
+- `supabase/tests/`: applies migrations and seed to an embedded Postgres and tests schema
+  constraints and RLS. A new table must have `household_id`, RLS and a policy, or these fail.
+- `tests/fixtures/sample-week/`: the handwritten plan, list and recipes, transcribed, plus
+  `inputs.json` with what else the list depends on (free entries, at-home ticks, what is
+  bought later, which recipes are still pending).
+- `tests/acceptance/`: builds the list for that week with the real catalog and compares it
+  with the handwritten one. `npm run sample-week` prints both.
+
+## Acceptance test
+
+The generated list is accepted when, per shop, it has the same lines as the handwritten one,
+with the same quantity where the paper shows one and none where it shows none, the same note,
+and an aisle order the handwritten order does not contradict.
+
+Lines that come from a recipe the household has not added yet are listed under `pendingLines`
+in `inputs.json`. When such a recipe is added to `supabase/seed/recipes.ts`, give the plan slot
+its `sampleRecipe`, remove the lines from `pendingLines`, and the test must still pass.
 
 ## Domain rules
 
@@ -97,14 +114,28 @@ Shopping list
 - Freshness: an ingredient with a shelf life shorter than the days between the shopping day
   and the meal goes to a "buy later" section with the day it is needed. Everything else is
   bought on the main shopping day.
+- For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked.
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
   the rest as a note. Text that matches nothing stays a free line.
-- When the plan changes, lines are recomputed and matched by a stable line key. Notes, shop
-  overrides, at-home marks and check-offs belong to the key and survive. Changes are reported.
+- When the plan changes, lines are recomputed and matched by a stable line key
+  (`<ingredient>@<trip>`). Notes, shop overrides, at-home marks and check-offs belong to the key
+  and survive. A change is reported only when the quantity shown on the list changes.
 
 Import (phase 2)
 
 - Never guess. An illegible or ambiguous value is null plus a flag.
 - New catalog ingredients are proposed for batch confirmation, never created silently.
+
+## Open items
+
+- Recipes still to come from the household: Tomate Mozzarella, Pestonudeln, Leberkässalat,
+  Garnelen-Salat mit Feldsalat, Schafskäseauflauf, Hawaiitoast, Apfelkuchen, and homemade
+  Spätzle as a side. "Reste" and "Vesper" never have a recipe.
+- Two seed recipes have no title because the facing page was not photographed (book pages 97
+  and 88). They are seeded as "Ohne Titel" with status `needs_review`.
+- The Anthropic API is billed separately from a Claude Pro subscription. An API key with
+  prepaid credits is needed before phase 2 can run against real photos.
+- Shelf life, pack sizes and default shops in the catalog are estimates. The household
+  corrects them in the app once the settings UI exists.
