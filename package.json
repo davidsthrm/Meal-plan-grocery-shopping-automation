@@ -13,9 +13,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:build": "tsx supabase/seed/build-seed-sql.ts",
-    "sample-week": "tsx scripts/sample-week.ts"
+    "sample-week": "tsx scripts/sample-week.ts",
+    "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -30,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "prettier": "^3.9.10",
+    "supabase": "^2.120.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
