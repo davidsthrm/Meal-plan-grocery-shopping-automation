@@ -15,19 +15,22 @@ is easier than pen and paper.
 
 ## Commands
 
-| Task                                                             | Command                                   |
-| ---------------------------------------------------------------- | ----------------------------------------- |
-| Dev server                                                       | `npm run dev`                             |
-| Unit tests (domain, schema, acceptance)                          | `npm test`                                |
-| One test file                                                    | `npx vitest run src/domain/units.test.ts` |
-| Typecheck                                                        | `npm run typecheck`                       |
-| Lint                                                             | `npm run lint`                            |
-| Format                                                           | `npm run format`                          |
-| Print the sample week list and compare with the handwritten one  | `npm run sample-week`                     |
-| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`         | `npm run seed:build`                      |
-| Check the Supabase project in `.env.local`                       | `npm run db:check`                        |
-| Measure a model on the five sample recipe photos (calls the API) | `npm run import:eval`                     |
-| Apply new migrations to the linked Supabase project              | `npx supabase db push`                    |
+| Task                                                                | Command                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------- |
+| Dev server                                                          | `npm run dev`                                  |
+| Unit tests (domain, schema, acceptance)                             | `npm test`                                     |
+| One test file                                                       | `npx vitest run src/domain/units.test.ts`      |
+| Typecheck                                                           | `npm run typecheck`                            |
+| Lint                                                                | `npm run lint`                                 |
+| Format                                                              | `npm run format`                               |
+| Print the sample week list and compare with the handwritten one     | `npm run sample-week`                          |
+| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`            | `npm run seed:build`                           |
+| Check the Supabase project in `.env.local`                          | `npm run db:check`                             |
+| Measure a model on the five sample recipe photos (calls the API)    | `npm run import:eval`                          |
+| Measure the second check pass with planted mistakes (calls the API) | `npm run import:eval-verify`                   |
+| Run the complete import on photos without touching the database     | `npm run import:photo -- <photo> --book "..."` |
+| The same for the five sample recipes                                | `npm run import:photo -- --samples`            |
+| Apply new migrations to the linked Supabase project                 | `npx supabase db push`                         |
 
 Docker is not required for tests. Migrations, seed and RLS run against an embedded Postgres
 (PGlite) in `supabase/tests/`.
@@ -143,10 +146,31 @@ Shopping list
   (`<ingredient>@<trip>`). Notes, shop overrides, at-home marks and check-offs belong to the key
   and survive. A change is reported only when the quantity shown on the list changes.
 
-Import (phase 2)
+Import
 
-- Never guess. An illegible or ambiguous value is null plus a flag.
-- New catalog ingredients are proposed for batch confirmation, never created silently.
+- The steps, in `src/server/import/import-recipe.ts`: normalise the photos, read them (first
+  pass), map every line to the catalog, run the automatic checks, let a second request compare
+  the transcription with the photos (second pass), then decide.
+- A recipe is approved only if nothing at all came up. Any issue sends it to the review queue.
+  A recipe the second pass could not check is never approved.
+- Never guess. A value the model cannot read with certainty is null, and the model says so in
+  `uncertain`. Observations that need no decision go to `notes` and never block approval.
+- What a photo cannot show comes from the upload form: the cookbook always, title and page
+  when they are not printed. The printed title stays in `source_title`; a title the household
+  entered never overwrites it.
+- Mapping to the catalog: the longest part of the printed line that contains the ingredient's
+  name and is a catalog name wins ("1 getrocknete Chilischote" is not the fresh one).
+- An ingredient the catalog does not know is never created silently. It becomes one open
+  proposal per name: either another name for an existing ingredient, or a new one with a
+  suggested aisle group, shop, buying mode and shelf life. The household confirms in a batch.
+- The second pass never sees the printed lines of the transcription, only the values.
+  Otherwise it would compare the transcription with itself instead of with the photo.
+- Model instructions live in `src/server/import/prompt.ts`. Their examples must not come from
+  the sample recipes, or the measurements stop meaning anything.
+- Measured on the five sample photos with `claude-haiku-5-5` (October 2026): 15 of 15 readings
+  without a mistake over three runs, 25 of 25 planted mistakes caught by the second pass, no
+  false alarm, about 0.35 cents per recipe for both passes. Re-measure after changing a prompt
+  or a model.
 
 ## Open items
 
@@ -156,10 +180,12 @@ Import (phase 2)
 - Three seed recipes have no cookbook name yet: the steak (a magazine page) and the two from
   the book with pages 82 and 84. The two from "Speed Cooking" have their title from the
   household, because the printed title was not photographed.
-- The Anthropic API is billed separately from a Claude Pro subscription. `npm run import:eval`
-  and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
-- Phase 2 so far: photo normalisation, the extraction format, the scorer, the Claude reader and
-  the measurement script. Still to do after the first measurement: verification pass, rule
-  checks, catalog mapping with proposals, import tables and the review queue.
+- The Anthropic API is billed separately from a Claude Pro subscription. The measurement
+  scripts and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
+- The import runs end to end from the command line but does not write to the database yet.
+  Phase 3 adds: upload tab with the metadata form, storing photos in the private bucket,
+  saving recipes, import jobs and proposals, the review screen and the proposal confirmation.
+- The measurements cover five clean, well-lit pages. Watch the review rate and spot-check the
+  first real cookbook batch.
 - Shelf life, pack sizes and default shops in the catalog are estimates. The household
   corrects them in the app once the settings UI exists.
