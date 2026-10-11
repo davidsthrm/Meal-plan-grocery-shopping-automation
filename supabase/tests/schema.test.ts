@@ -6,7 +6,7 @@ import { UNITS } from "@/domain/units";
 import { buildSeedSql, SEED_HOUSEHOLD_ID } from "../seed/build-seed-sql";
 import { seedCatalog } from "../seed/catalog";
 import { seedRecipes } from "../seed/recipes";
-import { asAnonymous, asUser, createDatabase } from "./database";
+import { asAnonymous, asServer, asUser, createDatabase } from "./database";
 
 const MEMBER = "11111111-1111-4111-8111-111111111111";
 const STRANGER = "22222222-2222-4222-8222-222222222222";
@@ -199,6 +199,38 @@ describe("row level security", () => {
         ]),
       ).rejects.toThrow(/permission denied/);
     });
+  });
+
+  it("lets the server read and write every table with the secret key", async () => {
+    const tables = await db.query<{ table_name: string }>(
+      "select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'",
+    );
+    await asServer(db, async () => {
+      for (const { table_name } of tables.rows) {
+        await expect(
+          db.query(`select 1 from public.${table_name} limit 1`),
+          table_name,
+        ).resolves.toBeDefined();
+      }
+      // RLS does not apply to it: it sees both households.
+      expect(await count("select 1 from public.household")).toBe(2);
+      await db.query("update public.household set default_servings = 4 where id = $1", [
+        SEED_HOUSEHOLD_ID,
+      ]);
+    });
+  });
+
+  it("keeps anonymous visitors out on an older project with automatic grants too", async () => {
+    const legacy = await createDatabase({ legacyGrants: true });
+    await asAnonymous(legacy, async () => {
+      await expect(legacy.query("select 1 from public.ingredient limit 1")).rejects.toThrow(
+        /permission denied/,
+      );
+      await expect(legacy.query("select 1 from public.household_member limit 1")).rejects.toThrow(
+        /permission denied/,
+      );
+    });
+    await legacy.close();
   });
 
   it("gives anonymous visitors no access at all", async () => {

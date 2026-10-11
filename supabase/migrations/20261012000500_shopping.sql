@@ -109,5 +109,5 @@ create policy shopping_line_state_all on public.shopping_line_state for all to a
   using (private.is_household_member(household_id))
   with check (private.is_household_member(household_id));
 
-revoke all on public.shopping_list, public.shopping_manual_entry, public.shopping_line, public.shopping_line_state from anon, authenticated;
-grant select, insert, update, delete on public.shopping_list, public.shopping_manual_entry, public.shopping_line, public.shopping_line_state to authenticated;
+revoke all on public.shopping_list, public.shopping_manual_entry, public.shopping_line, public.shopping_line_state from anon, authenticated, service_role;
+grant select, insert, update, delete on public.shopping_list, public.shopping_manual_entry, public.shopping_line, public.shopping_line_state to authenticated, service_role;

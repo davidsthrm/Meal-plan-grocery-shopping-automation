@@ -108,5 +108,5 @@ create policy week_recurring_item_all on public.week_recurring_item for all to a
   using (private.is_household_member(household_id))
   with check (private.is_household_member(household_id));
 
-revoke all on public.week_plan, public.plan_slot, public.plan_slot_item, public.recurring_item, public.week_recurring_item from anon, authenticated;
-grant select, insert, update, delete on public.week_plan, public.plan_slot, public.plan_slot_item, public.recurring_item, public.week_recurring_item to authenticated;
+revoke all on public.week_plan, public.plan_slot, public.plan_slot_item, public.recurring_item, public.week_recurring_item from anon, authenticated, service_role;
+grant select, insert, update, delete on public.week_plan, public.plan_slot, public.plan_slot_item, public.recurring_item, public.week_recurring_item to authenticated, service_role;

@@ -119,5 +119,5 @@ create policy recipe_ingredient_all on public.recipe_ingredient for all to authe
   using (private.is_household_member(household_id))
   with check (private.is_household_member(household_id));
 
-revoke all on public.recipe, public.recipe_photo, public.tag, public.recipe_tag, public.recipe_ingredient from anon, authenticated;
-grant select, insert, update, delete on public.recipe, public.recipe_photo, public.tag, public.recipe_tag, public.recipe_ingredient to authenticated;
+revoke all on public.recipe, public.recipe_photo, public.tag, public.recipe_tag, public.recipe_ingredient from anon, authenticated, service_role;
+grant select, insert, update, delete on public.recipe, public.recipe_photo, public.tag, public.recipe_tag, public.recipe_ingredient to authenticated, service_role;

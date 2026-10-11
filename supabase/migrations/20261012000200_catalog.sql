@@ -106,5 +106,5 @@ create policy ingredient_all on public.ingredient for all to authenticated
   using (private.is_household_member(household_id))
   with check (private.is_household_member(household_id));
 
-revoke all on public.shop, public.aisle_group, public.shop_aisle_order, public.ingredient from anon, authenticated;
-grant select, insert, update, delete on public.shop, public.aisle_group, public.shop_aisle_order, public.ingredient to authenticated;
+revoke all on public.shop, public.aisle_group, public.shop_aisle_order, public.ingredient from anon, authenticated, service_role;
+grant select, insert, update, delete on public.shop, public.aisle_group, public.shop_aisle_order, public.ingredient to authenticated, service_role;

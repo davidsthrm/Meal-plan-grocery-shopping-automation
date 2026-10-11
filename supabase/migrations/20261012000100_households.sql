@@ -64,6 +64,10 @@ create policy household_member_select on public.household_member
   for select to authenticated
   using (private.is_household_member(household_id));
 
-revoke all on public.household, public.household_member from anon, authenticated;
+revoke all on public.household, public.household_member from anon, authenticated, service_role;
 grant select, update on public.household to authenticated;
 grant select on public.household_member to authenticated;
+
+-- The server works with the secret key (role service_role). It bypasses RLS but still needs
+-- table privileges: new Supabase projects no longer grant them automatically.
+grant select, insert, update, delete on public.household, public.household_member to service_role;

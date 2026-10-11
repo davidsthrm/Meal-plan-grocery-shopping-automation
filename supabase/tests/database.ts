@@ -20,8 +20,13 @@ const SUPABASE_STAND_INS = `
 
   grant usage on schema public, auth to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated, service_role;
-  -- Supabase grants every role everything on new public tables. RLS and our own
-  -- revokes have to hold against that.
+`;
+
+/**
+ * Projects created before mid 2026 grant every role everything on new public tables.
+ * New projects grant nothing. The migrations have to be right on both.
+ */
+const LEGACY_AUTOMATIC_GRANTS = `
   alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 `;
 
@@ -33,9 +38,10 @@ export function migrationFiles(): string[] {
     .sort();
 }
 
-export async function createDatabase({ seed = false } = {}): Promise<PGlite> {
+export async function createDatabase({ seed = false, legacyGrants = false } = {}): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(SUPABASE_STAND_INS);
+  if (legacyGrants) await db.exec(LEGACY_AUTOMATIC_GRANTS);
   for (const file of migrationFiles()) {
     await db.exec(readFileSync(migrationsDir + file, "utf8"));
   }
@@ -59,6 +65,16 @@ export async function asUser<T>(db: PGlite, userId: string, work: () => Promise<
 
 export async function asAnonymous<T>(db: PGlite, work: () => Promise<T>): Promise<T> {
   await db.exec("set role anon");
+  try {
+    return await work();
+  } finally {
+    await db.exec("reset role");
+  }
+}
+
+/** Runs `work` the way the server does with the secret key. */
+export async function asServer<T>(db: PGlite, work: () => Promise<T>): Promise<T> {
+  await db.exec("set role service_role");
   try {
     return await work();
   } finally {
