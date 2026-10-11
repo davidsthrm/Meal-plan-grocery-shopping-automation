@@ -16,7 +16,8 @@
     "sample-week": "tsx scripts/sample-week.ts",
     "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts",
     "import:eval": "tsx --env-file=.env.local scripts/import-eval.ts",
-    "import:eval-verify": "tsx --env-file=.env.local scripts/verify-eval.ts"
+    "import:eval-verify": "tsx --env-file=.env.local scripts/verify-eval.ts",
+    "import:photo": "tsx --env-file=.env.local scripts/import-photo.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
