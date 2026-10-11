@@ -2,17 +2,17 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { describe, expect, it, vi } from "vitest";
 import { extractedRecipeSchema, type ExtractedRecipe } from "@/domain/import/extraction";
-import { createAnthropicReader } from "./anthropic-reader";
+import { createAnthropicReader, createAnthropicVerifier } from "./anthropic-reader";
 import type { PreparedImage } from "./normalize-image";
 
 const page: PreparedImage = {
-  label: "Whole page",
+  label: "Page 1",
   data: Buffer.from("jpeg bytes"),
   width: 10,
   height: 20,
 };
 const tile: PreparedImage = {
-  label: "Enlarged part, row 1 of 1, column 1 of 2",
+  label: "Enlarged part of Page 1, row 1 of 1, column 1 of 2",
   data: Buffer.from("x"),
   width: 5,
   height: 5,
@@ -62,7 +62,7 @@ describe("createAnthropicReader", () => {
       "image",
       "text",
     ]);
-    expect(request.messages[0].content[0].text).toBe("Whole page:");
+    expect(request.messages[0].content[0].text).toBe("Page 1:");
     expect(request.messages[0].content[1].source).toEqual({
       type: "base64",
       media_type: "image/jpeg",
@@ -97,6 +97,48 @@ describe("createAnthropicReader", () => {
     await expect(createAnthropicReader({ client, model: "m" })([page])).rejects.toMatchObject({
       failure: "invalid",
     });
+  });
+});
+
+describe("createAnthropicVerifier", () => {
+  it("sends the photos and the values to check, but not the printed lines", async () => {
+    const problems = [
+      { ingredientIndex: 0, field: "quantity", printed: "3½ EL", transcribed: "0.5 EL" },
+    ];
+    const { client, parse } = fakeClient({ parsed_output: { problems } });
+    const withLine = {
+      ...recipe,
+      ingredients: [
+        {
+          raw: "Zitronensaft 3½ EL",
+          quantity: 0.5,
+          quantityMax: null,
+          unit: "EL",
+          name: "Zitronensaft",
+          note: "",
+          approximate: false,
+          optional: false,
+          secondaryQuantity: null,
+          secondaryUnit: null,
+          secondaryScope: "none" as const,
+          alternativeTo: null,
+          unclear: false,
+        },
+      ],
+    };
+    const result = await createAnthropicVerifier({ client, model: "configured-model" })(
+      [page],
+      withLine,
+    );
+
+    const content = parse.mock.calls[0][0].messages[0].content;
+    const transcription = content[content.length - 1].text as string;
+    expect(content.map((block: { type: string }) => block.type)).toEqual(["text", "image", "text"]);
+    expect(transcription).toContain('"name": "Zitronensaft"');
+    expect(transcription).toContain('"quantity": 0.5');
+    // The printed line would let the check pass by comparing the transcription with itself.
+    expect(transcription).not.toContain("3½");
+    expect(result.verification.problems).toEqual(problems);
   });
 });
 

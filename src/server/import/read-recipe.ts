@@ -1,4 +1,5 @@
 import type { ExtractedRecipe } from "@/domain/import/extraction";
+import type { Verification } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
 
 /**
@@ -14,6 +15,18 @@ export interface RecipeReading {
 }
 
 export type RecipeReader = (images: PreparedImage[]) => Promise<RecipeReading>;
+
+export interface RecipeVerification {
+  verification: Verification;
+  model: string;
+  usage: { inputTokens: number; outputTokens: number };
+}
+
+/** Compares a finished transcription with the photos it was made from. */
+export type RecipeVerifier = (
+  images: PreparedImage[],
+  recipe: ExtractedRecipe,
+) => Promise<RecipeVerification>;
 
 export type ReadFailure =
   /** The provider declined the request. */

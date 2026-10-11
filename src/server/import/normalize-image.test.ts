@@ -39,16 +39,16 @@ describe("normalizeImage", () => {
 describe("prepareForModel", () => {
   it("returns only the page when it fits the model's limit", async () => {
     const images = await prepareForModel(await phoneJpeg(2000, 1500));
-    expect(images.map((i) => i.label)).toEqual(["Whole page"]);
+    expect(images.map((i) => i.label)).toEqual(["Page 1"]);
   });
 
   it("adds full-resolution tiles that cover a large page with overlap", async () => {
     // Upright this is 3000 x 4000: two columns, two rows.
     const images = await prepareForModel(await phoneJpeg(4000, 3000));
     expect(images).toHaveLength(5);
-    expect(images[0]).toMatchObject({ label: "Whole page", width: 1932, height: MODEL_MAX_EDGE });
+    expect(images[0]).toMatchObject({ label: "Page 1", width: 1932, height: MODEL_MAX_EDGE });
     const tiles = images.slice(1);
-    expect(tiles[0].label).toBe("Enlarged part, row 1 of 2, column 1 of 2");
+    expect(tiles[0].label).toBe("Enlarged part of Page 1, row 1 of 2, column 1 of 2");
     for (const tile of tiles) {
       expect(tile.width).toBeLessThanOrEqual(MODEL_MAX_EDGE);
       expect(tile.height).toBeLessThanOrEqual(MODEL_MAX_EDGE);

@@ -11,7 +11,7 @@ import sharp, { type Sharp } from "sharp";
 export const MODEL_MAX_EDGE = 2576;
 
 export interface PreparedImage {
-  /** Tells the model what it is looking at: the whole page or an enlarged part. */
+  /** Tells the model what it is looking at: "Page 1", or an enlarged part of it. */
   label: string;
   data: Buffer;
   width: number;
@@ -56,13 +56,11 @@ async function toJpeg(image: Sharp, label: string): Promise<PreparedImage> {
 /** The photo as it is stored and shown: upright, no metadata, at most `maxEdge` long. */
 export async function normalizeImage(
   input: Buffer,
+  label = "Page 1",
   maxEdge = MODEL_MAX_EDGE,
 ): Promise<PreparedImage> {
   const image = await upright(input);
-  return toJpeg(
-    image.resize(maxEdge, maxEdge, { fit: "inside", withoutEnlargement: true }),
-    "Whole page",
-  );
+  return toJpeg(image.resize(maxEdge, maxEdge, { fit: "inside", withoutEnlargement: true }), label);
 }
 
 export interface TileOptions {
@@ -79,6 +77,7 @@ export interface TileOptions {
  */
 export async function prepareForModel(
   input: Buffer,
+  label = "Page 1",
   options: TileOptions = {},
 ): Promise<PreparedImage[]> {
   const tileEdge = options.tileEdge ?? MODEL_MAX_EDGE;
@@ -90,7 +89,7 @@ export async function prepareForModel(
 
   const overview = await toJpeg(
     full().resize(MODEL_MAX_EDGE, MODEL_MAX_EDGE, { fit: "inside", withoutEnlargement: true }),
-    "Whole page",
+    label,
   );
   const columns = Math.ceil(info.width / tileEdge);
   const rows = Math.ceil(info.height / tileEdge);
@@ -113,7 +112,7 @@ export async function prepareForModel(
             width,
             height,
           }),
-          `Enlarged part, row ${row + 1} of ${rows}, column ${column + 1} of ${columns}`,
+          `Enlarged part of ${label}, row ${row + 1} of ${rows}, column ${column + 1} of ${columns}`,
         ),
       );
     }
