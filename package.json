@@ -17,10 +17,13 @@
     "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@supabase/supabase-js": "^2.117.3",
+    "heic-decode": "^2.1.0",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "sharp": "^0.35.5",
     "zod": "^4.6.6"
   },
   "devDependencies": {
