@@ -1,64 +1,11 @@
 import { describe, expect, it } from "vitest";
 import fixtures from "../../../tests/fixtures/sample-week/recipes.json";
-import { extractedRecipeSchema, type ExtractedRecipe } from "./extraction";
+import { extractedRecipeSchema } from "./extraction";
 import { scoreExtraction, type ExpectedRecipe } from "./score";
+import { flawless } from "./testing";
 
 const recipes = fixtures.recipes as ExpectedRecipe[];
 const byId = (id: string) => recipes.find((r) => r.id === id)!;
-
-/** What a flawless model would return for a verified recipe. */
-function flawless(expected: ExpectedRecipe): ExtractedRecipe {
-  const ingredients: ExtractedRecipe["ingredients"] = [];
-  for (const line of expected.ingredients) {
-    const base = {
-      raw: line.raw,
-      note: "",
-      optional: line.optional ?? false,
-      unclear: false,
-    };
-    ingredients.push({
-      ...base,
-      quantity: line.quantity,
-      quantityMax: line.quantityMax,
-      unit: line.unit,
-      name: line.name,
-      approximate: line.approx,
-      secondaryQuantity: line.secondary?.quantity ?? null,
-      secondaryUnit: line.secondary?.unit ?? null,
-      secondaryScope: line.secondary ? ((line.secondary.scope ?? "unknown") as "total") : "none",
-      alternativeTo: null,
-    });
-    if (line.alternative) {
-      ingredients.push({
-        ...base,
-        quantity: line.alternative.quantity,
-        quantityMax: line.alternative.quantityMax,
-        unit: line.alternative.unit,
-        name: line.alternative.name,
-        approximate: false,
-        optional: false,
-        secondaryQuantity: null,
-        secondaryUnit: null,
-        secondaryScope: "none",
-        alternativeTo: ingredients.length - 1,
-      });
-    }
-  }
-  return {
-    title: expected.title,
-    subtitle: "",
-    servingsMin: expected.servings.min,
-    servingsMax: expected.servings.max,
-    servingsRaw: "",
-    page: expected.source.page,
-    prepMinutes: expected.prepTimeMinutes,
-    dishType: "unbekannt",
-    proteinType: "unknown",
-    ingredients,
-    uncertain: [],
-    notes: [],
-  };
-}
 
 describe("extraction schema", () => {
   it("accepts a flawless reading of every sample recipe", () => {
