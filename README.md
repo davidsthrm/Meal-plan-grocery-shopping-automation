@@ -43,7 +43,8 @@ returning household_id, user_id, role;
 
 The statement must return one row. No row means the email does not match the user you created.
 
-Put the project URL, the publishable key and the secret key into `.env.local`, then:
+Put the project URL (`https://<project-ref>.supabase.co`, without the `/rest/v1/` the dashboard
+shows), the publishable key and the secret key into `.env.local`, then:
 
 ```bash
 npm run db:check
