@@ -1,0 +1,56 @@
+{
+  "description": "Everything besides the plan and the recipes that the handwritten list depends on. Confirmed by the household on 2026-10-12 unless a basis says otherwise.",
+  "householdServings": 4,
+  "shoppingDate": "2026-10-12",
+  "noRecipe": {
+    "description": "Meals that never have a recipe. They produce no list lines.",
+    "meals": ["Vesper mit Ofenkäse"]
+  },
+  "recipePending": {
+    "description": "Dishes whose recipe the household will add later. Until then they produce no list lines.",
+    "meals": [
+      "Tomate Mozzarella",
+      "Pestonudeln",
+      "Leberkässalat",
+      "Garnelen-Salat m. Feldsalat",
+      "Schafskäseauflauf",
+      "Hawaiitoast",
+      "Apfelkuchen",
+      "Spätzle (selbstgemacht), the side to the steak"
+    ]
+  },
+  "freeEntries": {
+    "description": "Lines on the handwritten list that belong to no recipe. The household adds them by hand.",
+    "lines": ["kl. Tomaten", "Mandarinen-Dose", "H-Sahne", "Creme fraîche", "Butter", "Milch WS 1.29", "Rauchsalami", "Brot"]
+  },
+  "pendingLines": {
+    "description": "Handwritten lines that will come from a recipe that is still pending. The meal named is my reading of which one; move a line to freeEntries if it is a free entry after all.",
+    "lines": {
+      "Feldsalat": "Garnelen-Salat m. Feldsalat",
+      "12 Tomaten": "Tomate Mozzarella",
+      "Toast": "Hawaiitoast",
+      "Gouda-Scheiben": "Hawaiitoast",
+      "Mozzarella": "Tomate Mozzarella",
+      "2x Garnelen": "Garnelen-Salat m. Feldsalat",
+      "Spätzle-Mehl": "Spätzle (selbstgemacht)",
+      "600 g Leberkäse": "Leberkässalat",
+      "20 Eier": "Spätzle (selbstgemacht), Apfelkuchen"
+    }
+  },
+  "atHome": {
+    "description": "Ticked in the 'Haben wir schon?' step, on top of the pantry staples that are pre-ticked. Derived: the recipes need these and the handwritten list does not have them.",
+    "ingredients": [
+      { "name": "braune Linsen", "for": "Linsen-Eintopf" },
+      { "name": "Speck", "for": "Linsen-Eintopf" },
+      { "name": "Kartoffeln", "for": "Linsen-Eintopf" },
+      { "name": "Schnittlauch", "for": "Linsen-Eintopf" },
+      { "name": "Thymian", "for": "Steak" },
+      { "name": "grüner Pfeffer (eingelegt)", "for": "Steak" },
+      { "name": "Spätzle (frisch)", "for": "Steak", "basis": "Not bought: the household makes Spätzle from Spätzle-Mehl and eggs. Goes away once that side recipe exists." }
+    ]
+  },
+  "boughtLater": {
+    "description": "Needed on Sunday and too fresh to buy on Monday. Expected in the 'buy later' section, not on the Monday list.",
+    "ingredients": ["Rindersteaks", "Champignons", "Kräuterseitlinge"]
+  }
+}
