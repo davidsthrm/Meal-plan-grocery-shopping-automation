@@ -4,6 +4,7 @@
     "quantity": "Decimal. Printed fractions are converted (1/2 = 0.5). `quantityMax` is set only for printed ranges such as '2-3'.",
     "unit": "A bare count without a printed unit is recorded as 'Stück'. No quantity printed: quantity and unit are null.",
     "name": "The ingredient as printed, without descriptors that only describe preparation or quality. Those go to `note`. Descriptors that select a different product stay in the name. This split is a judgment call; tests should compare quantity, unit and raw text strictly and the name loosely.",
+    "providedByHousehold": "What the household entered by hand because the photo does not show it. The import must leave these fields null and take them from the upload form.",
     "secondary": "A second printed measure for the same line, for example '(etwa 200 g)' or 'à 150 g'. `scope` is 'perPiece', 'total', or null if the print does not say.",
     "combinedLine": "One printed line naming two ingredients ('Salz, Pfeffer') becomes two entries sharing the same `raw`."
   },
@@ -103,6 +104,7 @@
       "photo": "samples/recipes/IMG_5684.heic",
       "title": null,
       "subtitle": null,
+      "providedByHousehold": { "title": "Avocado Spaghetti", "book": "Speed Cooking" },
       "servings": { "min": 2, "max": 2, "raw": "ZUTATEN FÜR 2 PERSONEN:" },
       "source": { "publication": null, "page": 97, "notes": "Cookbook with a numbered step grid. Title of the book is not in frame." },
       "prepTimeMinutes": 20,
@@ -131,6 +133,7 @@
       "photo": "samples/recipes/IMG_5685.heic",
       "title": null,
       "subtitle": null,
+      "providedByHousehold": { "title": "Rustikaler Linsen Salat", "book": "Speed Cooking" },
       "servings": { "min": 2, "max": 2, "raw": "ZUTATEN FÜR 2 PERSONEN:" },
       "source": { "publication": null, "page": 88, "notes": "Same cookbook layout as IMG_5684. Running foot: 'Salat & Gemüse'. Title of the book is not in frame." },
       "prepTimeMinutes": 15,

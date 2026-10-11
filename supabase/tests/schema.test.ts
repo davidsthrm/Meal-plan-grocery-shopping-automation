@@ -56,11 +56,26 @@ describe("seed", () => {
     expect(seedCatalog.ingredients.length).toBeGreaterThanOrEqual(150);
   });
 
-  it("keeps the two recipes without a printed title in the review queue", async () => {
-    const result = await db.query<{ title: string }>(
-      "select title from public.recipe where status = 'needs_review' order by title",
+  it("keeps what the household entered for the two recipes whose title was not photographed", async () => {
+    const result = await db.query(
+      "select title, source_title, source_book, source_page, status from public.recipe where source_book is not null order by title",
     );
-    expect(result.rows.map((r) => r.title)).toEqual(["Ohne Titel (S. 88)", "Ohne Titel (S. 97)"]);
+    expect(result.rows).toEqual([
+      {
+        title: "Avocado Spaghetti",
+        source_title: null,
+        source_book: "Speed Cooking",
+        source_page: 97,
+        status: "approved",
+      },
+      {
+        title: "Rustikaler Linsen Salat",
+        source_title: null,
+        source_book: "Speed Cooking",
+        source_page: 88,
+        status: "approved",
+      },
+    ]);
   });
 });
 

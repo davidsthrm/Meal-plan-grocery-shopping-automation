@@ -165,19 +165,19 @@ export const seedRecipes: SeedRecipe[] = [
     ],
   },
   {
-    id: "ohne-titel-s97",
+    id: "avocado-spaghetti",
     sampleId: "IMG_5684",
-    // The title is on the facing page, which was not photographed.
-    title: "Ohne Titel (S. 97)",
+    // The title is on the facing page, which was not photographed. The household named it.
+    title: "Avocado Spaghetti",
     sourceTitle: null,
     kind: "cookbook",
-    sourceBook: null,
+    sourceBook: "Speed Cooking",
     sourcePage: 97,
     servings: { min: 2, max: 2 },
     prepMinutes: 20,
     proteinType: "vegetarian",
     tagIds: ["hauptgericht", "pasta", "vegetarisch", "schnell"],
-    status: "needs_review",
+    status: "approved",
     ingredients: [
       line("Spaghetti 200 g", "spaghetti", 200, "g"),
       line("Knoblauchzehe 1", "knoblauch", 1, "Zehe"),
@@ -193,19 +193,19 @@ export const seedRecipes: SeedRecipe[] = [
     ],
   },
   {
-    id: "ohne-titel-s88",
+    id: "rustikaler-linsen-salat",
     sampleId: "IMG_5685",
-    // The title is on the facing page, which was not photographed.
-    title: "Ohne Titel (S. 88)",
+    // The title is on the facing page, which was not photographed. The household named it.
+    title: "Rustikaler Linsen Salat",
     sourceTitle: null,
     kind: "cookbook",
-    sourceBook: null,
+    sourceBook: "Speed Cooking",
     sourcePage: 88,
     servings: { min: 2, max: 2 },
     prepMinutes: 15,
     proteinType: "red_meat",
     tagIds: ["salat", "huelsenfruechte", "schnell"],
-    status: "needs_review",
+    status: "approved",
     ingredients: [
       line("Kurzkoch-Linsen 2 Beutel (à 62 g)", "kurzkoch-linsen", 2, "Beutel", { secondary: { quantity: 62, unit: "g", scope: "perPiece" } }),
       line("Oliven (entsteint) 8", "oliven", 8, "Stück", { note: "entsteint" }),
