@@ -15,18 +15,19 @@ is easier than pen and paper.
 
 ## Commands
 
-| Task                                                            | Command                                   |
-| --------------------------------------------------------------- | ----------------------------------------- |
-| Dev server                                                      | `npm run dev`                             |
-| Unit tests (domain, schema, acceptance)                         | `npm test`                                |
-| One test file                                                   | `npx vitest run src/domain/units.test.ts` |
-| Typecheck                                                       | `npm run typecheck`                       |
-| Lint                                                            | `npm run lint`                            |
-| Format                                                          | `npm run format`                          |
-| Print the sample week list and compare with the handwritten one | `npm run sample-week`                     |
-| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`        | `npm run seed:build`                      |
-| Check the Supabase project in `.env.local`                      | `npm run db:check`                        |
-| Apply new migrations to the linked Supabase project             | `npx supabase db push`                    |
+| Task                                                             | Command                                   |
+| ---------------------------------------------------------------- | ----------------------------------------- |
+| Dev server                                                       | `npm run dev`                             |
+| Unit tests (domain, schema, acceptance)                          | `npm test`                                |
+| One test file                                                    | `npx vitest run src/domain/units.test.ts` |
+| Typecheck                                                        | `npm run typecheck`                       |
+| Lint                                                             | `npm run lint`                            |
+| Format                                                           | `npm run format`                          |
+| Print the sample week list and compare with the handwritten one  | `npm run sample-week`                     |
+| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`         | `npm run seed:build`                      |
+| Check the Supabase project in `.env.local`                       | `npm run db:check`                        |
+| Measure a model on the five sample recipe photos (calls the API) | `npm run import:eval`                     |
+| Apply new migrations to the linked Supabase project              | `npx supabase db push`                    |
 
 Docker is not required for tests. Migrations, seed and RLS run against an embedded Postgres
 (PGlite) in `supabase/tests/`.
@@ -55,11 +56,21 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Vitest for unit tests, Playwright for a few end-to-end flows.
 - Recipe import uses the Anthropic API, server side only. Model IDs come from
   `ANTHROPIC_EXTRACT_MODEL` and `ANTHROPIC_VERIFY_MODEL`. Never hard-code a model ID.
+- Budget: at most 2 cents per recipe for both passes. Start with `claude-haiku-5-5`. A recipe
+  the cheap model cannot read with certainty goes to the review queue. It is never handed to
+  a pricier model automatically.
+- Every model call goes through the `RecipeReader` type in `src/server/import/read-recipe.ts`.
+  Another model or provider gets its own reader; nothing else in the import changes.
+- Which model is good enough is decided by `npm run import:eval`, on the household's own
+  sample recipes, not by assumption.
 - Recipes are added on an upload tab in the app. The model detects title and kind. The
   household enters what a photo cannot show: cookbook and, if not printed, the page. The
   cookbook is asked once per batch and pre-filled from the folder name when a folder is chosen.
-- Photo uploads go from the browser straight to Storage. The server converts HEIC, applies the
-  EXIF rotation, strips metadata (the photos carry GPS) and converts to sRGB.
+- Photo uploads go from the browser straight to Storage. The server turns each one into an
+  upright JPEG without metadata (the photos carry GPS). sharp cannot decode iPhone HEIC, so
+  those go through `heic-decode` first. See `src/server/import/normalize-image.ts`.
+- A 24 megapixel page loses more than half its resolution at the model's size limit. The
+  import can send enlarged full-resolution parts along with the page (`prepareForModel`).
 
 ## Architecture
 
@@ -145,7 +156,10 @@ Import (phase 2)
 - Three seed recipes have no cookbook name yet: the steak (a magazine page) and the two from
   the book with pages 82 and 84. The two from "Speed Cooking" have their title from the
   household, because the printed title was not photographed.
-- The Anthropic API is billed separately from a Claude Pro subscription. An API key with
-  prepaid credits is needed before phase 2 can run against real photos.
+- The Anthropic API is billed separately from a Claude Pro subscription. `npm run import:eval`
+  and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
+- Phase 2 so far: photo normalisation, the extraction format, the scorer, the Claude reader and
+  the measurement script. Still to do after the first measurement: verification pass, rule
+  checks, catalog mapping with proposals, import tables and the review queue.
 - Shelf life, pack sizes and default shops in the catalog are estimates. The household
   corrects them in the app once the settings UI exists.
