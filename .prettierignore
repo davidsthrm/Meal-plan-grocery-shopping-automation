@@ -1,0 +1,8 @@
+.next
+node_modules
+package-lock.json
+samples
+# Fixtures keep one line per entry on purpose.
+tests/fixtures
+# Generated from supabase/seed/*.ts
+supabase/seed.sql

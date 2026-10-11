@@ -1,0 +1,158 @@
+{
+  "description": "Hand-verified reading of the five sample recipe photos. Ground truth for the seed data and for the import pipeline tests. `raw` is the printed line. Values that are not printed are null, never guessed.",
+  "conventions": {
+    "quantity": "Decimal. Printed fractions are converted (1/2 = 0.5). `quantityMax` is set only for printed ranges such as '2-3'.",
+    "unit": "A bare count without a printed unit is recorded as 'Stück'. No quantity printed: quantity and unit are null.",
+    "name": "The ingredient as printed, without descriptors that only describe preparation or quality. Those go to `note`. Descriptors that select a different product stay in the name. This split is a judgment call; tests should compare quantity, unit and raw text strictly and the name loosely.",
+    "secondary": "A second printed measure for the same line, for example '(etwa 200 g)' or 'à 150 g'. `scope` is 'perPiece', 'total', or null if the print does not say.",
+    "combinedLine": "One printed line naming two ingredients ('Salz, Pfeffer') becomes two entries sharing the same `raw`."
+  },
+  "recipes": [
+    {
+      "id": "IMG_5680",
+      "photo": "samples/recipes/IMG_5680.HEIC",
+      "title": "Steak mit Pfefferrahmsoße, Pilzen und Spätzle",
+      "subtitle": null,
+      "servings": { "min": 4, "max": 4, "raw": "FÜR 4 PERSONEN | FÜR GÄSTE" },
+      "source": { "publication": null, "page": null, "notes": "Magazine page with running head 'KOCHEN | REZEPTE'. No publication name or page number in frame." },
+      "prepTimeMinutes": null,
+      "kcalPerServing": null,
+      "ingredients": [
+        { "raw": "4 Rindersteaks, 2 cm dick, à 150 g", "quantity": 4, "quantityMax": null, "unit": "Stück", "name": "Rindersteaks", "note": "2 cm dick", "approx": false, "secondary": { "quantity": 150, "unit": "g", "scope": "perPiece", "approx": false }, "alternative": null },
+        { "raw": "250 g braune Champignons", "quantity": 250, "quantityMax": null, "unit": "g", "name": "braune Champignons", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "200 g Kräuterseitlinge", "quantity": 200, "quantityMax": null, "unit": "g", "name": "Kräuterseitlinge", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 Knoblauchzehe", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Knoblauchzehe", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "500 g frische Spätzle", "quantity": 500, "quantityMax": null, "unit": "g", "name": "frische Spätzle", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz, Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz, Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Pfeffer", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "3 EL Rapsöl", "quantity": 3, "quantityMax": null, "unit": "EL", "name": "Rapsöl", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "½ TL Thymianblättchen", "quantity": 0.5, "quantityMax": null, "unit": "TL", "name": "Thymianblättchen", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "70 ml Gemüsebrühe", "quantity": 70, "quantityMax": null, "unit": "ml", "name": "Gemüsebrühe", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "150 ml Sahne", "quantity": 150, "quantityMax": null, "unit": "ml", "name": "Sahne", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "4 TL eingelegter grüner Pfeffer", "quantity": 4, "quantityMax": null, "unit": "TL", "name": "grüner Pfeffer", "note": "eingelegter", "approx": false, "secondary": null, "alternative": null }
+      ],
+      "flags": [
+        "A second recipe is cut off at the right edge of the photo. It is not part of this recipe.",
+        "A 'Tipp' bubble describes a vegetarian variant ('Statt Fleisch die Pilzmenge erhöhen und eine Zwiebel mit anbraten'). It is not part of the ingredient list.",
+        "The handwritten shopping list is visible at the top of the frame.",
+        "Three hourglass icons precede the title. Their meaning is not explained on the page."
+      ]
+    },
+    {
+      "id": "IMG_5682",
+      "photo": "samples/recipes/IMG_5682.HEIC",
+      "title": "Kartoffel-Avocado-Suppe",
+      "subtitle": "Vollwertig",
+      "servings": { "min": 4, "max": 4, "raw": "Zutaten für 4 Portionen:" },
+      "source": { "publication": null, "page": 82, "notes": "Cookbook. Title of the book is not in frame." },
+      "prepTimeMinutes": 45,
+      "kcalPerServing": 240,
+      "ingredients": [
+        { "raw": "500 g Kartoffeln (mehligkochende Sorte)", "quantity": 500, "quantityMax": null, "unit": "g", "name": "Kartoffeln", "note": "mehligkochende Sorte", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 mittelgroße Zwiebel", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Zwiebel", "note": "mittelgroße", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 EL Öl", "quantity": 1, "quantityMax": null, "unit": "EL", "name": "Öl", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "¾ l milde Gemüsebrühe", "quantity": 0.75, "quantityMax": null, "unit": "l", "name": "Gemüsebrühe", "note": "milde", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "schwarzer Pfeffer aus der Mühle", "quantity": null, "quantityMax": null, "unit": null, "name": "schwarzer Pfeffer", "note": "aus der Mühle", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 EL frisches Koriandergrün (oder 2–3 EL gehackte Petersilie)", "quantity": 1, "quantityMax": null, "unit": "EL", "name": "Koriandergrün", "note": "frisches", "approx": false, "secondary": null, "alternative": { "quantity": 2, "quantityMax": 3, "unit": "EL", "name": "Petersilie", "note": "gehackte" } },
+        { "raw": "2 kleine, feste Tomaten", "quantity": 2, "quantityMax": null, "unit": "Stück", "name": "Tomaten", "note": "kleine, feste", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 reife Avocado", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Avocado", "note": "reife", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "2 EL Zitronensaft", "quantity": 2, "quantityMax": null, "unit": "EL", "name": "Zitronensaft", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "flags": [
+        "Prep time is printed as 'etwa 45 Min.' (approximate).",
+        "A sidebar about Koriandergrün and part of another dish's photo are in frame. Neither belongs to the ingredient list."
+      ]
+    },
+    {
+      "id": "IMG_5683",
+      "photo": "samples/recipes/IMG_5683.heic",
+      "title": "Linsen-Eintopf",
+      "subtitle": "Gelingt leicht",
+      "servings": { "min": 4, "max": 6, "raw": "Zutaten für 4–6 Portionen:" },
+      "source": { "publication": null, "page": 84, "notes": "Cookbook, same layout as IMG_5682. Title of the book is not in frame." },
+      "prepTimeMinutes": 75,
+      "kcalPerServing": 290,
+      "ingredients": [
+        { "raw": "300 g braune Linsen", "quantity": 300, "quantityMax": null, "unit": "g", "name": "braune Linsen", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "50 g durchwachsener Speck", "quantity": 50, "quantityMax": null, "unit": "g", "name": "durchwachsener Speck", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 walnußgroßes Stückchen frischer Ingwer", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Ingwer", "note": "walnußgroßes Stückchen, frischer", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "2–3 Frühlingszwiebeln", "quantity": 2, "quantityMax": 3, "unit": "Stück", "name": "Frühlingszwiebeln", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "2 El Öl", "quantity": 2, "quantityMax": null, "unit": "EL", "name": "Öl", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 Knoblauchzehe", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Knoblauchzehe", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "etwa 100 ml Weißweinessig", "quantity": 100, "quantityMax": null, "unit": "ml", "name": "Weißweinessig", "note": null, "approx": true, "secondary": null, "alternative": null },
+        { "raw": "1 ¼ l Hühnerbrühe", "quantity": 1.25, "quantityMax": null, "unit": "l", "name": "Hühnerbrühe", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 getrocknete Chilischote", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "getrocknete Chilischote", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "2 Kartoffeln (etwa 200 g)", "quantity": 2, "quantityMax": null, "unit": "Stück", "name": "Kartoffeln", "note": null, "approx": false, "secondary": { "quantity": 200, "unit": "g", "scope": null, "approx": true }, "alternative": null },
+        { "raw": "2 Möhren (etwa 200 g)", "quantity": 2, "quantityMax": null, "unit": "Stück", "name": "Möhren", "note": null, "approx": false, "secondary": { "quantity": 200, "unit": "g", "scope": null, "approx": true }, "alternative": null },
+        { "raw": "Salz", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "schwarzer Pfeffer aus der Mühle", "quantity": null, "quantityMax": null, "unit": null, "name": "schwarzer Pfeffer", "note": "aus der Mühle", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "1 Bund Schnittlauch", "quantity": 1, "quantityMax": null, "unit": "Bund", "name": "Schnittlauch", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "flags": [
+        "Servings are a range (4–6).",
+        "'2 El Öl' is printed with a lower-case l. Recorded as EL.",
+        "'(etwa 200 g)' after 2 Kartoffeln and 2 Möhren does not say whether it is the total or per piece.",
+        "'1 walnußgroßes Stückchen' is a size description without a weight.",
+        "Prep time is printed as 'etwa 1 Std. 15 Min. (+ eventuell 2 Std. Einweichzeit)'. The soaking time is not included in prepTimeMinutes.",
+        "kcal is printed 'bei 6 Portionen pro Portion'."
+      ]
+    },
+    {
+      "id": "IMG_5684",
+      "photo": "samples/recipes/IMG_5684.heic",
+      "title": null,
+      "subtitle": null,
+      "servings": { "min": 2, "max": 2, "raw": "ZUTATEN FÜR 2 PERSONEN:" },
+      "source": { "publication": null, "page": 97, "notes": "Cookbook with a numbered step grid. Title of the book is not in frame." },
+      "prepTimeMinutes": 20,
+      "kcalPerServing": 630,
+      "ingredients": [
+        { "raw": "Spaghetti 200 g", "quantity": 200, "quantityMax": null, "unit": "g", "name": "Spaghetti", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Knoblauchzehe 1", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Knoblauchzehe", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Basilikum 4 Stängel", "quantity": 4, "quantityMax": null, "unit": "Stängel", "name": "Basilikum", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Zitronensaft 3½ EL", "quantity": 3.5, "quantityMax": null, "unit": "EL", "name": "Zitronensaft", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Pinienkerne 1 EL", "quantity": 1, "quantityMax": null, "unit": "EL", "name": "Pinienkerne", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Olivenöl 2 EL", "quantity": 2, "quantityMax": null, "unit": "EL", "name": "Olivenöl", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Avocado ½", "quantity": 0.5, "quantityMax": null, "unit": "Stück", "name": "Avocado", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Schafskäse 50 g", "quantity": 50, "quantityMax": null, "unit": "g", "name": "Schafskäse", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Chiliflocken ¼ TL", "quantity": 0.25, "quantityMax": null, "unit": "TL", "name": "Chiliflocken", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Pfeffer", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "flags": [
+        "The recipe title is not on the photographed page. It is presumably on the facing page, which was not photographed.",
+        "The steps describe spaghetti with an avocado and basil pesto, topped with Schafskäse. That is a description, not the title.",
+        "Step 6 says the Chiliflocken can be left out."
+      ]
+    },
+    {
+      "id": "IMG_5685",
+      "photo": "samples/recipes/IMG_5685.heic",
+      "title": null,
+      "subtitle": null,
+      "servings": { "min": 2, "max": 2, "raw": "ZUTATEN FÜR 2 PERSONEN:" },
+      "source": { "publication": null, "page": 88, "notes": "Same cookbook layout as IMG_5684. Running foot: 'Salat & Gemüse'. Title of the book is not in frame." },
+      "prepTimeMinutes": 15,
+      "kcalPerServing": 700,
+      "ingredients": [
+        { "raw": "Kurzkoch-Linsen 2 Beutel (à 62 g)", "quantity": 2, "quantityMax": null, "unit": "Beutel", "name": "Kurzkoch-Linsen", "note": null, "approx": false, "secondary": { "quantity": 62, "unit": "g", "scope": "perPiece", "approx": false }, "alternative": null },
+        { "raw": "Oliven (entsteint) 8", "quantity": 8, "quantityMax": null, "unit": "Stück", "name": "Oliven", "note": "entsteint", "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Mini-Salami 70 g", "quantity": 70, "quantityMax": null, "unit": "g", "name": "Mini-Salami", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Mini-Mozzarella 100 g", "quantity": 100, "quantityMax": null, "unit": "g", "name": "Mini-Mozzarella", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Kirschtomaten 100 g", "quantity": 100, "quantityMax": null, "unit": "g", "name": "Kirschtomaten", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "rote Zwiebel 1", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "rote Zwiebel", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Olivenöl 3 EL", "quantity": 3, "quantityMax": null, "unit": "EL", "name": "Olivenöl", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Aceto balsamico 1 EL", "quantity": 1, "quantityMax": null, "unit": "EL", "name": "Aceto balsamico", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "ital. TK-Kräuter 2 TL", "quantity": 2, "quantityMax": null, "unit": "TL", "name": "ital. TK-Kräuter", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
+        { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Pfeffer", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "flags": [
+        "The recipe title is not on the photographed page. It is presumably on the facing page, which was not photographed.",
+        "The steps describe a lentil salad with salami, mozzarella, olives and cherry tomatoes. That is a description, not the title.",
+        "An 'Einkaufstipp' box names Tempo-Linsen as an alternative to Kurzkoch-Linsen. It is not part of the ingredient list."
+      ]
+    }
+  ]
+}
