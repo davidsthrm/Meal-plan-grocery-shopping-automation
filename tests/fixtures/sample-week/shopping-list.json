@@ -1,0 +1,75 @@
+{
+  "description": "Transcription of the handwritten shopping list photo. Acceptance-test expectation. `raw` is the line as written. `name`, `quantity`, `unit` and `note` are the parsed reading. Groups are the blocks separated by vertical gaps on the paper; they have no headings, so `inferredAisle` is an interpretation.",
+  "source": "samples/IMG_5678.heic",
+  "week": "2026-10-12",
+  "shops": [
+    {
+      "label": "Aldi",
+      "shop": "Aldi",
+      "groups": [
+        {
+          "inferredAisle": "Obst & Gemüse",
+          "lines": [
+            { "raw": "Frühl.zwiebeln", "name": "Frühlingszwiebeln", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "Ingwer", "name": "Ingwer", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "2 Karotten", "name": "Karotten", "quantity": 2, "unit": "Stück", "note": null, "reading": null },
+            { "raw": "Feldsalat", "name": "Feldsalat", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "12 Tomaten", "name": "Tomaten", "quantity": 12, "unit": "Stück", "note": null, "reading": null },
+            { "raw": "kl. Tomaten", "name": "kleine Tomaten", "quantity": null, "unit": null, "note": null, "reading": "'kl.' read as 'kleine'. A separate line from '12 Tomaten', so treated as a different product, not a descriptor." }
+          ]
+        },
+        {
+          "inferredAisle": "Konserven",
+          "lines": [
+            { "raw": "Mandarinen-Dose", "name": "Mandarinen (Dose)", "quantity": null, "unit": null, "note": null, "reading": null }
+          ]
+        },
+        {
+          "inferredAisle": "Brot & Backwaren",
+          "lines": [
+            { "raw": "Toast", "name": "Toast", "quantity": null, "unit": null, "note": null, "reading": null }
+          ]
+        },
+        {
+          "inferredAisle": "Kühlregal",
+          "lines": [
+            { "raw": "Sahne frisch", "name": "Sahne (frisch)", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "H-Sahne", "name": "H-Sahne", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "Gouda-Scheiben", "name": "Gouda (Scheiben)", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "Creme fraîche", "name": "Crème fraîche", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "Mozzarella", "name": "Mozzarella", "quantity": null, "unit": null, "note": null, "reading": "The z letters carry horizontal bars, as this writer's z does elsewhere. Read as not struck out." },
+            { "raw": "2x Garnelen", "name": "Garnelen", "quantity": 2, "unit": "Packung", "note": null, "reading": "Written '2x'. 'Packung' is inferred. The line follows the chilled block without a gap but is set slightly to the left." }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "EC",
+      "shop": "E-Center",
+      "groups": [
+        {
+          "inferredAisle": "gemischt: Backzutaten, Molkerei, Fleisch & Wurst",
+          "lines": [
+            { "raw": "Spätzle-Mehl", "name": "Spätzlemehl", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "Butter", "name": "Butter", "quantity": null, "unit": null, "note": null, "reading": null },
+            { "raw": "Milch WS 1.29", "name": "Milch", "quantity": null, "unit": null, "note": "WS 1.29", "reading": "Per the brief: WS = Weihenstephan, on offer at 1,29 EUR each." },
+            { "raw": "600 g Leberkäse", "name": "Leberkäse", "quantity": 600, "unit": "g", "note": null, "reading": null },
+            { "raw": "Rauchsalami", "name": "Rauchsalami", "quantity": null, "unit": null, "note": null, "reading": null }
+          ]
+        },
+        {
+          "inferredAisle": "Brot & Backwaren",
+          "lines": [
+            { "raw": "Brot", "name": "Brot", "quantity": null, "unit": null, "note": null, "reading": "Separated from the block above by a pen stroke, not by a gap." }
+          ]
+        },
+        {
+          "inferredAisle": "Eier",
+          "lines": [
+            { "raw": "20 Eier", "name": "Eier", "quantity": 20, "unit": "Stück", "note": null, "reading": "Set apart by a large gap." }
+          ]
+        }
+      ]
+    }
+  ]
+}

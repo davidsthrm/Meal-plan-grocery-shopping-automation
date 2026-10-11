@@ -1,0 +1,168 @@
+{
+  "description": "Transcription of the handwritten meal plan photo. Acceptance-test input. `text` is kept as written. `kind` and `sampleRecipe` are interpretations and carry their basis. Readings, including the struck-through entries, were confirmed by the household on 2026-10-12.",
+  "source": "samples/IMG_5681.HEIC",
+  "weekStart": "2026-10-12",
+  "weekStartBasis": "The plan shows weekday and day number only (Mo 12 ... So 18). Month and year are inferred from the photo date (2026-10-11), they are not written on the plan.",
+  "mealBasis": "Each day has two lines. Upper line = lunch, lower line = dinner (confirmed by the brief: Thursday dinner and Sunday dinner are both lower lines).",
+  "kinds": {
+    "dish": "Something that is cooked or prepared. Needs a recipe or quick meal to produce shopping list lines.",
+    "leftovers": "Leftovers of another meal.",
+    "away": "Eaten somewhere else.",
+    "event": "Activity instead of a planned meal.",
+    "skipped": "Slot deliberately left empty."
+  },
+  "slots": [
+    {
+      "date": "2026-10-12",
+      "weekday": "Mo",
+      "meal": "lunch",
+      "text": "Reste",
+      "kind": "leftovers",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": "No source meal is named. As the first slot of the week it can only refer to a meal of the previous week."
+    },
+    {
+      "date": "2026-10-12",
+      "weekday": "Mo",
+      "meal": "dinner",
+      "text": "Vesper mit Ofenkäse",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-13",
+      "weekday": "Di",
+      "meal": "lunch",
+      "text": "Oma Heidrun",
+      "kind": "away",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": "Lunch at grandma's."
+    },
+    {
+      "date": "2026-10-13",
+      "weekday": "Di",
+      "meal": "dinner",
+      "text": "Tomate Mozzarella",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-14",
+      "weekday": "Mi",
+      "meal": "lunch",
+      "text": "Pestonudeln",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-14",
+      "weekday": "Mi",
+      "meal": "dinner",
+      "text": "Leberkässalat",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-15",
+      "weekday": "Do",
+      "meal": "lunch",
+      "text": "∅",
+      "kind": "skipped",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-15",
+      "weekday": "Do",
+      "meal": "dinner",
+      "text": "Garnelen-Salat m. Feldsalat",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-16",
+      "weekday": "Fr",
+      "meal": "lunch",
+      "text": "Schafskäseauflauf",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-16",
+      "weekday": "Fr",
+      "meal": "dinner",
+      "text": "Hawaiitoast",
+      "kind": "dish",
+      "replaced": {
+        "text": "Jägertoast"
+      },
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-17",
+      "weekday": "Sa",
+      "meal": "lunch",
+      "text": "Linseneintopf",
+      "kind": "dish",
+      "replaced": {
+        "text": "Maultaschenauflauf"
+      },
+      "sampleRecipe": {
+        "id": "IMG_5683",
+        "basis": "Inferred, not stated: printed title 'Linsen-Eintopf', and the shopping list carries this recipe's distinctive ingredients (Ingwer, Frühlingszwiebeln, 2 Karotten for '2 Möhren')."
+      },
+      "notes": null
+    },
+    {
+      "date": "2026-10-17",
+      "weekday": "Sa",
+      "meal": "dinner",
+      "text": "Handball + Yoga",
+      "kind": "event",
+      "replaced": null,
+      "sampleRecipe": null,
+      "notes": null
+    },
+    {
+      "date": "2026-10-18",
+      "weekday": "So",
+      "meal": "lunch",
+      "text": "Steak m. Pilzrahmsauce & Spätzle",
+      "kind": "dish",
+      "replaced": null,
+      "sampleRecipe": {
+        "id": "IMG_5680",
+        "basis": "Inferred, not stated: the printed title is 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle'. The plan calls it 'Pilzrahmsauce'."
+      },
+      "notes": "Day number under 'So' looks like 16 or 18. 18 by sequence. The label 'So' is written over something else."
+    },
+    {
+      "date": "2026-10-18",
+      "weekday": "So",
+      "meal": "dinner",
+      "text": "Apfelkuchen",
+      "kind": "dish",
+      "replaced": {
+        "text": "Pinsen"
+      },
+      "sampleRecipe": null,
+      "notes": null
+    }
+  ]
+}
