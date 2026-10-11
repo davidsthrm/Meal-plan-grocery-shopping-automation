@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "seed:build": "tsx supabase/seed/build-seed-sql.ts",
     "sample-week": "tsx scripts/sample-week.ts",
-    "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts"
+    "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts",
+    "import:eval": "tsx --env-file=.env.local scripts/import-eval.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
