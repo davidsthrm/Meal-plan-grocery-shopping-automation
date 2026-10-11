@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed:build": "tsx supabase/seed/build-seed-sql.ts",
+    "sample-week": "tsx scripts/sample-week.ts"
   },
   "dependencies": {
     "next": "16.4.0",
