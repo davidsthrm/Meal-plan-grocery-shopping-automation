@@ -14,13 +14,19 @@
     "format:check": "prettier --check .",
     "seed:build": "tsx supabase/seed/build-seed-sql.ts",
     "sample-week": "tsx scripts/sample-week.ts",
-    "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts"
+    "db:check": "tsx --env-file=.env.local scripts/check-supabase.ts",
+    "import:eval": "tsx --env-file=.env.local scripts/import-eval.ts",
+    "import:eval-verify": "tsx --env-file=.env.local scripts/verify-eval.ts",
+    "import:photo": "tsx --env-file=.env.local scripts/import-photo.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@supabase/supabase-js": "^2.117.3",
+    "heic-decode": "^2.1.0",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "sharp": "^0.35.5",
     "zod": "^4.6.6"
   },
   "devDependencies": {

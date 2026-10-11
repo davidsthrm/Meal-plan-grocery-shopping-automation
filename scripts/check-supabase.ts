@@ -27,6 +27,15 @@ if (!url || !publishableKey || !secretKey) {
   process.exit(1);
 }
 
+// The dashboard shows the address of the Data API, which ends in /rest/v1/. The app needs the
+// bare project address.
+if (new URL(url).pathname !== "/") {
+  console.error(
+    `NEXT_PUBLIC_SUPABASE_URL must be the project address without a path: ${new URL(url).origin}`,
+  );
+  process.exit(1);
+}
+
 const options = { auth: { persistSession: false, autoRefreshToken: false } };
 const server = createClient(url, secretKey, options);
 const visitor = createClient(url, publishableKey, options);
@@ -37,34 +46,34 @@ function report(ok: boolean, text: string) {
   console.log(`${ok ? "ok  " : "FAIL"}  ${text}`);
 }
 
-async function countRows(client: typeof server, table: string) {
-  const { count, error } = await client.from(table).select("*", { count: "exact", head: true });
-  return { count, error };
+/** Returns the row count, or a short description of why it could not be read. */
+async function countRows(client: typeof server, table: string): Promise<number | string> {
+  const { count, error, status } = await client
+    .from(table)
+    .select("*", { count: "exact", head: true });
+  return count ?? `not readable, HTTP ${status}${error?.message ? `, ${error.message}` : ""}`;
 }
 
 async function main() {
   const ingredients = await countRows(server, "ingredient");
   report(
-    ingredients.count === seedCatalog.ingredients.length,
-    `ingredients in the catalog: ${ingredients.count ?? ingredients.error?.message} (expected ${seedCatalog.ingredients.length})`,
+    ingredients === seedCatalog.ingredients.length,
+    `ingredients in the catalog: ${ingredients} (expected ${seedCatalog.ingredients.length})`,
   );
 
   const recipes = await countRows(server, "recipe");
   report(
-    recipes.count === seedRecipes.length,
-    `seed recipes: ${recipes.count ?? recipes.error?.message} (expected ${seedRecipes.length})`,
+    recipes === seedRecipes.length,
+    `seed recipes: ${recipes} (expected ${seedRecipes.length})`,
   );
 
   const households = await countRows(server, "household");
-  report(
-    households.count === 1,
-    `households: ${households.count ?? households.error?.message} (expected 1)`,
-  );
+  report(households === 1, `households: ${households} (expected 1)`);
 
   const members = await countRows(server, "household_member");
   report(
-    (members.count ?? 0) >= 1,
-    `household members: ${members.count ?? members.error?.message} (at least 1, otherwise nobody can see any data)`,
+    typeof members === "number" && members >= 1,
+    `household members: ${members} (at least 1, otherwise nobody can see any data)`,
   );
 
   // Without a login nothing may be readable: either the request is refused or it is empty.
@@ -77,7 +86,12 @@ async function main() {
   const settings = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: publishableKey! } });
   if (settings.ok) {
     const body = (await settings.json()) as { disable_signup?: boolean };
-    report(body.disable_signup === true, `public sign-up disabled: ${body.disable_signup}`);
+    report(
+      body.disable_signup === true,
+      body.disable_signup === true
+        ? "public sign-up is switched off"
+        : 'public sign-up is still on: switch off "Allow new users to sign up" under Authentication > Sign In / Providers and save',
+    );
   } else {
     report(false, `could not read the auth settings (HTTP ${settings.status})`);
   }

@@ -37,10 +37,14 @@ user access to the household in the SQL editor:
 insert into public.household_member (household_id, user_id, role)
 select h.id, u.id, 'admin'
 from public.household h, auth.users u
-where u.email = 'you@example.com';
+where u.email = 'you@example.com'
+returning household_id, user_id, role;
 ```
 
-Put the project URL, the publishable key and the secret key into `.env.local`, then:
+The statement must return one row. No row means the email does not match the user you created.
+
+Put the project URL (`https://<project-ref>.supabase.co`, without the `/rest/v1/` the dashboard
+shows), the publishable key and the secret key into `.env.local`, then:
 
 ```bash
 npm run db:check
