@@ -6,6 +6,17 @@ import type { RecipeIngredient, Servings } from "@/domain/recipe";
 import { must, type Db } from "../catalog";
 import type { CatalogSuggester } from "./read-recipe";
 
+/**
+ * The database refused to store a recipe. Trying again would fail the same way, so the caller
+ * must record it instead of putting the recipe back in the queue.
+ */
+export class StoreError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StoreError";
+  }
+}
+
 /** A recipe line as it is stored: a domain line plus the name it was read with. */
 export interface StoredLine extends RecipeIngredient {
   /** Name as read, used to propose the ingredient when the catalog does not know it. */
@@ -89,28 +100,40 @@ function lineRows(
   proposals: Map<string, string>,
 ) {
   const ids = lines.map(() => randomUUID());
-  return lines.map((line, position) => ({
-    id: ids[position],
-    household_id: householdId,
-    recipe_id: recipeId,
-    position,
-    ingredient_id: line.ingredientId,
-    proposal_id: line.ingredientId === null ? (proposals.get(line.readName) ?? null) : null,
-    quantity: line.quantity,
-    quantity_max: line.quantityMax,
-    unit: line.quantity === null ? null : line.unit,
-    is_approximate: line.approximate,
-    is_optional: line.optional,
-    secondary_quantity: line.secondary?.quantity ?? null,
-    secondary_unit: line.secondary?.unit ?? null,
-    secondary_scope: line.secondary?.scope ?? null,
-    alternative_to:
-      line.alternativeTo !== null && line.alternativeTo !== position
-        ? (ids[line.alternativeTo] ?? null)
-        : null,
-    original_text: line.originalText,
-    note: line.note,
-  }));
+  return lines.map((line, position) => {
+    // A recipe that waits for review may contain anything a model read. What is stored must
+    // still satisfy the database's rules, or the recipe could never be saved and reviewed.
+    // The checks have already flagged each of these cases for the reviewer.
+    const quantity = line.quantity !== null && line.quantity > 0 ? line.quantity : null;
+    const quantityMax =
+      quantity !== null && line.quantityMax !== null && line.quantityMax > quantity
+        ? line.quantityMax
+        : null;
+    const secondary = line.secondary && line.secondary.quantity > 0 ? line.secondary : null;
+    return {
+      id: ids[position],
+      household_id: householdId,
+      recipe_id: recipeId,
+      position,
+      ingredient_id: line.ingredientId,
+      proposal_id: line.ingredientId === null ? (proposals.get(line.readName) ?? null) : null,
+      quantity,
+      quantity_max: quantityMax,
+      // An amount without a known unit is kept as a count rather than thrown away.
+      unit: quantity === null ? null : (line.unit ?? ("Stück" as const)),
+      is_approximate: line.approximate,
+      is_optional: line.optional,
+      secondary_quantity: secondary?.quantity ?? null,
+      secondary_unit: secondary?.unit ?? null,
+      secondary_scope: secondary?.scope ?? null,
+      alternative_to:
+        line.alternativeTo !== null && line.alternativeTo !== position
+          ? (ids[line.alternativeTo] ?? null)
+          : null,
+      original_text: line.originalText,
+      note: line.note,
+    };
+  });
 }
 
 async function writeLines(
@@ -126,7 +149,7 @@ async function writeLines(
   const rows = lineRows(householdId, recipeId, recipe.lines, proposals);
   if (rows.length === 0) return;
   const { error } = await db.from("recipe_ingredient").insert(rows);
-  if (error) throw new Error(`save ingredient lines: ${error.message}`);
+  if (error) throw new StoreError(`save ingredient lines: ${error.message}`);
 }
 
 function recipeColumns(recipe: StoredRecipe, status: "approved" | "needs_review") {
@@ -156,18 +179,17 @@ export async function saveImportedRecipe(
   },
 ): Promise<string> {
   const { householdId, recipe } = input;
-  const created = must(
-    await db
-      .from("recipe")
-      .insert({
-        household_id: householdId,
-        kind: "cookbook",
-        ...recipeColumns(recipe, input.status),
-      })
-      .select("id")
-      .single(),
-    "save recipe",
-  );
+  const inserted = await db
+    .from("recipe")
+    .insert({
+      household_id: householdId,
+      kind: "cookbook",
+      ...recipeColumns(recipe, input.status),
+    })
+    .select("id")
+    .single();
+  if (inserted.error) throw new StoreError(`save recipe: ${inserted.error.message}`);
+  const created = inserted.data;
   try {
     await writeLines(db, householdId, created.id, recipe, input.index, input.suggest);
     if (input.photoPaths.length > 0) {
@@ -179,7 +201,7 @@ export async function saveImportedRecipe(
           sort_order,
         })),
       );
-      if (photos.error) throw new Error(`save recipe photos: ${photos.error.message}`);
+      if (photos.error) throw new StoreError(`save recipe photos: ${photos.error.message}`);
     }
     // The dish type is the key of its category tag. Tags are found by key, so the household
     // can rename a category without the import losing it.
@@ -197,7 +219,7 @@ export async function saveImportedRecipe(
             tag_id: tag.id,
           })),
         );
-        if (linked.error) throw new Error(`save recipe tags: ${linked.error.message}`);
+        if (linked.error) throw new StoreError(`save recipe tags: ${linked.error.message}`);
       }
     }
   } catch (error) {
@@ -222,11 +244,11 @@ export async function saveReviewedRecipe(
   const { recipeId, recipe } = input;
   // Lines first: if writing them fails, the recipe is still marked as waiting for review.
   const removed = await db.from("recipe_ingredient").delete().eq("recipe_id", recipeId);
-  if (removed.error) throw new Error(`replace ingredient lines: ${removed.error.message}`);
+  if (removed.error) throw new StoreError(`replace ingredient lines: ${removed.error.message}`);
   await writeLines(db, input.householdId, recipeId, recipe, input.index, input.suggest);
   const updated = await db
     .from("recipe")
     .update({ ...recipeColumns(recipe, "approved"), updated_at: new Date().toISOString() })
     .eq("id", recipeId);
-  if (updated.error) throw new Error(`save reviewed recipe: ${updated.error.message}`);
+  if (updated.error) throw new StoreError(`save reviewed recipe: ${updated.error.message}`);
 }

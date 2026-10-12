@@ -20,12 +20,16 @@ export type IssueCode =
   | "model_uncertain"
   /** The amount per serving is far outside what recipes use. Likely a misread. */
   | "implausible_quantity"
+  /** An amount without a unit the app knows ("1 Döschen"). It is kept as a count. */
+  | "unit_missing"
   | "invalid_range"
   | "invalid_alternative"
   /** The second pass saw something different on the photo. */
   | "verification_disagrees"
   /** The model's answer could not be used at all. */
-  | "read_failed";
+  | "read_failed"
+  /** The recipe was read but could not be stored. A bug, shown instead of retried forever. */
+  | "store_failed";
 
 export interface ImportIssue {
   code: IssueCode;
@@ -73,6 +77,9 @@ export function checkDraft(draft: RecipeDraft, extracted: ExtractedRecipe): Impo
     if (line.ingredientId === null) add("unmapped_ingredient", at, line.readName);
     if (line.unclear) add("unclear_line", at, line.originalText);
 
+    if (line.quantity !== null && line.unit === null) {
+      add("unit_missing", at, line.originalText);
+    }
     if (line.quantity !== null && line.quantity <= 0) {
       add("implausible_quantity", at, `${line.quantity} in "${line.originalText}"`);
     }

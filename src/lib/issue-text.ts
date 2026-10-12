@@ -17,6 +17,10 @@ export function issueText(issue: ImportIssue): string {
       return `Nicht sicher gelesen: ${issue.detail}`;
     case "implausible_quantity":
       return "Die Menge ist ungewöhnlich groß. Bitte mit dem Foto vergleichen.";
+    case "unit_missing":
+      return "Zur Menge stand keine Einheit, die die App kennt. Bitte die Einheit wählen.";
+    case "store_failed":
+      return `Das Rezept konnte nicht gespeichert werden: ${issue.detail}`;
     case "invalid_range":
       return "Die Von-bis-Menge passt nicht zusammen.";
     case "invalid_alternative":

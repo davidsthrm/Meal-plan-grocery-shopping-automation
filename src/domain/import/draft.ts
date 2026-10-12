@@ -66,6 +66,7 @@ export function toDraft(
       ingredientId: ingredient?.id ?? null,
       quantity: line.quantity,
       quantityMax: line.quantityMax,
+      // A quantity without a known unit stays as read; the checks flag it.
       unit: line.quantity === null ? null : unit,
       approximate: line.approximate,
       secondary: hasSecondary
