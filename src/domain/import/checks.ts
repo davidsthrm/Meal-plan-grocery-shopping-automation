@@ -1,6 +1,7 @@
 import { convert, dimensionOf, type Unit } from "../units";
 import type { RecipeDraft } from "./draft";
 import type { ExtractedRecipe } from "./extraction";
+import { readServingsLine } from "./servings";
 
 /**
  * The automatic checks every imported recipe has to pass before it is approved without a
@@ -15,6 +16,8 @@ export type IssueCode =
   /** No title on the photos and none entered by the household. */
   | "title_missing"
   | "servings_missing"
+  /** A servings line is printed, but the app cannot tell what it counts. */
+  | "servings_unclear"
   | "no_ingredients"
   /** Only in recipes imported before unknown ingredients stopped being an issue. */
   | "unmapped_ingredient"
@@ -51,6 +54,12 @@ const MAX_PER_SERVING = {
   containers: 3,
 } as const;
 
+/**
+ * A recipe that counts what it makes instead of persons (one cake tin, one tray) feeds about
+ * this many. Without it, 1.5 kg of plums for one tray would look like a misreading.
+ */
+const PORTIONS_OF_A_COUNTED_RECIPE = 12;
+
 const SPOONS: Unit[] = ["EL", "TL", "Prise", "Msp"];
 const PIECES: Unit[] = ["Stück", "Zehe", "Scheibe", "Blatt", "Stängel", "Zweig"];
 
@@ -73,6 +82,9 @@ export function checkDraft(draft: RecipeDraft, extracted: ExtractedRecipe): Impo
 
   if (draft.title === null) add("title_missing", null, "no title on the photos and none entered");
   if (draft.servings === null) add("servings_missing", null, "no servings on the photos");
+  if (readServingsLine(extracted.servingsRaw).kind === "unclear") {
+    add("servings_unclear", null, extracted.servingsRaw.trim());
+  }
   if (draft.ingredients.length === 0) add("no_ingredients", null, "no ingredient lines were read");
   for (const item of extracted.uncertain) {
     // Doubt about how to file a recipe is no reason to read it again by hand.
@@ -106,12 +118,16 @@ export function checkDraft(draft: RecipeDraft, extracted: ExtractedRecipe): Impo
 
     if (line.quantity !== null && line.unit !== null && draft.servings !== null) {
       const { amount, max } = limitFor(line.unit);
-      const perServing = amount(line.quantityMax ?? line.quantity) / draft.servings.min;
+      const portions =
+        draft.servings.unit === null
+          ? draft.servings.min
+          : Math.max(draft.servings.min, PORTIONS_OF_A_COUNTED_RECIPE);
+      const perServing = amount(line.quantityMax ?? line.quantity) / portions;
       if (perServing > max) {
         add(
           "implausible_quantity",
           at,
-          `${line.quantityMax ?? line.quantity} ${line.unit} for ${draft.servings.min} servings in "${line.originalText}"`,
+          `${line.quantityMax ?? line.quantity} ${line.unit} for ${draft.servings.min} ${draft.servings.unit ?? "servings"} in "${line.originalText}"`,
         );
       }
     }

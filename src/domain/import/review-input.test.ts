@@ -25,6 +25,7 @@ const form = (patch: Partial<ReviewInput> = {}): ReviewInput => ({
   sourcePage: "97",
   servingsMin: "2",
   servingsMax: "",
+  servingsUnit: "",
   prepMinutes: "20",
   lines: [
     line({ quantity: "200", unit: "g", ingredient: "Spaghetti", originalText: "Spaghetti 200 g" }),
@@ -90,11 +91,38 @@ describe("readReview", () => {
     );
     expect(result).toMatchObject({
       ok: true,
-      servings: { min: 4, max: 6 },
+      servings: { min: 4, max: 6, unit: null },
       page: null,
       prep: null,
     });
     expect(result.ok && result.lines[0]).toMatchObject({ quantity: 2, quantityMax: 3 });
+  });
+
+  it("reads what the recipe makes when it does not count persons", () => {
+    const cake = readReview(
+      form({ servingsMin: "1", servingsUnit: "  Springform  (Ø 26 cm) " }),
+      index,
+    );
+    expect(cake).toMatchObject({
+      ok: true,
+      servings: { min: 1, max: 1, unit: "Springform (Ø 26 cm)" },
+    });
+  });
+
+  it("stores no unit for persons, also when someone types the word", () => {
+    for (const typed of ["", "  ", "Personen", "Portionen"]) {
+      expect(readReview(form({ servingsUnit: typed }), index), typed).toMatchObject({
+        ok: true,
+        servings: { min: 2, max: 2, unit: null },
+      });
+    }
+  });
+
+  it("refuses a unit that is longer than the database stores", () => {
+    expect(readReview(form({ servingsUnit: "Blech ".repeat(11) }), index)).toEqual({
+      ok: false,
+      errors: { servingsUnit: "Höchstens 60 Zeichen." },
+    });
   });
 
   it("says what is missing, by field", () => {

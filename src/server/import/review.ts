@@ -199,6 +199,8 @@ export interface Review {
   sourcePage: number | null;
   servingsMin: number | null;
   servingsMax: number | null;
+  /** What the recipe counts when it is not persons. Empty for persons. */
+  servingsUnit: string;
   prepMinutes: number | null;
   lines: ReviewLine[];
   issues: ImportIssue[];
@@ -219,7 +221,9 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
   const [recipe, lines, ingredients, pages, allPages, urls] = await Promise.all([
     db
       .from("recipe")
-      .select("title, source_book, source_page, servings_min, servings_max, prep_minutes")
+      .select(
+        "title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes",
+      )
       .eq("id", job.recipe_id)
       .single(),
     db
@@ -256,6 +260,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
     sourcePage: r.source_page,
     servingsMin: r.servings_min,
     servingsMax: r.servings_max,
+    servingsUnit: r.servings_unit ?? "",
     prepMinutes: r.prep_minutes,
     lines: rows.map((row, at) => ({
       // An unknown ingredient shows the name it was read with, so it can be corrected or kept.

@@ -10,14 +10,14 @@ const recipes: Recipe[] = [
     id: "eintopf",
     title: "Eintopf",
     kind: "cookbook",
-    servings: { min: 4, max: 4 },
+    servings: { min: 4, max: 4, unit: null },
     ingredients: [line("karotten", 2, "Stück"), line("sahne", 150, "ml")],
   },
   {
     id: "salat",
     title: "Salat",
     kind: "quick_meal",
-    servings: { min: 4, max: 4 },
+    servings: { min: 4, max: 4, unit: null },
     ingredients: [
       line("karotten", 3, "Stück"),
       line("tomaten", 4, "Stück"),

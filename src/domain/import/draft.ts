@@ -3,6 +3,7 @@ import type { RecipeIngredient, Servings } from "../recipe";
 import { COUNT_UNITS, type Unit } from "../units";
 import type { ExtractedRecipe } from "./extraction";
 import { mapToCatalog } from "./map-ingredient";
+import { resolveServings } from "./servings";
 
 /** What the household entered on the upload form because a photo cannot show it. */
 export interface ProvidedMetadata {
@@ -88,15 +89,12 @@ export function toDraft(
     };
   });
 
-  const hasServings = extracted.servingsMin !== null && extracted.servingsMax !== null;
   return {
     title: blank(provided.title) ?? blank(extracted.title),
     sourceTitle: blank(extracted.title),
     sourceBook: blank(provided.book),
     sourcePage: provided.page ?? extracted.page,
-    servings: hasServings
-      ? { min: extracted.servingsMin as number, max: extracted.servingsMax as number }
-      : null,
+    servings: resolveServings(extracted),
     prepMinutes: extracted.prepMinutes,
     dishType: extracted.dishType,
     proteinType: extracted.proteinType,

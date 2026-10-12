@@ -262,12 +262,12 @@ insert into public.tag (id, household_id, name, group_name, key, sort_order) val
   ('da9ed4b5-eeae-5f8f-ac7e-51fefbcba630', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'schnell', 'Aufwand', 'schnell', 190),
   ('01059f78-622d-5ff6-8240-b2cf8657b4af', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'für Gäste', 'Aufwand', 'fuer-gaeste', 200);
 
-insert into public.recipe (id, household_id, title, source_title, kind, source_book, source_page, servings_min, servings_max, prep_minutes, protein_type, status) values
-  ('298a1f40-d102-5dae-9166-cce89d3e2274', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle', 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle', 'cookbook', null, null, 4, 4, null, 'red_meat', 'approved'),
-  ('a8ffdad6-5363-57a1-bbd9-d49c8c84e65d', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Kartoffel-Avocado-Suppe', 'Kartoffel-Avocado-Suppe', 'cookbook', null, 82, 4, 4, 45, 'vegan', 'approved'),
-  ('bb97082e-0583-5c76-999b-112bfbdaeb95', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Linsen-Eintopf', 'Linsen-Eintopf', 'cookbook', null, 84, 4, 6, 75, 'red_meat', 'approved'),
-  ('a895cba5-2139-5c38-ab7c-7ed38aa9a079', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Avocado Spaghetti', null, 'cookbook', 'Speed Cooking', 97, 2, 2, 20, 'vegetarian', 'approved'),
-  ('68aae8d1-1064-58b2-846a-668bb34c06e6', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Rustikaler Linsen Salat', null, 'cookbook', 'Speed Cooking', 88, 2, 2, 15, 'red_meat', 'approved');
+insert into public.recipe (id, household_id, title, source_title, kind, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, status) values
+  ('298a1f40-d102-5dae-9166-cce89d3e2274', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle', 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle', 'cookbook', null, null, 4, 4, null, null, 'red_meat', 'approved'),
+  ('a8ffdad6-5363-57a1-bbd9-d49c8c84e65d', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Kartoffel-Avocado-Suppe', 'Kartoffel-Avocado-Suppe', 'cookbook', null, 82, 4, 4, null, 45, 'vegan', 'approved'),
+  ('bb97082e-0583-5c76-999b-112bfbdaeb95', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Linsen-Eintopf', 'Linsen-Eintopf', 'cookbook', null, 84, 4, 6, null, 75, 'red_meat', 'approved'),
+  ('a895cba5-2139-5c38-ab7c-7ed38aa9a079', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Avocado Spaghetti', null, 'cookbook', 'Speed Cooking', 97, 2, 2, null, 20, 'vegetarian', 'approved'),
+  ('68aae8d1-1064-58b2-846a-668bb34c06e6', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Rustikaler Linsen Salat', null, 'cookbook', 'Speed Cooking', 88, 2, 2, null, 15, 'red_meat', 'approved');
 
 insert into public.recipe_tag (household_id, recipe_id, tag_id) values
   ('b0c19ca6-9913-57d4-b718-2c412d90b8d7', '298a1f40-d102-5dae-9166-cce89d3e2274', 'a7ab702c-13cc-5cf1-b85b-9af3f900a0eb'),

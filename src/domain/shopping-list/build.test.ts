@@ -12,7 +12,7 @@ const SUNDAY = "2026-10-18";
 function recipe(
   id: string,
   ingredients: RecipeIngredient[],
-  servings = { min: 4, max: 4 },
+  servings = { min: 4, max: 4, unit: null },
 ): Recipe {
   return { id, title: id, kind: "cookbook", servings, ingredients };
 }
@@ -81,7 +81,7 @@ describe("buildShoppingList", () => {
   });
 
   it("scales by the slot's servings", () => {
-    const forTwo = recipe("pasta", [line("karotten", 1, "Stück")], { min: 2, max: 2 });
+    const forTwo = recipe("pasta", [line("karotten", 1, "Stück")], { min: 2, max: 2, unit: null });
     expect(build([forTwo], [slot(MONDAY, "pasta", 4)]).get("karotten@main")!.purchase).toEqual({
       quantity: 2,
       unit: "Stück",
@@ -89,7 +89,7 @@ describe("buildShoppingList", () => {
   });
 
   it("cooks a recipe as written when the servings are inside its range", () => {
-    const stew = recipe("eintopf", [line("karotten", 2, "Stück")], { min: 4, max: 6 });
+    const stew = recipe("eintopf", [line("karotten", 2, "Stück")], { min: 4, max: 6, unit: null });
     expect(
       build([stew], [slot(MONDAY, "eintopf", 4)]).get("karotten@main")!.purchase?.quantity,
     ).toBe(2);

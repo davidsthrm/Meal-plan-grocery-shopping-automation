@@ -113,6 +113,27 @@ describe("toDraft", () => {
     });
   });
 
+  it("stores what a recipe makes when its line does not count persons", () => {
+    const cake = {
+      ...reading("IMG_5682"),
+      servingsMin: null,
+      servingsMax: null,
+      servingsRaw: "Zutaten für 1 Springform (Ø 26 cm)",
+    };
+    expect(toDraft(cake, {}, index).servings).toEqual({
+      min: 1,
+      max: 1,
+      unit: "Springform (Ø 26 cm)",
+    });
+    const muffins = { ...cake, servingsMin: 12, servingsMax: 12, servingsRaw: "12 Muffins" };
+    expect(toDraft(muffins, {}, index).servings).toEqual({ min: 12, max: 12, unit: "Muffins" });
+  });
+
+  it("keeps servings for persons as the model read them", () => {
+    const stew = { ...reading("IMG_5683"), servingsRaw: "Für 4–6 Personen" };
+    expect(toDraft(stew, {}, index).servings).toEqual({ min: 4, max: 6, unit: null });
+  });
+
   it("leaves an unknown ingredient unmapped instead of picking something close", () => {
     const extracted = reading("IMG_5682");
     extracted.ingredients[0] = {
@@ -176,6 +197,41 @@ describe("checkDraft", () => {
       ["implausible_quantity", 2],
       ["implausible_quantity", 3],
     ]);
+  });
+
+  it("measures a recipe for one cake tin or tray by what such a recipe feeds", () => {
+    const tray = {
+      ...reading("IMG_5682"),
+      servingsMin: null,
+      servingsMax: null,
+      servingsRaw: "Für 1 Blech",
+    };
+    // "500 g Kartoffeln" printed as 1.5 kg of plums: plenty for one person, normal for a tray.
+    tray.ingredients[0] = { ...tray.ingredients[0], quantity: 1500, unit: "g" };
+    expect(check(tray)).toEqual([]);
+    // As a recipe for one person the same amount is a likely misreading.
+    expect(
+      check({ ...tray, servingsMin: 1, servingsMax: 1, servingsRaw: "Für 1 Person" }).map((i) => [
+        i.code,
+        i.ingredientIndex,
+      ]),
+    ).toEqual([["implausible_quantity", 0]]);
+    // A misread amount is still caught on a tray.
+    tray.ingredients[2] = { ...tray.ingredients[2], quantity: 100 }; // "1 EL Öl" as 100 EL
+    expect(check(tray).map((i) => [i.code, i.ingredientIndex])).toEqual([
+      ["implausible_quantity", 2],
+    ]);
+  });
+
+  it("asks a person when a servings line is printed that the app cannot interpret", () => {
+    const extracted = { ...reading("IMG_5682"), servingsRaw: "Springform 26 cm" };
+    expect(check(extracted)).toEqual([
+      { code: "servings_unclear", ingredientIndex: null, detail: "Springform 26 cm" },
+    ]);
+    // Without numbers from the model, the servings are missing as well.
+    expect(
+      check({ ...extracted, servingsMin: null, servingsMax: null }).map((i) => i.code),
+    ).toEqual(["servings_missing", "servings_unclear"]);
   });
 
   it("passes on what the model itself was unsure about", () => {

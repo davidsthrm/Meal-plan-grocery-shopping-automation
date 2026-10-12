@@ -167,6 +167,7 @@ function recipeColumns(recipe: StoredRecipe, status: "approved" | "needs_review"
     source_page: recipe.sourcePage,
     servings_min: recipe.servings?.min ?? null,
     servings_max: recipe.servings?.max ?? null,
+    servings_unit: recipe.servings?.unit ?? null,
     prep_minutes: recipe.prepMinutes,
     protein_type: recipe.proteinType === "unknown" ? null : recipe.proteinType,
     status,

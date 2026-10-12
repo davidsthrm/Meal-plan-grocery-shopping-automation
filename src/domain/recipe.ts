@@ -1,10 +1,16 @@
 import type { Amount, GramsPer, Unit } from "./units";
 import { convert } from "./units";
 
-/** Base servings as printed. A recipe "für 4-6 Portionen" has min 4 and max 6. */
+/**
+ * What a recipe's amounts are for, as printed. A recipe "für 4-6 Portionen" has min 4 and
+ * max 6. Most recipes count persons; then `unit` is null. Baking and finger food often count
+ * what they make instead: 1 "Springform (Ø 26 cm)", 12 "Muffins", 1 "Blech".
+ */
 export interface Servings {
   min: number;
   max: number;
+  /** What is counted when it is not persons, as printed. */
+  unit: string | null;
 }
 
 /** A second printed measure for the same line: "(etwa 200 g)", "à 150 g". */
@@ -52,6 +58,15 @@ export function scaleFactor(base: Servings, servings: number): number {
   if (servings < base.min) return servings / base.min;
   if (servings > base.max) return servings / base.max;
   return 1;
+}
+
+/**
+ * The amount a recipe is planned with until someone changes it. A recipe for persons is
+ * cooked for the household. Anything else is made as written: one cake, one tray, twelve
+ * muffins. Scaled to the household, a recipe for one cake tin would bake four cakes.
+ */
+export function plannedServings(base: Servings, householdServings: number): number {
+  return base.unit === null ? householdServings : base.min;
 }
 
 /**

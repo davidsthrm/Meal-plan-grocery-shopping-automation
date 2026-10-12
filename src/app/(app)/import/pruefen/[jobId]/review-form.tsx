@@ -47,6 +47,19 @@ function toRows(lines: ReviewLine[]): Row[] {
   }));
 }
 
+/** Suggestions for what a recipe makes when it does not count persons. Any text is allowed. */
+const SERVINGS_UNITS = [
+  "Springform",
+  "Blech",
+  "Kastenform",
+  "Tarteform",
+  "Quicheform",
+  "Stück",
+  "Muffins",
+  "Brot",
+  "Gläser",
+];
+
 interface Props {
   review: Review;
   /** How many recipes wait for review, this one included. */
@@ -67,6 +80,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
       ? review.servingsMax.toString()
       : "",
   );
+  const [servingsUnit, setServingsUnit] = useState(review.servingsUnit);
   const [prepMinutes, setPrepMinutes] = useState(review.prepMinutes?.toString() ?? "");
   const [rows, setRows] = useState(() => toRows(review.lines));
   const [errors, setErrors] = useState<ReviewErrors>({});
@@ -112,6 +126,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
       sourcePage,
       servingsMin,
       servingsMax,
+      servingsUnit,
       prepMinutes,
       lines: rows.map((row) => {
         const target = rows.findIndex((other) => other.key === row.alternativeToKey);
@@ -264,10 +279,10 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
           </div>
           {problem("sourcePage")}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div>
               <label className="label" htmlFor="servings-min">
-                Portionen
+                Reicht für
               </label>
               <input
                 id="servings-min"
@@ -289,6 +304,24 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
                 onChange={(event) => setServingsMax(event.target.value)}
               />
             </div>
+            <div className="col-span-2">
+              <label className="label" htmlFor="servings-unit">
+                statt Personen
+              </label>
+              <input
+                id="servings-unit"
+                className={field("servingsUnit")}
+                list="servings-units"
+                value={servingsUnit}
+                onChange={(event) => setServingsUnit(event.target.value)}
+                placeholder="z. B. Springform"
+              />
+              <datalist id="servings-units">
+                {SERVINGS_UNITS.map((unit) => (
+                  <option key={unit} value={unit} />
+                ))}
+              </datalist>
+            </div>
             <div>
               <label className="label" htmlFor="prep">
                 Minuten
@@ -302,8 +335,13 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
               />
             </div>
           </div>
+          <p className="text-sm text-muted">
+            „statt Personen“ bleibt leer, wenn das Rezept für Personen gedacht ist. Bei Kuchen,
+            Quiche oder Pizza steht dort, was das Rezept ergibt: 1 Springform, 1 Blech, 12 Stück.
+          </p>
           {problem("servingsMin")}
           {problem("servingsMax")}
+          {problem("servingsUnit")}
           {problem("prepMinutes")}
 
           <h2 className="pt-2 text-lg font-semibold">Zutaten</h2>
