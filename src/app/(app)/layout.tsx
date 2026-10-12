@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppNav } from "@/components/app-nav";
+import { Logo } from "@/components/logo";
 import { requireHousehold } from "@/server/auth";
 import { signOut } from "../login/actions";
 
@@ -10,8 +11,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     <div className="min-h-dvh px-4 pb-24 sm:pb-10 print:p-0">
       {/* Paper gets the content only: no header, no navigation. */}
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 py-4 print:hidden">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          Essensplan
+        <Link href="/" aria-label="Essensplan, zum Wochenplan">
+          <Logo />
         </Link>
         <div className="hidden sm:block">
           <AppNav />

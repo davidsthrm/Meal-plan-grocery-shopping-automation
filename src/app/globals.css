@@ -2,7 +2,8 @@
 
 /*
  * Calm and practical: warm paper, dark ink, one green accent. Sized for reading at the
- * kitchen table and for thumbs. No gradients, no shadows that pretend to be depth.
+ * kitchen table and for thumbs. What moves, moves a little: a card lifts under the finger,
+ * a page comes in softly. Nothing depends on it.
  */
 @theme {
   --color-paper: #f7f4ee;
@@ -30,6 +31,9 @@
   --color-poultry-ink: #7f5318;
   --color-meat: #f1d9d5;
   --color-meat-ink: #86423a;
+  /* Not a kind the week counts, but cakes and desserts get a colour of their own too. */
+  --color-sweet: #eadff0;
+  --color-sweet-ink: #6d4c80;
 
   /* One sans-serif family for everything, from the fonts the devices bring along. */
   --font-sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -40,7 +44,11 @@ html {
 }
 
 body {
-  background: var(--color-paper);
+  /* A breath of green at the top of the page, fading into the paper. */
+  background:
+    radial-gradient(60rem 22rem at 50% -8rem, var(--color-accent-soft), transparent 70%),
+    var(--color-paper);
+  background-repeat: no-repeat;
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.45;
@@ -179,6 +187,52 @@ body {
     --kind: var(--color-meat);
     --kind-ink: var(--color-meat-ink);
   }
+  .kind-sweet {
+    --kind: var(--color-sweet);
+    --kind-ink: var(--color-sweet-ink);
+  }
+
+  /* A card that leads somewhere lifts a little when it is touched or pointed at. */
+  .lift {
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      border-color 0.16s ease;
+  }
+  .lift:hover,
+  .lift:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--kind-ink, var(--color-muted));
+    box-shadow: 0 10px 22px -14px rgb(35 33 29 / 0.45);
+  }
+  .lift:active {
+    transform: translateY(0);
+  }
+
+  /* The pictogram behind a card's text: large, pale and a little out of focus. */
+  .watermark {
+    pointer-events: none;
+    position: absolute;
+    right: -0.9rem;
+    bottom: -1.1rem;
+    width: 7.5rem;
+    height: 7.5rem;
+    transform: rotate(-8deg);
+    color: var(--kind-ink, var(--color-muted));
+    opacity: 0.16;
+    filter: blur(0.7px);
+  }
+
+  /* A pictogram on its pastel, in front of a name. */
+  .badge {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.6rem;
+    background: var(--kind, var(--color-accent-soft));
+    color: var(--kind-ink, var(--color-accent));
+  }
 
   /* A small coloured label: "Vegetarisch", "Fisch". */
   .tag {
@@ -231,6 +285,25 @@ body {
   .shelf > * {
     flex: none;
     scroll-snap-align: start;
+  }
+}
+
+/* A page comes in softly. Whoever asked for less motion gets none. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+main > * {
+  animation: page-in 0.22s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  main > * {
+    animation: none;
+  }
+  .lift {
+    transition: none;
   }
 }
 
