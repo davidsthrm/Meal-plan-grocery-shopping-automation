@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { extractedRecipeSchema, type ExtractedRecipe } from "@/domain/import/extraction";
+import { pageFrameSchema, type PageFrame } from "@/domain/import/frame";
 import {
   transcriptionForVerification,
   verificationSchema,
@@ -9,10 +10,17 @@ import {
 import type { PreparedImage } from "./normalize-image";
 import { suggestionSchema, toProposals, type Suggestions } from "@/domain/import/proposal";
 import { pageSurveySchema, type PageSurvey } from "@/domain/import/survey";
-import { EXTRACTION_PROMPT, SUGGESTION_PROMPT, SURVEY_PROMPT, VERIFICATION_PROMPT } from "./prompt";
+import {
+  EXTRACTION_PROMPT,
+  FRAME_PROMPT,
+  SUGGESTION_PROMPT,
+  SURVEY_PROMPT,
+  VERIFICATION_PROMPT,
+} from "./prompt";
 import {
   RecipeReadError,
   type CatalogSuggester,
+  type PageFramer,
   type PageSurveyor,
   type ReadOptions,
   type RecipeReader,
@@ -112,6 +120,25 @@ export function createAnthropicSurveyor(options: AnthropicReaderOptions): PageSu
       zodOutputFormat(pageSurveySchema),
     );
     return { survey: output, usage };
+  };
+}
+
+/** Says how a page lies and where its recipes are, with a Claude model. Low effort. */
+export function createAnthropicFramer(options: AnthropicReaderOptions): PageFramer {
+  return async (image, titles) => {
+    const { output, usage } = await ask<PageFrame>(
+      { effort: "low", ...options },
+      FRAME_PROMPT,
+      [
+        ...imageBlocks([image]),
+        {
+          type: "text",
+          text: `Recipes on this photo: ${titles.map((title) => JSON.stringify(title)).join(", ")}`,
+        },
+      ],
+      zodOutputFormat(pageFrameSchema),
+    );
+    return { frame: output, usage };
   };
 }
 

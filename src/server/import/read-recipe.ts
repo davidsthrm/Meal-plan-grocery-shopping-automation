@@ -1,5 +1,6 @@
 import type { CatalogIndex } from "@/domain/catalog";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
+import type { PageFrame } from "@/domain/import/frame";
 import type { IngredientProposal } from "@/domain/import/proposal";
 import type { PageSurvey } from "@/domain/import/survey";
 import type { Verification } from "@/domain/import/verification";
@@ -49,6 +50,14 @@ export interface PageLook {
 
 /** Takes the first look at one photographed page: which recipes are on it? */
 export type PageSurveyor = (image: PreparedImage) => Promise<PageLook>;
+
+export interface PageFraming {
+  frame: PageFrame;
+  usage: { inputTokens: number; outputTokens: number };
+}
+
+/** Says how a page photo lies and where the recipes with the given titles are on it. */
+export type PageFramer = (image: PreparedImage, titles: string[]) => Promise<PageFraming>;
 
 /** Suggests catalog entries for ingredient names the catalog does not know. */
 export type CatalogSuggester = (
