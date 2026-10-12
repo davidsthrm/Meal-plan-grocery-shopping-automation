@@ -5,6 +5,10 @@ import type { ExtractedRecipe } from "./extraction";
 /**
  * The automatic checks every imported recipe has to pass before it is approved without a
  * person looking at it. Any issue sends the recipe to the review queue.
+ *
+ * An ingredient the catalog does not know is deliberately not an issue. Nearly every recipe
+ * of a new cookbook has one, and nothing about the recipe is doubtful: it was read
+ * correctly. Unknown ingredients are collected as proposals and decided in one place.
  */
 
 export type IssueCode =
@@ -12,7 +16,7 @@ export type IssueCode =
   | "title_missing"
   | "servings_missing"
   | "no_ingredients"
-  /** The catalog does not know this ingredient. It is proposed, not created. */
+  /** Only in recipes imported before unknown ingredients stopped being an issue. */
   | "unmapped_ingredient"
   /** The model could not read part of this line with certainty. */
   | "unclear_line"
@@ -70,11 +74,13 @@ export function checkDraft(draft: RecipeDraft, extracted: ExtractedRecipe): Impo
   if (draft.title === null) add("title_missing", null, "no title on the photos and none entered");
   if (draft.servings === null) add("servings_missing", null, "no servings on the photos");
   if (draft.ingredients.length === 0) add("no_ingredients", null, "no ingredient lines were read");
-  for (const item of extracted.uncertain)
+  for (const item of extracted.uncertain) {
+    // Doubt about how to file a recipe is no reason to read it again by hand.
+    if (/^(dishType|proteinType)\b/i.test(item.field.trim())) continue;
     add("model_uncertain", null, `${item.field}: ${item.reason}`);
+  }
 
   draft.ingredients.forEach((line, at) => {
-    if (line.ingredientId === null) add("unmapped_ingredient", at, line.readName);
     if (line.unclear) add("unclear_line", at, line.originalText);
 
     if (line.quantity !== null && line.unit === null) {

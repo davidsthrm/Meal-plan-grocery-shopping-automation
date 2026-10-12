@@ -6,7 +6,7 @@ import { createCatalogIndex } from "../catalog";
 import { checkDraft } from "./checks";
 import { toDraft } from "./draft";
 import type { ExtractedRecipe } from "./extraction";
-import { mapToCatalog } from "./map-ingredient";
+import { mapToCatalog, sameProductName } from "./map-ingredient";
 import type { ExpectedRecipe } from "./score";
 import { flawless } from "./testing";
 
@@ -38,8 +38,32 @@ describe("mapToCatalog", () => {
     expect(map("Kirschtomaten 100 g", "Kirschtomaten")).toBe("kleine-tomaten");
   });
 
+  it("finds singular and plural forms and ignores 'Bio-'", () => {
+    expect(map("2 Lachsfilets", "Lachsfilets")).toBe("lachsfilet");
+    expect(map("1 Bio-Gurke", "Bio-Gurke")).toBe("gurken");
+    expect(map("1 Bio-Orange", "Bio-Orange")).toBe("orangen");
+    expect(map("2 Tortilla-Wrap", "Tortilla-Wrap")).toBe("wraps");
+  });
+
+  it("does not turn a short word into another one", () => {
+    // "Ei" plus "s" would be ice cream, "Eis" minus "s" an egg.
+    expect(map("1 Ei", "Ei")).toBe("eier");
+    expect(map("500 g Eis", "Eis")).toBe("eis");
+    expect(map("200 g Mais", "Mais")).toBe("mais");
+  });
+
   it("returns null for an ingredient the catalog does not know", () => {
     expect(map("200 g Pak Choi", "Pak Choi")).toBeNull();
+  });
+});
+
+describe("sameProductName", () => {
+  it("treats plural forms and 'Bio-' as the same product", () => {
+    expect(sameProductName("Forellenfilet", "Forellenfilets")).toBe(true);
+    expect(sameProductName("weiße Zwiebel", "weiße Zwiebeln")).toBe(true);
+    expect(sameProductName("Bio-Gurke", "Gurken")).toBe(true);
+    expect(sameProductName("Fenchel", "Fladenbrot")).toBe(false);
+    expect(sameProductName("Ei", "Eis")).toBe(false);
   });
 });
 
@@ -125,16 +149,23 @@ describe("checkDraft", () => {
     expect(check(reading("IMG_5685"), { title: "Rustikaler Linsen Salat" })).toEqual([]);
   });
 
-  it("flags an ingredient the catalog does not know", () => {
+  it("does not hold a recipe back for an ingredient the catalog does not know", () => {
     const extracted = reading("IMG_5682");
     extracted.ingredients[0] = {
       ...extracted.ingredients[0],
       raw: "500 g Topinambur",
       name: "Topinambur",
     };
-    expect(check(extracted)).toEqual([
-      { code: "unmapped_ingredient", ingredientIndex: 0, detail: "Topinambur" },
-    ]);
+    expect(check(extracted)).toEqual([]);
+  });
+
+  it("does not hold a recipe back because its category is unclear", () => {
+    const extracted = reading("IMG_5682");
+    extracted.uncertain.push({
+      field: "proteinType",
+      reason: "Füllung der Nudeln nicht angegeben",
+    });
+    expect(check(extracted)).toEqual([]);
   });
 
   it("flags amounts that are far too large for the servings", () => {
