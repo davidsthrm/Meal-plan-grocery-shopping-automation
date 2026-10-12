@@ -328,7 +328,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
                       Gedruckt: <span className="text-ink">{row.originalText}</span>
                     </p>
                   )}
-                  <div className="grid grid-cols-[4.5rem_4.5rem_1fr] gap-2">
+                  <div className="grid grid-cols-[4.5rem_4rem_1fr] gap-2 sm:grid-cols-[4.5rem_4rem_6.5rem_1fr]">
                     <input
                       aria-label="Menge"
                       placeholder="Menge"
@@ -351,32 +351,30 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
                       value={row.unit}
                       onChange={(event) => change(row.key, { unit: event.target.value })}
                     >
-                      <option value="">ohne Einheit</option>
+                      <option value="">ohne</option>
                       {units.map((unit) => (
                         <option key={unit} value={unit}>
                           {unit}
                         </option>
                       ))}
                     </select>
-                  </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     <input
                       aria-label="Zutat"
                       placeholder="Zutat"
                       list="catalog-ingredients"
-                      className="field"
+                      className="field col-span-3 sm:col-span-1"
                       value={row.ingredient}
                       onChange={(event) => change(row.key, { ingredient: event.target.value })}
                     />
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
                     <input
                       aria-label="Notiz"
                       placeholder="Notiz, z. B. gehackt"
-                      className="field"
+                      className="field min-w-40 flex-1 text-base"
                       value={row.note}
                       onChange={(event) => change(row.key, { note: event.target.value })}
                     />
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <label className="flex min-h-10 items-center gap-2">
                       <input
                         type="checkbox"
@@ -386,17 +384,20 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
                       />
                       kann man weglassen
                     </label>
-                    {row.alternativeToKey && (
-                      <span className="text-muted">Alternative zu einer anderen Zutat</span>
-                    )}
                     <button
                       type="button"
                       className="btn btn-danger min-h-10 px-3 text-sm"
+                      aria-label={`Zeile ${row.ingredient || at + 1} entfernen`}
                       onClick={() => remove(row.key)}
                     >
-                      Zeile entfernen
+                      Entfernen
                     </button>
                   </div>
+                  {row.alternativeToKey && (
+                    <p className="mt-2 text-sm text-muted">
+                      Alternative zu einer anderen Zutat dieses Rezepts.
+                    </p>
+                  )}
                   {row.ingredient.trim() !== "" && !isKnown && (
                     <p className="mt-2 text-sm text-muted">
                       Steht noch nicht im Katalog. Wird als neue Zutat vorgeschlagen, oder wähle
