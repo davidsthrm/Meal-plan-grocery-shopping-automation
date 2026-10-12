@@ -8,14 +8,6 @@ const nextConfig: NextConfig = {
   // Recipe photos are uploaded straight to storage, but form posts with long ingredient lists
   // should not hit the 1 MB default either.
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
 };
 
 export default nextConfig;
