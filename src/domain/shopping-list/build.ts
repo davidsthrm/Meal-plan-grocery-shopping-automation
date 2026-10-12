@@ -70,6 +70,20 @@ function nameForOne(ingredient: Ingredient): string {
   return singular ?? ingredient.name;
 }
 
+/**
+ * Whether a food was named as one piece of something bought by the piece: "Gurke", where the
+ * catalog says "Gurken". Named in the plural ("Tomaten"), it stays a name without an amount.
+ */
+function namesOnePiece(ingredient: Ingredient, label: string): boolean {
+  if (ingredient.buyingMode !== "count") return false;
+  const one = nameForOne(ingredient);
+  return (
+    one !== ingredient.name &&
+    normalizeName(label) === normalizeName(one) &&
+    toDefaultUnit(ingredient, { quantity: 1, unit: "Stück" }) !== null
+  );
+}
+
 interface Bucket {
   ingredient: Ingredient;
   trip: Trip;
@@ -331,6 +345,9 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".
     if (slot.kind === "free_text") {
       for (const food of slot.foods ?? []) {
+        const ingredient = food.ingredientId
+          ? index.ingredientById.get(food.ingredientId)
+          : undefined;
         const contribution: Contribution = {
           source: {
             type: "food",
@@ -339,13 +356,13 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
             meal: slot.meal,
             mealLabel: slot.label,
           },
-          amount: null,
+          amount:
+            ingredient && namesOnePiece(ingredient, food.label)
+              ? { quantity: 1, unit: "Stück" }
+              : null,
           originalText: food.label,
           optional: false,
         };
-        const ingredient = food.ingredientId
-          ? index.ingredientById.get(food.ingredientId)
-          : undefined;
         if (ingredient) {
           const trip = tripFor(slot.date, shoppingDate, ingredient.shelfLifeDays);
           add(ingredient, trip, contribution, undefined, food.shopId);

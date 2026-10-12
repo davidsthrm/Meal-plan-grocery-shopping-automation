@@ -384,6 +384,21 @@ describe("what a week needs besides its cooked meals", () => {
     });
   });
 
+  it("counts a food named as one piece: Karotte is one of the Karotten", () => {
+    const carrot = { label: "Karotte", ingredientId: "karotten", shopId: null };
+    const one = build([], [vesper([carrot])]).get("karotten@main")!;
+    expect(one).toMatchObject({ label: "Karotte", purchase: { quantity: 1, unit: "Stück" } });
+    // It adds up with what the recipes of the week need.
+    const salad = recipe("salat", [line("karotten", 1, "Stück")]);
+    const two = build([salad], [slot(MONDAY, "salat"), vesper([carrot])]).get("karotten@main")!;
+    expect(two).toMatchObject({ label: "Karotten", purchase: { quantity: 2, unit: "Stück" } });
+    // Named in the plural, it is a name without an amount.
+    const some = build([], [vesper([{ ...carrot, label: "Karotten" }])]).get("karotten@main")!;
+    expect(some).toMatchObject({ label: "Karotten", purchase: null });
+    const tomatoes = { label: "Tomaten", ingredientId: "tomaten", shopId: null };
+    expect(build([], [vesper([tomatoes])]).get("tomaten@main")!.purchase).toBeNull();
+  });
+
   it("keeps a food apart that is bought somewhere else for that meal", () => {
     const usual = testIndex.ingredientById.get("brot")!.preferredShopId;
     const other = usual === "ec" ? "aldi" : "ec";
