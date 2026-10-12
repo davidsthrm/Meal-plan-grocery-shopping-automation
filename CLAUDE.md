@@ -36,6 +36,7 @@ is easier than pen and paper.
 | Browser test of a real upload with the models (about 1 ct)                | `npm run e2e:upload`                           |
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
+| Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
 | Regenerate the database types after a migration                           | `npm run db:types`                             |
 | Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
 
@@ -146,6 +147,12 @@ Recipes
 
 - Scale by slot servings / base servings. Base servings can be a range such as 4 to 6. If the
   slot servings fall inside the range, the recipe is cooked as written.
+- Base servings count persons unless the recipe has a servings unit. Baking and finger food
+  count what they make: 1 "Springform (Ø 26 cm)", 1 "Backblech", 40 "Stück". The unit is free
+  text as printed, null for persons (`recipe.servings_unit`, `Servings.unit`).
+- A recipe for persons is planned for the household's servings. A recipe with a unit is
+  planned as written (`plannedServings`): scaled to four persons, a recipe for one cake tin
+  would bake four cakes. Someone who wants two trays sets the slot to 2.
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
 - A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
@@ -190,6 +197,15 @@ Import
   review queue when something about the reading is doubtful: no title or servings, a line the
   model was unsure about, an amount without a unit or far too large, or the second pass
   seeing something different. A recipe the second pass could not check is never approved.
+- What a recipe's amounts are for is decided by its printed servings line, which the model
+  copies into `servingsRaw` (`src/domain/import/servings.ts`). A line that counts persons
+  keeps the numbers the model read. A line that counts something else ("Zutaten für 1
+  Springform (Ø 26 cm)", "ca. 20 Stück") gives the number and the unit. A line the app cannot
+  interpret assumes nothing and sends the recipe to review. Measured on the first four
+  cookbooks: 654 lines, 485 for persons, 46 for something else, none unclear, 123 recipes
+  without a line.
+- The check for amounts that are far too large counts a recipe with a unit as twelve
+  portions, or 1.5 kg of fruit for one tray would look like a misreading.
 - An ingredient the catalog does not know is not a reason for review, and neither is doubt
   about the category. The recipe was read correctly; only the catalog is behind. Measured on
   the first real cookbook: 100 of 118 recipes waited for nothing but unknown ingredients.
@@ -269,6 +285,11 @@ Import
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
 - Not built yet in the import: retrying a failed page or recipe from the screen, editing a
   recipe after it was approved.
+- A baking recipe without a printed servings line gets whatever was entered in review, so far
+  mostly "4 Portionen". Its unit can only be set once recipes can be edited.
+- A book that prints no servings with its recipes sends every one of them to review for that
+  alone (106 recipes of "Freude am Kochen"). The upload form has no "servings unless printed"
+  field yet.
 - Handwritten recipes have never been measured. Expect more review for the household's own
   folders and try a few pages first.
 - The test household "E2E-Test (automatisch)" and its login exist in the hosted project.
