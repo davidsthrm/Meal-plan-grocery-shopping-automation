@@ -4,6 +4,7 @@ import type { PagePart } from "./survey";
 
 const part = (title: string | null, patch: Partial<PagePart> = {}): PagePart => ({
   title,
+  page: null,
   hasIngredientList: true,
   hasSteps: true,
   continuesOnNextPage: false,

@@ -41,12 +41,16 @@ async function runBatch(db: SupabaseClient<Database>, householdId: string, userI
   console.log(`Uploaded ${targets.length} photos. Processing ...`);
 
   const started = Date.now();
-  for (let step = 1; ; step++) {
-    const result = await processNext(db, householdId, batchId);
-    if (result === "done") break;
-    if (result === "waiting") await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (step > 200) throw new Error("the batch does not finish");
-  }
+  // Three requests side by side, as the batch page does it.
+  const worker = async () => {
+    for (let step = 1; ; step++) {
+      const result = await processNext(db, householdId, batchId);
+      if (result === "done") return;
+      if (result === "waiting") await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (step > 400) throw new Error("the batch does not finish");
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
   console.log(`Finished in ${((Date.now() - started) / 1000).toFixed(0)} s.`);
   return batchId;
 }
@@ -110,7 +114,7 @@ async function main() {
     const issues = (job.issues as { code: string }[]).map((issue) => issue.code).join(", ");
     console.log(
       `  recipe ${job.position} ${job.status.padEnd(12)} "${recipe?.title}" ${recipe?.source_book} S. ${recipe?.source_page}` +
-        `, ${recipe?.servings_min} Portionen, ${recipe?.status}  ${cents.toFixed(2)} ct  ${issues}`,
+        `, ${recipe?.servings_min} Portionen  ${job.input_tokens} tokens in  ${cents.toFixed(2)} ct  ${issues}`,
     );
   }
   const lines = must(await db.from("recipe_ingredient").select("id, ingredient_id"), "load lines");

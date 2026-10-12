@@ -10,6 +10,7 @@ import { viewUrls } from "@/server/import/storage";
 import { createSessionClient } from "@/server/supabase/server";
 import { readIgnoredPage } from "../actions";
 import { BatchRunner } from "./batch-runner";
+import { DeleteBatchButton } from "./delete-batch-button";
 
 export const metadata: Metadata = { title: "Stapel" };
 
@@ -32,7 +33,7 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
     .maybeSingle();
   if (!batch) notFound();
 
-  const [progress, jobs, pages] = await Promise.all([
+  const [progress, jobs, pages, proposals] = await Promise.all([
     batchProgress(db, batchId),
     db
       .from("import_job")
@@ -44,7 +45,9 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
       .select("id, position, file_name, status, photo_path, printed_page, survey, error")
       .eq("batch_id", batchId)
       .order("position"),
+    db.from("ingredient_proposal").select("id").eq("status", "open"),
   ]);
+  const openProposals = must(proposals, "load proposals").length;
   const jobRows = must(jobs, "load recipes of batch");
   const pageRows = must(pages, "load pages");
   const recipeIds = jobRows.flatMap((job) => (job.recipe_id ? [job.recipe_id] : []));
@@ -76,8 +79,24 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
 
       <BatchRunner batchId={batchId} initial={progress} />
 
+      {progress.done && openProposals > 0 && (
+        <div className="card mt-4 p-4">
+          <Link href="/import/vorschlaege" className="btn btn-primary w-full">
+            {openProposals === 1
+              ? "1 neue Zutat bestätigen"
+              : `${openProposals} neue Zutaten bestätigen`}
+          </Link>
+          <p className="mt-2 text-sm text-muted">
+            Am besten zuerst. Rezepte, die nur auf eine unbekannte Zutat warten, werden danach von
+            selbst übernommen und müssen nicht einzeln geprüft werden.
+          </p>
+        </div>
+      )}
       {progress.done && count.needsReview > 0 && (
-        <Link href="/import/pruefen" className="btn btn-primary mt-4 w-full">
+        <Link
+          href="/import/pruefen"
+          className={`btn mt-4 w-full ${openProposals > 0 ? "" : "btn-primary"}`}
+        >
           {count.needsReview === 1 ? "1 Rezept prüfen" : `${count.needsReview} Rezepte prüfen`}
         </Link>
       )}
@@ -170,6 +189,10 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
           </ul>
         </>
       )}
+
+      <div className="mt-10 border-t border-line pt-4">
+        <DeleteBatchButton batchId={batchId} recipes={recipeIds.length} />
+      </div>
     </div>
   );
 }

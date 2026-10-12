@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { batchProgress, processNext } from "@/server/import/batch";
 import { createSessionClient } from "@/server/supabase/server";
@@ -24,6 +25,14 @@ export async function POST(_request: Request, context: RouteContext<"/api/import
     const result = await processNext(db, batch.household_id, batchId);
     return NextResponse.json({ result, progress: await batchProgress(db, batchId) });
   } catch (error) {
+    // The model service asks for a pause, or is overloaded. The step was put back; the page
+    // waits a little and carries on by itself.
+    const busy =
+      error instanceof Anthropic.RateLimitError ||
+      (error instanceof Anthropic.APIError && (error.status === 529 || error.status === 503));
+    if (busy) {
+      return NextResponse.json({ result: "throttled", progress: await batchProgress(db, batchId) });
+    }
     console.error("import step failed", error);
     return NextResponse.json({ error: "step failed" }, { status: 500 });
   }

@@ -13,6 +13,8 @@ export const pageSurveySchema = z.object({
     z.object({
       /** The recipe's printed title if it is on this photo, otherwise null. */
       title: z.string().nullable(),
+      /** Number printed on the page this recipe is on. On a double page: its own side. */
+      page: z.number().int().nullable(),
       hasIngredientList: z.boolean(),
       hasSteps: z.boolean(),
       /** The recipe's text visibly breaks off at the end of the page. */

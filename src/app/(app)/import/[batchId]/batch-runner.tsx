@@ -34,6 +34,9 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
           setProgress(body.progress);
           if (body.result === "done") break;
           if (body.result === "waiting") await new Promise((resolve) => setTimeout(resolve, 1500));
+          // The reading service asked for a pause. Carry on by itself after a while.
+          if (body.result === "throttled")
+            await new Promise((resolve) => setTimeout(resolve, 20_000));
         } catch {
           if (!stopped.current) setFailed(true);
           stopped.current = true;

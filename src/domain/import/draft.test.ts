@@ -169,6 +169,21 @@ describe("checkDraft", () => {
     expect(check(extracted).map((i) => i.code)).toEqual(["invalid_range", "invalid_alternative"]);
   });
 
+  it("flags an amount whose unit the app does not know", () => {
+    const extracted = reading("IMG_5682");
+    // "1 Döschen Safran": a quantity, but no unit from the allowed list.
+    extracted.ingredients[4] = {
+      ...extracted.ingredients[4],
+      raw: "1 Döschen Safran",
+      name: "Salz",
+      quantity: 1,
+      unit: null,
+    };
+    expect(check(extracted)).toEqual([
+      { code: "unit_missing", ingredientIndex: 4, detail: "1 Döschen Safran" },
+    ]);
+  });
+
   it("flags missing servings and an empty ingredient list", () => {
     const extracted = {
       ...reading("IMG_5680"),

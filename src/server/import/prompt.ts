@@ -9,6 +9,7 @@ Every image has a label. "Page 1", "Page 2" and so on are photographed pages of 
 
 What belongs to the recipe
 - Read exactly one recipe. Parts of a neighbouring recipe, tip boxes, shopping hints, sidebars and handwritten notes in the frame are not part of it. Mention them in "notes" and do not turn them into ingredients.
+- Some books print titles all in lower case or all in capitals. Write the title with normal German capitalisation then ("Linsentopf mit Lauch", not "linsentopf mit lauch").
 - Return only what is printed on the photos. If the title, the servings, the page number or the preparation time is not visible, return null for it. Never derive a title from the steps or the ingredients.
 - If you cannot read part of a line with certainty, return null for that part, set "unclear" to true on the line and say in "uncertain" what is unclear. Never fill in a likely value.
 
@@ -16,7 +17,7 @@ Ingredients: one entry per ingredient, in printed order
 - raw: the line exactly as printed, with its amount and brackets.
 - quantity: a decimal number. ½ is 0.5, ¼ is 0.25, ¾ is 0.75, 2 ½ is 2.5.
 - A range such as "1–2 Zwiebeln": the lower number in quantity, the upper in quantityMax. Otherwise quantityMax is null.
-- unit: one of the allowed units. A count without a printed unit ("3 Eier", "Zitrone ½") has the unit "Stück". Printed variants map to the allowed spelling: "Essl." is EL, "Teel." is TL, "Pck." is Packung, "Dosen" is Dose.
+- unit: one of the allowed units. A count without a printed unit ("3 Eier", "Zitrone ½") has the unit "Stück". Printed variants map to the allowed spelling: "Essl." is EL, "Teel." is TL, "Pck." is Packung, "Dosen" is Dose. A small container that is not in the list ("Döschen", "Briefchen", "Tütchen", "Päckchen", "Tube", "Flasche") is Packung.
 - No quantity printed ("Zucker", "Öl zum Braten"): quantity and unit are both null.
 - A size instead of an amount ("1 faustgroßes Stück Sellerie"): quantity 1, unit "Stück", and the size words go to note.
 - name: the ingredient as printed, without its amount. Words that only describe preparation or quality ("gehackt", "reif", "frisch gemahlen") go to note.
@@ -51,7 +52,8 @@ How to check
 
 How the transcription is written. These are conventions, not mistakes:
 - Quantities are decimals: ½ is 0.5, 1 ¼ is 1.25. A range has its lower number in quantity and its upper in quantityMax.
-- A count without a printed unit has the unit "Stück". Unit spellings are normalised ("El" is EL).
+- A count without a printed unit has the unit "Stück". Unit spellings are normalised ("El" is EL). A small container that is not a unit of its own ("Döschen", "Briefchen", "Tütchen", "Päckchen", "Tube", "Flasche") is written as Packung.
+- A title printed all in lower case or all in capitals is written with normal German capitalisation.
 - No printed quantity means quantity and unit are both null.
 - Two ingredients printed on one line are two entries. An alternative ("oder ...") is its own entry with alternativeTo pointing at the entry it can replace.
 - Where the name ends and the note begins is a judgment call. Never report it.
@@ -81,7 +83,8 @@ export const SURVEY_PROMPT = `You look at one photo from a German cookbook or fo
 
 - printedPage: the page number printed on the page. If a double page shows two numbers, give the lower one. Null if no page number is visible.
 - recipes: one entry, in reading order, for each recipe that has its title or its ingredient list on this photo.
-  - title: the recipe's printed title if it is on this photo, otherwise null. Chapter and section headings such as "Salat & Gemüse" are not recipe titles.
+  - title: the recipe's printed title if it is on this photo, otherwise null. Chapter and section headings such as "Salat & Gemüse" are not recipe titles. If the book prints titles all in lower case or all in capitals, write them with normal German capitalisation.
+  - page: the number printed on the page this recipe is on. On a double page that is the number on the recipe's own side. Null if it is not visible.
   - hasIngredientList: true if this recipe's ingredient list is on this photo.
   - hasSteps: true if its preparation steps are on this photo.
   - continuesOnNextPage: true only if the recipe's text visibly breaks off at the end of the page.

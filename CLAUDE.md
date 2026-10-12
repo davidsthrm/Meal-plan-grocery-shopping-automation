@@ -216,6 +216,21 @@ Import
 - New-ingredient proposals can be accepted all at once. Proposals that say "same as an
   existing ingredient" are always decided one by one: a wrong merge would quietly put the
   wrong product on shopping lists.
+- What was read must always be storable. A recipe that waits for review can contain anything
+  a model returned, so the stored rows are made valid (an amount without a known unit becomes
+  a count, a broken range loses its upper bound) and the checks flag each case. If the
+  database still refuses a recipe, the job is marked failed with the reason. It is never put
+  back in the queue: a failure that repeats would stop the batch at the same recipe forever.
+- Only an outage puts a step back in the queue. A rate limit of the model service is answered
+  with "throttled"; the batch page waits and carries on by itself.
+- A batch is finished only when every page that holds a recipe belongs to a recipe job and no
+  job waits. While another request is still grouping the pages, the answer is "waiting".
+- The first look notes the page number of each recipe's own side, so the two recipes of a
+  double page get their own page numbers.
+- Titles printed all in lower case or capitals are stored with normal German capitalisation.
+  A small container that is no unit of its own ("Döschen", "Briefchen") is a Packung.
+- A batch can be deleted. Its pages, photos and the recipes read from it go; ingredients
+  confirmed along the way stay.
 - The photo bucket has no storage policies. Uploads and views go through signed URLs from the
   server. The upload from the phone is deleted as soon as the clean JPEG is stored.
 - Review (`/import/pruefen`) shows photo and fields side by side. Everything typed is checked
@@ -240,8 +255,10 @@ Import
   scripts and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
 - Grouping title and ingredient pages has only been tested with made-up page descriptions.
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
-- Not built yet in the import: retrying a failed page from the screen, editing a recipe after
-  it was approved, deleting a batch.
+- Not built yet in the import: retrying a failed page or recipe from the screen, editing a
+  recipe after it was approved.
+- Handwritten recipes have never been measured. Expect more review for the household's own
+  folders and try a few pages first.
 - The test household "E2E-Test (automatisch)" and its login exist in the hosted project.
   `npm run e2e:teardown` removes them.
 - The measurements cover five clean, well-lit pages. Watch the review rate and spot-check the

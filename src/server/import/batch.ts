@@ -9,13 +9,14 @@ import { importFromImages } from "./import-recipe";
 import { importModels } from "./models";
 import { normalizeImage, prepareForModel, type PreparedImage } from "./normalize-image";
 import { RecipeReadError } from "./read-recipe";
-import { saveImportedRecipe, type StoredRecipe } from "./save-recipe";
+import { saveImportedRecipe, StoreError, type StoredRecipe } from "./save-recipe";
 import {
   createUploadTarget,
   downloadPhoto,
   fullPhotoPath,
   originalPath,
   pagePhotoPath,
+  removeFolder,
   removePhotos,
   storePhoto,
 } from "./storage";
@@ -339,7 +340,7 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
   try {
     const [batch, pages, index] = await Promise.all([
       db.from("import_batch").select("source_book").eq("id", job.batch_id).single(),
-      db.from("import_page").select("id, printed_page, full_path").in("id", job.page_ids),
+      db.from("import_page").select("id, printed_page, full_path, survey").in("id", job.page_ids),
       loadCatalogIndex(db),
     ]);
     const pageRows = must(pages, "load pages");
@@ -359,14 +360,23 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
     ).flat();
     const printed = new Map(pageRows.map((p) => [p.id, p.printed_page]));
     const firstPrinted = job.page_ids.map((id) => printed.get(id)).find((n) => n != null);
+    // On a photo shared by several recipes, the first look noted the page of each one.
+    const ownPage =
+      job.focus_position === null
+        ? firstPrinted
+        : pageRows
+            .map((p) => (p.survey as unknown as PageSurvey | null)?.recipes ?? [])
+            .filter((parts) => parts.length === job.focus_count)
+            .map((parts) => parts[(job.focus_position as number) - 1]?.page)
+            .find((n) => n != null);
     const models = importModels();
     const result = await importFromImages(
       images,
       {
         title: job.provided_title,
         book: must(batch, "load batch").source_book,
-        // On a photo shared by several recipes the reader sees which page each one is on.
-        page: job.provided_page ?? (job.focus_position === null ? (firstPrinted ?? null) : null),
+        // Without a page from the first look, the reader's own reading of it is used.
+        page: job.provided_page ?? ownPage ?? null,
       },
       { read: models.read, verify: models.verify, index },
       {
@@ -401,6 +411,16 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
       finished_at: now(),
     });
   } catch (error) {
+    if (error instanceof StoreError) {
+      // Read, but refused by the database. Trying again would fail the same way and block
+      // the batch, so it is recorded as failed and the batch moves on.
+      await finish({
+        status: "failed",
+        issues: json([{ code: "store_failed", ingredientIndex: null, detail: error.message }]),
+        finished_at: now(),
+      });
+      return;
+    }
     // An outage, not a verdict on the recipe: put it back and let the caller see the error.
     await finish({ status: "uploaded" });
     throw error;
@@ -438,6 +458,9 @@ export async function processNext(
   if (busyPages.length > 0) return "waiting";
 
   if (await groupBatch(db, householdId, batchId)) return "worked";
+  // Another request may still be turning the pages into recipes. Until it is through, there
+  // are no recipes to import, which must not be mistaken for a finished batch.
+  if (await groupingUnfinished(db, batchId)) return "waiting";
 
   const jobId = await claim(db, "import_job", batchId);
   if (jobId !== null) {
@@ -456,6 +479,42 @@ export async function processNext(
   if (busyJobs.length > 0) return "waiting";
   await removeFullCopies(db, batchId);
   return "done";
+}
+
+/** True while pages that hold recipes have not been turned into recipe jobs yet. */
+async function groupingUnfinished(db: Db, batchId: string): Promise<boolean> {
+  const [pages, jobs, batch] = await Promise.all([
+    db.from("import_page").select("id").eq("batch_id", batchId).eq("status", "read"),
+    db.from("import_job").select("page_ids").eq("batch_id", batchId),
+    db.from("import_batch").select("grouped_at").eq("id", batchId).single(),
+  ]);
+  const assigned = new Set(must(jobs, "load jobs").flatMap((job) => job.page_ids));
+  if (must(pages, "load pages").every((page) => assigned.has(page.id))) return false;
+  // Grouping that was claimed long ago and never finished was abandoned: let it start again.
+  const claimedAt = must(batch, "load batch").grouped_at;
+  if (claimedAt && Date.now() - Date.parse(claimedAt) > ABANDONED_AFTER_MS) {
+    await db.from("import_batch").update({ grouped_at: null }).eq("id", batchId);
+  }
+  return true;
+}
+
+/**
+ * Removes a batch with everything that came from it: its pages and photos, and the recipes
+ * read from it, approved or not. Ingredients that were confirmed along the way stay.
+ */
+export async function deleteBatch(db: Db, householdId: string, batchId: string): Promise<void> {
+  const jobs = must(
+    await db.from("import_job").select("recipe_id").eq("batch_id", batchId),
+    "load recipes of batch",
+  );
+  const recipeIds = jobs.flatMap((job) => (job.recipe_id ? [job.recipe_id] : []));
+  if (recipeIds.length > 0) {
+    const removed = await db.from("recipe").delete().in("id", recipeIds);
+    if (removed.error) throw new Error(`remove recipes of batch: ${removed.error.message}`);
+  }
+  const gone = await db.from("import_batch").delete().eq("id", batchId);
+  if (gone.error) throw new Error(`remove batch: ${gone.error.message}`);
+  await removeFolder(`${householdId}/${batchId}`);
 }
 
 /** The full-size copies were only needed for reading. They go once the batch is through. */
