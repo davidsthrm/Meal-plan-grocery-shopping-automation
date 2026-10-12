@@ -71,3 +71,13 @@ test("a photo that is no recipe can be thrown out", async ({ page }) => {
   await page.goto("/rezepte");
   await expect(page.getByText("Noch keine Rezepte.")).toBeVisible();
 });
+
+test("a batch can be deleted together with what was read from it", async ({ page }) => {
+  await page.goto("/import");
+  await page.getByRole("link", { name: /E2E Kochbuch/ }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Stapel löschen" }).click();
+  await expect(page.getByRole("heading", { name: "Rezepte einlesen" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /E2E Kochbuch/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Rezept prüfen/ })).toHaveCount(0);
+});

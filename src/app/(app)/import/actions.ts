@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { reviewInput, type ReviewErrors, type ReviewInput } from "@/domain/import/review-input";
 import { requireHousehold } from "@/server/auth";
 import { must } from "@/server/catalog";
-import { addPages, createBatch, type UploadTarget } from "@/server/import/batch";
+import { addPages, createBatch, deleteBatch, type UploadTarget } from "@/server/import/batch";
 import {
   acceptAllNew,
   acceptAsNew,
@@ -119,4 +119,11 @@ export async function acceptAllNewProposals(): Promise<void> {
   const household = await requireHousehold();
   await acceptAllNew(await createSessionClient(), household.id);
   revalidatePath("/", "layout");
+}
+
+export async function removeBatch(batchId: string): Promise<void> {
+  const household = await requireHousehold();
+  await deleteBatch(await createSessionClient(), household.id, batchId);
+  revalidatePath("/", "layout");
+  redirect("/import");
 }
