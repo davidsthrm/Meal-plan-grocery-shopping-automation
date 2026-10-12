@@ -11,8 +11,12 @@ test("screens @look", async ({ page }, info) => {
   await page.getByLabel("E-Mail").fill(process.env.E2E_EMAIL!);
   await page.getByLabel("Passwort").fill(process.env.E2E_PASSWORD!);
   await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL("**/rezepte");
-  await shot("2-rezepte");
+  await page.waitForURL("**/woche");
+  await page.waitForLoadState("networkidle");
+  await shot("2-woche");
+  await page.goto("/rezepte");
+  await page.waitForLoadState("networkidle");
+  await shot("2-entdecken");
 
   await page.goto("/import");
   await shot("3-import");

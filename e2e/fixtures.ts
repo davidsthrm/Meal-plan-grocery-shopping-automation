@@ -33,11 +33,18 @@ async function testHousehold(): Promise<string> {
   return rows[0].id;
 }
 
+/** Removes every recipe of the test household, and first the week plans that hold them. */
+async function clearRecipes(household: string): Promise<void> {
+  for (const table of ["week_plan", "import_batch", "recipe"] as const) {
+    const removed = await db.from(table).delete().eq("household_id", household);
+    if (removed.error) throw new Error(`clear ${table}: ${removed.error.message}`);
+  }
+}
+
 export async function resetImportData(): Promise<{ jobId: string; batchId: string }> {
   const household = await testHousehold();
   // Only ever the test household: every statement is scoped to its id.
-  await db.from("import_batch").delete().eq("household_id", household);
-  await db.from("recipe").delete().eq("household_id", household);
+  await clearRecipes(household);
   await db.from("ingredient_proposal").delete().eq("household_id", household);
   await db
     .from("ingredient")
@@ -205,10 +212,230 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
   return { jobId: job.id, batchId: batch.id };
 }
 
+type Protein = Database["public"]["Enums"]["protein_type"];
+
+/** A small cookbook: enough meals of every kind to fill a week, and a few that are no meals. */
+const LIBRARY: {
+  title: string;
+  category: string;
+  protein: Protein;
+  minutes: number | null;
+  book: string;
+  favorite?: boolean;
+  /** What it makes when that is not four persons. */
+  makes?: { count: number; unit: string };
+  ingredient?: string;
+}[] = [
+  {
+    title: "Gemüse-Lasagne",
+    category: "hauptgericht",
+    protein: "vegetarian",
+    minutes: 60,
+    book: "E2E Kochbuch",
+    favorite: true,
+  },
+  {
+    title: "Käsespätzle",
+    category: "hauptgericht",
+    protein: "vegetarian",
+    minutes: 45,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Pilzrisotto",
+    category: "hauptgericht",
+    protein: "vegetarian",
+    minutes: 35,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Kürbisgnocchi",
+    category: "hauptgericht",
+    protein: "vegetarian",
+    minutes: 30,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Ofengemüse mit Feta",
+    category: "hauptgericht",
+    protein: "vegetarian",
+    minutes: 40,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Gemüsecurry",
+    category: "hauptgericht",
+    protein: "vegan",
+    minutes: 25,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Spinat-Cannelloni",
+    category: "hauptgericht",
+    protein: "vegetarian",
+    minutes: 50,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Linsen-Eintopf",
+    category: "suppe-eintopf",
+    protein: "vegan",
+    minutes: 40,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Kartoffelsuppe",
+    category: "suppe-eintopf",
+    protein: "vegetarian",
+    minutes: 35,
+    book: "E2E Kochbuch",
+  },
+  { title: "Tomatensalat", category: "salat", protein: "vegan", minutes: 10, book: "E2E Kochbuch" },
+  {
+    title: "Lachs mit Currysahne",
+    category: "hauptgericht",
+    protein: "fish",
+    minutes: 20,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Forelle Müllerin",
+    category: "hauptgericht",
+    protein: "fish",
+    minutes: 25,
+    book: "Zweites Buch",
+    ingredient: "Butter",
+  },
+  {
+    title: "Zitronenhähnchen",
+    category: "hauptgericht",
+    protein: "poultry",
+    minutes: 30,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Hähnchen-Wraps",
+    category: "hauptgericht",
+    protein: "poultry",
+    minutes: 20,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Putengeschnetzeltes",
+    category: "hauptgericht",
+    protein: "poultry",
+    minutes: 25,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Pfeffersteak",
+    category: "hauptgericht",
+    protein: "red_meat",
+    minutes: 25,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Rindergulasch",
+    category: "hauptgericht",
+    protein: "red_meat",
+    minutes: null,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Schweinemedaillons",
+    category: "hauptgericht",
+    protein: "red_meat",
+    minutes: 30,
+    book: "Zweites Buch",
+  },
+  {
+    title: "Wurstsalat",
+    category: "vesper",
+    protein: "red_meat",
+    minutes: 15,
+    book: "E2E Kochbuch",
+  },
+  {
+    title: "Zitronen-Mohn-Kuchen",
+    category: "kuchen",
+    protein: "vegetarian",
+    minutes: null,
+    book: "E2E Kochbuch",
+    makes: { count: 1, unit: "Springform (Ø 26 cm)" },
+  },
+];
+
+/**
+ * Known starting state for browsing and planning: the cookbook above, approved, and no week
+ * plan at all.
+ */
+export async function resetLibrary(): Promise<void> {
+  const household = await testHousehold();
+  // Only ever the test household: every statement is scoped to its id.
+  await clearRecipes(household);
+
+  const recipes = check(
+    await db
+      .from("recipe")
+      .insert(
+        LIBRARY.map((entry) => ({
+          household_id: household,
+          title: entry.title,
+          source_book: entry.book,
+          servings_min: entry.makes?.count ?? 4,
+          servings_max: entry.makes?.count ?? 4,
+          servings_unit: entry.makes?.unit ?? null,
+          prep_minutes: entry.minutes,
+          protein_type: entry.protein,
+          is_favorite: entry.favorite ?? false,
+          status: "approved" as const,
+        })),
+      )
+      .select("id, title"),
+    "create library",
+  );
+  const idOf = new Map(recipes.map((recipe) => [recipe.title, recipe.id]));
+  const tags = check(
+    await db.from("tag").select("id, key").eq("household_id", household).not("key", "is", null),
+    "load tags",
+  );
+  const tagOf = new Map(tags.map((tag) => [tag.key, tag.id]));
+  const linked = await db.from("recipe_tag").insert(
+    LIBRARY.map((entry) => ({
+      household_id: household,
+      recipe_id: idOf.get(entry.title)!,
+      tag_id: tagOf.get(entry.category)!,
+    })),
+  );
+  if (linked.error) throw new Error(`categorise library: ${linked.error.message}`);
+
+  for (const entry of LIBRARY.filter((item) => item.ingredient)) {
+    const ingredient = check(
+      await db
+        .from("ingredient")
+        .select("id")
+        .eq("household_id", household)
+        .eq("name", entry.ingredient!)
+        .single(),
+      `find ${entry.ingredient}`,
+    );
+    const line = await db.from("recipe_ingredient").insert({
+      household_id: household,
+      recipe_id: idOf.get(entry.title)!,
+      position: 0,
+      ingredient_id: ingredient.id,
+      quantity: 50,
+      unit: "g",
+      original_text: `50 g ${entry.ingredient}`,
+    });
+    if (line.error) throw new Error(`create line: ${line.error.message}`);
+  }
+}
+
 export async function signIn(page: Page): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("E-Mail").fill(process.env.E2E_EMAIL!);
   await page.getByLabel("Passwort").fill(process.env.E2E_PASSWORD!);
   await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL("**/rezepte");
+  await page.waitForURL("**/woche");
 }

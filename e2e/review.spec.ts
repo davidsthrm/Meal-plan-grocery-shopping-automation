@@ -33,10 +33,10 @@ test("a recipe that needs a decision is reviewed, corrected and lands in the lib
   await expect(page.getByText("übernommen", { exact: true })).toBeVisible();
 
   await page.goto("/rezepte");
-  await expect(page.getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ })).toContainText(
-    "6 Gläser",
-  );
-  await page.getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ }).click();
+  // The one recipe of the library stands on several shelves.
+  const card = page.getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ }).first();
+  await expect(card).toContainText("6 Gläser");
+  await card.click();
   await expect(page.getByRole("heading", { name: "Kartoffelsuppe mit Topinambur" })).toBeVisible();
   await expect(page.getByText("750 g")).toBeVisible();
   await expect(page.getByText("6 Gläser")).toBeVisible();
