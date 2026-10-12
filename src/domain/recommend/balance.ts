@@ -12,10 +12,10 @@ export const BALANCE_GROUPS = ["vegetarian", "fish", "poultry", "red_meat"] as c
 export type BalanceGroup = (typeof BALANCE_GROUPS)[number];
 
 /** How many meals of a group a week should have at least and at most. Null for no limit. */
-export interface BalanceTarget {
+export type BalanceTarget = {
   min: number | null;
   max: number | null;
-}
+};
 export type BalanceTargets = Record<BalanceGroup, BalanceTarget>;
 
 /** Used until the household sets its own. */
@@ -25,6 +25,34 @@ export const DEFAULT_TARGETS: BalanceTargets = {
   poultry: { min: null, max: 2 },
   red_meat: { min: null, max: 2 },
 };
+
+/** The most meals a week has: seven days with lunch and dinner. */
+export const MEALS_PER_WEEK = 14;
+
+/**
+ * Reads targets as they are stored or typed. Returns null for anything that is not a full set
+ * of sensible targets, so the caller falls back to the defaults instead of to nonsense.
+ */
+export function readTargets(value: unknown): BalanceTargets | null {
+  if (typeof value !== "object" || value === null) return null;
+  const targets = {} as BalanceTargets;
+  for (const group of BALANCE_GROUPS) {
+    const entry = (value as Record<string, unknown>)[group];
+    if (typeof entry !== "object" || entry === null) return null;
+    const { min = null, max = null } = entry as { min?: unknown; max?: unknown };
+    const valid = (limit: unknown): limit is number | null =>
+      limit === null ||
+      (typeof limit === "number" &&
+        Number.isInteger(limit) &&
+        limit >= 0 &&
+        limit <= MEALS_PER_WEEK);
+    if (!valid(min) || !valid(max)) return null;
+    if (min !== null && max !== null && min > max) return null;
+    // "At least none" is no target.
+    targets[group] = { min: min === 0 ? null : min, max };
+  }
+  return targets;
+}
 
 export interface BalanceLine extends BalanceTarget {
   group: BalanceGroup;

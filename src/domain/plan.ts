@@ -1,6 +1,7 @@
-import { addDays, type IsoDate } from "./dates";
+import { addDays, isoWeekday, type IsoDate } from "./dates";
 
-export type Meal = "lunch" | "dinner";
+/** "coffee" is coffee and cake in the afternoon: a place for what is no lunch and no dinner. */
+export type Meal = "lunch" | "dinner" | "coffee";
 
 interface SlotBase {
   id: string;
@@ -20,20 +21,56 @@ export interface SlotItem {
  */
 export type PlanSlot =
   | (SlotBase & { kind: "recipes"; items: SlotItem[] })
-  /** A meal without a recipe, e.g. "Vesper". */
-  | (SlotBase & { kind: "free_text"; label: string })
+  /** A meal without a recipe, e.g. "Vesper". It can still need things from the shops. */
+  | (SlotBase & { kind: "free_text"; label: string; foods?: SlotFood[] })
   /** Leftovers. The source meal is optional and may lie in an earlier week. */
   | (SlotBase & { kind: "leftovers"; ofSlotId: string | null })
   /** Eaten elsewhere or replaced by an activity: "bei Oma", "Handball + Yoga". */
   | (SlotBase & { kind: "away"; label: string })
   | (SlotBase & { kind: "skipped" });
 
+/**
+ * Something to buy for a meal without a recipe: bread and cold cuts for a "Vesper". It is a
+ * name as on the handwritten list, not an amount.
+ */
+export interface SlotFood {
+  label: string;
+  /** The catalog ingredient the label names, if it names one. */
+  ingredientId: string | null;
+  /** Where it is bought for this meal. Null means where the catalog says. */
+  shopId: string | null;
+}
+
+/** A recipe the week needs outside its meals: two cakes for an invitation. */
+export interface PlanExtra {
+  recipeId: string;
+  servings: number;
+  /** What it is for. */
+  note: string | null;
+}
+
+/** The meals every day has. */
 export const MEALS: readonly Meal[] = ["lunch", "dinner"];
+
+/** The meals of one day, in the order of the day. Sunday has coffee and cake. */
+export function mealsOf(date: IsoDate): Meal[] {
+  return isoWeekday(date) === 7 ? ["lunch", "coffee", "dinner"] : ["lunch", "dinner"];
+}
+
+const MEAL_ORDER: Record<Meal, number> = { lunch: 0, coffee: 1, dinner: 2 };
+
+/** Sorts meals by day and by their time of day. */
+export function byDayAndMeal(
+  a: { date: IsoDate; meal: Meal },
+  b: { date: IsoDate; meal: Meal },
+): number {
+  return a.date.localeCompare(b.date) || MEAL_ORDER[a.meal] - MEAL_ORDER[b.meal];
+}
 
 /** A slot's content without its place in the calendar, as it is entered or copied. */
 export type SlotContent =
   | { kind: "recipes"; items: SlotItem[] }
-  | { kind: "free_text"; label: string }
+  | { kind: "free_text"; label: string; foods?: SlotFood[] }
   | { kind: "leftovers" }
   | { kind: "away"; label: string }
   | { kind: "skipped" };
@@ -66,8 +103,11 @@ export function copyOfWeek(
     let content: SlotContent;
     if (slot.kind === "recipes") {
       content = { kind: "recipes", items: slot.items.map((item) => ({ ...item })) };
-    } else if (slot.kind === "free_text" || slot.kind === "away") {
-      content = { kind: slot.kind, label: slot.label };
+    } else if (slot.kind === "free_text") {
+      // The same cold supper needs the same bread next week.
+      content = { kind: "free_text", label: slot.label, foods: [...(slot.foods ?? [])] };
+    } else if (slot.kind === "away") {
+      content = { kind: "away", label: slot.label };
     } else {
       content = { kind: slot.kind };
     }

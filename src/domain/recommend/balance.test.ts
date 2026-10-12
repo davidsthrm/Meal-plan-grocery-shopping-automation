@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { summary } from "../library/testing";
 import type { PlanSlot } from "../plan";
-import { DEFAULT_TARGETS, isFull, mealGroup, missing, weekBalance, withMeal } from "./balance";
+import {
+  DEFAULT_TARGETS,
+  isFull,
+  mealGroup,
+  missing,
+  readTargets,
+  weekBalance,
+  withMeal,
+} from "./balance";
 
 const recipes = [
   summary("lasagne"),
@@ -81,5 +89,29 @@ describe("weekBalance", () => {
     expect(after.find((line) => line.group === "fish")?.count).toBe(1);
     expect(before.find((line) => line.group === "fish")?.count).toBe(0);
     expect(withMeal(before, null)).toEqual(before);
+  });
+});
+
+describe("readTargets", () => {
+  const stored = {
+    vegetarian: { min: 4, max: null },
+    fish: { min: 2, max: 3 },
+    poultry: { min: null, max: 1 },
+    red_meat: { min: 0, max: 0 },
+  };
+
+  it("reads what the household chose", () => {
+    expect(readTargets(stored)).toEqual({ ...stored, red_meat: { min: null, max: 0 } });
+    expect(readTargets(DEFAULT_TARGETS)).toEqual(DEFAULT_TARGETS);
+  });
+
+  it("returns nothing for targets that are missing, incomplete or make no sense", () => {
+    expect(readTargets(null)).toBeNull();
+    expect(readTargets("3")).toBeNull();
+    expect(readTargets({ ...stored, fish: undefined })).toBeNull();
+    expect(readTargets({ ...stored, fish: { min: 3, max: 2 } })).toBeNull();
+    expect(readTargets({ ...stored, fish: { min: 1.5, max: null } })).toBeNull();
+    expect(readTargets({ ...stored, fish: { min: null, max: 15 } })).toBeNull();
+    expect(readTargets({ ...stored, fish: { min: "1", max: null } })).toBeNull();
   });
 });

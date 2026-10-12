@@ -1,11 +1,14 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { DEFAULT_TARGETS, readTargets, type BalanceTargets } from "@/domain/recommend/balance";
 import { createSessionClient } from "./supabase/server";
 
 export interface Household {
   id: string;
   name: string;
   defaultServings: number;
+  /** What a week should contain. The app's own defaults until the household has chosen. */
+  targets: BalanceTargets;
   userId: string;
 }
 
@@ -22,10 +25,16 @@ export async function requireHousehold(): Promise<Household> {
 
   const { data, error } = await supabase
     .from("household")
-    .select("id, name, default_servings")
+    .select("id, name, default_servings, balance_targets")
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`could not load the household: ${error.message}`);
   if (!data) redirect("/kein-haushalt");
-  return { id: data.id, name: data.name, defaultServings: data.default_servings, userId };
+  return {
+    id: data.id,
+    name: data.name,
+    defaultServings: data.default_servings,
+    targets: readTargets(data.balance_targets) ?? DEFAULT_TARGETS,
+    userId,
+  };
 }
