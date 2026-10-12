@@ -11,7 +11,7 @@ import type { Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
 import { suggest } from "@/domain/recommend/suggest";
 import { MEAL_LONG, whyText } from "@/lib/plan-text";
-import { loadLibrary, recipesWithIngredient } from "@/server/library";
+import { loadLibrary, searchLibrary } from "@/server/library";
 import { loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { markSlot, planRecipe } from "../actions";
@@ -83,13 +83,9 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
         (recipe) => !planned.has(recipe.id),
       )
     : [];
-  const results = browsing
-    ? []
-    : filterRecipes(
-        recipes,
-        filter,
-        filter.text ? await recipesWithIngredient(db, filter.text) : undefined,
-      );
+  const found = browsing ? null : await searchLibrary(db, library, filter);
+  const results = found?.matches ?? [];
+  const related = (found?.related ?? []).slice(0, 8);
 
   const where = (
     <>
@@ -195,6 +191,10 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
             </ul>
           )}
         </section>
+      )}
+      {list(
+        "Ähnliche Rezepte",
+        related.map((recipe) => row(recipe)),
       )}
     </div>
   );

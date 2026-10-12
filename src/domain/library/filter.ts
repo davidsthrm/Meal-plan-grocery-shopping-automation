@@ -84,15 +84,10 @@ export function isNoFilter(filter: RecipeFilter): boolean {
 }
 
 /**
- * Whether a recipe passes the filter. The words of the search must all be in the title;
- * `ingredientHits` holds the recipes that contain the searched ingredient, which only the
- * database can tell.
+ * Whether a recipe passes everything of the filter except its text. The text is a search of
+ * its own, see `searchRecipes`.
  */
-export function matchesFilter(
-  recipe: RecipeSummary,
-  filter: RecipeFilter,
-  ingredientHits: ReadonlySet<string> = new Set(),
-): boolean {
+export function matchesFilter(recipe: RecipeSummary, filter: RecipeFilter): boolean {
   if (filter.favorites && !recipe.isFavorite) return false;
   if (filter.category && recipe.category !== filter.category) return false;
   if (filter.book && recipe.sourceBook !== filter.book) return false;
@@ -103,13 +98,6 @@ export function matchesFilter(
     // A recipe without a printed time is not known to be quick.
     if (recipe.prepMinutes === null || recipe.prepMinutes > filter.maxMinutes) return false;
   }
-  const words = filter.text.split(/\s+/).map(searchKey).filter(Boolean);
-  if (words.length > 0) {
-    const title = searchKey(recipe.title);
-    if (!words.every((word) => title.includes(word)) && !ingredientHits.has(recipe.id)) {
-      return false;
-    }
-  }
   return true;
 }
 
@@ -118,12 +106,10 @@ export function byFavoriteThenTitle(a: RecipeSummary, b: RecipeSummary): number 
   return Number(b.isFavorite) - Number(a.isFavorite) || a.title.localeCompare(b.title, "de");
 }
 
+/** The recipes that pass everything of the filter except its text, favourites first. */
 export function filterRecipes(
   recipes: readonly RecipeSummary[],
   filter: RecipeFilter,
-  ingredientHits: ReadonlySet<string> = new Set(),
 ): RecipeSummary[] {
-  return recipes
-    .filter((recipe) => matchesFilter(recipe, filter, ingredientHits))
-    .sort(byFavoriteThenTitle);
+  return recipes.filter((recipe) => matchesFilter(recipe, filter)).sort(byFavoriteThenTitle);
 }

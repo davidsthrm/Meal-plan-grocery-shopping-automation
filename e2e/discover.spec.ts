@@ -39,7 +39,20 @@ test("the search finds a title however it is spelled", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
   await expect(page.getByRole("link", { name: /Kürbisgnocchi/ })).toBeVisible();
 
-  await page.getByPlaceholder("Titel oder Zutat").fill("gibt es nicht");
+  // A typing mistake still leads to the recipe.
+  await page.getByPlaceholder("Titel oder Zutat").fill("lasange");
+  await page.getByPlaceholder("Titel oder Zutat").press("Enter");
+  await expect(page.getByRole("link", { name: /Gemüse-Lasagne/ })).toBeVisible();
+
+  // Two words: what has both is a result, what has one of them is offered as related.
+  await page.getByPlaceholder("Titel oder Zutat").fill("lachs suppe");
+  await page.getByPlaceholder("Titel oder Zutat").press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Kein Rezept passt dazu.");
+  await expect(page.getByRole("region", { name: "Ähnliche Rezepte" })).toContainText(
+    "Lachs mit Currysahne",
+  );
+
+  await page.getByPlaceholder("Titel oder Zutat").fill("xyz gibt es nicht");
   await page.getByPlaceholder("Titel oder Zutat").press("Enter");
   await expect(page.getByRole("status")).toHaveText("Kein Rezept passt dazu.");
 });

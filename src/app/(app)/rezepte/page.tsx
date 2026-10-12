@@ -3,9 +3,9 @@ import Link from "next/link";
 import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
 import { discover } from "@/domain/library/discover";
-import { filterParams, filterRecipes, isNoFilter, readFilter } from "@/domain/library/filter";
+import { filterParams, isNoFilter, readFilter } from "@/domain/library/filter";
 import { today } from "@/lib/today";
-import { loadLibrary, recipesWithIngredient } from "@/server/library";
+import { loadLibrary, searchLibrary } from "@/server/library";
 import { loadHistory } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -13,6 +13,8 @@ export const metadata: Metadata = { title: "Entdecken" };
 
 /** How many results are shown at first, and how many more each time. */
 const STEP = 60;
+/** How many recipes that fit only part of a search are offered below the results. */
+const RELATED = 12;
 
 export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const params = await props.searchParams;
@@ -32,13 +34,9 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const groups = browsing
     ? discover(recipes, { today: today(), history: await loadHistory(db, today()), categories })
     : [];
-  const results = browsing
-    ? []
-    : filterRecipes(
-        recipes,
-        filter,
-        filter.text ? await recipesWithIngredient(db, filter.text) : undefined,
-      );
+  const found = browsing ? null : await searchLibrary(db, library, filter);
+  const results = found?.matches ?? [];
+  const related = (found?.related ?? []).slice(0, RELATED);
   const link = (extra: Record<string, string>) =>
     `/rezepte?${new URLSearchParams({ ...filterParams(filter), ...extra })}`;
 
@@ -126,6 +124,20 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
               Weitere anzeigen
             </Link>
           )}
+        </section>
+      )}
+
+      {related.length > 0 && (
+        <section className="mt-8" aria-label="Ähnliche Rezepte">
+          <h2 className="border-b border-line pb-2 text-xl font-bold tracking-tight">
+            Ähnliche Rezepte
+          </h2>
+          <p className="mt-2 text-sm text-muted">Passen zu einem Teil der Suche.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {related.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} category={nameOf(recipe.category)} />
+            ))}
+          </div>
         </section>
       )}
     </div>
