@@ -115,7 +115,8 @@ async function storeFoods(
   if (stored.error) throw new Error(`store foods of meal: ${stored.error.message}`);
 }
 
-async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<string> {
+/** The id of a week's plan. The week comes into being when something is first stored in it. */
+export async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<string> {
   const plan = must(
     await db
       .from("week_plan")

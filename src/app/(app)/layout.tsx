@@ -7,8 +7,9 @@ import { signOut } from "../login/actions";
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const household = await requireHousehold();
   return (
-    <div className="min-h-dvh px-4 pb-24 sm:pb-10">
-      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 py-4">
+    <div className="min-h-dvh px-4 pb-24 sm:pb-10 print:p-0">
+      {/* Paper gets the content only: no header, no navigation. */}
+      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 py-4 print:hidden">
         <Link href="/" className="text-xl font-bold tracking-tight">
           Essensplan
         </Link>
@@ -21,7 +22,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </form>
       </header>
       <main>{children}</main>
-      <div className="sm:hidden">
+      <div className="sm:hidden print:hidden">
         <AppNav />
       </div>
     </div>

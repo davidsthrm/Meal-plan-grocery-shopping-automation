@@ -7,6 +7,8 @@ export interface Household {
   id: string;
   name: string;
   defaultServings: number;
+  /** ISO weekday of the main shopping trip: 1 for Monday. */
+  shoppingWeekday: number;
   /** What a week should contain. The app's own defaults until the household has chosen. */
   targets: BalanceTargets;
   userId: string;
@@ -25,7 +27,7 @@ export async function requireHousehold(): Promise<Household> {
 
   const { data, error } = await supabase
     .from("household")
-    .select("id, name, default_servings, balance_targets")
+    .select("id, name, default_servings, shopping_weekday, balance_targets")
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`could not load the household: ${error.message}`);
@@ -34,6 +36,7 @@ export async function requireHousehold(): Promise<Household> {
     id: data.id,
     name: data.name,
     defaultServings: data.default_servings,
+    shoppingWeekday: data.shopping_weekday,
     targets: readTargets(data.balance_targets) ?? DEFAULT_TARGETS,
     userId,
   };
