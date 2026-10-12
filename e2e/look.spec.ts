@@ -56,6 +56,15 @@ test("screens @look", async ({ page }, info) => {
     await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
     await page.waitForLoadState("networkidle");
     await shot("2-rezept");
+    const edit = page.getByRole("link", { name: "Ändern" });
+    if (await edit.count()) {
+      const recipeUrl = page.url();
+      await edit.click();
+      await page.getByRole("heading", { name: "Rezept ändern" }).waitFor();
+      await shot("2-rezept-aendern");
+      await page.goto(recipeUrl);
+      await page.waitForLoadState("networkidle");
+    }
     const photo = page.getByText("Originalfoto");
     if (await photo.count()) {
       await photo.click();
@@ -67,6 +76,10 @@ test("screens @look", async ({ page }, info) => {
       await shot("2-rezept-foto");
     }
   }
+
+  await page.goto("/rezepte/neu?art=text");
+  await page.waitForLoadState("networkidle");
+  await shot("2-rezept-text");
 
   await page.goto("/import");
   await shot("3-import");
