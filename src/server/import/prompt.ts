@@ -95,3 +95,25 @@ export const SURVEY_PROMPT = `You look at one photo from a German cookbook or fo
 - Steps or an ingredient list without a title on the photo are still a recipe entry, with title null. The title is then on another page.
 - A recipe that is only partly visible at the edge of the photo, because it belongs to the neighbouring page, does not count.
 - A photo without any recipe (cover, table of contents, introduction, a full-page picture, a chapter opener) has an empty recipes list. Say in otherContent, in German and in a few words, what it shows. Otherwise otherContent is empty.`;
+
+/** Instructions for telling how a page photo lies and where its recipes are. */
+export const FRAME_PROMPT = `You look at one photo of a page or double page from a German cookbook, magazine or recipe folder. You say how the photo lies and where its recipes are. Nothing is transcribed.
+
+- textTop: where the top of the text is in this photo.
+  - "top": the text reads normally, from left to right.
+  - "right": the page lies on its right side. The lines run from the top of the photo to its bottom, and the tops of the letters point to the right edge.
+  - "left": the page lies on its left side. The lines run from the bottom of the photo to its top, and the tops of the letters point to the left edge.
+  - "bottom": the text is upside down.
+  Judge by the main text of the recipes, not by a page number, a book spine or a caption that is set sideways on purpose.
+- recipes: one entry for each recipe title you are given, with the title exactly as given and the box that holds everything of that recipe on this photo: its title, its ingredient list, its steps, and its picture if it has one. left and right are fractions of the photo's width counted from its left edge, top and bottom fractions of its height counted from its top edge, all between 0 and 1, in the photo as it is.
+  - Nothing of the recipe may be cut off. A little of a neighbouring recipe inside the box does no harm.
+  - If the parts of a recipe do not lie together, for example because its text runs on in another column behind another recipe, or if you cannot tell where it ends, give the whole photo: 0, 0, 1, 1.
+  - A recipe that fills the photo has the box 0, 0, 1, 1.`;
+
+export const UPRIGHT_PROMPT = `You are shown one photo of a page from a German cookbook, magazine or recipe folder four times: copy A as it was taken, and B, C and D each a quarter turn further. Exactly one copy is upright. You say which.
+
+- In the upright copy the recipe text reads normally: the lines run from left to right and the letters stand on their feet.
+- In one other copy the lines also run from left to right, but the letters stand on their heads. Do not go by the direction of the lines alone. Read letters: a title, or the numbers and units of an ingredient list.
+- Judge by the text of the recipes, printed or handwritten. Ignore a page number, a book spine, a caption set sideways on purpose, and another sheet or a tablecloth that shows behind the page.
+- words: a few words you can read in the copy you choose, as they are written there.
+- upright: the name of that copy.`;

@@ -33,6 +33,17 @@ async function testHousehold(): Promise<string> {
   return rows[0].id;
 }
 
+/** Puts a plain picture where a page photo would be. The tests never look at its content. */
+async function storeTestPhoto(path: string, width: number, height: number): Promise<void> {
+  const photo = await sharp({ create: { width, height, channels: 3, background: "#e9e2d2" } })
+    .jpeg()
+    .toBuffer();
+  const stored = await db.storage
+    .from("recipe-photos")
+    .upload(path, photo, { contentType: "image/jpeg", upsert: true });
+  if (stored.error) throw new Error(`store test photo: ${stored.error.message}`);
+}
+
 /** Removes every recipe of the test household, and first the week plans that hold them. */
 async function clearRecipes(household: string): Promise<void> {
   for (const table of ["week_plan", "import_batch", "recipe"] as const) {
@@ -70,15 +81,7 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
   const salt = await ingredient("Salz");
 
   const photoPath = `${household}/e2e/pages/0000.jpg`;
-  const photo = await sharp({
-    create: { width: 600, height: 800, channels: 3, background: "#e9e2d2" },
-  })
-    .jpeg()
-    .toBuffer();
-  const stored = await db.storage
-    .from("recipe-photos")
-    .upload(photoPath, photo, { contentType: "image/jpeg", upsert: true });
-  if (stored.error) throw new Error(`store test photo: ${stored.error.message}`);
+  await storeTestPhoto(photoPath, 600, 800);
 
   const batch = check(
     await db
@@ -444,6 +447,30 @@ export async function resetLibrary(): Promise<void> {
   );
   const stored = await db.from("recipe_ingredient").insert(lines);
   if (stored.error) throw new Error(`create lines: ${stored.error.message}`);
+
+  // Two recipes were photographed on one page. The page is framed: the first has its own
+  // part cut out, the second shows the whole page.
+  const pagePath = `${household}/e2e/pages/0001.jpg`;
+  const cropPath = `${household}/e2e/crops/lasagne.jpg`;
+  await storeTestPhoto(pagePath, 600, 800);
+  await storeTestPhoto(cropPath, 600, 380);
+  const framedAt = new Date().toISOString();
+  const photos = await db.from("recipe_photo").insert([
+    {
+      household_id: household,
+      recipe_id: idOf.get("Gemüse-Lasagne")!,
+      storage_path: pagePath,
+      crop_path: cropPath,
+      framed_at: framedAt,
+    },
+    {
+      household_id: household,
+      recipe_id: idOf.get("Käsespätzle")!,
+      storage_path: pagePath,
+      framed_at: framedAt,
+    },
+  ]);
+  if (photos.error) throw new Error(`create photos: ${photos.error.message}`);
 }
 
 /**

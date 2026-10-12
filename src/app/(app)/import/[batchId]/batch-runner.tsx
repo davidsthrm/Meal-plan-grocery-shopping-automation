@@ -20,7 +20,7 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
   const stopped = useRef(false);
 
   useEffect(() => {
-    if (initial.done && round === 0) return;
+    if (initial.done && initial.photosWaiting === 0 && round === 0) return;
     stopped.current = false;
     let active = WORKERS;
 
@@ -50,12 +50,21 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
     return () => {
       stopped.current = true;
     };
-  }, [batchId, initial.done, round, router]);
+  }, [batchId, initial.done, initial.photosWaiting, round, router]);
 
   const { pages, recipes } = progress;
   const looked = pages.total - pages.waiting;
   const read = recipes.total - recipes.waiting;
-  if (progress.done && !failed) return null;
+  if (progress.done && !failed) {
+    if (progress.photosWaiting === 0) return null;
+    // The recipes are read and can be used. What still runs only concerns their photos.
+    return (
+      <p className="mt-4 text-sm text-muted" aria-live="polite">
+        Die Fotos werden noch gedreht und zugeschnitten: {progress.photosWaiting}{" "}
+        {progress.photosWaiting === 1 ? "Seite" : "Seiten"} offen.
+      </p>
+    );
+  }
 
   return (
     <div className="card mt-4 p-4" aria-live="polite">

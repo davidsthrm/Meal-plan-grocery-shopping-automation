@@ -119,3 +119,44 @@ export async function prepareForModel(
   }
   return [overview, ...tiles];
 }
+
+/** A stored page turned clockwise by a multiple of 90 degrees. */
+export async function turnImage(jpeg: Buffer, degrees: number): Promise<Buffer> {
+  return sharp(jpeg).rotate(degrees).jpeg({ quality: 90 }).toBuffer();
+}
+
+/**
+ * A small copy of a stored page, turned clockwise if asked: enough to see how it lies and
+ * where things are on it.
+ */
+export async function shrinkImage(
+  jpeg: Buffer,
+  edge: number,
+  label = "Page 1",
+  degrees = 0,
+): Promise<PreparedImage> {
+  const small = await sharp(jpeg)
+    .resize(edge, edge, { fit: "inside", withoutEnlargement: true })
+    .toBuffer();
+  return toJpeg(degrees === 0 ? sharp(small) : sharp(small).rotate(degrees), label);
+}
+
+/** The part of a stored page given as fractions of its width and height. */
+export async function cropImage(
+  jpeg: Buffer,
+  part: { left: number; top: number; width: number; height: number },
+): Promise<Buffer> {
+  const { width, height } = await sharp(jpeg).metadata();
+  if (!width || !height) throw new Error("photo without dimensions");
+  const left = Math.round(part.left * width);
+  const top = Math.round(part.top * height);
+  return sharp(jpeg)
+    .extract({
+      left,
+      top,
+      width: Math.max(1, Math.min(width - left, Math.round(part.width * width))),
+      height: Math.max(1, Math.min(height - top, Math.round(part.height * height))),
+    })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}

@@ -70,3 +70,33 @@ test("a favourite is one tap and leads its shelves from then on", async ({ page 
   await page.getByRole("link", { name: "Favoriten", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
 });
+
+test("the cookbook page is folded away and shows the recipe's own part", async ({ page }) => {
+  await page.goto("/rezepte?q=lasagne");
+  await page.getByRole("link", { name: /Gemüse-Lasagne/ }).click();
+  await expect(page.getByRole("heading", { name: "Zutaten" })).toBeVisible();
+  const photo = page.getByAltText("Seite 1 von Gemüse-Lasagne");
+  await expect(photo).toBeHidden();
+
+  await page.getByText("Originalfoto").click();
+  await expect(photo).toBeVisible();
+  // What opens is the part cut out for this recipe, and it really loads.
+  await expect(photo).toHaveAttribute("src", /crops\/lasagne\.jpg/);
+  await expect
+    .poll(() => photo.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0);
+  await expect(page.getByRole("link", { name: "Ganze Seite ansehen" })).toHaveAttribute(
+    "href",
+    /pages\/0001\.jpg/,
+  );
+
+  // A recipe without a part of its own shows the page.
+  await page.goto("/rezepte?q=spätzle");
+  await page.getByRole("link", { name: /Käsespätzle/ }).click();
+  await page.getByText("Originalfoto").click();
+  await expect(page.getByAltText("Seite 1 von Käsespätzle")).toHaveAttribute(
+    "src",
+    /pages\/0001\.jpg/,
+  );
+  await expect(page.getByRole("link", { name: "In voller Größe ansehen" })).toBeVisible();
+});

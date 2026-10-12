@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
+import { DISH_TYPES, PROTEIN_TYPES } from "@/domain/import/extraction";
+import {
+  readReview,
+  reviewInput,
+  type ReviewErrors,
+  type ReviewInput,
+} from "@/domain/import/review-input";
 import {
   readTypedRecipe,
   type TypedRecipeErrors,
@@ -40,8 +47,8 @@ export interface TypedRecipeState {
 }
 
 /**
- * Saves the recipe form: a new recipe typed by hand, or changes to an existing one. A new
- * recipe that was started from a meal of the week plan is put on that meal.
+ * Saves a new recipe typed in by hand. One that was started from a meal of the week plan is
+ * put on that meal.
  */
 export async function saveTypedRecipe(
   _previous: TypedRecipeState,
@@ -64,12 +71,6 @@ export async function saveTypedRecipe(
   const read = readTypedRecipe(values, await loadCatalogIndex(db));
   if (!read.ok) return { errors: read.errors, values };
 
-  const id = z.guid().safeParse(form.get("id"));
-  if (id.success) {
-    await updateTypedRecipe(db, household.id, id.data, read.recipe);
-    revalidatePath("/", "layout");
-    redirect(`/rezepte/${id.data}`);
-  }
   if (read.recipe.lines === null) {
     return { errors: { lines: "Mindestens eine Zutat, eine pro Zeile." }, values };
   }
@@ -92,4 +93,43 @@ export async function saveTypedRecipe(
     redirect(`/woche?w=${week}#tag-${date}`);
   }
   redirect(`/rezepte/${created}`);
+}
+
+/**
+ * Saves the changes to a recipe: what stands above its ingredients, and every ingredient
+ * line as it was corrected, added or removed. Returns what is wrong where, if anything is.
+ */
+export async function saveRecipeEdit(
+  recipeId: string,
+  input: ReviewInput,
+  kind: { category: string; protein: string },
+): Promise<{ errors: ReviewErrors }> {
+  const household = await requireHousehold();
+  const id = z.guid().safeParse(recipeId);
+  const parsed = reviewInput.safeParse(input);
+  if (!id.success || !parsed.success) {
+    return { errors: { title: "Das Formular konnte nicht gelesen werden." } };
+  }
+  const db = await createSessionClient();
+  const read = readReview(parsed.data, await loadCatalogIndex(db));
+  if (!read.ok) return { errors: read.errors };
+
+  const dishType = (DISH_TYPES as readonly string[]).includes(kind.category)
+    ? (kind.category as (typeof DISH_TYPES)[number])
+    : "unbekannt";
+  const proteinType = (PROTEIN_TYPES as readonly string[]).includes(kind.protein)
+    ? (kind.protein as (typeof PROTEIN_TYPES)[number])
+    : "unknown";
+  await updateTypedRecipe(db, household.id, id.data, {
+    title: parsed.data.title.trim(),
+    sourceBook: parsed.data.sourceBook.trim() || null,
+    sourcePage: read.page,
+    servings: read.servings,
+    prepMinutes: read.prep,
+    dishType,
+    proteinType,
+    lines: read.lines,
+  });
+  revalidatePath("/", "layout");
+  redirect(`/rezepte/${id.data}`);
 }

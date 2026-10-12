@@ -5,6 +5,7 @@ import { groupPages } from "@/domain/import/group-pages";
 import type { PageSurvey } from "@/domain/import/survey";
 import { loadCatalogIndex, must, type Db } from "../catalog";
 import type { Json } from "../supabase/database.types";
+import { frameNextPage } from "./frame-stored";
 import { importFromImages } from "./import-recipe";
 import { importModels } from "./models";
 import { normalizeImage, prepareForModel, type PreparedImage } from "./normalize-image";
@@ -114,15 +115,25 @@ export interface BatchProgress {
     failed: number;
     discarded: number;
   };
-  /** Nothing left to do without a person. */
+  /**
+   * Page photos that are still to be turned upright and cut to their recipes. The recipes
+   * are read by then, so this keeps nobody from reviewing or planning them.
+   */
+  photosWaiting: number;
+  /** Every recipe is read. Nothing left to do without a person. */
   done: boolean;
 }
 
 export async function batchProgress(db: Db, batchId: string): Promise<BatchProgress> {
-  const [pages, jobs, batch] = await Promise.all([
+  const [pages, jobs, batch, photos] = await Promise.all([
     db.from("import_page").select("status").eq("batch_id", batchId),
     db.from("import_job").select("status").eq("batch_id", batchId),
     db.from("import_batch").select("grouped_at").eq("id", batchId).single(),
+    db
+      .from("recipe_photo")
+      .select("storage_path")
+      .is("framed_at", null)
+      .like("storage_path", `%/${batchId}/pages/%`),
   ]);
   const pageStatus = must(pages, "load pages").map((p) => p.status);
   const jobStatus = must(jobs, "load jobs").map((j) => j.status);
@@ -144,6 +155,8 @@ export async function batchProgress(db: Db, batchId: string): Promise<BatchProgr
       failed: count(jobStatus, "failed"),
       discarded: count(jobStatus, "discarded"),
     },
+    // A page shared by several recipes has a row for each of them.
+    photosWaiting: new Set(must(photos, "load photos").map((photo) => photo.storage_path)).size,
     done:
       pageStatus.length > 0 &&
       waitingPages === 0 &&
@@ -432,7 +445,7 @@ export type StepResult =
   | "worked"
   /** Other requests are working on the last open steps. Ask again shortly. */
   | "waiting"
-  /** Nothing left to do without a person. */
+  /** Nothing left to do without a person, and every page photo is framed. */
   | "done";
 
 /** Does the next open step of a batch, if there is one. */
@@ -477,6 +490,23 @@ export async function processNext(
     "check recipes",
   );
   if (busyJobs.length > 0) return "waiting";
+
+  // Every recipe is read. What is left is to make the page photos presentable: upright, and
+  // cut to the recipe where a page shows several. One page per request.
+  try {
+    const framed = await frameNextPage(
+      db,
+      householdId,
+      importModels(),
+      `${householdId}/${batchId}/`,
+    );
+    if (framed !== null) return "worked";
+  } catch (error) {
+    // A page the model cannot frame keeps its photo as it was taken, which is a valid view.
+    // An outage or a rate limit put the page back and is for the caller, as in every step.
+    if (!(error instanceof RecipeReadError)) throw error;
+    return "worked";
+  }
   await removeFullCopies(db, batchId);
   return "done";
 }

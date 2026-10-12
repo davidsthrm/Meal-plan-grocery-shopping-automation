@@ -853,6 +853,8 @@ export type Database = {
       }
       recipe_photo: {
         Row: {
+          crop_path: string | null
+          framed_at: string | null
           household_id: string
           id: string
           recipe_id: string
@@ -860,6 +862,8 @@ export type Database = {
           storage_path: string
         }
         Insert: {
+          crop_path?: string | null
+          framed_at?: string | null
           household_id: string
           id?: string
           recipe_id: string
@@ -867,6 +871,8 @@ export type Database = {
           storage_path: string
         }
         Update: {
+          crop_path?: string | null
+          framed_at?: string | null
           household_id?: string
           id?: string
           recipe_id?: string

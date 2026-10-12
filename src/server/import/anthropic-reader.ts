@@ -2,6 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { extractedRecipeSchema, type ExtractedRecipe } from "@/domain/import/extraction";
 import {
+  pageFrameSchema,
+  uprightChoiceSchema,
+  type PageFrame,
+  type UprightChoice,
+} from "@/domain/import/frame";
+import {
   transcriptionForVerification,
   verificationSchema,
   type Verification,
@@ -9,14 +15,23 @@ import {
 import type { PreparedImage } from "./normalize-image";
 import { suggestionSchema, toProposals, type Suggestions } from "@/domain/import/proposal";
 import { pageSurveySchema, type PageSurvey } from "@/domain/import/survey";
-import { EXTRACTION_PROMPT, SUGGESTION_PROMPT, SURVEY_PROMPT, VERIFICATION_PROMPT } from "./prompt";
+import {
+  EXTRACTION_PROMPT,
+  FRAME_PROMPT,
+  SUGGESTION_PROMPT,
+  SURVEY_PROMPT,
+  UPRIGHT_PROMPT,
+  VERIFICATION_PROMPT,
+} from "./prompt";
 import {
   RecipeReadError,
   type CatalogSuggester,
+  type PageFramer,
   type PageSurveyor,
   type ReadOptions,
   type RecipeReader,
   type RecipeVerifier,
+  type UprightFinder,
 } from "./read-recipe";
 
 export interface AnthropicReaderOptions {
@@ -112,6 +127,38 @@ export function createAnthropicSurveyor(options: AnthropicReaderOptions): PageSu
       zodOutputFormat(pageSurveySchema),
     );
     return { survey: output, usage };
+  };
+}
+
+/** Says how a page lies and where its recipes are, with a Claude model. Low effort. */
+export function createAnthropicFramer(options: AnthropicReaderOptions): PageFramer {
+  return async (image, titles) => {
+    const { output, usage } = await ask<PageFrame>(
+      { effort: "low", ...options },
+      FRAME_PROMPT,
+      [
+        ...imageBlocks([image]),
+        {
+          type: "text",
+          text: `Recipes on this photo: ${titles.map((title) => JSON.stringify(title)).join(", ")}`,
+        },
+      ],
+      zodOutputFormat(pageFrameSchema),
+    );
+    return { frame: output, usage };
+  };
+}
+
+/** Picks the upright one of four copies of a page with a Claude model. Low effort. */
+export function createAnthropicUprightFinder(options: AnthropicReaderOptions): UprightFinder {
+  return async (copies) => {
+    const { output, usage } = await ask<UprightChoice>(
+      { effort: "low", ...options },
+      UPRIGHT_PROMPT,
+      [...imageBlocks(copies), { type: "text", text: "Which copy is upright?" }],
+      zodOutputFormat(uprightChoiceSchema),
+    );
+    return { upright: output.upright, usage };
   };
 }
 

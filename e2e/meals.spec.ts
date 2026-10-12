@@ -161,7 +161,7 @@ test("a typed meal becomes its recipe, or a new recipe typed in by hand", async 
   await expect(page.getByText("15 Min.")).toBeVisible();
 });
 
-test("a recipe can be corrected by hand", async ({ page }) => {
+test("a recipe can be corrected by hand, its ingredients included", async ({ page }) => {
   await signIn(page);
   await page.goto("/rezepte?q=mohn");
   await page.getByRole("link", { name: /Zitronen-Mohn-Kuchen/ }).click();
@@ -171,12 +171,30 @@ test("a recipe can be corrected by hand", async ({ page }) => {
   await page.getByLabel("Reicht für").fill("2");
   await page.getByLabel("statt Personen").fill("Kastenform");
   await page.getByLabel("Art").selectOption("Dessert & Süßspeise");
-  // The recipe was typed, so its ingredients can be typed again.
-  await page.getByLabel("Zutaten, eine pro Zeile").fill("250 g Mehl\n3 Eier");
+
+  // Every ingredient line is there to correct: an amount, a line too many, a line missing.
+  await expect(page.getByLabel("Zutat", { exact: true })).toHaveCount(2);
+  await expect(page.getByText("Gedruckt: 250 g Butter")).toBeVisible();
+  await page.getByLabel("Menge", { exact: true }).first().fill("300");
+  await page.getByRole("button", { name: "Zeile Eier entfernen" }).click();
+  await page.getByRole("button", { name: "Zutat hinzufügen" }).click();
+  await page.getByLabel("Menge", { exact: true }).last().fill("200");
+  await page.getByLabel("Einheit").last().selectOption("g");
+  await page.getByLabel("Zutat", { exact: true }).last().fill("Mehl");
+  // An amount without its ingredient is refused, and nothing typed is lost.
+  await page.getByRole("button", { name: "Zutat hinzufügen" }).click();
+  await page.getByLabel("Menge", { exact: true }).last().fill("3");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("Noch nicht gespeichert.")).toBeVisible();
+  await expect(page.getByLabel("Menge", { exact: true }).first()).toHaveValue("300");
+  // A row that was added and left empty is simply not a line.
+  await page.getByLabel("Menge", { exact: true }).last().fill("");
   await page.getByRole("button", { name: "Speichern" }).click();
 
   await expect(page.getByRole("heading", { name: "Zitronen-Mohn-Kuchen" })).toBeVisible();
   await expect(page.getByText("2 Kastenform")).toBeVisible();
   await expect(page.getByText("Dessert & Süßspeise")).toBeVisible();
-  await expect(page.getByText("250 g")).toBeVisible();
+  await expect(page.getByText("300 g")).toBeVisible();
+  await expect(page.getByText("Mehl")).toBeVisible();
+  await expect(page.getByText("Eier")).toHaveCount(0);
 });

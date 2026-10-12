@@ -17,6 +17,24 @@ test("screens @look", async ({ page }, info) => {
   await page.goto("/rezepte");
   await page.waitForLoadState("networkidle");
   await shot("2-entdecken");
+  // The first recipe on the page, and its photographed page opened if it has one.
+  const recipe = page.locator('main a[href^="/rezepte/"]:not([href$="/neu"])').first();
+  if (await recipe.count()) {
+    await recipe.click();
+    await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
+    await page.waitForLoadState("networkidle");
+    await shot("2-rezept");
+    const photo = page.getByText("Originalfoto");
+    if (await photo.count()) {
+      await photo.click();
+      // The picture is only fetched once it is shown.
+      await page
+        .locator("details img")
+        .first()
+        .evaluate((image: HTMLImageElement) => image.decode());
+      await shot("2-rezept-foto");
+    }
+  }
 
   await page.goto("/import");
   await shot("3-import");

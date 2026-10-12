@@ -18,8 +18,6 @@ interface Props {
   /** What the form starts with. `lines` null leaves the ingredients out of the form. */
   initial: TypedRecipeInput;
   categories: Category[];
-  /** The recipe that is changed. Without it, a new one is created. */
-  recipeId?: string;
   /** Hidden fields that travel with the form, such as the meal a new recipe is for. */
   extra?: Record<string, string>;
   submitLabel: string;
@@ -27,8 +25,8 @@ interface Props {
 
 const none: TypedRecipeState = { errors: {}, values: null };
 
-/** The form for a recipe typed in by hand, and for correcting one. */
-export function TypedRecipeForm({ initial, categories, recipeId, extra = {}, submitLabel }: Props) {
+/** The form for a new recipe typed in by hand: quick, one ingredient per line. */
+export function TypedRecipeForm({ initial, categories, extra = {}, submitLabel }: Props) {
   const [state, action, pending] = useActionState(saveTypedRecipe, none);
   const values = state.values ?? initial;
   const { errors } = state;
@@ -42,7 +40,6 @@ export function TypedRecipeForm({ initial, categories, recipeId, extra = {}, sub
 
   return (
     <form action={action} className="space-y-4">
-      {recipeId && <input type="hidden" name="id" value={recipeId} />}
       {Object.entries(extra).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
