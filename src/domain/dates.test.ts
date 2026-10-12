@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween, weekdayShort } from "./dates";
+import {
+  addDays,
+  dayAndMonth,
+  daysBetween,
+  isIsoDate,
+  mondayOf,
+  planningWeek,
+  weekDates,
+  weekRange,
+  weekdayLong,
+  weekdayShort,
+} from "./dates";
 
 describe("dates", () => {
   it("counts whole days between two dates", () => {
@@ -20,6 +31,47 @@ describe("dates", () => {
   it("names the weekday as the plan does", () => {
     expect(weekdayShort("2026-10-12")).toBe("Mo");
     expect(weekdayShort("2026-10-18")).toBe("So");
+  });
+
+  it("finds the Monday of any day's week", () => {
+    expect(mondayOf("2026-10-12")).toBe("2026-10-12");
+    expect(mondayOf("2026-10-15")).toBe("2026-10-12");
+    expect(mondayOf("2026-10-18")).toBe("2026-10-12");
+    expect(mondayOf("2026-11-01")).toBe("2026-10-26");
+  });
+
+  it("lists the seven days of a week", () => {
+    expect(weekDates("2026-10-26")).toEqual([
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-10-31",
+      "2026-11-01",
+    ]);
+  });
+
+  it("opens the planner on the running week, and from Saturday on the coming one", () => {
+    expect(planningWeek("2026-10-12")).toBe("2026-10-12");
+    expect(planningWeek("2026-10-16")).toBe("2026-10-12");
+    expect(planningWeek("2026-10-17")).toBe("2026-10-19");
+    expect(planningWeek("2026-10-18")).toBe("2026-10-19");
+  });
+
+  it("writes days and weeks the German way", () => {
+    expect(weekdayLong("2026-10-13")).toBe("Dienstag");
+    expect(dayAndMonth("2026-10-03")).toBe("3. Oktober");
+    expect(weekRange("2026-10-12")).toBe("12.–18. Oktober");
+    expect(weekRange("2026-09-28")).toBe("28. September – 4. Oktober");
+    expect(weekRange("2026-12-28")).toBe("28. Dezember – 3. Januar");
+  });
+
+  it("tells a real date from anything else", () => {
+    expect(isIsoDate("2026-10-12")).toBe(true);
+    expect(isIsoDate("2026-02-30")).toBe(false);
+    expect(isIsoDate("12.10.2026")).toBe(false);
+    expect(isIsoDate("2026-10-12T00:00")).toBe(false);
   });
 
   it("rejects anything that is not an ISO date", () => {
