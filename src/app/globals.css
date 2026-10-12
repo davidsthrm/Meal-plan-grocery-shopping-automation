@@ -1,1 +1,99 @@
 @import "tailwindcss";
+
+/*
+ * Calm and practical: warm paper, dark ink, one green accent. Sized for reading at the
+ * kitchen table and for thumbs. No gradients, no shadows that pretend to be depth.
+ */
+@theme {
+  --color-paper: #f7f4ee;
+  --color-surface: #fffdf9;
+  --color-ink: #23211d;
+  --color-muted: #6b665d;
+  --color-line: #ddd6c8;
+  --color-accent: #2f5d50;
+  --color-accent-ink: #ffffff;
+  --color-accent-soft: #e3ece8;
+  --color-warn: #8a5a00;
+  --color-warn-soft: #f6ead0;
+  --color-danger: #a3352a;
+  --color-danger-soft: #f6e1dd;
+
+  --font-sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+html {
+  font-size: 17px;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Every control is at least 44px tall: comfortable for a thumb. */
+.btn {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  padding: 0 1rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+.btn:hover {
+  border-color: var(--color-muted);
+}
+.btn:disabled {
+  opacity: 0.5;
+}
+.btn-primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+.btn-primary:hover {
+  border-color: var(--color-ink);
+}
+.btn-danger {
+  color: var(--color-danger);
+}
+
+.field {
+  min-height: 2.75rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  padding: 0.5rem 0.75rem;
+  color: var(--color-ink);
+}
+.field:focus,
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.field-problem {
+  border-color: var(--color-warn);
+  background: var(--color-warn-soft);
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.card {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+}
