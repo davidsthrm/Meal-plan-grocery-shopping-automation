@@ -53,6 +53,20 @@ export async function removePhotos(paths: string[]): Promise<void> {
   if (error) throw new Error(`could not remove photos: ${error.message}`);
 }
 
+/** Removes every file below a folder of the bucket. */
+export async function removeFolder(prefix: string): Promise<void> {
+  const bucket = createAdminClient().storage.from(BUCKET);
+  const { data, error } = await bucket.list(prefix, { limit: 1000 });
+  if (error) throw new Error(`could not list ${prefix}: ${error.message}`);
+  const files: string[] = [];
+  for (const entry of data) {
+    // An entry without an id is a folder.
+    if (entry.id === null) await removeFolder(`${prefix}/${entry.name}`);
+    else files.push(`${prefix}/${entry.name}`);
+  }
+  await removePhotos(files);
+}
+
 /** Short-lived links for showing stored photos. Returns them by path. */
 export async function viewUrls(paths: string[]): Promise<Record<string, string>> {
   if (paths.length === 0) return {};
