@@ -186,8 +186,13 @@ Import
 - The steps, in `src/server/import/import-recipe.ts`: normalise the photos, read them (first
   pass), map every line to the catalog, run the automatic checks, let a second request compare
   the transcription with the photos (second pass), then decide.
-- A recipe is approved only if nothing at all came up. Any issue sends it to the review queue.
-  A recipe the second pass could not check is never approved.
+- The household only looks at recipes that were not read with certainty. A recipe goes to the
+  review queue when something about the reading is doubtful: no title or servings, a line the
+  model was unsure about, an amount without a unit or far too large, or the second pass
+  seeing something different. A recipe the second pass could not check is never approved.
+- An ingredient the catalog does not know is not a reason for review, and neither is doubt
+  about the category. The recipe was read correctly; only the catalog is behind. Measured on
+  the first real cookbook: 100 of 118 recipes waited for nothing but unknown ingredients.
 - Never guess. A value the model cannot read with certainty is null, and the model says so in
   `uncertain`. Observations that need no decision go to `notes` and never block approval.
 - What a photo cannot show comes from the upload form: the cookbook always, title and page
@@ -196,8 +201,12 @@ Import
 - Mapping to the catalog: the longest part of the printed line that contains the ingredient's
   name and is a catalog name wins ("1 getrocknete Chilischote" is not the fresh one).
 - An ingredient the catalog does not know is never created silently. It becomes one open
-  proposal per name: either another name for an existing ingredient, or a new one with a
-  suggested aisle group, shop, buying mode and shelf life. The household confirms in a batch.
+  proposal per product: either another name for an existing ingredient, or a new one with a
+  suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
+  lines stay as printed text.
+- Singular, plural and a leading "Bio-" are the same product ("Lachsfilets", "Bio-Gurke").
+  The import maps them by itself, and proposals the catalog can answer by now are closed
+  before the list is shown. Short words get no such variants: "Ei" is not "Eis".
 - The second pass never sees the printed lines of the transcription, only the values.
   Otherwise it would compare the transcription with itself instead of with the photo.
 - A batch is one sitting with one cookbook: any number of page photos, in page order. Each
@@ -213,9 +222,11 @@ Import
   otherwise. A clean full-size copy is kept for that and removed when the batch is through.
   Measured on a made-up double page with four sample recipes: read from the page alone, one
   fraction was misread; with enlarged parts all were correct, at about 0.95 cents per recipe.
-- New-ingredient proposals can be accepted all at once. Proposals that say "same as an
-  existing ingredient" are always decided one by one: a wrong merge would quietly put the
-  wrong product on shopping lists.
+- "Neue Zutaten" is one list. Every row has the suggested decision already set: a new
+  ingredient with its aisle, another name for an existing one, not for the catalog, or later.
+  The household changes what is wrong and confirms everything with one button. The
+  suggestions "same as an existing ingredient" are listed first, because a wrong one there
+  would quietly put the wrong product on shopping lists.
 - What was read must always be storable. A recipe that waits for review can contain anything
   a model returned, so the stored rows are made valid (an amount without a known unit becomes
   a count, a broken range loses its upper bound) and the checks flag each case. If the
@@ -227,6 +238,8 @@ Import
   job waits. While another request is still grouping the pages, the answer is "waiting".
 - The first look notes the page number of each recipe's own side, so the two recipes of a
   double page get their own page numbers.
+- "Handvoll" is a unit. A length ("2 cm Ingwer") is a size, stored as one piece with the
+  size in the note.
 - Titles printed all in lower case or capitals are stored with normal German capitalisation.
   A small container that is no unit of its own ("Döschen", "Briefchen") is a Packung.
 - A batch can be deleted. Its pages, photos and the recipes read from it go; ingredients
@@ -235,7 +248,6 @@ Import
   server. The upload from the phone is deleted as soon as the clean JPEG is stored.
 - Review (`/import/pruefen`) shows photo and fields side by side. Everything typed is checked
   again on the server by `readReview`. Approving replaces the recipe's lines.
-- A recipe that waited only for ingredient decisions is approved by itself once they are made.
 - Model instructions live in `src/server/import/prompt.ts`. Their examples must not come from
   the sample recipes, or the measurements stop meaning anything.
 - Measured on the five sample photos with `claude-haiku-5-5` (October 2026): 15 of 15 readings
