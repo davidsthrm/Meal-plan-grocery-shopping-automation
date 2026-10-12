@@ -118,6 +118,37 @@ describe("buildShoppingList", () => {
     expect(lines.get("karotten@main#Bund")!.purchase).toEqual({ quantity: 1, unit: "Bund" });
   });
 
+  it("does not make a line of its own out of a spoonful that cannot be added", () => {
+    // Butter is bought by weight; a tablespoon of it has no weight the catalog knows.
+    const lines = build(
+      [recipe("a", [line("butter", 3, "EL"), line("butter", 2, "TL")])],
+      [slot(MONDAY, "a")],
+    );
+    expect([...lines.keys()]).toEqual(["butter@main"]);
+    expect(lines.get("butter@main")).toMatchObject({
+      purchase: null,
+      amounts: [],
+      hasUnquantified: true,
+    });
+    // Next to a real amount, the spoonful changes nothing about what is bought.
+    const more = build(
+      [recipe("a", [line("butter", 300, "g"), line("butter", 1, "EL")])],
+      [slot(MONDAY, "a")],
+    );
+    expect([...more.keys()]).toEqual(["butter@main"]);
+    expect(more.get("butter@main")!.amounts).toEqual([{ quantity: 300, unit: "g" }]);
+  });
+
+  it("names one piece in the singular where the catalog knows the word", () => {
+    const one = build([recipe("a", [line("karotten", 1, "Stück")])], [slot(MONDAY, "a")]);
+    expect(one.get("karotten@main")).toMatchObject({ label: "Karotte" });
+    const two = build([recipe("a", [line("karotten", 2, "Stück")])], [slot(MONDAY, "a")]);
+    expect(two.get("karotten@main")).toMatchObject({ label: "Karotten" });
+    // No singular among the other names: the name stays as it is.
+    const tomato = build([recipe("a", [line("tomaten", 1, "Stück")])], [slot(MONDAY, "a")]);
+    expect(tomato.get("tomaten@main")).toMatchObject({ label: "Tomaten" });
+  });
+
   it("needs only one line for an ingredient that shows no quantity", () => {
     const lines = build(
       [
