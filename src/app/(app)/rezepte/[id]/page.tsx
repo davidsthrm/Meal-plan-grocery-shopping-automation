@@ -21,7 +21,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     .maybeSingle();
   if (!recipe) notFound();
 
-  const [lines, photos, ingredients] = await Promise.all([
+  const [lines, photos, ingredients, tagLinks, categories] = await Promise.all([
     db
       .from("recipe_ingredient")
       .select(
@@ -35,7 +35,11 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       .eq("recipe_id", id)
       .order("sort_order"),
     db.from("ingredient").select("id, name"),
+    db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
+    db.from("tag").select("id, name").eq("group_name", "Kategorie"),
   ]);
+  const ownTags = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
+  const category = must(categories, "load categories").find((tag) => ownTags.has(tag.id));
   const names = new Map(must(ingredients, "load ingredients").map((i) => [i.id, i.name]));
   const photoPaths = must(photos, "load photos").map((photo) => photo.storage_path);
   const urls = await viewUrls(photoPaths);
@@ -49,6 +53,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       <h1 className="mt-2 text-2xl font-semibold">{recipe.title}</h1>
       <p className="mt-1 text-muted">
         {[
+          category?.name ?? null,
           `${servingsText(recipe.servings_min, recipe.servings_max)} Portionen`,
           recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null,
           source || null,
