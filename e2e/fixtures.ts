@@ -373,6 +373,8 @@ export async function resetLibrary(): Promise<void> {
   const household = await testHousehold();
   // Only ever the test household: every statement is scoped to its id.
   await clearRecipes(household);
+  const goals = await db.from("household").update({ balance_targets: null }).eq("id", household);
+  if (goals.error) throw new Error(`reset goals: ${goals.error.message}`);
 
   const recipes = check(
     await db
@@ -432,10 +434,26 @@ export async function resetLibrary(): Promise<void> {
   }
 }
 
-export async function signIn(page: Page): Promise<void> {
+/**
+ * Signs the test user in. A device that opens the plan for the first time is asked about the
+ * goals of a week; the tests are no first visit unless they say so.
+ */
+export async function signIn(
+  page: Page,
+  visit: "first" | "returning" = "returning",
+): Promise<void> {
+  if (visit === "returning") {
+    await page.context().addCookies([
+      {
+        name: "ziele-gesehen",
+        value: "1",
+        url: `http://localhost:${process.env.E2E_PORT ?? 3100}`,
+      },
+    ]);
+  }
   await page.goto("/login");
   await page.getByLabel("E-Mail").fill(process.env.E2E_EMAIL!);
   await page.getByLabel("Passwort").fill(process.env.E2E_PASSWORD!);
   await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL("**/woche");
+  await page.waitForURL(visit === "first" ? "**/woche/ziele?start=1" : "**/woche");
 }
