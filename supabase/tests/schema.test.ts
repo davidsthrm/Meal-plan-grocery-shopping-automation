@@ -179,6 +179,17 @@ describe("schema", () => {
     expect(after.rows).toEqual([{ household_id: SEED_HOUSEHOLD_ID, recipe_id: null }]);
   });
 
+  it("lets a recipe wait for review without servings, but not be approved without them", async () => {
+    const insert = (status: string) =>
+      db.query(
+        "insert into public.recipe (household_id, title, status) values ($1, 'Ohne Portionen', $2)",
+        [SEED_HOUSEHOLD_ID, status],
+      );
+    await expect(insert("needs_review")).resolves.toBeDefined();
+    await expect(insert("approved")).rejects.toThrow(/recipe_approved_has_servings/);
+    await db.query("delete from public.recipe where title = 'Ohne Portionen'");
+  });
+
   it("does not let a row point into another household", async () => {
     // Even with full rights: a recipe line of one household cannot use another's ingredient.
     await db.query(

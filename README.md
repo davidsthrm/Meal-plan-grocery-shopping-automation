@@ -11,10 +11,17 @@ cp .env.example .env.local   # fill in once Supabase and the API key exist
 npm run dev                  # http://localhost:3000
 ```
 
+## Using the app
+
+`npm run dev`, open http://localhost:3000 and sign in with the account created in Supabase.
+Under "Import", enter the cookbook, choose the photos of its pages and upload. Recipes that
+were read with certainty appear under "Rezepte"; the others wait under "Prüfen".
+
 ## Checks
 
 ```bash
 npm test          # unit, schema and acceptance tests (no Docker needed)
+npm run e2e       # browser tests, need `npm run e2e:setup` once
 npm run typecheck
 npm run lint
 ```

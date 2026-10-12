@@ -4,7 +4,12 @@ import { toDraft, type ProvidedMetadata, type RecipeDraft } from "@/domain/impor
 import type { ExtractedRecipe } from "@/domain/import/extraction";
 import type { Verification } from "@/domain/import/verification";
 import { normalizeImage, type PreparedImage } from "./normalize-image";
-import { RecipeReadError, type RecipeReader, type RecipeVerifier } from "./read-recipe";
+import {
+  RecipeReadError,
+  type ReadOptions,
+  type RecipeReader,
+  type RecipeVerifier,
+} from "./read-recipe";
 
 /**
  * The import of one recipe, from uploaded photos to a decision:
@@ -40,14 +45,26 @@ export interface ImportResult {
   images: PreparedImage[];
 }
 
+/** Imports a recipe from photos as they come from a phone. */
 export async function importRecipe(
   photos: Buffer[],
   provided: ProvidedMetadata,
   deps: ImportDeps,
+  options: ReadOptions = {},
 ): Promise<ImportResult> {
   const images = await Promise.all(
     photos.map((photo, i) => normalizeImage(photo, `Page ${i + 1}`)),
   );
+  return importFromImages(images, provided, deps, options);
+}
+
+/** Imports a recipe from photos that are already upright JPEGs without metadata. */
+export async function importFromImages(
+  images: PreparedImage[],
+  provided: ProvidedMetadata,
+  deps: ImportDeps,
+  options: ReadOptions = {},
+): Promise<ImportResult> {
   const usage = { inputTokens: 0, outputTokens: 0 };
   const spend = (used: { inputTokens: number; outputTokens: number }) => {
     usage.inputTokens += used.inputTokens;
@@ -56,7 +73,7 @@ export async function importRecipe(
 
   let extraction: ExtractedRecipe;
   try {
-    const reading = await deps.read(images);
+    const reading = await deps.read(images, options);
     extraction = reading.recipe;
     spend(reading.usage);
   } catch (error) {
@@ -80,7 +97,7 @@ export async function importRecipe(
 
   let verification: Verification | null = null;
   try {
-    const checked = await deps.verify(images, extraction);
+    const checked = await deps.verify(images, extraction, options);
     verification = checked.verification;
     spend(checked.usage);
     for (const problem of verification.problems) {

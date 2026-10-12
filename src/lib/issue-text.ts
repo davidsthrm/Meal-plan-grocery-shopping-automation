@@ -1,0 +1,29 @@
+import type { ImportIssue } from "@/domain/import/checks";
+
+/** What an import issue means, in words for the person reviewing the recipe. */
+export function issueText(issue: ImportIssue): string {
+  switch (issue.code) {
+    case "title_missing":
+      return "Auf dem Foto steht kein Titel. Bitte trage ihn ein.";
+    case "servings_missing":
+      return "Auf dem Foto steht nicht, für wie viele Portionen das Rezept ist.";
+    case "no_ingredients":
+      return "Es wurden keine Zutaten gefunden.";
+    case "unmapped_ingredient":
+      return `„${issue.detail}“ steht noch nicht im Zutatenkatalog.`;
+    case "unclear_line":
+      return "Diese Zeile war nicht sicher zu lesen. Bitte mit dem Foto vergleichen.";
+    case "model_uncertain":
+      return `Nicht sicher gelesen: ${issue.detail}`;
+    case "implausible_quantity":
+      return "Die Menge ist ungewöhnlich groß. Bitte mit dem Foto vergleichen.";
+    case "invalid_range":
+      return "Die Von-bis-Menge passt nicht zusammen.";
+    case "invalid_alternative":
+      return "Die Zuordnung „oder“ passt nicht.";
+    case "verification_disagrees":
+      return `Die Gegenprüfung liest etwas anderes: ${issue.detail}`;
+    case "read_failed":
+      return `Konnte nicht gelesen werden: ${issue.detail}`;
+  }
+}
