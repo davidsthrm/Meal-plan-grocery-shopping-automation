@@ -81,16 +81,16 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
 
 test("a recipe found while browsing is put on the plan from its own page", async ({ page }) => {
   await page.goto("/rezepte");
-  // Butter is in no title: the search also looks at the ingredients.
-  await page.getByPlaceholder("Titel oder Zutat").fill("Butter");
+  // "Rindersteak" is in no title: the search also looks at the ingredients.
+  await page.getByPlaceholder("Titel oder Zutat").fill("Rindersteak");
   await page.getByRole("button", { name: "Suchen" }).click();
   await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
-  await page.getByRole("link", { name: /Forelle Müllerin/ }).click();
+  await page.getByRole("link", { name: /Pfeffersteak/ }).click();
   await page.getByRole("link", { name: "Einplanen" }).click();
 
   await expect(page.getByText("einplanen: Mahlzeit wählen.")).toBeVisible();
   await page.getByRole("button", { name: "Sonntag Abend: hier einplanen" }).click();
-  await expect(meal(page, "Sonntag Abend")).toContainText("Forelle Müllerin");
+  await expect(meal(page, "Sonntag Abend")).toContainText("Pfeffersteak");
   await expect(page.getByText("einplanen: Mahlzeit wählen.")).toHaveCount(0);
 });
 
