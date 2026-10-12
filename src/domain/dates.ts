@@ -97,3 +97,24 @@ export function weekRange(monday: IsoDate): string {
 export function weekdayShort(date: IsoDate): string {
   return WEEKDAYS_SHORT[new Date(toUtc(date)).getUTCDay()];
 }
+
+/**
+ * The number of the calendar week a day is in, as German calendars print it: weeks start on
+ * Monday, and week 1 is the one with the year's first Thursday.
+ */
+export function isoWeek(date: IsoDate): number {
+  const thursday = addDays(mondayOf(date), 3);
+  const firstOfYear = `${thursday.slice(0, 4)}-01-01`;
+  return Math.floor(daysBetween(firstOfYear, thursday) / 7) + 1;
+}
+
+/** The month a week counts for, as "2026-10": the one most of its days are in. */
+export function monthOfWeek(monday: IsoDate): string {
+  return addDays(monday, 3).slice(0, 7);
+}
+
+/** "Oktober 2026" for "2026-10". */
+export function monthAndYear(month: string): string {
+  const [year, number] = month.split("-");
+  return `${MONTHS[Number(number) - 1]} ${year}`;
+}
