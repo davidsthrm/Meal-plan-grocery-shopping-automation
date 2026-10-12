@@ -31,6 +31,7 @@ is easier than pen and paper.
 | Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
 | The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
 | Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
+| The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
 | Browser test of a real upload with the models (about 1 ct)                | `npm run e2e:upload`                           |
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
