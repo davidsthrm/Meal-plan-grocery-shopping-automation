@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowIcon, WishIcon } from "@/components/icons";
+import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
@@ -17,10 +19,10 @@ import {
 import type { RecipeSummary } from "@/domain/library/summary";
 import { mealsOf, MEALS, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
-import { suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
+import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
+import { rank } from "@/domain/rank";
 import {
   GROUP_NAME,
-  kindMark,
   MEAL_NAME,
   plannedText,
   slotText,
@@ -48,6 +50,12 @@ export const metadata: Metadata = { title: "Wochenplan" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
+/** How many ideas show faintly in an empty week, and what an idea needs to be one of them. */
+const HINTS = 3;
+const HINT_SCORE = 2;
+/** How many different suggestions a meal can be asked for before they come round again. */
+const PROPOSALS = 12;
+
 export default async function WeekPage(props: PageProps<"/woche">) {
   // Whoever opens the plan on a device for the first time is shown what the household aims
   // for in a week, and can change it.
@@ -58,7 +66,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const now = today();
   const asked = one(params.w);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : planningWeek(now);
-  // "Other suggestions" draws again: the number only changes which of equals come first.
+  // The meal someone asked a suggestion for, and how often they asked for another one.
+  const askedFor = one(params.frage) ?? "";
   const draw = Math.max(0, Math.floor(Number(one(params.v)) || 0));
   const placingId = one(params.rezept) ?? null;
 
@@ -83,22 +92,49 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const open = days
     .filter((date) => date >= now)
     .flatMap((date) => MEALS.filter((meal) => !slotAt(date, meal)).map((meal) => ({ date, meal })));
-  const picks =
-    placing || showExtras
-      ? []
-      : suggestWeek(library.recipes, open, {
-          balance,
-          planned: new Set(
-            slots.flatMap((slot) =>
-              slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
-            ),
-          ),
-          history,
-          weekStart: week,
-          seed: `${week}:${draw}`,
-        });
-  const suggestionAt = (date: IsoDate, meal: Meal) =>
+  const context = {
+    balance,
+    planned: new Set(
+      slots.flatMap((slot) =>
+        slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
+      ),
+    ),
+    history,
+    weekStart: week,
+    seed: week,
+  };
+  // What would complete the week. Nothing of it is put on the plan unasked.
+  const picks = placing || showExtras ? [] : suggestWeek(library.recipes, open, context);
+  const pickAt = (date: IsoDate, meal: Meal) =>
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
+  // A few of them show faintly in their meal: the ones with the most to say for them, and
+  // among equals not simply the first days of the week.
+  const hinted = new Set(
+    picks
+      .filter((pick) => pick.suggestion.score >= HINT_SCORE)
+      .map((pick) => ({ key: `${pick.date}.${pick.meal}`, score: pick.suggestion.score }))
+      .sort((a, b) => b.score - a.score || rank(week, a.key) - rank(week, b.key))
+      .slice(0, HINTS)
+      .map((pick) => pick.key),
+  );
+  // The answer to "Hast du einen Vorschlag?": the pick for that meal first, then the next best
+  // one each time another is asked for, and round again when the list is through.
+  const question = open.find((slot) => `${slot.date}.${slot.meal}` === askedFor);
+  let proposal: Suggestion | undefined;
+  if (question && !placing && !showExtras) {
+    const first = pickAt(question.date, question.meal);
+    const ranked = suggest(
+      library.recipes,
+      question,
+      { ...context, seed: `${week}:${question.date}:${question.meal}` },
+      PROPOSALS,
+    ).filter((entry) => entry.recipe.id !== first?.recipe.id);
+    const list = first ? [first, ...ranked] : ranked;
+    proposal = list.length > 0 ? list[draw % list.length] : undefined;
+  }
+  const wishes = library.recipes.filter(
+    (recipe) => recipe.wanted && !context.planned.has(recipe.id),
+  );
 
   const weekLink = (monday: IsoDate) =>
     `/woche?w=${monday}${placing ? `&rezept=${placing.id}` : ""}${showExtras ? "&t=extra" : ""}`;
@@ -111,17 +147,28 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           <p className="eyebrow">Wochenplan</p>
           <h1 className="title mt-1">{weekRange(week)}</h1>
         </div>
-        <nav aria-label="Woche wechseln" className="flex gap-2">
-          <Link href={weekLink(addDays(week, -7))} className="btn btn-small">
-            <span aria-hidden>←</span> Vorige
+        <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
+          <Link
+            href={weekLink(addDays(week, -7))}
+            className="btn btn-small px-2.5"
+            aria-label="Vorige Woche"
+          >
+            <ArrowIcon back />
           </Link>
           {week !== thisWeek && (
             <Link href={weekLink(thisWeek)} className="btn btn-small">
               Aktuelle
             </Link>
           )}
-          <Link href={weekLink(addDays(week, 7))} className="btn btn-small">
-            Nächste <span aria-hidden>→</span>
+          <Link
+            href={weekLink(addDays(week, 7))}
+            className="btn btn-small px-2.5"
+            aria-label="Nächste Woche"
+          >
+            <ArrowIcon />
+          </Link>
+          <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
+            Alle Wochen
           </Link>
         </nav>
       </div>
@@ -165,9 +212,30 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
       {showExtras && <Extras week={week} extras={extras} recipeOf={recipeOf} />}
 
+      {!placing && !showExtras && wishes.length > 0 && (
+        <section aria-label="Möchte ich kochen" className="mt-4">
+          <p className="eyebrow flex items-center gap-1.5">
+            <WishIcon filled />
+            Möchte ich kochen
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {wishes.map((recipe) => (
+              <Link
+                key={recipe.id}
+                href={`/woche?w=${week}&rezept=${recipe.id}`}
+                className="chip"
+                aria-label={`${recipe.title} einplanen`}
+              >
+                {recipe.title}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {!placing && !showExtras && (picks.length > 0 || slots.length === 0) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {picks.length > 1 && (
+          {picks.length > 0 && (
             <form action={acceptSuggestions}>
               <input type="hidden" name="week" value={week} />
               {picks.map((pick) => (
@@ -178,15 +246,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                   value={`${pick.date}|${pick.meal}|${pick.suggestion.recipe.id}`}
                 />
               ))}
-              <SubmitButton className="btn btn-primary btn-small">
-                Alle {picks.length} Vorschläge übernehmen
-              </SubmitButton>
+              <SubmitButton className="btn btn-small">Plan vervollständigen</SubmitButton>
             </form>
-          )}
-          {picks.length > 0 && (
-            <Link href={`/woche?w=${week}&v=${draw + 1}`} scroll={false} className="btn btn-small">
-              Andere Vorschläge
-            </Link>
           )}
           {slots.length === 0 && previous.length > 0 && (
             <form action={copyLastWeek}>
@@ -220,7 +281,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                   date={date}
                   meal={meal}
                   slot={slotAt(date, meal)}
-                  suggestion={suggestionAt(date, meal)}
+                  proposal={
+                    question?.date === date && question.meal === meal ? proposal : undefined
+                  }
+                  hint={hinted.has(`${date}.${meal}`) ? pickAt(date, meal) : undefined}
+                  draw={draw}
+                  canAsk={date >= now && meal !== "coffee"}
                   recipeOf={recipeOf}
                   placing={placing}
                 />
@@ -233,15 +299,14 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   );
 }
 
-/** A recipe's title as a link to it, with a dot in the colour of its kind in front. */
+/** A recipe's title as a link to it, with its pictogram on the colour of its kind in front. */
 function KindTitle({ recipe, id }: { recipe: RecipeSummary | undefined; id: string }) {
-  const kind = kindMark(recipe?.proteinType ?? null);
   return (
-    <span className={`flex items-baseline gap-2 ${kind?.className ?? ""}`}>
-      {kind && <span className="dot -translate-y-px" title={kind.label} />}
+    <span className="flex items-center gap-2.5">
+      {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
       <Link
         href={`/rezepte/${id}`}
-        className="font-semibold decoration-line underline-offset-4 hover:underline"
+        className="min-w-0 font-semibold decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
       </Link>
@@ -393,13 +458,32 @@ interface CellProps {
   date: IsoDate;
   meal: Meal;
   slot: PlanSlot | undefined;
-  suggestion: Suggestion | undefined;
+  /** The answer to "Hast du einen Vorschlag?", when this meal was asked about. */
+  proposal: Suggestion | undefined;
+  /** An idea shown faintly in an open meal nobody asked about. */
+  hint: Suggestion | undefined;
+  /** How often another suggestion was asked for. */
+  draw: number;
+  /** Whether a suggestion can be asked for: not for a meal that is over. */
+  canAsk: boolean;
   recipeOf: ReadonlyMap<string, RecipeSummary>;
   /** The recipe that is being put somewhere, if the page was opened for that. */
   placing: RecipeSummary | null;
 }
 
-function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: CellProps) {
+function MealCell({
+  week,
+  date,
+  meal,
+  slot,
+  proposal,
+  hint,
+  draw,
+  canAsk,
+  recipeOf,
+  placing,
+}: CellProps) {
+  const ask = (again: number) => `/woche?w=${week}&frage=${date}.${meal}&v=${again}#tag-${date}`;
   const where = (
     <>
       <input type="hidden" name="week" value={week} />
@@ -451,14 +535,45 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
         <p className="text-sm text-muted">{slot.foods?.map((food) => food.label).join(", ")}</p>
       )}
 
-      {!slot && suggestion && !placing && (
-        <div className="mt-1 rounded-lg border border-dashed border-line px-3 py-2">
+      {!slot && proposal && !placing && (
+        <div className="mt-1 rounded-lg border border-accent/40 bg-surface px-3 py-2.5">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
-          <KindTitle recipe={suggestion.recipe} id={suggestion.recipe.id} />
-          {suggestion.reasons.length > 0 && (
-            <p className="text-sm text-muted">{whyText(suggestion.reasons)}</p>
+          <div className="mt-1">
+            <KindTitle recipe={proposal.recipe} id={proposal.recipe.id} />
+          </div>
+          {proposal.reasons.length > 0 && (
+            <p className="mt-1 text-sm text-muted">{whyText(proposal.reasons)}</p>
           )}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <form action={planRecipe}>
+              {where}
+              <input type="hidden" name="recipe" value={proposal.recipe.id} />
+              <input type="hidden" name="mode" value="replace" />
+              <SubmitButton
+                className="btn btn-primary btn-small"
+                label={`${what}: ${proposal.recipe.title} einplanen`}
+              >
+                Gute Idee!
+              </SubmitButton>
+            </form>
+            <Link href={ask(draw + 1)} scroll={false} className="btn btn-small">
+              Noch ein Vorschlag
+            </Link>
+          </div>
         </div>
+      )}
+
+      {/* Nobody asked: an idea may show, pale, and waits to be asked about. */}
+      {!slot && !proposal && hint && !placing && (
+        <Link
+          href={ask(0)}
+          scroll={false}
+          className="mt-1 flex items-center gap-2 opacity-55 transition-opacity hover:opacity-100"
+          aria-label={`${what}: Idee ${hint.recipe.title} ansehen`}
+        >
+          <RecipeBadge recipe={hint.recipe} className="h-7 w-7" />
+          <span className="min-w-0 truncate text-sm text-muted">{hint.recipe.title}</span>
+        </Link>
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -516,26 +631,23 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
           </>
         ) : (
           <>
-            {suggestion && (
-              <form action={planRecipe}>
-                {where}
-                <input type="hidden" name="recipe" value={suggestion.recipe.id} />
-                <input type="hidden" name="mode" value="replace" />
-                <SubmitButton
-                  className="btn btn-small"
-                  label={`${what}: Vorschlag ${suggestion.recipe.title} übernehmen`}
-                >
-                  Übernehmen
-                </SubmitButton>
-              </form>
-            )}
             <Link
               href={choose("replace")}
-              className={suggestion ? "link text-sm" : "btn btn-small"}
+              className={proposal ? "link text-sm" : "btn btn-small"}
               aria-label={`${what} planen`}
             >
-              {suggestion ? "Etwas anderes" : "Planen"}
+              {proposal ? "Selbst wählen" : "Planen"}
             </Link>
+            {canAsk && !proposal && (
+              <Link
+                href={ask(0)}
+                scroll={false}
+                className="link text-sm"
+                aria-label={`${what}: Hast du einen Vorschlag?`}
+              >
+                Hast du einen Vorschlag?
+              </Link>
+            )}
           </>
         )}
       </div>

@@ -40,6 +40,22 @@ export async function setFavorite(form: FormData): Promise<void> {
   revalidatePath(`/rezepte/${input.recipe}`);
 }
 
+/** Marks a recipe as one someone wants to cook soon, or takes the mark away. */
+export async function setWanted(form: FormData): Promise<void> {
+  const input = z
+    .object({ recipe: z.guid(), wanted: z.enum(["0", "1"]) })
+    .parse(Object.fromEntries(form));
+  await requireHousehold();
+  const db = await createSessionClient();
+  // Row level security lets this reach the household's own recipes only.
+  const updated = await db
+    .from("recipe")
+    .update({ wanted_at: input.wanted === "1" ? new Date().toISOString() : null })
+    .eq("id", input.recipe);
+  if (updated.error) throw new Error(`mark wish: ${updated.error.message}`);
+  revalidatePath("/", "layout");
+}
+
 export interface TypedRecipeState {
   errors: TypedRecipeErrors;
   /** What was typed, so nothing is lost when the form comes back with a message. */

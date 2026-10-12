@@ -73,7 +73,8 @@ test("a week can need recipes that belong to none of its meals", async ({ page }
   await page.getByRole("link", { name: "Rezept hinzufügen" }).click();
   await expect(page.getByRole("heading", { name: "Außerdem einplanen" })).toBeVisible();
   await page.getByPlaceholder("Titel oder Zutat").fill("kuchen");
-  await page.getByRole("button", { name: "Suchen" }).click();
+  await page.getByPlaceholder("Titel oder Zutat").press("Enter");
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
   await page.getByRole("button", { name: "Zitronen-Mohn-Kuchen einplanen" }).click();
 
   const extras = page.getByRole("region", { name: "Außerdem" });
@@ -89,7 +90,7 @@ test("a week can need recipes that belong to none of its meals", async ({ page }
 
   // The meals of the week are untouched by it.
   await page.getByRole("link", { name: "Mahlzeiten" }).click();
-  await expect(page.getByText("Vorschlag", { exact: true })).toHaveCount(14);
+  await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(14);
 });
 
 test("a cold supper gets the things to buy for it", async ({ page }) => {

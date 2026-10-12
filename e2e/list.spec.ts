@@ -13,8 +13,10 @@ test.beforeEach(async ({ page }) => {
 async function plan(page: Page, meal: string, recipe: string) {
   await page.getByRole("link", { name: `${meal} planen` }).click();
   await page.getByPlaceholder("Titel oder Zutat").fill(recipe);
-  await page.getByRole("button", { name: "Suchen" }).click();
-  await page.getByRole("button", { name: `${recipe} einplanen` }).click();
+  await page
+    .getByRole("region", { name: "Treffer beim Tippen" })
+    .getByRole("button", { name: `${recipe} einplanen` })
+    .click();
   await expect(page.getByRole("region", { name: meal, exact: true })).toContainText(recipe);
 }
 
@@ -53,8 +55,8 @@ test("the week becomes a shopping list, grouped by kind of grocery, to work thro
   await expect(group(page, "Obst & Gemüse")).toContainText("Kartoffeln");
   // 200 ml and 100 ml of cream are two packs of 200 ml.
   await expect(page.getByText("2x Sahne")).toBeVisible();
-  // The cucumber is the household's "Gurken"; the supper's bread comes from the bakery.
-  await expect(group(page, "Obst & Gemüse")).toContainText("Gurken");
+  // "Gurke" was asked for: one of them. The supper's bread comes from the bakery.
+  await expect(group(page, "Obst & Gemüse")).toContainText("1 Gurke");
   await expect(group(page, "Brot & Backwaren")).toContainText("Brot · Bäcker");
   // Two cakes need 8 eggs, bought as a box of ten, and 500 g of butter.
   await expect(page.getByText("10 Eier")).toBeVisible();
