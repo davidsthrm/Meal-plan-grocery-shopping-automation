@@ -2,6 +2,7 @@ import type { CatalogIndex } from "@/domain/catalog";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
 import type { CopyName, PageFrame } from "@/domain/import/frame";
 import type { IngredientProposal } from "@/domain/import/proposal";
+import type { RecipeToTag, TagSuggestion } from "@/domain/library/tagging";
 import type { PageSurvey } from "@/domain/import/survey";
 import type { Verification } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
@@ -29,6 +30,9 @@ export type RecipeReader = (
   images: PreparedImage[],
   options?: ReadOptions,
 ) => Promise<RecipeReading>;
+
+/** Reads one recipe from text that was pasted in, in the same strict format as from photos. */
+export type TextRecipeReader = (text: string) => Promise<RecipeReading>;
 
 export interface RecipeVerification {
   verification: Verification;
@@ -78,6 +82,15 @@ export type CatalogSuggester = (
   names: string[],
   index: CatalogIndex,
 ) => Promise<IngredientProposal[]>;
+
+/**
+ * Suggests tags for a few recipes at once. Returns one suggestion per recipe it understood,
+ * in the order the recipes were given; null for one it left out.
+ */
+export type RecipeTagger = (recipes: RecipeToTag[]) => Promise<{
+  suggestions: (TagSuggestion | null)[];
+  usage: { inputTokens: number; outputTokens: number };
+}>;
 
 export type ReadFailure =
   /** The provider declined the request. */
