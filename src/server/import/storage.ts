@@ -21,6 +21,10 @@ export const originalPath = (
 export const pagePhotoPath = (household: string, batch: string, position: number) =>
   `${household}/${batch}/pages/${String(position).padStart(4, "0")}.jpg`;
 
+/** Clean full-size copy of a page photo, kept only until the recipes on it are read. */
+export const fullPhotoPath = (household: string, batch: string, position: number) =>
+  `${household}/${batch}/full/${String(position).padStart(4, "0")}.jpg`;
+
 /** A one-time URL the browser uploads one photo to, straight into storage. */
 export async function createUploadTarget(path: string): Promise<{ path: string; token: string }> {
   const { data, error } = await createAdminClient()

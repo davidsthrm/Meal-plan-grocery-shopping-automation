@@ -24,6 +24,8 @@ export interface RecipeUnit {
   pageIds: string[];
   /** Set when one of its pages shows more than one recipe, to say which one to read. */
   focusTitle: string | null;
+  /** On such a shared page: this recipe is the n-th of how many, in reading order. */
+  focus: { position: number; count: number } | null;
   /** The recipe's title as the first look saw it. Null when no page shows one. */
   title: string | null;
 }
@@ -36,12 +38,16 @@ export interface Grouping {
 
 interface Fragment {
   page: number;
+  /** Position of the part among the recipes on its page, from 0. */
+  at: number;
   part: PagePart;
   used: boolean;
 }
 
 interface Unit {
   pages: number[];
+  /** The parts this recipe is made of. */
+  fragments: Fragment[];
   title: string | null;
   /** Whether the last part added says the text runs on. */
   open: boolean;
@@ -55,7 +61,7 @@ function sameSpread(a: number | null, b: number | null): boolean {
 export function groupPages(input: SurveyedPage[]): Grouping {
   const pages = [...input].sort((a, b) => a.position - b.position);
   const fragments: Fragment[] = pages.flatMap((page, index) =>
-    page.parts.map((part) => ({ page: index, part, used: false })),
+    page.parts.map((part, at) => ({ page: index, at, part, used: false })),
   );
   const units: Unit[] = [];
   const take = (fragment: Fragment) => {
@@ -77,6 +83,7 @@ export function groupPages(input: SurveyedPage[]): Grouping {
       take(fragment);
       units.push({
         pages: [fragment.page],
+        fragments: [fragment],
         title: fragment.part.title,
         open: fragment.part.continuesOnNextPage,
       });
@@ -104,6 +111,7 @@ export function groupPages(input: SurveyedPage[]): Grouping {
     take(partner);
     units.push({
       pages: [...new Set([here, partner.page])].sort((a, b) => a - b),
+      fragments: [fragment, partner],
       title: fragment.part.title,
       open: partner.part.continuesOnNextPage,
     });
@@ -116,6 +124,7 @@ export function groupPages(input: SurveyedPage[]): Grouping {
       const continuation = next < pages.length ? freeBody(next, false) : undefined;
       if (!continuation) break;
       take(continuation);
+      unit.fragments.push(continuation);
       unit.pages.push(next);
       unit.open = continuation.part.continuesOnNextPage;
     }
@@ -125,7 +134,7 @@ export function groupPages(input: SurveyedPage[]): Grouping {
   for (const fragment of fragments) {
     if (!fragment.used && fragment.part.title === null && fragment.part.hasIngredientList) {
       take(fragment);
-      units.push({ pages: [fragment.page], title: null, open: false });
+      units.push({ pages: [fragment.page], fragments: [fragment], title: null, open: false });
     }
   }
 
@@ -136,12 +145,16 @@ export function groupPages(input: SurveyedPage[]): Grouping {
   }
   const inUnit = new Set(units.flatMap((unit) => unit.pages));
   return {
-    units: units.map((unit) => ({
-      pageIds: unit.pages.map((page) => pages[page].id),
+    units: units.map((unit) => {
       // Several recipes share one of this recipe's pages: the reader has to be told which.
-      focusTitle: unit.pages.some((page) => (startsPerPage.get(page) ?? 0) > 1) ? unit.title : null,
-      title: unit.title,
-    })),
+      const shared = unit.fragments.find((f) => (startsPerPage.get(f.page) ?? 0) > 1);
+      return {
+        pageIds: unit.pages.map((page) => pages[page].id),
+        focusTitle: shared ? unit.title : null,
+        focus: shared ? { position: shared.at + 1, count: pages[shared.page].parts.length } : null,
+        title: unit.title,
+      };
+    }),
     ignoredPageIds: pages.filter((_, index) => !inUnit.has(index)).map((page) => page.id),
   };
 }

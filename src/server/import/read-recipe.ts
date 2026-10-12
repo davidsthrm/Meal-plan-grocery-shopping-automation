@@ -20,6 +20,8 @@ export interface RecipeReading {
 export interface ReadOptions {
   /** Which recipe to read when the photos show more than one. */
   focusTitle?: string | null;
+  /** The same by position: the n-th of how many recipes on the photo, in reading order. */
+  focus?: { position: number; count: number } | null;
 }
 
 export type RecipeReader = (

@@ -77,6 +77,25 @@ describe("createAnthropicReader", () => {
     });
   });
 
+  it("says which recipe is meant when a photo shows several", async () => {
+    const { client, parse } = fakeClient({});
+    const read = createAnthropicReader({ client, model: "m" });
+    const lastText = () => {
+      const content = parse.mock.calls.at(-1)![0].messages[0].content;
+      return content[content.length - 1].text as string;
+    };
+    await read([page]);
+    expect(lastText()).toBe("Read the recipe on these photos.");
+    await read([page], { focusTitle: "Linsen-Eintopf", focus: { position: 3, count: 4 } });
+    expect(lastText()).toContain(
+      'Only recipe 3 of the 4 on the page is meant, counted in reading order: the one titled "Linsen-Eintopf".',
+    );
+    await read([page], { focus: { position: 4, count: 4 } });
+    expect(lastText()).toContain(
+      "Only recipe 4 of the 4 on the page is meant, counted in reading order: the one whose title is not on the photos.",
+    );
+  });
+
   it("reports a declined request instead of returning what came back", async () => {
     const { client } = fakeClient({ stop_reason: "refusal", parsed_output: null });
     await expect(createAnthropicReader({ client, model: "m" })([page])).rejects.toMatchObject({
