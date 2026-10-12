@@ -23,6 +23,9 @@ test("a recipe that needs a decision is reviewed, corrected and lands in the lib
 
   await page.getByLabel("Titel").fill("Kartoffelsuppe mit Topinambur");
   await page.getByLabel("Menge", { exact: true }).first().fill("750");
+  // The recipe does not count persons: it fills six jars.
+  await page.getByLabel("Reicht für").fill("6");
+  await page.getByLabel("statt Personen").fill("Gläser");
   await page.getByRole("button", { name: "Stimmt so, übernehmen" }).click();
 
   // Nothing else waits, so it goes back to the batch.
@@ -30,9 +33,13 @@ test("a recipe that needs a decision is reviewed, corrected and lands in the lib
   await expect(page.getByText("übernommen", { exact: true })).toBeVisible();
 
   await page.goto("/rezepte");
+  await expect(page.getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ })).toContainText(
+    "6 Gläser",
+  );
   await page.getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ }).click();
   await expect(page.getByRole("heading", { name: "Kartoffelsuppe mit Topinambur" })).toBeVisible();
   await expect(page.getByText("750 g")).toBeVisible();
+  await expect(page.getByText("6 Gläser")).toBeVisible();
   await expect(page.getByText("E2E Kochbuch, S. 12")).toBeVisible();
 });
 

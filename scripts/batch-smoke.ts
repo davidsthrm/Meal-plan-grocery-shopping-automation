@@ -105,7 +105,9 @@ async function main() {
     "load recipes of batch",
   );
   const recipes = must(
-    await db.from("recipe").select("id, title, source_book, source_page, servings_min, status"),
+    await db
+      .from("recipe")
+      .select("id, title, source_book, source_page, servings_min, servings_unit, status"),
     "load recipes",
   );
   for (const job of jobs) {
@@ -114,7 +116,7 @@ async function main() {
     const issues = (job.issues as { code: string }[]).map((issue) => issue.code).join(", ");
     console.log(
       `  recipe ${job.position} ${job.status.padEnd(12)} "${recipe?.title}" ${recipe?.source_book} S. ${recipe?.source_page}` +
-        `, ${recipe?.servings_min} Portionen  ${job.input_tokens} tokens in  ${cents.toFixed(2)} ct  ${issues}`,
+        `, ${recipe?.servings_min} ${recipe?.servings_unit ?? "Portionen"}  ${job.input_tokens} tokens in  ${cents.toFixed(2)} ct  ${issues}`,
     );
   }
   const lines = must(await db.from("recipe_ingredient").select("id, ingredient_id"), "load lines");

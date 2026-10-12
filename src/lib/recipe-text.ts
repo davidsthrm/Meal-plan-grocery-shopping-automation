@@ -1,10 +1,13 @@
 import { formatAmount } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
 
-/** "4" or "4–6" servings, as recipes print it. */
-export function servingsText(min: number | null, max: number | null): string {
-  if (min === null || max === null) return "?";
-  return min === max ? String(min) : `${min}–${max}`;
+/**
+ * What a recipe's amounts are for: "4 Portionen", "4–6 Portionen", or what it makes when that
+ * is not persons, "1 Springform (Ø 26 cm)".
+ */
+export function servingsText(min: number | null, max: number | null, unit: string | null): string {
+  if (min === null || max === null) return "? Portionen";
+  return `${min === max ? min : `${min}–${max}`} ${unit ?? "Portionen"}`;
 }
 
 /** "Speed Cooking, S. 97", or what is known of it. */

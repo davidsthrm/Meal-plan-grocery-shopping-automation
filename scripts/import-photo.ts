@@ -3,6 +3,7 @@ import { createCatalogIndex } from "@/domain/catalog";
 import type { ProvidedMetadata } from "@/domain/import/draft";
 import { unmappedNames } from "@/domain/import/proposal";
 import { formatAmount } from "@/domain/shopping-list/format";
+import { servingsText } from "@/lib/recipe-text";
 import {
   createAnthropicReader,
   createAnthropicSuggester,
@@ -77,17 +78,17 @@ async function show(label: string, result: ImportResult) {
     for (const issue of result.issues) console.log(`  ${issue.code}: ${issue.detail}`);
     return;
   }
-  const servings = draft.servings
-    ? draft.servings.min === draft.servings.max
-      ? `${draft.servings.min}`
-      : `${draft.servings.min}-${draft.servings.max}`
-    : "?";
+  const servings = servingsText(
+    draft.servings?.min ?? null,
+    draft.servings?.max ?? null,
+    draft.servings?.unit ?? null,
+  );
   console.log(`Titel:     ${draft.title ?? "(fehlt)"}`);
   console.log(
     `Quelle:    ${draft.sourceBook ?? "(kein Buch angegeben)"}, Seite ${draft.sourcePage ?? "?"}`,
   );
   console.log(
-    `Portionen: ${servings}   Zeit: ${draft.prepMinutes ?? "?"} Min.   ${draft.dishType}, ${draft.proteinType}`,
+    `Reicht für: ${servings}   Zeit: ${draft.prepMinutes ?? "?"} Min.   ${draft.dishType}, ${draft.proteinType}`,
   );
   console.log("Zutaten:");
   draft.ingredients.forEach((line, at) => {
