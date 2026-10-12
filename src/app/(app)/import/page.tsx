@@ -33,6 +33,11 @@ export default async function ImportPage() {
         Fotografiere ein Kochbuch Seite für Seite und lade die Fotos hier hoch. Was sicher gelesen
         wurde, landet direkt bei den Rezepten. Alles andere bekommst du zum Prüfen.
       </p>
+      <p className="mt-2">
+        <Link href="/rezepte/neu" className="link">
+          Ohne Foto: Rezept eintippen
+        </Link>
+      </p>
 
       {(waiting > 0 || open > 0) && (
         <div className="mt-4 grid gap-2 sm:grid-cols-2">

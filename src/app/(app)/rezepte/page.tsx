@@ -42,10 +42,17 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <p className="eyebrow">
-        {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
-      </p>
-      <h1 className="title mt-1">Entdecken</h1>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div>
+          <p className="eyebrow">
+            {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
+          </p>
+          <h1 className="title mt-1">Entdecken</h1>
+        </div>
+        <Link href="/rezepte/neu" className="btn btn-small">
+          Rezept eintippen
+        </Link>
+      </div>
 
       {waiting > 0 && (
         <Link

@@ -184,6 +184,8 @@ export async function saveImportedRecipe(
     photoPaths: string[];
     index: CatalogIndex;
     suggest: CatalogSuggester;
+    /** A recipe typed in by hand without a cookbook is a quick meal. */
+    kind?: "cookbook" | "quick_meal";
   },
 ): Promise<string> {
   const { householdId, recipe } = input;
@@ -191,7 +193,7 @@ export async function saveImportedRecipe(
     .from("recipe")
     .insert({
       household_id: householdId,
-      kind: "cookbook",
+      kind: input.kind ?? "cookbook",
       ...recipeColumns(recipe, input.status),
     })
     .select("id")

@@ -70,6 +70,9 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
             Einplanen
           </Link>
+          <Link href={`/rezepte/${recipe.id}/bearbeiten`} className="btn">
+            Ändern
+          </Link>
           <form action={setFavorite}>
             <input type="hidden" name="recipe" value={recipe.id} />
             <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
