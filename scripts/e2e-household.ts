@@ -109,17 +109,23 @@ async function setup() {
       )
     ).error,
   );
+  // Migrations may already have added tags to this household. Only the missing ones are created.
+  const existing = await db.from("tag").select("key").eq("household_id", householdId);
+  fail("load tags", existing.error);
+  const known = new Set((existing.data ?? []).map((tag) => tag.key));
   fail(
     "create tags",
     (
-      await db.from("tag").upsert(
-        tags.map((tag, sort_order) => ({
-          id: id("tag", tag.id),
-          household_id: householdId,
-          name: tag.name,
-          group_name: tag.group,
-          sort_order,
-        })),
+      await db.from("tag").insert(
+        tags
+          .filter((tag) => !known.has(tag.id))
+          .map((tag, sort_order) => ({
+            household_id: householdId,
+            name: tag.name,
+            group_name: tag.group,
+            key: tag.id,
+            sort_order: (sort_order + 1) * 10,
+          })),
       )
     ).error,
   );

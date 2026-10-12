@@ -24,15 +24,8 @@ export interface StoredRecipe {
   lines: StoredLine[];
 }
 
-/** Tag a dish type is filed under, by the tag's name in the household's tag list. */
-const DISH_TAG: Partial<Record<ExtractedRecipe["dishType"], string>> = {
-  hauptgericht: "Hauptgericht",
-  "suppe-eintopf": "Suppe & Eintopf",
-  salat: "Salat",
-  vesper: "Vesper",
-  kuchen: "Kuchen & Süßes",
-};
-const PROTEIN_TAG: Partial<Record<ExtractedRecipe["proteinType"], string>> = {
+/** Tag key of a diet the import can tell from the ingredients. */
+const DIET_TAG: Partial<Record<ExtractedRecipe["proteinType"], string>> = {
   vegetarian: "vegetarisch",
   vegan: "vegan",
 };
@@ -188,11 +181,14 @@ export async function saveImportedRecipe(
       );
       if (photos.error) throw new Error(`save recipe photos: ${photos.error.message}`);
     }
-    const tagNames = [DISH_TAG[recipe.dishType], PROTEIN_TAG[recipe.proteinType]].filter(
-      (name): name is string => Boolean(name),
-    );
-    if (tagNames.length > 0) {
-      const tags = must(await db.from("tag").select("id").in("name", tagNames), "load tags");
+    // The dish type is the key of its category tag. Tags are found by key, so the household
+    // can rename a category without the import losing it.
+    const tagKeys = [
+      recipe.dishType === "unbekannt" ? null : recipe.dishType,
+      DIET_TAG[recipe.proteinType] ?? null,
+    ].filter((key): key is string => key !== null);
+    if (tagKeys.length > 0) {
+      const tags = must(await db.from("tag").select("id").in("key", tagKeys), "load tags");
       if (tags.length > 0) {
         const linked = await db.from("recipe_tag").insert(
           tags.map((tag) => ({
