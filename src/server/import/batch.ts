@@ -10,6 +10,7 @@ import { importFromImages } from "./import-recipe";
 import { importModels } from "./models";
 import { normalizeImage, prepareForModel, type PreparedImage } from "./normalize-image";
 import { RecipeReadError } from "./read-recipe";
+import { tagRecipes } from "../tagging";
 import { saveImportedRecipe, StoreError, type StoredRecipe } from "./save-recipe";
 import {
   createUploadTarget,
@@ -506,6 +507,24 @@ export async function processNext(
     // An outage or a rate limit put the page back and is for the caller, as in every step.
     if (!(error instanceof RecipeReadError)) throw error;
     return "worked";
+  }
+
+  // Last, the recipes get the tags that describe them, a few per request. They are
+  // suggestions: a recipe the model has nothing to say about simply stays without.
+  try {
+    const read = must(
+      await db.from("import_job").select("recipe_id").eq("batch_id", batchId),
+      "load recipes of batch",
+    );
+    const described = await tagRecipes(
+      db,
+      householdId,
+      importModels().tag,
+      read.flatMap((job) => job.recipe_id ?? []),
+    );
+    if (described.tagged > 0) return "worked";
+  } catch (error) {
+    if (!(error instanceof RecipeReadError)) throw error;
   }
   await removeFullCopies(db, batchId);
   return "done";
