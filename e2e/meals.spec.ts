@@ -190,6 +190,15 @@ test("a recipe can be corrected by hand, its ingredients included", async ({ pag
   await expect(page.getByLabel("Menge", { exact: true }).first()).toHaveValue("300");
   // A row that was added and left empty is simply not a line.
   await page.getByLabel("Menge", { exact: true }).last().fill("");
+  // What describes the recipe is switched on and off; in a group of one, the other goes.
+  const effort = page.getByRole("group", { name: "Aufwand" });
+  await effort.getByRole("button", { name: "Schnell" }).click();
+  await effort.getByRole("button", { name: "Braucht Zeit" }).click();
+  await expect(effort.getByRole("button", { name: "Schnell" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.getByLabel("Eigenes Stichwort").fill("Omas Rezept");
   await page.getByRole("button", { name: "Speichern" }).click();
 
   await expect(page.getByRole("heading", { name: "Zitronen-Mohn-Kuchen" })).toBeVisible();
@@ -198,4 +207,24 @@ test("a recipe can be corrected by hand, its ingredients included", async ({ pag
   await expect(page.getByText("300 g")).toBeVisible();
   await expect(page.getByText("Mehl")).toBeVisible();
   await expect(page.getByText("Eier")).toHaveCount(0);
+  const tags = page.getByRole("list", { name: "Stichworte" });
+  await expect(tags).toContainText("Braucht Zeit");
+  await expect(tags).toContainText("Omas Rezept");
+  await expect(tags).not.toContainText("Schnell");
+  // A tag of the household's own is a way to browse like the others.
+  await tags.getByRole("link", { name: "Omas Rezept" }).click();
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+});
+
+test("a recipe can come in as pasted text, which is asked for before anything is read", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/rezepte");
+  await page.getByRole("link", { name: "Rezept hinzufügen" }).click();
+  await page.getByRole("link", { name: "Text einfügen" }).click();
+  await expect(page.getByLabel("Text des Rezepts")).toBeVisible();
+  // Nothing pasted: nothing is sent to be read.
+  await page.getByRole("button", { name: "Einlesen" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Füge den Text" })).toBeVisible();
 });

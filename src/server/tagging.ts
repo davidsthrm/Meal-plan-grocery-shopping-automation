@@ -1,5 +1,6 @@
 import "server-only";
 import { ALL_SUGGESTED, tagsFromSuggestion, type RecipeToTag } from "@/domain/library/tagging";
+import { EFFORTS } from "@/domain/library/tags";
 import { loadIngredientNames, must, type Db } from "./catalog";
 import type { RecipeTagger } from "./import/read-recipe";
 
@@ -15,9 +16,10 @@ export interface TaggingResult {
 }
 
 /**
- * Gives recipes the tags that describe them, for those among `recipeIds` that have none of
- * the tags the app suggests. At most one batch per call: the caller asks again while recipes
- * are left. Tags the household set or made itself are never touched.
+ * Gives recipes the tags that describe them, for those among `recipeIds` that are not
+ * described yet: every described recipe says how much work it is, so one without that tag
+ * is waiting. At most one batch per call: the caller asks again while recipes are left.
+ * Tags a recipe already has are kept; the household's own are never touched.
  */
 export async function tagRecipes(
   db: Db,
@@ -30,11 +32,16 @@ export async function tagRecipes(
   const tags = must(await db.from("tag").select("id, key, name, group_name"), "load tags");
   const suggested = tags.filter((row) => row.key !== null && ALL_SUGGESTED.includes(row.key));
   const idOf = new Map(suggested.map((row) => [row.key as string, row.id]));
+  const effortIds = new Set(
+    suggested
+      .filter((row) => (EFFORTS as readonly string[]).includes(row.key as string))
+      .map((row) => row.id),
+  );
   const categoryName = new Map(
     tags.filter((row) => row.group_name === "Kategorie").map((row) => [row.id, row.name]),
   );
 
-  // Find the first recipes without a suggested tag.
+  // Find the first recipes that are not described yet.
   const waiting: string[] = [];
   const categoryOf = new Map<string, string>();
   for (let at = 0; at < recipeIds.length && waiting.length < TAG_BATCH; at += IDS_PER_REQUEST) {
@@ -45,7 +52,7 @@ export async function tagRecipes(
     );
     const described = new Set<string>();
     for (const link of links) {
-      if (suggested.some((row) => row.id === link.tag_id)) described.add(link.recipe_id);
+      if (effortIds.has(link.tag_id)) described.add(link.recipe_id);
       const category = categoryName.get(link.tag_id);
       if (category) categoryOf.set(link.recipe_id, category);
     }

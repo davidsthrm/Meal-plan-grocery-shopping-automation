@@ -403,6 +403,13 @@ export async function resetLibrary(): Promise<void> {
   await clearRecipes(household);
   const goals = await db.from("household").update({ balance_targets: null }).eq("id", household);
   if (goals.error) throw new Error(`reset goals: ${goals.error.message}`);
+  // Tags a test made itself go again.
+  const own = await db
+    .from("tag")
+    .delete()
+    .eq("household_id", household)
+    .eq("group_name", "Eigene");
+  if (own.error) throw new Error(`clear own tags: ${own.error.message}`);
 
   const recipes = check(
     await db

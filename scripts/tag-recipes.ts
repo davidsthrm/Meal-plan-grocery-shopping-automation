@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { ALL_SUGGESTED } from "@/domain/library/tagging";
+import { EFFORTS } from "@/domain/library/tags";
 import type { Db } from "@/server/catalog";
 import { createAnthropicTagger } from "@/server/import/anthropic-reader";
 import { TAG_BATCH, tagRecipes } from "@/server/tagging";
@@ -9,7 +10,7 @@ import { TAG_BATCH, tagRecipes } from "@/server/tagging";
  * cuisine, season and occasion. A model suggests them from title, category, printed time and
  * ingredients, about fifteen recipes per request. Tags the household made itself stay.
  *
- *   npm run import:tag-recipes -- "Zuhause"              every recipe without suggested tags
+ *   npm run import:tag-recipes -- "Zuhause"              every recipe not described yet
  *   npm run import:tag-recipes -- "Zuhause" --limit 30   a few, to look at the result first
  *   npm run import:tag-recipes -- "Zuhause" --verbose    print what each recipe got
  *   npm run import:tag-recipes -- "Zuhause" --again      take the suggested tags away first.
@@ -74,14 +75,17 @@ async function main() {
     if (page.data.length < 1000) break;
   }
 
-  // Which of them have a suggested tag already: those are left alone.
+  // Which of them say how much work they are: those are described and left alone.
+  const efforts = suggested
+    .filter((row) => (EFFORTS as readonly string[]).includes(row.key as string))
+    .map((row) => row.id);
   const described = new Set<string>();
   for (let from = 0; ; from += 1000) {
     const page = await db
       .from("recipe_tag")
       .select("recipe_id")
       .eq("household_id", householdId)
-      .in("tag_id", [...nameOf.keys()])
+      .in("tag_id", efforts)
       .order("recipe_id")
       .order("tag_id")
       .range(from, from + 999);

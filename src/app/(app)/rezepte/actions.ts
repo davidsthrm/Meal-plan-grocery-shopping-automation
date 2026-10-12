@@ -103,14 +103,18 @@ export async function saveTypedRecipe(
     if (kept.error) throw new Error(`keep pasted text: ${kept.error.message}`);
   }
   revalidatePath("/", "layout");
-  // The tags that describe it are suggested once the page is on its way: nobody waits for it.
-  after(async () => {
-    try {
-      await tagRecipes(db, household.id, importModels().tag, [created]);
-    } catch (error) {
-      console.error("describing a new recipe failed", error);
-    }
-  });
+  // A pasted recipe was read by the model anyway; the tags that describe it are suggested the
+  // same way, once the page is on its way, so nobody waits for it. A recipe typed in by hand
+  // calls no model: its printed time says how much work it is, the rest is set by hand.
+  if (sourceText !== "") {
+    after(async () => {
+      try {
+        await tagRecipes(db, household.id, importModels().tag, [created]);
+      } catch (error) {
+        console.error("describing a pasted recipe failed", error);
+      }
+    });
+  }
 
   const week = text("w");
   const date = text("d");
