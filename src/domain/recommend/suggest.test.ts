@@ -84,7 +84,8 @@ describe("scoreRecipe", () => {
 describe("suggest", () => {
   const cake = summary("kuchen", { category: "kuchen" });
   const supper = summary("wurstsalat", { category: "vesper", proteinType: "red_meat" });
-  const all = [lasagne, salmon, chicken, steak, cake, supper];
+  const salad = summary("tomatensalat", { category: "salat", proteinType: "vegan" });
+  const all = [lasagne, salmon, chicken, steak, cake, supper, salad];
   const ids = (list: { recipe: RecipeSummary }[]) => list.map((entry) => entry.recipe.id);
 
   it("puts the best first", () => {
@@ -92,14 +93,21 @@ describe("suggest", () => {
     expect(ids(suggest(all, "lunch", context({ balance }), 1))).toEqual(["lachs"]);
   });
 
-  it("suggests meals only, and a cold supper only in the evening", () => {
+  it("suggests meals only, and a cold supper or a salad only in the evening", () => {
     expect(ids(suggest(all, "lunch", context(), 10)).sort()).toEqual([
       "huhn",
       "lachs",
       "lasagne",
       "steak",
     ]);
-    expect(ids(suggest(all, "dinner", context(), 10))).toContain("wurstsalat");
+    expect(ids(suggest(all, "dinner", context(), 10)).sort()).toEqual([
+      "huhn",
+      "lachs",
+      "lasagne",
+      "steak",
+      "tomatensalat",
+      "wurstsalat",
+    ]);
   });
 
   it("never suggests what is on this week's plan already", () => {

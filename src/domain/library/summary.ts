@@ -41,8 +41,15 @@ export function isMeal(recipe: Pick<RecipeSummary, "category">): boolean {
   return recipe.category === null || MEAL_CATEGORIES.has(recipe.category);
 }
 
-/** Whether a recipe is something to suggest for this meal. A cold supper is not a lunch. */
+/** What is eaten in the evening rather than cooked for lunch. */
+const EVENING_ONLY = new Set(["vesper", "salat"]);
+
+/**
+ * Whether a recipe is something to suggest for this meal. In this household lunch is the
+ * cooked meal; a cold supper or a salad is suggested for the evening only. Planning one for
+ * lunch by hand is always possible.
+ */
 export function suitsMeal(recipe: Pick<RecipeSummary, "category">, meal: Meal): boolean {
   if (!isMeal(recipe)) return false;
-  return recipe.category !== "vesper" || meal === "dinner";
+  return meal === "dinner" || recipe.category === null || !EVENING_ONLY.has(recipe.category);
 }

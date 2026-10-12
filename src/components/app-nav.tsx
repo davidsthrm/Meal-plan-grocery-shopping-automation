@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SECTIONS = [
-  { href: "/rezepte", label: "Rezepte" },
+  { href: "/woche", label: "Woche" },
+  { href: "/rezepte", label: "Entdecken" },
   { href: "/import", label: "Import" },
 ] as const;
 
@@ -16,7 +17,7 @@ export function AppNav() {
       aria-label="Hauptbereiche"
       className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:static sm:border-0 sm:bg-transparent sm:pb-0"
     >
-      <ul className="mx-auto flex max-w-3xl sm:gap-1">
+      <ul className="mx-auto flex max-w-5xl sm:gap-1">
         {SECTIONS.map(({ href, label }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
