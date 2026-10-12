@@ -109,6 +109,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     label: ingredient.name,
     trip,
     shopId: bucket.shopId ?? ingredient.preferredShopId,
+    shopByChoice: bucket.shopId !== null,
     aisleGroupId: ingredient.aisleGroupId,
   };
   // What someone put on the list on purpose is not assumed to be at home.
@@ -224,6 +225,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       trip: "main" as const,
       neededBy: null,
       shopId: entry?.shopId ?? catalog.defaultShopId,
+      shopByChoice: Boolean(entry?.shopId),
       aisleGroupId: entry?.aisleGroupId ?? catalog.fallbackAisleGroupId,
       purchase: null,
       amounts: [],

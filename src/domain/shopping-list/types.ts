@@ -48,6 +48,8 @@ export interface ShoppingLine {
   /** For "later" lines: the first day the ingredient is needed. */
   neededBy: IsoDate | null;
   shopId: string;
+  /** True when the shop was named on purpose: bread for a cold supper from the bakery. */
+  shopByChoice?: boolean;
   aisleGroupId: string;
   /** What to show before the name. Null means the name alone is enough. */
   purchase: Amount | null;

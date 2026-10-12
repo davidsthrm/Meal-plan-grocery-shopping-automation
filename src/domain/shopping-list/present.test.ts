@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildShoppingList } from "./build";
-import { presentList, resolveLine } from "./present";
+import { presentByAisle, presentList, resolveLine } from "./present";
 import { line, testIndex } from "./test-catalog";
 import type { LineState } from "./types";
 
@@ -96,5 +96,37 @@ describe("resolveLine", () => {
       shopId: "aldi",
       note: null,
     });
+  });
+});
+
+describe("presentByAisle", () => {
+  const groups = (states: Record<string, LineState> = {}) => {
+    const view = presentByAisle(lines, states, testIndex);
+    return {
+      groups: view.groups.map((g) => [g.aisleGroup.name, g.lines.map((l) => l.text)]),
+      later: view.later.map((l) => l.text),
+      atHome: view.atHome.map((l) => l.text),
+    };
+  };
+
+  it("groups by kind of grocery only, whichever shop a thing comes from", () => {
+    expect(groups()).toEqual({
+      groups: [
+        ["Obst & Gemüse", ["Ingwer", "2 Karotten"]],
+        ["Brot & Backwaren", ["Brot"]],
+        // Cream from one shop and eggs and milk from the other stand together.
+        ["Molkerei & Kühlregal", ["20 Eier", "Milch WS 1.29", "Sahne"]],
+        ["Fleisch & Wurst", ["600 g Leberkäse"]],
+      ],
+      later: ["4 Rindersteaks"],
+      atHome: ["Salz"],
+    });
+  });
+
+  it("applies what the household changed, like the list by shop", () => {
+    const view = groups({ "salz@main": { atHome: false }, "ingwer@main": { atHome: true } });
+    expect(view.groups[0]).toEqual(["Obst & Gemüse", ["2 Karotten"]]);
+    expect(view.groups.map((group) => group[0])).toContain("Gewürze, Öl & Essig");
+    expect(view.atHome).toEqual(["Ingwer"]);
   });
 });

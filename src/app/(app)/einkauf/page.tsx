@@ -16,7 +16,7 @@ import type { ViewLine } from "@/domain/shopping-list/present";
 import { exactText, neededText, sourceText } from "@/lib/list-text";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
-import { loadShoppingList } from "@/server/shopping/list";
+import { chosenShop, loadShoppingList } from "@/server/shopping/list";
 import { createSessionClient } from "@/server/supabase/server";
 import { addListEntry, checkLine, markAtHome, noteLine, removeListEntry } from "./actions";
 
@@ -26,7 +26,7 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 
 /**
  * The shopping list of a week: what its meals, its extras and its hand-written lines add up
- * to, grouped by shop and by where things stand in the shop.
+ * to, grouped by kind of grocery.
  */
 export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const params = await props.searchParams;
@@ -37,10 +37,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const list = await loadShoppingList(await createSessionClient(), household, week);
   const { view } = list;
 
-  const toBuy = [
-    ...view.shops.flatMap((shop) => shop.groups.flatMap((g) => g.lines)),
-    ...view.later,
-  ];
+  const toBuy = [...view.groups.flatMap((group) => group.lines), ...view.later];
   const done = toBuy.filter((line) => line.checked).length;
 
   return (
@@ -120,32 +117,31 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       )}
 
       <div className="mt-6 gap-x-10 sm:columns-2 print:columns-2">
-        {view.shops.map(({ shop, groups }) => (
-          <section key={shop.id} aria-label={shop.name} className="mb-6 break-inside-avoid-column">
-            <h2 className="border-b border-line pb-1 text-xl font-bold tracking-tight print:border-black">
-              {shop.name}
+        {view.groups.map(({ aisleGroup, lines }) => (
+          <section
+            key={aisleGroup.id}
+            aria-label={aisleGroup.name}
+            className="mb-6 break-inside-avoid-column"
+          >
+            <h2 className="border-b border-line pb-1 text-lg font-bold tracking-tight print:border-black">
+              {aisleGroup.name}
             </h2>
-            {groups.map(({ aisleGroup, lines }) => (
-              <div key={aisleGroup.id} className="mt-3">
-                <h3 className="eyebrow print:hidden">{aisleGroup.name}</h3>
-                <ul>
-                  {lines.map((line) => (
-                    <Line key={line.line.key} view={line} week={week} />
-                  ))}
-                </ul>
-              </div>
-            ))}
+            <ul className="mt-2">
+              {lines.map((line) => (
+                <Line key={line.line.key} view={line} week={week} shop={chosenShop(list, line)} />
+              ))}
+            </ul>
           </section>
         ))}
 
         {view.later.length > 0 && (
           <section aria-label="Später frisch kaufen" className="mb-6 break-inside-avoid-column">
-            <h2 className="border-b border-line pb-1 text-xl font-bold tracking-tight print:border-black">
+            <h2 className="border-b border-line pb-1 text-lg font-bold tracking-tight print:border-black">
               Später frisch kaufen
             </h2>
             <ul className="mt-3">
               {view.later.map((line) => (
-                <Line key={line.line.key} view={line} week={week} />
+                <Line key={line.line.key} view={line} week={week} shop={chosenShop(list, line)} />
               ))}
             </ul>
           </section>
@@ -183,7 +179,16 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
 }
 
 /** One line of the list: a box to tick, the text, and behind it where it comes from. */
-function Line({ view, week }: { view: ViewLine; week: IsoDate }) {
+function Line({
+  view,
+  week,
+  shop,
+}: {
+  view: ViewLine;
+  week: IsoDate;
+  /** The shop, where the line names one on purpose. */
+  shop: string | null;
+}) {
   const { line } = view;
   const where = (
     <>
@@ -216,6 +221,7 @@ function Line({ view, week }: { view: ViewLine; week: IsoDate }) {
       <details className="min-w-0 flex-1">
         <summary className={`py-1 print:py-0 ${view.checked ? "text-muted line-through" : ""}`}>
           {view.text}
+          {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
           {line.trip === "later" && (
             <span className="text-sm text-muted print:text-black"> · {neededText(view)}</span>
           )}
