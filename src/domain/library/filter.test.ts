@@ -57,6 +57,17 @@ describe("filterRecipes", () => {
   });
 });
 
+describe("tags in the filter", () => {
+  it("keeps the recipes that have every tag asked for", () => {
+    const quickPasta = summary("carbonara", { tags: ["schnell", "pasta", "italienisch"] });
+    const slowPasta = summary("lasagne", { tags: ["aufwendig", "pasta"] });
+    const both = { ...NO_FILTER, tags: ["schnell", "pasta"] };
+    expect(matchesFilter(quickPasta, both)).toBe(true);
+    expect(matchesFilter(slowPasta, both)).toBe(false);
+    expect(matchesFilter(slowPasta, { ...NO_FILTER, tags: ["pasta"] })).toBe(true);
+  });
+});
+
 describe("the filter in the address", () => {
   it("survives being written and read", () => {
     const filter = {
@@ -66,6 +77,7 @@ describe("the filter in the address", () => {
       maxMinutes: 30,
       book: "Speed Cooking",
       favorites: true,
+      tags: ["schnell", "italienisch"],
     };
     expect(filterParams(filter)).toEqual({
       q: "Lachs",
@@ -74,8 +86,13 @@ describe("the filter in the address", () => {
       zeit: "30",
       buch: "Speed Cooking",
       favoriten: "1",
+      tag: "schnell,italienisch",
     });
     expect(readFilter(filterParams(filter))).toEqual(filter);
+  });
+
+  it("reads tags as a list, and nothing that could not be one", () => {
+    expect(readFilter({ tag: "schnell, pasta,,schnell,<b>" }).tags).toEqual(["schnell", "pasta"]);
   });
 
   it("leaves out what is not set", () => {

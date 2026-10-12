@@ -21,7 +21,12 @@ export interface RecipeFilter {
   maxMinutes: number | null;
   book: string | null;
   favorites: boolean;
+  /** Tags the recipe must all have, as the app refers to them. */
+  tags: string[];
 }
+
+/** More tags than this do not narrow a library down any further. */
+const MAX_TAGS = 6;
 
 export const NO_FILTER: RecipeFilter = {
   text: "",
@@ -30,6 +35,7 @@ export const NO_FILTER: RecipeFilter = {
   maxMinutes: null,
   book: null,
   favorites: false,
+  tags: [],
 };
 
 const DIET_TYPES: Record<Diet, ProteinType[]> = {
@@ -64,6 +70,14 @@ export function readFilter(params: Params): RecipeFilter {
     maxMinutes: (TIME_LIMITS as readonly number[]).includes(minutes) ? minutes : null,
     book: one(params.buch) || null,
     favorites: one(params.favoriten) === "1",
+    tags: [
+      ...new Set(
+        one(params.tag)
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => /^[a-z0-9-]{1,40}$/.test(tag)),
+      ),
+    ].slice(0, MAX_TAGS),
   };
 }
 
@@ -76,6 +90,7 @@ export function filterParams(filter: RecipeFilter): Record<string, string> {
   if (filter.maxMinutes !== null) params.zeit = String(filter.maxMinutes);
   if (filter.book) params.buch = filter.book;
   if (filter.favorites) params.favoriten = "1";
+  if (filter.tags.length > 0) params.tag = filter.tags.join(",");
   return params;
 }
 
@@ -91,6 +106,7 @@ export function matchesFilter(recipe: RecipeSummary, filter: RecipeFilter): bool
   if (filter.favorites && !recipe.isFavorite) return false;
   if (filter.category && recipe.category !== filter.category) return false;
   if (filter.book && recipe.sourceBook !== filter.book) return false;
+  if (!filter.tags.every((tag) => recipe.tags.includes(tag))) return false;
   if (filter.diet) {
     if (!recipe.proteinType || !DIET_TYPES[filter.diet].includes(recipe.proteinType)) return false;
   }

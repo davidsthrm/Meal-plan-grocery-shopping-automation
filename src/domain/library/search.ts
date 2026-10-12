@@ -84,6 +84,8 @@ export interface SearchContext {
   ingredientHits?: ReadonlyMap<string, ReadonlySet<string>>;
   /** The name of a recipe's category, as the household named it. */
   categoryName?: (key: string) => string | undefined;
+  /** The name of a tag, as the household named it. */
+  tagName?: (ref: string) => string | undefined;
 }
 
 export interface SearchResult {
@@ -129,7 +131,8 @@ export function searchRecipes(
   const entries = pool.map((recipe): Searchable => {
     const category = recipe.category ? (context.categoryName?.(recipe.category) ?? "") : "";
     const diets = recipe.proteinType ? DIET_WORDS[recipe.proteinType] : [];
-    const keywords = [category, recipe.sourceBook ?? "", ...diets]
+    const tags = recipe.tags.map((ref) => context.tagName?.(ref) ?? "");
+    const keywords = [category, recipe.sourceBook ?? "", ...diets, ...tags]
       .flatMap((text) => text.split(/[^\p{L}\p{N}]+/u))
       .map(searchKey)
       .filter(Boolean);

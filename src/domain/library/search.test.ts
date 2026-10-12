@@ -112,4 +112,21 @@ describe("the parts of the search", () => {
     expect(nearlyContains("pestonudeln", "nudln")).toBe(true);
     expect(nearlyContains("vanilleeis", "reis")).toBe(false);
   });
+
+  it("finds recipes by the name of one of their tags", () => {
+    const curry = summary("gemuesecurry", { title: "Gemüsecurry", tags: ["asiatisch"] });
+    const stew = summary("eintopf", { title: "Linseneintopf", tags: ["deutsch"] });
+    const names = new Map([
+      ["asiatisch", "Asiatisch"],
+      ["deutsch", "Deutsch & Schwäbisch"],
+    ]);
+    const found = searchRecipes(
+      [curry, stew],
+      { ...NO_FILTER, text: "asiatisch" },
+      {
+        tagName: (ref) => names.get(ref),
+      },
+    );
+    expect(found.matches.map((recipe) => recipe.id)).toEqual(["gemuesecurry"]);
+  });
 });
