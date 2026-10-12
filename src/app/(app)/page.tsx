@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Until the week planner exists, the recipes are the start page. */
+/** The week plan is what the household opens the app for. */
 export default function Home() {
-  redirect("/rezepte");
+  redirect("/woche");
 }

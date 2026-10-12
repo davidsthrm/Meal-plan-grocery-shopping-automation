@@ -8,8 +8,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const household = await requireHousehold();
   return (
     <div className="min-h-dvh px-4 pb-24 sm:pb-10">
-      <header className="mx-auto flex max-w-3xl items-center justify-between gap-4 py-4">
-        <Link href="/" className="text-xl font-semibold">
+      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 py-4">
+        <Link href="/" className="text-xl font-bold tracking-tight">
           Essensplan
         </Link>
         <div className="hidden sm:block">

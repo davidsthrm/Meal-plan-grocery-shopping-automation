@@ -18,6 +18,7 @@
   --color-danger: #a3352a;
   --color-danger-soft: #f6e1dd;
 
+  /* One sans-serif family for everything, from the fonts the devices bring along. */
   --font-sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
@@ -33,67 +34,157 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Every control is at least 44px tall: comfortable for a thumb. */
-.btn {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-line);
-  background: var(--color-surface);
-  padding: 0 1rem;
-  font-weight: 600;
-  color: var(--color-ink);
-}
-.btn:hover {
-  border-color: var(--color-muted);
-}
-.btn:disabled {
-  opacity: 0.5;
-}
-.btn-primary {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-accent-ink);
-}
-.btn-primary:hover {
-  border-color: var(--color-ink);
-}
-.btn-danger {
-  color: var(--color-danger);
+/*
+ * The shared parts are a layer below the utilities, so a place that needs a smaller button or
+ * a narrower field can say so with a utility class.
+ */
+@layer components {
+  /* Every control is at least 44px tall: comfortable for a thumb. */
+  .btn {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 0 1rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .btn:hover {
+    border-color: var(--color-muted);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+  }
+  .btn-primary {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .btn-primary:hover {
+    border-color: var(--color-ink);
+  }
+  .btn-danger {
+    color: var(--color-danger);
+  }
+
+  .field {
+    min-height: 2.75rem;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 0.5rem 0.75rem;
+    color: var(--color-ink);
+  }
+  .field:focus,
+  .btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .field-problem {
+    border-color: var(--color-warn);
+    background: var(--color-warn-soft);
+  }
+
+  .label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+
+  .card {
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+  }
+
+  /* The title of a page and of a recipe. */
+  .title {
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  /* A small label above something: "Mittag", "Vorschlag", a category. */
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* A choice among several, such as a filter. */
+  .chip {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    border-radius: 999px;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    padding: 0 0.9rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+  .chip:hover {
+    border-color: var(--color-muted);
+  }
+  .chip:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .chip-on {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  .btn-small {
+    min-height: 2.5rem;
+    padding: 0 0.8rem;
+    font-size: 0.92rem;
+  }
+
+  /* An action that should not compete with the content next to it. */
+  .link {
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+  .link:hover {
+    text-decoration: underline;
+  }
+
+  /* A row of cards to swipe through. It reaches to the edge of the screen on a phone. */
+  .shelf {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    margin-inline: -1rem;
+    padding: 0.25rem 1rem 0.75rem;
+    scroll-padding-inline: 1rem;
+  }
+  .shelf > * {
+    flex: none;
+    scroll-snap-align: start;
+  }
 }
 
-.field {
-  min-height: 2.75rem;
-  width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-line);
-  background: var(--color-surface);
-  padding: 0.5rem 0.75rem;
-  color: var(--color-ink);
+details > summary {
+  cursor: pointer;
+  list-style: none;
 }
-.field:focus,
-.btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-.field-problem {
-  border-color: var(--color-warn);
-  background: var(--color-warn-soft);
-}
-
-.label {
-  display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-muted);
-}
-
-.card {
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-line);
-  background: var(--color-surface);
+details > summary::-webkit-details-marker {
+  display: none;
 }

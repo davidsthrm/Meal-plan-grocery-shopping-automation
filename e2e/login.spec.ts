@@ -2,7 +2,14 @@ import { expect, test } from "@playwright/test";
 import { signIn } from "./fixtures";
 
 test("nothing is reachable without a login", async ({ page }) => {
-  for (const path of ["/", "/rezepte", "/import", "/import/vorschlaege"]) {
+  for (const path of [
+    "/",
+    "/woche",
+    "/woche/auswahl",
+    "/rezepte",
+    "/import",
+    "/import/vorschlaege",
+  ]) {
     await page.goto(path);
     await expect(page).toHaveURL(/\/login$/);
   }
@@ -21,9 +28,9 @@ test("a wrong password is refused without saying which part was wrong", async ({
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("signing in opens the recipes, signing out closes them again", async ({ page }) => {
+test("signing in opens the week plan, signing out closes it again", async ({ page }) => {
   await signIn(page);
-  await expect(page.getByRole("heading", { name: "Rezepte" })).toBeVisible();
+  await expect(page.getByText("Wochenplan", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/rezepte");

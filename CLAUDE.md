@@ -50,7 +50,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   export. One branch per phase, named `phase-N-topic`, stacked on the previous one. Small
   commits, one concern each.
 - Phase 3 is split, each part with its own pull request: 3a login, batch import, review and
-  new ingredients (done); 3b recipe library and week planner; 3c shopping list, print and PDF.
+  new ingredients (done); 3b week planner with suggestions and the library to browse (done),
+  then quick meals typed in by hand, editing recipes and a screen for the balance targets;
+  3c shopping list, print and PDF. The suggestions were planned as phase 5 and came forward:
+  the household wants planning to start from them.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -97,6 +100,16 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   or Node built-ins. ESLint enforces this. Tests sit next to the code as `*.test.ts`.
 - `src/server/`: everything that talks to the database, storage or a model. `src/app/`:
   routes and UI. `src/lib/`: small helpers shared by server and browser code.
+- `src/domain/library/`: the recipe library as data (`RecipeSummary`), its filter and the
+  shelves of the browse page. `src/domain/recommend/`: the balance of a week and the
+  suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
+  they work on.
+- Pages: `/woche` (the week plan, start page), `/woche/auswahl` (choosing what one meal is),
+  `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`, `/import`.
+- The week plan and the filters are plain forms and links: a server action per button, the
+  filter in the address. They work before any script has loaded and need no client state.
+- The API returns at most 1000 rows per request. Anything that can grow beyond that is read
+  with `allRows` (`src/server/library.ts`): recipes, recipe tags, ingredient lines.
 - `src/proxy.ts` (the Next.js 16 name for middleware) keeps the session fresh and sends anyone
   without one to `/login`. Pages get the household through `requireHousehold()`.
 - Two Supabase clients on the server: `createSessionClient()` acts as the signed-in user and
@@ -119,6 +132,21 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   bought later, which recipes are still pending).
 - `tests/acceptance/`: builds the list for that week with the real catalog and compares it
   with the handwritten one. `npm run sample-week` prints both.
+
+## Design
+
+- Calm and structured: warm paper, dark ink, one green accent, generous spacing, no pictures
+  needed. One sans-serif family for everything. No serif typeface: the household does not
+  want the look of an AI product.
+- Words on the screen say something concrete or are left out. No filler such as "for
+  variety" or "just for you"; a suggestion without a reason shows none.
+- The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the
+  `components` layer of `src/app/globals.css`, so a utility class on the same element wins.
+- One layout for all sizes: a single column on a phone, more columns from `sm` on. The week
+  plan puts lunch and dinner side by side from tablet width. An iPad and an iPhone version
+  with their own layouts are planned for later, so nothing may depend on hover or a mouse.
+- After changing `globals.css`, restart `npm run dev` if the old look stays: the dev server
+  has served a cached stylesheet before.
 
 ## Acceptance test
 
@@ -163,6 +191,44 @@ Recipes
   `DISH_TYPES` and a line in the reading instructions.
 - The household may rename a recipe and edit its ingredients. The printed text is kept in
   `original_text` and `source_title`.
+
+Week plan
+
+- A week runs from Monday to Sunday and has two meals a day. A meal is one or more recipes
+  (a main dish and its side), or something without a recipe: free text such as "Vesper",
+  leftovers, away, or skipped. A meal that is not planned has no row.
+- The planner opens on the running week, and from Saturday on the coming one: the household
+  plans on the weekend.
+- A week is counted by the heaviest protein of each cooked meal: red meat, poultry, fish,
+  vegetarian (vegan counts as vegetarian). Only recipes that are a meal by themselves count
+  (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
+- What the household aims for per week (`DEFAULT_TARGETS`): at least 3 vegetarian meals and
+  1 fish meal, at most 2 with poultry and 2 with red meat. Not configurable yet.
+- A suggestion has points and reasons (`scoreRecipe`): +3 when its group is still below the
+  least the week should have, -4 when its group is used up, +2 for a favourite, -3 when it
+  was on a plan in the last 4 weeks, +1 when it was last cooked 8 weeks ago or longer. Equal
+  recipes are ordered by a seed (week, draw, meal), so the order is stable between two looks
+  and "Andere Vorschläge" draws again.
+- Every open meal that is still to come shows one suggestion. They are chosen one after the
+  other as if the earlier ones were accepted (`suggestWeek`), so that accepting all of them
+  gives a week that meets the targets. Nothing is suggested twice in a week.
+- Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
+  the cooked meal in this household. Anything can still be planned by hand for any meal.
+- A recipe for persons is planned for the household's servings, a recipe with a servings
+  unit as written.
+- "Letzte Woche übernehmen" copies last week's meals into the meals this week has not
+  planned yet. Leftovers lose the link to the meal they came from.
+
+Library
+
+- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`).
+  The search compares words without umlauts, so "kurbis" finds "Kürbis". It looks at the
+  title, and from three letters on at the ingredients: their catalog name, other names, and
+  the printed line of ingredients the catalog does not know.
+- A recipe without a printed time is never "quick".
+- Without a filter the page shows shelves: favourites, quick meals, long not cooked, then
+  by category, diet and cookbook. A shelf shows ten recipes, favourites first, the others in
+  an order that changes by the day.
 
 Shopping list
 
@@ -285,6 +351,10 @@ Import
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
 - Not built yet in the import: retrying a failed page or recipe from the screen, editing a
   recipe after it was approved.
+- A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose
+  recipes are planned therefore fails with an error instead of an explanation.
+- The week's balance does not count legumes, although the brief asks for it: the import does
+  not mark them, only two seed recipes carry the tag.
 - A baking recipe without a printed servings line gets whatever was entered in review, so far
   mostly "4 Portionen". Its unit can only be set once recipes can be edited.
 - A book that prints no servings with its recipes sends every one of them to review for that

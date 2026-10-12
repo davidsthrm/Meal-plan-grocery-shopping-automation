@@ -1,49 +1,53 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { servingsText, sourceText } from "@/lib/recipe-text";
-import { must } from "@/server/catalog";
+import { RecipeCard } from "@/components/recipe-card";
+import { RecipeFilterBar } from "@/components/recipe-filter";
+import { discover } from "@/domain/library/discover";
+import { filterParams, filterRecipes, isNoFilter, readFilter } from "@/domain/library/filter";
+import { today } from "@/lib/today";
+import { loadLibrary, recipesWithIngredient } from "@/server/library";
+import { loadHistory } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 
-export const metadata: Metadata = { title: "Rezepte" };
+export const metadata: Metadata = { title: "Entdecken" };
 
-export default async function RecipesPage() {
+/** How many results are shown at first, and how many more each time. */
+const STEP = 60;
+
+export default async function DiscoverPage(props: PageProps<"/rezepte">) {
+  const params = await props.searchParams;
+  const filter = readFilter(params);
+  const shown = Math.max(STEP, Number(params.n) || STEP);
   const db = await createSessionClient();
-  const [recipeRows, categories, links] = await Promise.all([
-    db
-      .from("recipe")
-      .select(
-        "id, title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, status",
-      )
-      .order("title"),
-    db.from("tag").select("id, name").eq("group_name", "Kategorie").order("sort_order"),
-    db.from("recipe_tag").select("recipe_id, tag_id"),
+  const [library, waitingRows] = await Promise.all([
+    loadLibrary(db),
+    db.from("recipe").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
   ]);
-  const recipes = must(recipeRows, "load recipes");
-  const waiting = recipes.filter((recipe) => recipe.status === "needs_review").length;
-  const approved = recipes.filter((recipe) => recipe.status === "approved");
+  const { recipes, categories, books } = library;
+  const waiting = waitingRows.count ?? 0;
+  const categoryName = new Map(categories.map((category) => [category.key, category.name]));
+  const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
 
-  // Every recipe is listed once: under its category, or under "ohne Kategorie".
-  const categoryRows = must(categories, "load categories");
-  const categoryIds = new Set(categoryRows.map((category) => category.id));
-  const categoryOf = new Map(
-    must(links, "load recipe categories")
-      .filter((link) => categoryIds.has(link.tag_id))
-      .map((link) => [link.recipe_id, link.tag_id]),
-  );
-  const sections = [
-    ...categoryRows.map((category) => ({
-      name: category.name,
-      recipes: approved.filter((recipe) => categoryOf.get(recipe.id) === category.id),
-    })),
-    { name: "Ohne Kategorie", recipes: approved.filter((recipe) => !categoryOf.has(recipe.id)) },
-  ].filter((section) => section.recipes.length > 0);
+  const browsing = isNoFilter(filter);
+  const groups = browsing
+    ? discover(recipes, { today: today(), history: await loadHistory(db, today()), categories })
+    : [];
+  const results = browsing
+    ? []
+    : filterRecipes(
+        recipes,
+        filter,
+        filter.text ? await recipesWithIngredient(db, filter.text) : undefined,
+      );
+  const link = (extra: Record<string, string>) =>
+    `/rezepte?${new URLSearchParams({ ...filterParams(filter), ...extra })}`;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-baseline justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Rezepte</h1>
-        <p className="text-muted">{approved.length} im Kochbuch</p>
-      </div>
+    <div className="mx-auto max-w-5xl">
+      <p className="eyebrow">
+        {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
+      </p>
+      <h1 className="title mt-1">Entdecken</h1>
 
       {waiting > 0 && (
         <Link
@@ -54,45 +58,76 @@ export default async function RecipesPage() {
         </Link>
       )}
 
-      {approved.length === 0 && (
+      {recipes.length === 0 ? (
         <p className="mt-8 text-muted">
           Noch keine Rezepte. Unter{" "}
-          <Link href="/import" className="font-semibold text-accent underline">
+          <Link href="/import" className="link underline">
             Import
           </Link>{" "}
           kannst du Kochbuchseiten fotografieren und einlesen lassen.
         </p>
+      ) : (
+        <div className="mt-5">
+          <RecipeFilterBar path="/rezepte" filter={filter} categories={categories} books={books} />
+        </div>
       )}
 
-      {sections.map((section) => (
-        <section key={section.name} className="mt-6">
-          <h2 className="mb-2 flex items-baseline justify-between text-lg font-semibold">
-            {section.name}
-            <span className="text-sm font-normal text-muted">{section.recipes.length}</span>
+      {groups.map((group) => (
+        <section key={group.title} className="mt-8" aria-label={group.title}>
+          <h2 className="border-b border-line pb-2 text-xl font-bold tracking-tight">
+            {group.title}
           </h2>
-          <ul className="card divide-y divide-line">
-            {section.recipes.map((recipe) => (
-              <li key={recipe.id}>
-                <Link
-                  href={`/rezepte/${recipe.id}`}
-                  className="block px-4 py-3 hover:bg-accent-soft"
-                >
-                  <span className="block font-semibold">{recipe.title}</span>
-                  <span className="block text-sm text-muted">
-                    {[
-                      sourceText(recipe.source_book, recipe.source_page),
-                      servingsText(recipe.servings_min, recipe.servings_max, recipe.servings_unit),
-                      recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {group.shelves.map((shelf) => (
+            <section key={shelf.key} className="mt-4" aria-label={shelf.title}>
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="font-semibold">{shelf.title}</h3>
+                {shelf.filter && shelf.total > shelf.recipes.length ? (
+                  <Link
+                    href={`/rezepte?${new URLSearchParams(filterParams(shelf.filter))}`}
+                    className="link shrink-0 text-sm"
+                  >
+                    Alle {shelf.total}
+                  </Link>
+                ) : (
+                  <span className="shrink-0 text-sm text-muted">{shelf.total}</span>
+                )}
+              </div>
+              <div className="shelf mt-2">
+                {shelf.recipes.map((recipe) => (
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    category={nameOf(recipe.category)}
+                    className="w-60"
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
         </section>
       ))}
+
+      {!browsing && (
+        <section className="mt-6" aria-label="Ergebnisse">
+          <p className="text-muted" role="status">
+            {results.length === 0
+              ? "Kein Rezept passt dazu."
+              : results.length === 1
+                ? "1 Rezept passt dazu"
+                : `${results.length} Rezepte passen dazu`}
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {results.slice(0, shown).map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} category={nameOf(recipe.category)} />
+            ))}
+          </div>
+          {results.length > shown && (
+            <Link href={link({ n: String(shown + STEP) })} scroll={false} className="btn mt-4">
+              Weitere anzeigen
+            </Link>
+          )}
+        </section>
+      )}
     </div>
   );
 }
