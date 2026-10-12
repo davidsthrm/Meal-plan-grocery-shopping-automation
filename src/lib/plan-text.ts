@@ -1,0 +1,76 @@
+import type { Diet } from "@/domain/library/filter";
+import type { Meal, PlanSlot } from "@/domain/plan";
+import type { BalanceGroup, BalanceLine } from "@/domain/recommend/balance";
+import type { Reason } from "@/domain/recommend/suggest";
+
+/** The words the week plan and the library use, in one place. */
+
+export const MEAL_NAME: Record<Meal, string> = { lunch: "Mittag", dinner: "Abend" };
+export const MEAL_LONG: Record<Meal, string> = { lunch: "Mittagessen", dinner: "Abendessen" };
+
+export const GROUP_NAME: Record<BalanceGroup, string> = {
+  vegetarian: "Vegetarisch",
+  fish: "Fisch",
+  poultry: "Geflügel",
+  red_meat: "Fleisch",
+};
+
+export const DIET_NAME: Record<Diet, string> = {
+  vegetarisch: "Vegetarisch",
+  vegan: "Vegan",
+  fisch: "Fisch",
+  gefluegel: "Geflügel",
+  fleisch: "Fleisch",
+};
+
+/** What a week aims for in a group: "mind. 3", "höchstens 2". */
+export function targetText(line: BalanceLine): string {
+  if (line.min !== null && line.max !== null) return `${line.min} bis ${line.max}`;
+  if (line.min !== null) return `mind. ${line.min}`;
+  if (line.max !== null) return `höchstens ${line.max}`;
+  return "";
+}
+
+const weeksText = (weeks: number) => (weeks === 1 ? "einer Woche" : `${weeks} Wochen`);
+
+export function reasonText(reason: Reason): string {
+  switch (reason.kind) {
+    case "fills_gap":
+      return `${GROUP_NAME[reason.group]} fehlt diese Woche noch`;
+    case "favorite":
+      return "Favorit";
+    case "long_ago":
+      return `Zuletzt vor ${weeksText(reason.weeks)} gekocht`;
+    case "recent":
+      return `Erst vor ${weeksText(reason.weeks)} gekocht`;
+    case "group_full":
+      return `Schon genug ${GROUP_NAME[reason.group]} diese Woche`;
+  }
+}
+
+/**
+ * Why a recipe is suggested, in one line. A recipe that is there only because the week needs
+ * one more meal has no reason, and then nothing is said.
+ */
+export function whyText(reasons: readonly Reason[]): string {
+  return reasons.map(reasonText).join(" · ");
+}
+
+/** A planned amount: "4 Personen", "1 Springform (Ø 26 cm)". */
+export function plannedText(servings: number, unit: string | null): string {
+  if (unit !== null) return `${servings} ${unit}`;
+  return servings === 1 ? "1 Person" : `${servings} Personen`;
+}
+
+/** What a meal without a recipe says on the plan. */
+export function slotText(slot: Exclude<PlanSlot, { kind: "recipes" }>): string {
+  switch (slot.kind) {
+    case "free_text":
+    case "away":
+      return slot.label;
+    case "leftovers":
+      return "Reste";
+    case "skipped":
+      return "Fällt aus";
+  }
+}

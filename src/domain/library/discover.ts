@@ -85,11 +85,11 @@ export function discover(
   });
   const fresh = recipes.filter((recipe) => daysBetween(recipe.addedOn, today) <= NEW_DAYS);
 
-  const forYou: Shelf[] = [
-    filtered("favoriten", "Eure Favoriten", { ...NO_FILTER, favorites: true }),
+  const picked: Shelf[] = [
+    filtered("favoriten", "Favoriten", { ...NO_FILTER, favorites: true }),
     shelf(
       "schnell",
-      `Schnell auf dem Tisch`,
+      `Bis ${QUICK_MINUTES} Minuten`,
       recipes.filter(
         (recipe) =>
           isMeal(recipe) && recipe.prepMinutes !== null && recipe.prepMinutes <= QUICK_MINUTES,
@@ -104,16 +104,14 @@ export function discover(
   // Right after a cookbook was photographed, everything is new, and a shelf saying so says
   // nothing. It appears once new recipes are the exception.
   if (fresh.length * 3 < recipes.length) {
-    forYou.push(
-      shelf("neu", "Neu dabei", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)),
-    );
+    picked.push(shelf("neu", "Neu", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)));
   }
 
   const books = [...new Set(recipes.flatMap((recipe) => recipe.sourceBook ?? []))].sort((a, b) =>
     a.localeCompare(b, "de"),
   );
   const groups: ShelfGroup[] = [
-    { title: "Für euch", shelves: forYou },
+    { title: "Auswahl", shelves: picked },
     {
       title: "Nach Art",
       shelves: categories.map((category) =>

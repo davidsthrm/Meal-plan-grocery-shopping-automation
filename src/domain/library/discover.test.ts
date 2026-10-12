@@ -25,7 +25,7 @@ const shelf = (key: string, list = recipes, patch = {}) =>
 describe("discover", () => {
   it("groups the library by what it is for, kind, diet and cookbook", () => {
     expect(discover(recipes, options).map((group) => group.title)).toEqual([
-      "Für euch",
+      "Auswahl",
       "Nach Art",
       "Nach Ernährung",
       "Nach Kochbuch",

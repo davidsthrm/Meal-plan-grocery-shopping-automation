@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HeartIcon } from "@/components/icons";
+import { SubmitButton } from "@/components/submit-button";
 import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
 import { must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { createSessionClient } from "@/server/supabase/server";
+import { setFavorite } from "../actions";
 
 export const metadata: Metadata = { title: "Rezept" };
 
@@ -15,7 +18,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, status",
+      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, status, is_favorite",
     )
     .eq("id", id)
     .maybeSingle();
@@ -47,13 +50,13 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
 
   return (
     <article className="mx-auto max-w-3xl">
-      <Link href="/rezepte" className="text-sm font-semibold text-accent">
-        ← Alle Rezepte
+      <Link href="/rezepte" className="link text-sm">
+        ← Entdecken
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold">{recipe.title}</h1>
-      <p className="mt-1 text-muted">
+      {category && <p className="eyebrow mt-3">{category.name}</p>}
+      <h1 className="title mt-1">{recipe.title}</h1>
+      <p className="mt-2 text-muted">
         {[
-          category?.name ?? null,
           servingsText(recipe.servings_min, recipe.servings_max, recipe.servings_unit),
           recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null,
           source || null,
@@ -62,7 +65,23 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           .join(" · ")}
       </p>
 
-      <h2 className="mt-6 mb-2 text-lg font-semibold">Zutaten</h2>
+      {recipe.status === "approved" && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
+            Einplanen
+          </Link>
+          <form action={setFavorite}>
+            <input type="hidden" name="recipe" value={recipe.id} />
+            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
+            <SubmitButton className={`btn ${recipe.is_favorite ? "text-accent" : ""}`}>
+              <HeartIcon filled={recipe.is_favorite} />
+              {recipe.is_favorite ? "Favorit" : "Als Favorit merken"}
+            </SubmitButton>
+          </form>
+        </div>
+      )}
+
+      <h2 className="mt-6 mb-2 text-xl font-bold tracking-tight">Zutaten</h2>
       <ul className="card divide-y divide-line">
         {must(lines, "load lines").map((line) => (
           <li key={line.id} className="flex gap-3 px-4 py-2">
@@ -81,7 +100,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
 
       {photoPaths.length > 0 && (
         <>
-          <h2 className="mt-6 mb-2 text-lg font-semibold">Aus dem Kochbuch</h2>
+          <h2 className="mt-6 mb-2 text-xl font-bold tracking-tight">Aus dem Kochbuch</h2>
           <div className="space-y-3">
             {photoPaths.map((path, i) => (
               <a key={path} href={urls[path]} target="_blank" rel="noreferrer" className="block">
