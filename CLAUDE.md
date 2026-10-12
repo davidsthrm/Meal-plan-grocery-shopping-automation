@@ -52,7 +52,7 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Phase 3 is split, each part with its own pull request: 3a login, batch import, review and
   new ingredients (done); 3b week planner with suggestions and the library to browse (done),
   then the goals of a week, coffee on Sundays, extras, foods for a cold supper, recipes
-  typed in by hand and a search that forgives (done); 3c shopping list, print and PDF. The suggestions were planned as phase 5 and came forward:
+  typed in by hand and a search that forgives (done); 3c shopping list, print and PDF (done). The suggestions were planned as phase 5 and came forward:
   the household wants planning to start from them.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
@@ -109,7 +109,7 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `/woche/lebensmittel` (what to buy for a meal without a recipe), `/woche/ziele` (the goals
   of a week), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`,
   `/rezepte/neu` and `/rezepte/[id]/bearbeiten` (a recipe typed or corrected by hand),
-  `/import`.
+  `/einkauf` (the shopping list of a week) with `/einkauf/pdf` (the same as a PDF), `/import`.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request. Anything that can grow beyond that is read
@@ -283,6 +283,18 @@ Shopping list
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`). Notes, shop overrides, at-home marks and check-offs belong to the key
   and survive. A change is reported only when the quantity shown on the list changes.
+- The list is worked out from the plan every time it is shown (`loadShoppingList`), so it
+  cannot disagree with the plan. Stored are only what the household does by hand: typed
+  entries (`shopping_manual_entry`) and, per line key, tick, note and "we have that"
+  (`shopping_line_state`). The table `shopping_line` is not written yet.
+- Besides the cooked meals the list holds the week's extras, scaled like a meal and bought on
+  the main shopping day, and the foods of meals without a recipe, by name and without an
+  amount. A food bought somewhere else than the catalog says is its own line
+  (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.
+- The main shopping day is the household's weekday of the planned week (Monday).
+- Export: the page has a print layout (black on white, two columns, a box per line, no
+  controls), and `/einkauf/pdf` writes the same list with `pdf-lib`. Both show what is still
+  to buy, without what is ticked off or at home.
 
 Import
 
@@ -381,6 +393,9 @@ Import
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
 - Not built yet in the import: retrying a failed page or recipe from the screen, and
   correcting the ingredient lines of a recipe that was read from a photo.
+- The shopping list does not show yet what changed since it was last looked at, the shop of
+  a line cannot be changed for one week, and ticking off needs a connection. The "Haben wir
+  schon?" step is a plain section of the list for now.
 - A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose
   recipes are planned therefore fails with an error instead of an explanation.
 - The week's balance does not count legumes, although the brief asks for it: the import does
