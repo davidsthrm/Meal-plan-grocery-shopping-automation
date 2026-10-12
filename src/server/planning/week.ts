@@ -11,9 +11,8 @@ import {
   type SlotContent,
   type SlotItem,
 } from "@/domain/plan";
-import { allRows } from "../library";
 import { findIngredient } from "@/domain/catalog";
-import { loadCatalogIndex, must, type Db } from "../catalog";
+import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned
@@ -115,7 +114,8 @@ async function storeFoods(
   if (stored.error) throw new Error(`store foods of meal: ${stored.error.message}`);
 }
 
-async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<string> {
+/** The id of a week's plan. The week comes into being when something is first stored in it. */
+export async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<string> {
   const plan = must(
     await db
       .from("week_plan")

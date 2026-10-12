@@ -1,6 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { DISH_TYPES, PROTEIN_TYPES } from "../import/extraction";
-import { mapToCatalog } from "../import/map-ingredient";
+import { mapToCatalog, splitJoinedName } from "../import/map-ingredient";
 import type { ReviewedLine } from "../import/review-input";
 import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "../import/servings";
 import { parseQuantity } from "../quantity";
@@ -130,6 +130,30 @@ export function readTypedRecipe(
         errors.lines = `„${text.trim()}“: Welche Zutat ist das?`;
         continue;
       }
+      const original = text.trim().replace(/\s+/g, " ");
+      // "Salz, Pfeffer" on one line is two ingredients, not salt with the remark "Pfeffer".
+      const joined =
+        line.quantity === null
+          ? splitJoinedName(index, [line.name, line.note].filter(Boolean).join(", "))
+          : null;
+      if (joined) {
+        for (const ingredient of joined) {
+          lines.push({
+            ingredientId: ingredient.id,
+            quantity: null,
+            quantityMax: null,
+            unit: null,
+            approximate: false,
+            secondary: null,
+            alternativeTo: null,
+            optional: false,
+            originalText: original,
+            note: null,
+            readName: ingredient.name,
+          });
+        }
+        continue;
+      }
       lines.push({
         ingredientId: mapToCatalog(index, { raw: line.name, name: line.name })?.id ?? null,
         quantity: line.quantity,
@@ -139,7 +163,7 @@ export function readTypedRecipe(
         secondary: null,
         alternativeTo: null,
         optional: false,
-        originalText: text.trim().replace(/\s+/g, " "),
+        originalText: original,
         note: line.note,
         readName: line.name,
       });

@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayAndMonth, isIsoDate, mondayOf, weekdayLong } from "@/domain/dates";
 import { VESPER_FOODS } from "@/domain/vesper";
 import { MEAL_NAME } from "@/lib/plan-text";
-import { must } from "@/server/catalog";
+import { loadIngredientNames, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { addSlotFood, removeSlotFood } from "../actions";
@@ -27,7 +27,7 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
   const [slots, shopRows, ingredientRows] = await Promise.all([
     loadWeek(db, week),
     db.from("shop").select("id, name").order("sort_order"),
-    db.from("ingredient").select("name").eq("status", "active").order("name"),
+    loadIngredientNames(db),
   ]);
   const slot = slots.find((entry) => entry.date === date && entry.meal === meal);
   if (slot?.kind !== "free_text") notFound();
@@ -115,7 +115,7 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
             />
           </label>
           <datalist id="lebensmittel">
-            {must(ingredientRows, "load ingredients").map((ingredient) => (
+            {ingredientRows.map((ingredient) => (
               <option key={ingredient.name} value={ingredient.name} />
             ))}
           </datalist>

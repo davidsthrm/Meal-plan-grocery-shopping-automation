@@ -188,3 +188,20 @@ details > summary {
 details > summary::-webkit-details-marker {
   display: none;
 }
+
+/* On paper: black on white, nothing that only makes sense on a screen. */
+@media print {
+  html {
+    font-size: 12pt;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  details > summary {
+    cursor: auto;
+  }
+  @page {
+    margin: 15mm;
+  }
+}

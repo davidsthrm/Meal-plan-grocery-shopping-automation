@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loadCatalogIndex, must } from "@/server/catalog";
+import { loadCatalogIndex, loadIngredientNames, must } from "@/server/catalog";
 import { loadOpenProposals, settleKnownProposals } from "@/server/import/proposals";
 import { createSessionClient } from "@/server/supabase/server";
 import { ProposalList } from "./proposal-list";
@@ -13,7 +13,7 @@ export default async function ProposalsPage() {
   await settleKnownProposals(db, await loadCatalogIndex(db));
   const [proposals, ingredients, aisles] = await Promise.all([
     loadOpenProposals(db),
-    db.from("ingredient").select("id, name").eq("status", "active").order("name"),
+    loadIngredientNames(db),
     db.from("aisle_group").select("id, name").order("sort_order"),
   ]);
 
@@ -38,7 +38,7 @@ export default async function ProposalsPage() {
             // After saving, the remaining proposals start from their own suggestions again.
             key={proposals.map((proposal) => proposal.id).join()}
             proposals={proposals}
-            ingredients={must(ingredients, "load ingredients")}
+            ingredients={ingredients}
             aisleGroups={must(aisles, "load aisle groups")}
           />
         </>

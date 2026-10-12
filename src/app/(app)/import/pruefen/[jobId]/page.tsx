@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { normalizeName } from "@/domain/catalog";
 import { UNITS } from "@/domain/units";
-import { must } from "@/server/catalog";
+import { loadIngredientNames, must } from "@/server/catalog";
 import { loadReview } from "@/server/import/review";
 import { createSessionClient } from "@/server/supabase/server";
 import { ReviewForm } from "./review-form";
@@ -14,11 +14,11 @@ export default async function ReviewPage(props: PageProps<"/import/pruefen/[jobI
   const db = await createSessionClient();
   const [review, ingredients, waiting] = await Promise.all([
     loadReview(db, jobId),
-    db.from("ingredient").select("name, synonyms").eq("status", "active").order("name"),
+    loadIngredientNames(db),
     db.from("import_job").select("id").eq("status", "needs_review").not("recipe_id", "is", null),
   ]);
   if (!review) notFound();
-  const catalog = must(ingredients, "load ingredients");
+  const catalog = ingredients;
 
   return (
     <ReviewForm

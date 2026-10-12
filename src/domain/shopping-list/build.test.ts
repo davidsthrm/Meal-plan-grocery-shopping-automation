@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
-import type { Recipe, RecipeIngredient } from "../recipe";
+import type { Recipe, RecipeIngredient, Servings } from "../recipe";
 import { buildShoppingList, tripFor, toDefaultUnit } from "./build";
 import { line, testIndex } from "./test-catalog";
 import type { ManualEntry, ShoppingLine } from "./types";
@@ -12,7 +12,7 @@ const SUNDAY = "2026-10-18";
 function recipe(
   id: string,
   ingredients: RecipeIngredient[],
-  servings = { min: 4, max: 4, unit: null },
+  servings: Servings = { min: 4, max: 4, unit: null },
 ): Recipe {
   return { id, title: id, kind: "cookbook", servings, ingredients };
 }
@@ -116,6 +116,37 @@ describe("buildShoppingList", () => {
     );
     expect(lines.get("karotten@main")!.purchase).toEqual({ quantity: 2, unit: "Stück" });
     expect(lines.get("karotten@main#Bund")!.purchase).toEqual({ quantity: 1, unit: "Bund" });
+  });
+
+  it("does not make a line of its own out of a spoonful that cannot be added", () => {
+    // Butter is bought by weight; a tablespoon of it has no weight the catalog knows.
+    const lines = build(
+      [recipe("a", [line("butter", 3, "EL"), line("butter", 2, "TL")])],
+      [slot(MONDAY, "a")],
+    );
+    expect([...lines.keys()]).toEqual(["butter@main"]);
+    expect(lines.get("butter@main")).toMatchObject({
+      purchase: null,
+      amounts: [],
+      hasUnquantified: true,
+    });
+    // Next to a real amount, the spoonful changes nothing about what is bought.
+    const more = build(
+      [recipe("a", [line("butter", 300, "g"), line("butter", 1, "EL")])],
+      [slot(MONDAY, "a")],
+    );
+    expect([...more.keys()]).toEqual(["butter@main"]);
+    expect(more.get("butter@main")!.amounts).toEqual([{ quantity: 300, unit: "g" }]);
+  });
+
+  it("names one piece in the singular where the catalog knows the word", () => {
+    const one = build([recipe("a", [line("karotten", 1, "Stück")])], [slot(MONDAY, "a")]);
+    expect(one.get("karotten@main")).toMatchObject({ label: "Karotte" });
+    const two = build([recipe("a", [line("karotten", 2, "Stück")])], [slot(MONDAY, "a")]);
+    expect(two.get("karotten@main")).toMatchObject({ label: "Karotten" });
+    // No singular among the other names: the name stays as it is.
+    const tomato = build([recipe("a", [line("tomaten", 1, "Stück")])], [slot(MONDAY, "a")]);
+    expect(tomato.get("tomaten@main")).toMatchObject({ label: "Tomaten" });
   });
 
   it("needs only one line for an ingredient that shows no quantity", () => {
@@ -319,5 +350,126 @@ describe("buildShoppingList", () => {
     );
     expect(lines.get("ingwer@main")!.optional).toBe(true);
     expect(lines.get("tomaten@main")!.optional).toBe(false);
+  });
+});
+
+describe("what a week needs besides its cooked meals", () => {
+  const vesper = (foods: { label: string; ingredientId: string | null; shopId: string | null }[]) =>
+    ({
+      id: "vesper",
+      date: TUESDAY,
+      meal: "dinner",
+      kind: "free_text",
+      label: "Vesper",
+      foods,
+    }) satisfies PlanSlot;
+  const bread = { label: "Brot", ingredientId: "brot", shopId: null };
+
+  it("lists the foods of a meal without a recipe, by name and without an amount", () => {
+    const lines = build(
+      [],
+      [vesper([bread, { label: "Gurke", ingredientId: null, shopId: null }])],
+    );
+    expect(lines.get("brot@main")).toMatchObject({ label: "Brot", purchase: null, amounts: [] });
+    expect(lines.get("brot@main")!.contributions[0].source).toMatchObject({
+      type: "food",
+      mealLabel: "Vesper",
+      date: TUESDAY,
+    });
+    // Not in the catalog: listed as written, where free lines go.
+    expect(lines.get("food:gurke@")).toMatchObject({
+      label: "Gurke",
+      shopId: "aldi",
+      aisleGroupId: "sonstiges",
+    });
+  });
+
+  it("keeps a food apart that is bought somewhere else for that meal", () => {
+    const usual = testIndex.ingredientById.get("brot")!.preferredShopId;
+    const other = usual === "ec" ? "aldi" : "ec";
+    const toast = recipe("toast", [line("brot", 1, "Stück")]);
+    const lines = build(
+      [toast],
+      [
+        slot(MONDAY, "toast"),
+        vesper([
+          { ...bread, shopId: other },
+          { ...bread, label: "brot" },
+        ]),
+      ],
+    );
+    // Bread for cooking stays where the catalog buys it; bread for the supper is its own line.
+    expect(lines.get("brot@main")).toMatchObject({ shopId: usual });
+    expect(lines.get("brot@main")!.contributions).toHaveLength(2);
+    expect(lines.get(`brot@main@${other}`)).toMatchObject({ shopId: other, label: "Brot" });
+    // Naming the catalog's own shop is no exception.
+    const same = build([], [vesper([{ ...bread, shopId: usual }])]);
+    expect([...same.keys()]).toEqual(["brot@main"]);
+  });
+
+  it("does not assume a food someone asked for is at home", () => {
+    const soup = recipe("suppe", [line("salz", null, null)]);
+    expect(build([soup], [slot(MONDAY, "suppe")]).get("salz@main")!.defaultAtHome).toBe(true);
+    const asked = build([], [vesper([{ label: "Salz", ingredientId: "salz", shopId: null }])]);
+    expect(asked.get("salz@main")!.defaultAtHome).toBe(false);
+  });
+
+  it("buys a food late that does not keep until its meal", () => {
+    const sunday = {
+      ...vesper([{ label: "Tomaten", ingredientId: "tomaten", shopId: null }]),
+      date: SUNDAY,
+    };
+    expect(build([], [sunday]).get("tomaten@main")).toBeDefined();
+    const eggs = testIndex.ingredientById.get("eier")!;
+    const fresh = { ...eggs, shelfLifeDays: 2 };
+    const lines = buildShoppingList({
+      index: {
+        ...testIndex,
+        ingredientById: new Map([...testIndex.ingredientById, ["eier", fresh]]),
+      },
+      recipes: [],
+      slots: [{ ...vesper([{ label: "Eier", ingredientId: "eier", shopId: null }]), date: SUNDAY }],
+      shoppingDate: MONDAY,
+    });
+    expect(lines.find((entry) => entry.key === "eier@later")).toMatchObject({ neededBy: SUNDAY });
+  });
+
+  it("adds the recipes a week needs outside its meals, scaled to what was asked for", () => {
+    const cake = recipe("kuchen", [line("butter", 250, "g"), line("eier", 4, "Stück")], {
+      min: 1,
+      max: 1,
+      unit: "Springform",
+    });
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [],
+      extras: [{ recipeId: "kuchen", servings: 2, note: "Einladung" }],
+      shoppingDate: MONDAY,
+    });
+    const butter = lines.find((entry) => entry.ingredientId === "butter")!;
+    expect(butter.amounts).toEqual([{ quantity: 500, unit: "g" }]);
+    expect(butter.trip).toBe("main");
+    expect(butter.contributions[0].source).toEqual({
+      type: "extra",
+      recipeId: "kuchen",
+      recipeTitle: "kuchen",
+      note: "Einladung",
+    });
+    const eggs = lines.find((entry) => entry.ingredientId === "eier")!;
+    expect(eggs.amounts).toEqual([{ quantity: 8, unit: "Stück" }]);
+  });
+
+  it("sums an extra with the same ingredient of a meal", () => {
+    const cake = recipe("kuchen", [line("eier", 4, "Stück")]);
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [slot(MONDAY, "kuchen")],
+      extras: [{ recipeId: "kuchen", servings: 4, note: null }],
+      shoppingDate: MONDAY,
+    });
+    expect(lines.filter((entry) => entry.ingredientId === "eier")).toHaveLength(1);
+    expect(lines[0].amounts).toEqual([{ quantity: 8, unit: "Stück" }]);
   });
 });

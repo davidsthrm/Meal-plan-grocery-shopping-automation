@@ -14,6 +14,10 @@ export type ContributionSource =
       recipeId: string;
       recipeTitle: string;
     }
+  /** A recipe the week needs outside its meals. */
+  | { type: "extra"; recipeId: string; recipeTitle: string; note: string | null }
+  /** Something to buy for a meal without a recipe: bread for the "Vesper". */
+  | { type: "food"; slotId: string; date: IsoDate; meal: Meal; mealLabel: string }
   | { type: "manual"; entryId: string };
 
 /** One reason an ingredient is on the list, with the amount that reason asks for. */
@@ -44,6 +48,8 @@ export interface ShoppingLine {
   /** For "later" lines: the first day the ingredient is needed. */
   neededBy: IsoDate | null;
   shopId: string;
+  /** True when the shop was named on purpose: bread for a cold supper from the bakery. */
+  shopByChoice?: boolean;
   aisleGroupId: string;
   /** What to show before the name. Null means the name alone is enough. */
   purchase: Amount | null;

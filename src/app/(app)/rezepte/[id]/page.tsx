@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { HeartIcon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
-import { must } from "@/server/catalog";
+import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { createSessionClient } from "@/server/supabase/server";
 import { setFavorite } from "../actions";
@@ -37,13 +37,13 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       .select("storage_path, sort_order")
       .eq("recipe_id", id)
       .order("sort_order"),
-    db.from("ingredient").select("id, name"),
+    loadIngredientNames(db),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
     db.from("tag").select("id, name").eq("group_name", "Kategorie"),
   ]);
   const ownTags = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
   const category = must(categories, "load categories").find((tag) => ownTags.has(tag.id));
-  const names = new Map(must(ingredients, "load ingredients").map((i) => [i.id, i.name]));
+  const names = new Map(ingredients.map((i) => [i.id, i.name]));
   const photoPaths = must(photos, "load photos").map((photo) => photo.storage_path);
   const urls = await viewUrls(photoPaths);
   const source = sourceText(recipe.source_book, recipe.source_page);
