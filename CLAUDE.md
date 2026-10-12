@@ -37,6 +37,8 @@ is easier than pen and paper.
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
+| Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
+| Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
 | Regenerate the database types after a migration                           | `npm run db:types`                             |
 | Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
 
@@ -266,9 +268,13 @@ Library
   shopping note: "200 g Spaghetti", "2-3 Tomaten", "Parmesan". A number without a unit counts
   pieces, what follows a comma is a note. It is approved at once, and a quick meal unless a
   cookbook is named. Unknown ingredients become proposals, as in the import.
-- The same form corrects a recipe. What stands above the ingredients can always be changed;
-  the ingredients only when they were typed. Lines read from a photo keep their printed text
-  and their second measures, which a line of text cannot hold.
+- Any recipe can be corrected on `/rezepte/[id]/bearbeiten`, its ingredient lines included.
+  The lines are the rows of the import's review (`IngredientRows`, shared by both forms):
+  amount, unit, ingredient and note per row, the printed line shown above it. What is typed
+  is checked on the server by `readReview`, and saving replaces the recipe's lines.
+- The recipe page shows the photographed page folded away (`<details>`): what is cooked from
+  are the ingredients above it. Opened, it shows the recipe's own part of the page where it
+  shares the page with others, with a link to the whole page below.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows shelves: favourites, quick meals, long not cooked, then
   by category, diet and cookbook. A shelf shows ten recipes, favourites first, the others in
@@ -394,6 +400,27 @@ Import
   confirmed along the way stay.
 - The photo bucket has no storage policies. Uploads and views go through signed URLs from the
   server. The upload from the phone is deleted as soon as the clean JPEG is stored.
+- When the recipes of a batch are read, its page photos are made presentable, one page per
+  request (`frameNextPage`): turned upright in place and, where a page holds several
+  recipes, cut into one view per recipe (`recipe_photo.crop_path`, stored under `crops/` of
+  the batch). `framed_at` marks a page as done. This does not hold up review: the batch
+  counts as read, and the batch page says how many photos are still open (`photosWaiting`).
+- How a page lies is asked as a choice (`framePage`): the model sees the photo in its four
+  turns and names the upright one, then a second request locates the recipes on that copy
+  and has to find the text upright there too. If the two disagree, the photo stays as it was
+  taken and is shown whole. Asked about one photo alone ("where is the top of the text?"),
+  the model mixed up the two sides and took an upside-down page for upright.
+- Showing too much of a page is harmless, cutting something off is not (`cropFor`): a box
+  that makes no sense or covers most of the page is not used, a page with one recipe is never
+  cut, and the whole page stays one tap away.
+- A page the model cannot frame keeps its photo and is not tried again. Only an outage puts
+  it back, as with every other step.
+- Measured with `claude-haiku-5-5` (October 2026), every photo laid on each of its four
+  sides: 20 of 20 sample pages and 63 of 64 pages from the household's own folder came back
+  upright, one was left as it was, none was turned wrongly, at about 0.1 cents per page.
+  Asked about one photo alone it was 19 of 20 and 60 of 64, and one stored page ended up on
+  its head. The library's 492 pages: 67 turned upright, 602 of the 629 recipes that share a
+  page got a view of their own.
 - Review (`/import/pruefen`) shows photo and fields side by side. Everything typed is checked
   again on the server by `readReview`. Approving replaces the recipe's lines.
 - Model instructions live in `src/server/import/prompt.ts`. Their examples must not come from
@@ -415,8 +442,14 @@ Import
   scripts and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
 - Grouping title and ingredient pages has only been tested with made-up page descriptions.
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
-- Not built yet in the import: retrying a failed page or recipe from the screen, and
-  correcting the ingredient lines of a recipe that was read from a photo.
+- Not built yet in the import: retrying a failed page or recipe from the screen.
+- A recipe's own view of its page can miss the end of its steps where the text runs on in
+  the next column: one of 24 views looked at. The whole page is linked below the view.
+- The cookbooks were framed with the first way of asking, and only their turned pages and
+  an overview of all pages were checked by eye. A page that still lies wrongly is framed
+  again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
+- The cut-out view of a recipe that is deleted by itself stays in storage until its batch
+  is deleted.
 - The shopping list does not show yet what changed since it was last looked at, the shop of
   a line cannot be changed for one week, and ticking off needs a connection. The "Haben wir
   schon?" step is a plain section of the list for now.
