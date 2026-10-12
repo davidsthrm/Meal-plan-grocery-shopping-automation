@@ -51,8 +51,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   commits, one concern each.
 - Phase 3 is split, each part with its own pull request: 3a login, batch import, review and
   new ingredients (done); 3b week planner with suggestions and the library to browse (done),
-  then quick meals typed in by hand, editing recipes and a screen for the balance targets;
-  3c shopping list, print and PDF. The suggestions were planned as phase 5 and came forward:
+  then the goals of a week, coffee on Sundays, extras, foods for a cold supper, recipes
+  typed in by hand and a search that forgives (done); 3c shopping list, print and PDF. The suggestions were planned as phase 5 and came forward:
   the household wants planning to start from them.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
@@ -104,8 +104,12 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   shelves of the browse page. `src/domain/recommend/`: the balance of a week and the
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
-- Pages: `/woche` (the week plan, start page), `/woche/auswahl` (choosing what one meal is),
-  `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`, `/import`.
+- Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
+  its meals), `/woche/auswahl` (choosing a recipe for a meal or for the extras),
+  `/woche/lebensmittel` (what to buy for a meal without a recipe), `/woche/ziele` (the goals
+  of a week), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`,
+  `/rezepte/neu` and `/rezepte/[id]/bearbeiten` (a recipe typed or corrected by hand),
+  `/import`.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request. Anything that can grow beyond that is read
@@ -203,7 +207,22 @@ Week plan
   vegetarian (vegan counts as vegetarian). Only recipes that are a meal by themselves count
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
 - What the household aims for per week (`DEFAULT_TARGETS`): at least 3 vegetarian meals and
-  1 fish meal, at most 2 with poultry and 2 with red meat. Not configurable yet.
+  1 fish meal, at most 2 with poultry and 2 with red meat. The household sets its own on
+  `/woche/ziele` (`household.balance_targets`, read with `readTargets`). Every device is shown
+  that page once before the plan, remembered in the cookie `ziele-gesehen`: each person
+  should see the goals and be able to change them, but they belong to the household.
+- Sunday has a third meal, "Kaffee & Kuchen" (`meal` value `coffee`, `mealsOf`). It is
+  optional: nothing is suggested on the plan, and choosing for it suggests cakes and desserts.
+  Cakes and desserts are never suggested for lunch or dinner.
+- "Außerdem" holds recipes a week needs outside its meals (`plan_extra`): two cakes for an
+  invitation. They count for the shopping list, not for the balance.
+- A meal without a recipe can carry foods to buy (`plan_slot_food`): bread, cold cuts and a
+  cucumber for a "Vesper". A food is a name, not an amount. It may name where it is bought
+  for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
+  the catalog says for cooking. Foods are copied with the meal to the next week.
+- A typed meal whose text is the title of a recipe is planned as that recipe. Any other typed
+  meal stays text and offers "Rezept anlegen", which opens the recipe form with the title
+  filled in and puts the saved recipe on that meal.
 - A suggestion has points and reasons (`scoreRecipe`): +3 when its group is still below the
   least the week should have, -4 when its group is used up, +2 for a favourite, -3 when it
   was on a plan in the last 4 weeks, +1 when it was last cooked 8 weeks ago or longer. Equal
@@ -222,9 +241,20 @@ Week plan
 Library
 
 - The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`).
-  The search compares words without umlauts, so "kurbis" finds "Kürbis". It looks at the
-  title, and from three letters on at the ingredients: their catalog name, other names, and
-  the printed line of ingredients the catalog does not know.
+- The search is meant to find, not to be exact (`searchRecipes`). Words are compared without
+  umlauts. A word fits a recipe as a word of its title, the start of one, a part of one
+  ("nudel" in "Pestonudeln"), an ingredient (catalog name, other names, or the printed line
+  of an ingredient the catalog does not know), or a word of its category, diet or cookbook.
+  The closer the fit, the higher the recipe. A word that fits nothing in the whole library
+  may be one typing mistake away (two from nine letters on); short words must be right, or
+  "Reis" would find "Eis". Recipes that fit only some words are listed as "Ähnliche Rezepte".
+- A recipe typed in by hand (`readTypedRecipe`) has one ingredient per line, written as on a
+  shopping note: "200 g Spaghetti", "2-3 Tomaten", "Parmesan". A number without a unit counts
+  pieces, what follows a comma is a note. It is approved at once, and a quick meal unless a
+  cookbook is named. Unknown ingredients become proposals, as in the import.
+- The same form corrects a recipe. What stands above the ingredients can always be changed;
+  the ingredients only when they were typed. Lines read from a photo keep their printed text
+  and their second measures, which a line of text cannot hold.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows shelves: favourites, quick meals, long not cooked, then
   by category, diet and cookbook. A shelf shows ten recipes, favourites first, the others in
@@ -349,14 +379,14 @@ Import
   scripts and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
 - Grouping title and ingredient pages has only been tested with made-up page descriptions.
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
-- Not built yet in the import: retrying a failed page or recipe from the screen, editing a
-  recipe after it was approved.
+- Not built yet in the import: retrying a failed page or recipe from the screen, and
+  correcting the ingredient lines of a recipe that was read from a photo.
 - A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose
   recipes are planned therefore fails with an error instead of an explanation.
 - The week's balance does not count legumes, although the brief asks for it: the import does
   not mark them, only two seed recipes carry the tag.
-- A baking recipe without a printed servings line gets whatever was entered in review, so far
-  mostly "4 Portionen". Its unit can only be set once recipes can be edited.
+- A baking recipe without a printed servings line got whatever was entered in review, mostly
+  "4 Portionen". "Ändern" on the recipe page sets its unit.
 - A book that prints no servings with its recipes sends every one of them to review for that
   alone (106 recipes of "Freude am Kochen"). The upload form has no "servings unless printed"
   field yet.
