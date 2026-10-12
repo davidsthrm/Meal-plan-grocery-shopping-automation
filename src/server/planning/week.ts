@@ -11,9 +11,8 @@ import {
   type SlotContent,
   type SlotItem,
 } from "@/domain/plan";
-import { allRows } from "../library";
 import { findIngredient } from "@/domain/catalog";
-import { loadCatalogIndex, must, type Db } from "../catalog";
+import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned

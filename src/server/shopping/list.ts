@@ -2,12 +2,11 @@ import "server-only";
 import { addDays, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList } from "@/domain/shopping-list/build";
-import { presentList, type ListView } from "@/domain/shopping-list/present";
+import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
 import type { CatalogIndex } from "@/domain/catalog";
 import type { Household } from "../auth";
-import { loadCatalogIndex, must, type Db } from "../catalog";
-import { allRows } from "../library";
+import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 import { ensureWeek, loadExtras, loadWeek } from "../planning/week";
 
 /**
@@ -17,7 +16,8 @@ import { ensureWeek, loadExtras, loadWeek } from "../planning/week";
  */
 
 export interface WeekList {
-  view: ListView;
+  /** The list as one walk through a shop: by kind of grocery, whichever shop a thing is from. */
+  view: AisleView;
   /** What the household typed onto the list. */
   entries: ManualEntry[];
   index: CatalogIndex;
@@ -151,7 +151,7 @@ export async function loadShoppingList(
     manualEntries: entries,
   });
   return {
-    view: presentList(lines, states, index),
+    view: presentByAisle(lines, states, index),
     entries,
     index,
     shoppingDate,
@@ -239,4 +239,12 @@ export async function changeLine(
     { onConflict: "shopping_list_id,line_key" },
   );
   if (stored.error) throw new Error(`change line: ${stored.error.message}`);
+}
+
+/**
+ * The shop a line names on purpose, such as the bakery for the bread of a cold supper. Null
+ * for everything that is simply bought where it always is: the list does not sort by shop.
+ */
+export function chosenShop(list: WeekList, view: ViewLine): string | null {
+  return view.line.shopByChoice ? (list.index.shopById.get(view.shopId)?.name ?? null) : null;
 }

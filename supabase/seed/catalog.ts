@@ -266,6 +266,7 @@ export const ingredients: Ingredient[] = [
   molkerei("bergkaese", "Bergkäse", "g", "none", { shelf: 21 }),
   molkerei("parmesan", "Parmesan", "g", "none", { syn: ["Parmigiano", "geriebener Parmesan"], shelf: 30 }),
   molkerei("reibekaese", "geriebener Käse", "g", "pack", { syn: ["Reibekäse", "Streukäse", "geriebener Emmentaler", "geriebener Gouda"], pack: 200, shelf: 14 }),
+  molkerei("kaese", "Käse", "g", "none", { syn: ["Schnittkäse"], shelf: 14 }),
   molkerei("schafskaese", "Schafskäse", "g", "pack", { syn: ["Feta", "Hirtenkäse"], pack: 200, shelf: 14 }),
   molkerei("ofenkaese", "Ofenkäse", "Stück", "count", { syn: ["Backcamembert"], shelf: 14 }),
   molkerei("camembert", "Camembert", "Stück", "count", { shelf: 10 }),
@@ -298,6 +299,8 @@ export const ingredients: Ingredient[] = [
   fleisch("mini-salami", "Mini-Salami", "g", "none", { syn: ["Salami-Sticks"], shelf: 21 }),
   fleisch("leberkaese", "Leberkäse", "g", "weight", { syn: ["Fleischkäse"], step: 50, shelf: 5 }),
   fleisch("lyoner", "Lyoner", "g", "none", { syn: ["Fleischwurst"], shelf: 5 }),
+  fleisch("frischwurst", "Frischwurst", "g", "none", { syn: ["Aufschnitt", "Wurstaufschnitt"], shelf: 4, shop: "metzger" }),
+  fleisch("fleischsalat", "Fleischsalat", "g", "none", { shelf: 4, shop: "metzger" }),
 
   // Fisch & Meeresfrüchte
   fisch("garnelen", "Garnelen", "g", "pack", { syn: ["Shrimps", "Riesengarnelen", "Garnelenschwänze"], pack: 225, shelf: 5, shop: "aldi" }),

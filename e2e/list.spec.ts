@@ -18,9 +18,9 @@ async function plan(page: Page, meal: string, recipe: string) {
   await expect(page.getByRole("region", { name: meal, exact: true })).toContainText(recipe);
 }
 
-const shop = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
+const group = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 
-test("the week becomes a shopping list, grouped by shop, that can be worked through", async ({
+test("the week becomes a shopping list, grouped by kind of grocery, to work through", async ({
   page,
 }) => {
   await page.goto(`/woche?w=${WEEK}`);
@@ -44,15 +44,18 @@ test("the week becomes a shopping list, grouped by shop, that can be worked thro
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
   await expect(page.getByText("Einkauf am Montag, 1. März")).toBeVisible();
 
+  // One list by kind of grocery; which supermarket a thing comes from plays no part.
+  await expect(group(page, "Aldi")).toHaveCount(0);
+  await expect(group(page, "E-Center")).toHaveCount(0);
   // Counted things show their number, packs only when more than one is needed.
-  await expect(shop(page, "E-Center")).toContainText("4 Rindersteaks");
-  await expect(shop(page, "Aldi")).toContainText("2 Karotten");
-  await expect(shop(page, "Aldi")).toContainText("Kartoffeln");
+  await expect(group(page, "Fleisch & Wurst")).toContainText("4 Rindersteaks");
+  await expect(group(page, "Obst & Gemüse")).toContainText("2 Karotten");
+  await expect(group(page, "Obst & Gemüse")).toContainText("Kartoffeln");
   // 200 ml and 100 ml of cream are two packs of 200 ml.
   await expect(page.getByText("2x Sahne")).toBeVisible();
   // The cucumber is the household's "Gurken"; the supper's bread comes from the bakery.
-  await expect(page.getByText("Gurken", { exact: true })).toBeVisible();
-  await expect(shop(page, "Bäcker")).toContainText("Brot");
+  await expect(group(page, "Obst & Gemüse")).toContainText("Gurken");
+  await expect(group(page, "Brot & Backwaren")).toContainText("Brot · Bäcker");
   // Two cakes need 8 eggs, bought as a box of ten, and 500 g of butter.
   await expect(page.getByText("10 Eier")).toBeVisible();
 
@@ -65,10 +68,10 @@ test("the week becomes a shopping list, grouped by shop, that can be worked thro
   ).toHaveCount(1);
 
   // Salt is assumed to be at home, and can be put on the list after all.
-  await expect(shop(page, "Aldi")).not.toContainText("Salz");
+  await expect(group(page, "Gewürze, Öl & Essig")).toHaveCount(0);
   await page.getByText(/Haben wir schon \(\d+\)/).click();
   await page.getByRole("button", { name: "Salz doch kaufen" }).click();
-  await expect(shop(page, "Aldi")).toContainText("Salz");
+  await expect(group(page, "Gewürze, Öl & Essig")).toContainText("Salz");
 
   // Lines written by hand: one the catalog knows, with its note, and one it does not.
   await page.getByLabel("Etwas dazuschreiben").fill("Milch WS 1.29");

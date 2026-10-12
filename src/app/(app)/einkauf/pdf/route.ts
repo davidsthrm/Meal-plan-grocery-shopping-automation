@@ -9,7 +9,7 @@ import {
 import { neededText } from "@/lib/list-text";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
-import { loadShoppingList } from "@/server/shopping/list";
+import { chosenShop, loadShoppingList } from "@/server/shopping/list";
 import { shoppingListPdf } from "@/server/shopping/pdf";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -23,9 +23,12 @@ export async function GET(request: Request): Promise<Response> {
     lines.filter((line) => !line.checked);
 
   const sections = [
-    ...list.view.shops.map(({ shop, groups }) => ({
-      heading: shop.name,
-      lines: open(groups.flatMap((group) => group.lines)).map((line) => line.text),
+    ...list.view.groups.map(({ aisleGroup, lines }) => ({
+      heading: aisleGroup.name,
+      lines: open(lines).map((line) => {
+        const shop = chosenShop(list, line);
+        return shop ? `${line.text} (${shop})` : line.text;
+      }),
     })),
     {
       heading: "Später frisch kaufen",

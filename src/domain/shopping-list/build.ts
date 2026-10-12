@@ -3,7 +3,15 @@ import { normalizeName } from "../catalog";
 import { daysBetween, type IsoDate } from "../dates";
 import type { PlanExtra, PlanSlot } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
-import { baseUnitOf, convert, dimensionOf, tidy, type Amount, type Dimension } from "../units";
+import {
+  baseUnitOf,
+  convert,
+  dimensionOf,
+  tidy,
+  type Amount,
+  type Dimension,
+  type Unit,
+} from "../units";
 import { parseFreeEntry } from "./free-entry";
 import { purchaseFor } from "./rounding";
 import type { Contribution, ContributionSource, ManualEntry, ShoppingLine, Trip } from "./types";
@@ -42,6 +50,24 @@ export function toDefaultUnit(ingredient: Ingredient, amount: Amount): number | 
   const meansPacks =
     ingredient.buyingMode === "pack" && (amount.unit === "Packung" || amount.unit === "Stück");
   return meansPacks && ingredient.packSize ? amount.quantity * ingredient.packSize : null;
+}
+
+/** Amounts too small to shop for when they cannot be added to the rest. */
+const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp"]);
+
+/**
+ * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
+ * The catalog names things in the plural and lists the singular among the other names.
+ */
+function nameForOne(ingredient: Ingredient): string {
+  const plural = ingredient.name.toLowerCase();
+  const singular = ingredient.synonyms.find((name) => {
+    const short = name.toLowerCase();
+    return (
+      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
+    );
+  });
+  return singular ?? ingredient.name;
 }
 
 interface Bucket {
@@ -92,6 +118,14 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       primary.push(contribution);
       continue;
     }
+    // A spoonful or a pinch of something bought by weight or by the piece changes nothing
+    // about what to buy. It counts as "some", and does not become a line of its own that
+    // would read "55 ml Butter".
+    if (SPOONFULS.has(contribution.amount.unit)) {
+      hasUnquantified = true;
+      primary.push(contribution);
+      continue;
+    }
     const dimension = dimensionOf(contribution.amount.unit);
     const inBase = convert(
       contribution.amount.quantity,
@@ -109,6 +143,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     label: ingredient.name,
     trip,
     shopId: bucket.shopId ?? ingredient.preferredShopId,
+    shopByChoice: bucket.shopId !== null,
     aisleGroupId: ingredient.aisleGroupId,
   };
   // What someone put on the list on purpose is not assumed to be at home.
@@ -146,11 +181,16 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
 
   const lines: ShoppingLine[] = [];
   if (primary.length > 0) {
+    const purchase = hasSum ? purchaseFor(ingredient, primarySum) : null;
     lines.push({
       ...common,
+      label:
+        purchase?.unit === "Stück" && purchase.quantity === 1
+          ? nameForOne(ingredient)
+          : ingredient.name,
       key,
       neededBy: trip === "later" ? neededBy(primary) : null,
-      purchase: hasSum ? purchaseFor(ingredient, primarySum) : null,
+      purchase,
       amounts: primaryAmounts,
       hasUnquantified,
       contributions: primary,
@@ -224,6 +264,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       trip: "main" as const,
       neededBy: null,
       shopId: entry?.shopId ?? catalog.defaultShopId,
+      shopByChoice: Boolean(entry?.shopId),
       aisleGroupId: entry?.aisleGroupId ?? catalog.fallbackAisleGroupId,
       purchase: null,
       amounts: [],

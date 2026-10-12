@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { must } from "@/server/catalog";
+import { allRows, must } from "@/server/catalog";
 import { createSessionClient } from "@/server/supabase/server";
 import { NewBatchForm } from "./new-batch-form";
 
@@ -15,11 +15,14 @@ export default async function ImportPage() {
       .from("import_batch")
       .select("id, source_book, created_at")
       .order("created_at", { ascending: false }),
-    db.from("import_job").select("batch_id, status"),
+    allRows(
+      (from, to) => db.from("import_job").select("batch_id, status").order("id").range(from, to),
+      "load recipes of batches",
+    ),
     db.from("ingredient_proposal").select("id").eq("status", "open"),
   ]);
   const batchRows = must(batches, "load batches");
-  const jobRows = must(jobs, "load recipes of batches");
+  const jobRows = jobs;
   const waiting = jobRows.filter((job) => job.status === "needs_review").length;
   const open = must(proposals, "load proposals").length;
   const books = [

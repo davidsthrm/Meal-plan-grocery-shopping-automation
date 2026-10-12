@@ -8,7 +8,7 @@ import {
   type ReviewLineInput,
 } from "@/domain/import/review-input";
 import type { Unit } from "@/domain/units";
-import { loadCatalogIndex, must, type Db } from "../catalog";
+import { loadCatalogIndex, loadIngredientNames, must, type Db } from "../catalog";
 import { importModels } from "./models";
 import { saveReviewedRecipe } from "./save-recipe";
 import { viewUrls } from "./storage";
@@ -233,7 +233,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
       )
       .eq("recipe_id", job.recipe_id)
       .order("position"),
-    db.from("ingredient").select("id, name"),
+    loadIngredientNames(db),
     db.from("import_page").select("position").in("id", job.page_ids).order("position"),
     db
       .from("import_page")
@@ -242,7 +242,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
       .not("photo_path", "is", null),
     viewUrls(job.photo_paths),
   ]);
-  const names = new Map(must(ingredients, "load ingredients").map((i) => [i.id, i.name]));
+  const names = new Map(ingredients.map((i) => [i.id, i.name]));
   const rows = must(lines, "load lines");
   const positionOf = new Map(rows.map((row, at) => [row.id, at]));
   const issues = job.issues as unknown as ImportIssue[];
