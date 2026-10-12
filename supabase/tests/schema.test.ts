@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
+import { DISH_TYPES } from "@/domain/import/extraction";
 import { UNITS } from "@/domain/units";
 import { buildSeedSql, SEED_HOUSEHOLD_ID } from "../seed/build-seed-sql";
 import { seedCatalog } from "../seed/catalog";
@@ -76,6 +77,26 @@ describe("seed", () => {
         status: "approved",
       },
     ]);
+  });
+});
+
+describe("categories", () => {
+  it("has a category tag for every kind of dish the import can assign", async () => {
+    const result = await db.query<{ key: string }>(
+      "select key from public.tag where household_id = $1 and group_name = 'Kategorie' order by sort_order",
+      [SEED_HOUSEHOLD_ID],
+    );
+    expect(result.rows.map((row) => row.key)).toEqual(
+      DISH_TYPES.filter((type) => type !== "unbekannt"),
+    );
+  });
+
+  it("gives every seeded tag a stable key", async () => {
+    const result = await db.query<{ n: number }>(
+      "select count(*)::int as n from public.tag where household_id = $1 and key is null",
+      [SEED_HOUSEHOLD_ID],
+    );
+    expect(result.rows).toEqual([{ n: 0 }]);
   });
 });
 

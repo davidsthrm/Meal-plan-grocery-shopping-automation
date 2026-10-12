@@ -1199,6 +1199,7 @@ export type Database = {
           group_name: string
           household_id: string
           id: string
+          key: string | null
           name: string
           sort_order: number
         }
@@ -1206,6 +1207,7 @@ export type Database = {
           group_name: string
           household_id: string
           id?: string
+          key?: string | null
           name: string
           sort_order?: number
         }
@@ -1213,6 +1215,7 @@ export type Database = {
           group_name?: string
           household_id?: string
           id?: string
+          key?: string | null
           name?: string
           sort_order?: number
         }

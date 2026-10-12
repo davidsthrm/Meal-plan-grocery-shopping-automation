@@ -9,13 +9,19 @@ import { UNITS } from "../units";
 
 const unit = z.enum(UNITS as [string, ...string[]]);
 
+/** The categories a recipe can have. Each is the key of a tag in the group "Kategorie". */
 export const DISH_TYPES = [
   "hauptgericht",
   "suppe-eintopf",
   "salat",
   "beilage",
   "vesper",
+  "snack",
+  "dessert",
   "kuchen",
+  "fruehstueck",
+  "getraenk",
+  "grundrezept",
   "unbekannt",
 ] as const;
 

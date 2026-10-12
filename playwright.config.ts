@@ -3,7 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 // The test login lives in .env.local (created by `npm run e2e:setup`).
 process.loadEnvFile(".env.local");
 
-const PORT = 3100;
+// Next.js allows only one dev server per project. If `npm run dev` is already running, point
+// the tests at it: `E2E_PORT=3000 npm run e2e`.
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 
 export default defineConfig({
   testDir: "./e2e",

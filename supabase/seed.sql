@@ -240,21 +240,27 @@ insert into public.ingredient (id, household_id, name, synonyms, aisle_group_id,
   ('5d629c15-0381-5a78-8eac-f3ccdb44388e', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Frischhaltefolie', '{}'::text[], '5b29329c-5711-5e16-8fca-12c404332474', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'Packung', 'none', null, null, '{}'::jsonb, false, null),
   ('fc5dba9c-d82d-570a-b197-24b6b89b9df4', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Taschentücher', '{}'::text[], '5b29329c-5711-5e16-8fca-12c404332474', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'Packung', 'none', null, null, '{}'::jsonb, false, null);
 
-insert into public.tag (id, household_id, name, group_name, sort_order) values
-  ('a7ab702c-13cc-5cf1-b85b-9af3f900a0eb', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Hauptgericht', 'Mahlzeit', 0),
-  ('f527fc77-3320-59fa-a529-60ee6f182448', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Suppe & Eintopf', 'Mahlzeit', 1),
-  ('dd6ef1d3-8a8e-5ea9-9f47-00a135d49995', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Salat', 'Mahlzeit', 2),
-  ('82ce3433-f12e-5a3d-9c41-65a6d42efe0e', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Vesper', 'Mahlzeit', 3),
-  ('2b99cc60-dd4c-5e23-a541-468ba302ff97', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Kuchen & Süßes', 'Mahlzeit', 4),
-  ('5248e3d2-4244-51fd-bf70-7fd168d22c2a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Pasta', 'Art', 5),
-  ('746c93f0-4413-58ab-87d7-299135cc540b', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Auflauf', 'Art', 6),
-  ('d1780809-11a7-570b-a0f7-2ec71cb59e4a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fleisch', 'Art', 7),
-  ('a1907ba1-2a15-5b86-b9cf-cb4dfd9ba5bf', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fisch', 'Art', 8),
-  ('06750668-c90f-58c9-9afc-4a9e424671c1', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'vegetarisch', 'Ernährung', 9),
-  ('2aa9878b-3c44-5459-8dd2-0cd8e41ef3de', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'vegan', 'Ernährung', 10),
-  ('3499cf4f-c6ef-5bf9-b524-1da93c792944', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Hülsenfrüchte', 'Ernährung', 11),
-  ('da9ed4b5-eeae-5f8f-ac7e-51fefbcba630', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'schnell', 'Aufwand', 12),
-  ('01059f78-622d-5ff6-8240-b2cf8657b4af', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'für Gäste', 'Aufwand', 13);
+insert into public.tag (id, household_id, name, group_name, key, sort_order) values
+  ('a7ab702c-13cc-5cf1-b85b-9af3f900a0eb', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Hauptgericht', 'Kategorie', 'hauptgericht', 10),
+  ('f527fc77-3320-59fa-a529-60ee6f182448', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Suppe & Eintopf', 'Kategorie', 'suppe-eintopf', 20),
+  ('dd6ef1d3-8a8e-5ea9-9f47-00a135d49995', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Salat', 'Kategorie', 'salat', 30),
+  ('7184d208-d13e-5cb2-a207-c51abe832f05', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Beilage', 'Kategorie', 'beilage', 40),
+  ('82ce3433-f12e-5a3d-9c41-65a6d42efe0e', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Vesper', 'Kategorie', 'vesper', 50),
+  ('bc25e402-d194-5ae1-8ca0-add5416b65e8', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Snack & Fingerfood', 'Kategorie', 'snack', 60),
+  ('bbd09408-47f5-57b2-bdd0-3e1abe2d25ea', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Dessert & Süßspeise', 'Kategorie', 'dessert', 70),
+  ('2b99cc60-dd4c-5e23-a541-468ba302ff97', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Kuchen & Gebäck', 'Kategorie', 'kuchen', 80),
+  ('07a5a6b1-1144-5ddb-9a3b-215287d0d25d', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Frühstück', 'Kategorie', 'fruehstueck', 90),
+  ('38faa57d-e3ef-5efa-9975-212aa0b7f9cc', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Getränk', 'Kategorie', 'getraenk', 100),
+  ('a25f5669-17e2-5b94-9473-5d2be0db0a23', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Soße, Dip & Grundrezept', 'Kategorie', 'grundrezept', 110),
+  ('5248e3d2-4244-51fd-bf70-7fd168d22c2a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Pasta', 'Art', 'pasta', 120),
+  ('746c93f0-4413-58ab-87d7-299135cc540b', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Auflauf', 'Art', 'auflauf', 130),
+  ('d1780809-11a7-570b-a0f7-2ec71cb59e4a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fleisch', 'Art', 'fleisch', 140),
+  ('a1907ba1-2a15-5b86-b9cf-cb4dfd9ba5bf', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fisch', 'Art', 'fisch', 150),
+  ('06750668-c90f-58c9-9afc-4a9e424671c1', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'vegetarisch', 'Ernährung', 'vegetarisch', 160),
+  ('2aa9878b-3c44-5459-8dd2-0cd8e41ef3de', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'vegan', 'Ernährung', 'vegan', 170),
+  ('3499cf4f-c6ef-5bf9-b524-1da93c792944', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Hülsenfrüchte', 'Ernährung', 'huelsenfruechte', 180),
+  ('da9ed4b5-eeae-5f8f-ac7e-51fefbcba630', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'schnell', 'Aufwand', 'schnell', 190),
+  ('01059f78-622d-5ff6-8240-b2cf8657b4af', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'für Gäste', 'Aufwand', 'fuer-gaeste', 200);
 
 insert into public.recipe (id, household_id, title, source_title, kind, source_book, source_page, servings_min, servings_max, prep_minutes, protein_type, status) values
   ('298a1f40-d102-5dae-9166-cce89d3e2274', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle', 'Steak mit Pfefferrahmsoße, Pilzen und Spätzle', 'cookbook', null, null, 4, 4, null, 'red_meat', 'approved'),

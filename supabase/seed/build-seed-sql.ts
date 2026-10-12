@@ -147,8 +147,15 @@ export function buildSeedSql(): string {
     ),
     insert(
       "tag",
-      ["id", "household_id", "name", "group_name", "sort_order"],
-      tags.map((t, position) => [tagId(t.id), household, t.name, t.group, position]),
+      ["id", "household_id", "name", "group_name", "key", "sort_order"],
+      tags.map((t, position) => [
+        tagId(t.id),
+        household,
+        t.name,
+        t.group,
+        t.id,
+        (position + 1) * 10,
+      ]),
     ),
     insert(
       "recipe",

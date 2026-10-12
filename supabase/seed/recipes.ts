@@ -28,12 +28,19 @@ export interface SeedRecipe extends Recipe {
   status: "approved" | "needs_review";
 }
 
+/** The id doubles as the tag's stable key, which the import uses to assign categories. */
 export const tags: SeedTag[] = [
-  { id: "hauptgericht", name: "Hauptgericht", group: "Mahlzeit" },
-  { id: "suppe-eintopf", name: "Suppe & Eintopf", group: "Mahlzeit" },
-  { id: "salat", name: "Salat", group: "Mahlzeit" },
-  { id: "vesper", name: "Vesper", group: "Mahlzeit" },
-  { id: "kuchen", name: "Kuchen & Süßes", group: "Mahlzeit" },
+  { id: "hauptgericht", name: "Hauptgericht", group: "Kategorie" },
+  { id: "suppe-eintopf", name: "Suppe & Eintopf", group: "Kategorie" },
+  { id: "salat", name: "Salat", group: "Kategorie" },
+  { id: "beilage", name: "Beilage", group: "Kategorie" },
+  { id: "vesper", name: "Vesper", group: "Kategorie" },
+  { id: "snack", name: "Snack & Fingerfood", group: "Kategorie" },
+  { id: "dessert", name: "Dessert & Süßspeise", group: "Kategorie" },
+  { id: "kuchen", name: "Kuchen & Gebäck", group: "Kategorie" },
+  { id: "fruehstueck", name: "Frühstück", group: "Kategorie" },
+  { id: "getraenk", name: "Getränk", group: "Kategorie" },
+  { id: "grundrezept", name: "Soße, Dip & Grundrezept", group: "Kategorie" },
   { id: "pasta", name: "Pasta", group: "Art" },
   { id: "auflauf", name: "Auflauf", group: "Art" },
   { id: "fleisch", name: "Fleisch", group: "Art" },

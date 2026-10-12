@@ -31,6 +31,7 @@ is easier than pen and paper.
 | Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
 | The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
 | Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
+| The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
 | Browser test of a real upload with the models (about 1 ct)                | `npm run e2e:upload`                           |
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
@@ -147,6 +148,12 @@ Recipes
   slot servings fall inside the range, the recipe is cooked as written.
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
+- A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
+  Snack & Fingerfood, Dessert & Süßspeise, Kuchen & Gebäck, Frühstück, Getränk, or Soße, Dip &
+  Grundrezept. A category is a tag of the group "Kategorie" with a stable `key`. The import's
+  `dishType` is that key. Find such tags by key, never by name: the household may rename them.
+  A new category needs a migration that adds its tag to every household, an entry in
+  `DISH_TYPES` and a line in the reading instructions.
 - The household may rename a recipe and edit its ingredients. The printed text is kept in
   `original_text` and `source_title`.
 

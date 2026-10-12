@@ -30,7 +30,8 @@ Recipe fields
 - servingsMin and servingsMax: "für 4 Personen" is 4 and 4, "für 2–3 Personen" is 2 and 3.
 - page: the number printed on the page this recipe is on. On a double page that is the number on the recipe's own side.
 - prepMinutes: the printed preparation time in minutes, without waiting times printed as an extra ("+ 1 Std. Kühlzeit").
-- dishType and proteinType: your judgment from the recipe as a whole. Meat stock or bacon makes a dish non-vegetarian.
+- dishType: what kind of dish the recipe is, judged from the recipe as a whole. hauptgericht: a main course. suppe-eintopf: a soup or stew. salat: a salad. beilage: a side dish. vesper: a cold supper with bread, cold cuts or cheese. snack: finger food, small bites and nibbles. dessert: a sweet dish that is not baked goods, such as a cream, pudding, ice cream or sweet main dish. kuchen: cake, biscuits, bread and other baking. fruehstueck: breakfast. getraenk: a drink. grundrezept: a sauce, dip, dressing, dough, stock or other basic. unbekannt: none of these fits.
+- proteinType: your judgment from the ingredients. Meat stock or bacon makes a dish non-vegetarian.
 - subtitle, servingsRaw and note are empty strings when there is nothing to put there.
 
 uncertain and notes, both written in German because the family reads them
