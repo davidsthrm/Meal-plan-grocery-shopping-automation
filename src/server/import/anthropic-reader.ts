@@ -8,10 +8,13 @@ import {
 } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
 import { suggestionSchema, toProposals, type Suggestions } from "@/domain/import/proposal";
-import { EXTRACTION_PROMPT, SUGGESTION_PROMPT, VERIFICATION_PROMPT } from "./prompt";
+import { pageSurveySchema, type PageSurvey } from "@/domain/import/survey";
+import { EXTRACTION_PROMPT, SUGGESTION_PROMPT, SURVEY_PROMPT, VERIFICATION_PROMPT } from "./prompt";
 import {
   RecipeReadError,
   type CatalogSuggester,
+  type PageSurveyor,
+  type ReadOptions,
   type RecipeReader,
   type RecipeVerifier,
 } from "./read-recipe";
@@ -33,6 +36,13 @@ function imageBlocks(images: PreparedImage[]): Anthropic.ContentBlockParam[] {
       source: { type: "base64", media_type: "image/jpeg", data: image.data.toString("base64") },
     },
   ]);
+}
+
+/** Tells the model which recipe is meant when the photos show more than one. */
+function focus(read: ReadOptions | undefined): string {
+  return read?.focusTitle
+    ? ` The photos show more than one recipe. Only the recipe titled "${read.focusTitle}" is meant.`
+    : "";
 }
 
 /** Sends one structured-output request and returns the parsed answer with its token usage. */
@@ -73,25 +83,44 @@ async function ask<T>(
 
 /** Reads a recipe with a Claude model and returns it in the import's strict format. */
 export function createAnthropicReader(options: AnthropicReaderOptions): RecipeReader {
-  return async (images) => {
+  return async (images, read) => {
     const { output, model, usage } = await ask<ExtractedRecipe>(
       options,
       EXTRACTION_PROMPT,
-      [...imageBlocks(images), { type: "text", text: "Read the recipe on these photos." }],
+      [
+        ...imageBlocks(images),
+        { type: "text", text: `Read the recipe on these photos.${focus(read)}` },
+      ],
       zodOutputFormat(extractedRecipeSchema),
     );
     return { recipe: output, model, usage };
   };
 }
 
+/** Takes the first look at a page with a Claude model. Low effort: it only sorts pages. */
+export function createAnthropicSurveyor(options: AnthropicReaderOptions): PageSurveyor {
+  return async (image) => {
+    const { output, usage } = await ask<PageSurvey>(
+      { effort: "low", ...options },
+      SURVEY_PROMPT,
+      [...imageBlocks([image]), { type: "text", text: "Which recipes are on this photo?" }],
+      zodOutputFormat(pageSurveySchema),
+    );
+    return { survey: output, usage };
+  };
+}
+
 /** Checks a transcription against its photos with a Claude model, in a request of its own. */
 export function createAnthropicVerifier(options: AnthropicReaderOptions): RecipeVerifier {
-  return async (images, recipe) => {
+  return async (images, recipe, read) => {
     const transcription = JSON.stringify(transcriptionForVerification(recipe), null, 1);
     const { output, model, usage } = await ask<Verification>(
       options,
       VERIFICATION_PROMPT,
-      [...imageBlocks(images), { type: "text", text: `Transcription to check:\n${transcription}` }],
+      [
+        ...imageBlocks(images),
+        { type: "text", text: `Transcription to check.${focus(read)}\n${transcription}` },
+      ],
       zodOutputFormat(verificationSchema),
     );
     return { verification: output, model, usage };

@@ -73,3 +73,16 @@ For each unknown ingredient
 - shelfLifeDays: how many days it stays good at home after buying. Null when it keeps for weeks or longer.
 
 Return one suggestion per unknown ingredient, with its name exactly as given.`;
+
+/** Instructions for the first look at a page, which only sorts pages into recipes. */
+export const SURVEY_PROMPT = `You look at one photo from a German cookbook or food magazine and report which recipes are on it. The photo shows one page or a double page. This is a first look to sort pages into recipes. Do not transcribe ingredients or amounts.
+
+- printedPage: the page number printed on the page. If a double page shows two numbers, give the lower one. Null if no page number is visible.
+- recipes: one entry, in reading order, for each recipe that has its title or its ingredient list on this photo.
+  - title: the recipe's printed title if it is on this photo, otherwise null. Chapter and section headings such as "Salat & Gemüse" are not recipe titles.
+  - hasIngredientList: true if this recipe's ingredient list is on this photo.
+  - hasSteps: true if its preparation steps are on this photo.
+  - continuesOnNextPage: true only if the recipe's text visibly breaks off at the end of the page.
+- Steps or an ingredient list without a title on the photo are still a recipe entry, with title null. The title is then on another page.
+- A recipe that is only partly visible at the edge of the photo, because it belongs to the neighbouring page, does not count.
+- A photo without any recipe (cover, table of contents, introduction, a full-page picture, a chapter opener) has an empty recipes list. Say in otherContent, in German and in a few words, what it shows. Otherwise otherContent is empty.`;

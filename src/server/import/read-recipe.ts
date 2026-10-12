@@ -1,6 +1,7 @@
 import type { CatalogIndex } from "@/domain/catalog";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
 import type { IngredientProposal } from "@/domain/import/proposal";
+import type { PageSurvey } from "@/domain/import/survey";
 import type { Verification } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
 
@@ -16,7 +17,15 @@ export interface RecipeReading {
   usage: { inputTokens: number; outputTokens: number };
 }
 
-export type RecipeReader = (images: PreparedImage[]) => Promise<RecipeReading>;
+export interface ReadOptions {
+  /** Which recipe to read when the photos show more than one. */
+  focusTitle?: string | null;
+}
+
+export type RecipeReader = (
+  images: PreparedImage[],
+  options?: ReadOptions,
+) => Promise<RecipeReading>;
 
 export interface RecipeVerification {
   verification: Verification;
@@ -28,7 +37,16 @@ export interface RecipeVerification {
 export type RecipeVerifier = (
   images: PreparedImage[],
   recipe: ExtractedRecipe,
+  options?: ReadOptions,
 ) => Promise<RecipeVerification>;
+
+export interface PageLook {
+  survey: PageSurvey;
+  usage: { inputTokens: number; outputTokens: number };
+}
+
+/** Takes the first look at one photographed page: which recipes are on it? */
+export type PageSurveyor = (image: PreparedImage) => Promise<PageLook>;
 
 /** Suggests catalog entries for ingredient names the catalog does not know. */
 export type CatalogSuggester = (
