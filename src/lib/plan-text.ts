@@ -57,6 +57,23 @@ export function kindMark(
   };
 }
 
+/** Categories that are sweet: a cake is not shown as a vegetarian meal. */
+const SWEET = new Set(["kuchen", "dessert"]);
+
+/**
+ * How a recipe is coloured and labelled wherever it shows: by the kind of meal the week
+ * counts it as, or as something sweet. Null for a recipe that is neither.
+ */
+export function recipeTone(recipe: {
+  proteinType: ProteinType | null;
+  category: string | null;
+}): { className: string; label: string | null } | null {
+  if (recipe.category !== null && SWEET.has(recipe.category)) {
+    return { className: "kind-sweet", label: null };
+  }
+  return kindMark(recipe.proteinType);
+}
+
 export const DIET_NAME: Record<Diet, string> = {
   vegetarisch: "Vegetarisch",
   vegan: "Vegan",
@@ -77,6 +94,8 @@ const weeksText = (weeks: number) => (weeks === 1 ? "einer Woche" : `${weeks} Wo
 
 export function reasonText(reason: Reason): string {
   switch (reason.kind) {
+    case "wanted":
+      return "Möchtest du kochen";
     case "fills_gap":
       return `${GROUP_NAME[reason.group]} fehlt diese Woche noch`;
     case "favorite":
