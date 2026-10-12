@@ -60,7 +60,7 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
     // The recipes are read and can be used. What still runs only concerns their photos.
     return (
       <p className="mt-4 text-sm text-muted" aria-live="polite">
-        Die Fotos werden noch gerade gerichtet und zugeschnitten: {progress.photosWaiting}{" "}
+        Die Fotos werden noch gedreht und zugeschnitten: {progress.photosWaiting}{" "}
         {progress.photosWaiting === 1 ? "Seite" : "Seiten"} offen.
       </p>
     );
