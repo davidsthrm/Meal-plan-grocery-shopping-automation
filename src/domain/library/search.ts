@@ -96,7 +96,20 @@ export interface SearchResult {
 }
 
 /** How well one word of the search fits one recipe. 0 means not at all. */
-const POINTS = { word: 4, start: 3, inside: 2.5, ingredient: 2, keyword: 1.5, nearly: 1 } as const;
+const POINTS = {
+  word: 4,
+  lead: 3.5,
+  start: 3,
+  inside: 2.5,
+  ingredient: 2,
+  keyword: 1.5,
+  nearly: 1,
+} as const;
+/**
+ * One or two letters are the beginning of something still being typed, not a word: "la" is
+ * on its way to "Lachs", and should not find "à la française" first.
+ */
+const WHOLE_WORD = 3;
 
 interface Searchable {
   recipe: RecipeSummary;
@@ -106,7 +119,9 @@ interface Searchable {
 }
 
 function exactPoints(entry: Searchable, word: string, context: SearchContext): number {
-  if (entry.words.includes(word)) return POINTS.word;
+  if (word.length >= WHOLE_WORD && entry.words.includes(word)) return POINTS.word;
+  // A title that begins with what was typed comes before one that has it further back.
+  if (entry.title.startsWith(word)) return POINTS.lead;
   if (entry.words.some((own) => own.startsWith(word))) return POINTS.start;
   if (entry.title.includes(word)) return POINTS.inside;
   if (context.ingredientHits?.get(word)?.has(entry.recipe.id)) return POINTS.ingredient;
