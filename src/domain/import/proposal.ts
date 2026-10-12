@@ -54,7 +54,7 @@ export function unmappedNames(draft: RecipeDraft): string[] {
 }
 
 /** The shop most ingredients of an aisle group are bought in. */
-function usualShop(index: CatalogIndex, aisleGroupId: string): string {
+export function usualShop(index: CatalogIndex, aisleGroupId: string): string {
   const counts = new Map<string, number>();
   for (const ingredient of index.catalog.ingredients) {
     if (ingredient.aisleGroupId !== aisleGroupId) continue;
