@@ -6,19 +6,21 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("the library is laid out on shelves and can be narrowed down", async ({ page }) => {
+test("the library has a few shelves and a directory to narrow it down", async ({ page }) => {
   await page.goto("/rezepte");
   await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
   await expect(page.getByText("20 Rezepte im Kochbuch")).toBeVisible();
   await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toContainText(
     "Gemüse-Lasagne",
   );
-  await expect(page.getByRole("region", { name: "Zweites Buch" })).toBeVisible();
 
-  // A shelf shows a few; its link lists all of them.
-  await page
-    .getByRole("region", { name: "Hauptgericht", exact: true })
-    .getByRole("link", { name: "Alle 15" })
+  // The directory says how many recipes are behind each way to narrow the library down.
+  const browse = page.getByRole("region", { name: "Stöbern" });
+  await expect(browse.getByRole("region", { name: "Kochbuch" })).toContainText("Zweites Buch");
+  await expect(browse.getByRole("region", { name: "Aufwand" })).toContainText("Braucht Zeit");
+  await browse
+    .getByRole("region", { name: "Art", exact: true })
+    .getByRole("link", { name: /Hauptgericht/ })
     .click();
   await expect(page.getByRole("status")).toHaveText("15 Rezepte passen dazu");
 
@@ -30,6 +32,32 @@ test("the library is laid out on shelves and can be narrowed down", async ({ pag
 
   await page.getByRole("link", { name: "Alle Filter zurücksetzen" }).click();
   await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toBeVisible();
+
+  // A tag narrows the library down like everything else, and two tags mean both.
+  await page.goto("/rezepte?tag=herbst");
+  await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
+  await page.getByRole("link", { name: "Reis & Getreide" }).click();
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+  await expect(page.getByRole("link", { name: /Pilzrisotto/ })).toBeVisible();
+});
+
+test("the list under the search field changes with every letter", async ({ page }) => {
+  await page.goto("/rezepte");
+  const field = page.getByPlaceholder("Titel oder Zutat");
+  const hits = page.getByRole("region", { name: "Treffer beim Tippen" });
+  await field.pressSequentially("l");
+  await expect(hits.getByRole("listitem").first()).toBeVisible();
+  await expect(hits).toContainText("Lachs mit Currysahne");
+  await expect(hits).toContainText("Linsen-Eintopf");
+
+  await field.pressSequentially("ac");
+  await expect(hits).toContainText("Lachs mit Currysahne");
+  await expect(hits).not.toContainText("Linsen-Eintopf");
+
+  // An ingredient is found as well, and a result opens its recipe.
+  await field.fill("rindersteak");
+  await hits.getByRole("link", { name: /Pfeffersteak/ }).click();
+  await expect(page.getByRole("heading", { name: "Pfeffersteak" })).toBeVisible();
 });
 
 test("the search finds a title however it is spelled", async ({ page }) => {
@@ -67,8 +95,21 @@ test("a favourite is one tap and leads its shelves from then on", async ({ page 
   await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toContainText(
     "Pfeffersteak",
   );
-  await page.getByRole("link", { name: "Favoriten", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
+
+  // The favourites have a page of their own, sorted by what they are.
+  await page
+    .getByRole("navigation", { name: "Hauptbereiche" })
+    .getByRole("link", { name: "Favoriten" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Favoriten", level: 1 })).toBeVisible();
+  await expect(page.getByText("2 Favoriten", { exact: true })).toBeVisible();
+  const mains = page.getByRole("region", { name: "Hauptgericht" });
+  await expect(mains).toContainText("Gemüse-Lasagne");
+  await expect(mains).toContainText("Pfeffersteak");
+  // The search there looks through the favourites only.
+  await page.getByPlaceholder("Titel oder Zutat").fill("lachs");
+  await page.getByPlaceholder("Titel oder Zutat").press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Kein Favorit passt dazu.");
 });
 
 test("the cookbook page is folded away and shows the recipe's own part", async ({ page }) => {

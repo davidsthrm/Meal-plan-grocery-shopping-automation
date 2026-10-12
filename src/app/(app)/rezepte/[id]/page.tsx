@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HeartIcon } from "@/components/icons";
+import { HeartIcon, WishIcon } from "@/components/icons";
+import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
+import type { ProteinType } from "@/domain/library/summary";
+import { TAG_GROUPS } from "@/domain/library/tags";
 import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { createSessionClient } from "@/server/supabase/server";
-import { setFavorite } from "../actions";
+import { setFavorite, setWanted } from "../actions";
 
 export const metadata: Metadata = { title: "Rezept" };
 
@@ -18,7 +21,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, status, is_favorite",
+      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, status, is_favorite, wanted_at, source_text",
     )
     .eq("id", id)
     .maybeSingle();
@@ -39,10 +42,16 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       .order("sort_order"),
     loadIngredientNames(db),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
-    db.from("tag").select("id, name").eq("group_name", "Kategorie"),
+    db.from("tag").select("id, key, name, group_name").order("sort_order"),
   ]);
-  const ownTags = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
-  const category = must(categories, "load categories").find((tag) => ownTags.has(tag.id));
+  const ownIds = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
+  const ownTags = must(categories, "load tags").filter((tag) => ownIds.has(tag.id));
+  const category = ownTags.find((tag) => tag.group_name === "Kategorie");
+  // What else describes the recipe, in the order of the groups.
+  const described = TAG_GROUPS.flatMap((group) =>
+    ownTags.filter((tag) => tag.group_name === group),
+  ).map((tag) => ({ ref: tag.key ?? tag.id, name: tag.name }));
+  const wanted = recipe.wanted_at !== null;
   const names = new Map(ingredients.map((i) => [i.id, i.name]));
   const photoRows = must(photos, "load photos");
   const urls = await viewUrls(
@@ -58,9 +67,22 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       <Link href="/rezepte" className="link text-sm">
         ← Entdecken
       </Link>
-      {category && <p className="eyebrow mt-3">{category.name}</p>}
-      <h1 className="title mt-1">{recipe.title}</h1>
-      <p className="mt-2 text-muted">
+      <div className="mt-3 flex items-start gap-3.5">
+        <RecipeBadge
+          recipe={{
+            title: recipe.title,
+            category: category?.key ?? null,
+            proteinType: recipe.protein_type as ProteinType | null,
+            tags: described.map((tag) => tag.ref),
+          }}
+          className="mt-1 h-14 w-14 rounded-xl"
+        />
+        <div className="min-w-0">
+          {category && <p className="eyebrow">{category.name}</p>}
+          <h1 className="title mt-1">{recipe.title}</h1>
+        </div>
+      </div>
+      <p className="mt-3 text-muted">
         {[
           servingsText(recipe.servings_min, recipe.servings_max, recipe.servings_unit),
           recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null,
@@ -70,11 +92,31 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           .join(" · ")}
       </p>
 
+      {described.length > 0 && (
+        <ul aria-label="Stichworte" className="mt-3 flex flex-wrap gap-1.5">
+          {described.map((tag) => (
+            <li key={tag.ref}>
+              <Link href={`/rezepte?tag=${tag.ref}`} className="tag min-h-7 px-2.5 hover:underline">
+                {tag.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {recipe.status === "approved" && (
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
             Einplanen
           </Link>
+          <form action={setWanted}>
+            <input type="hidden" name="recipe" value={recipe.id} />
+            <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
+            <SubmitButton className={`btn ${wanted ? "border-accent text-accent" : ""}`}>
+              <WishIcon filled={wanted} />
+              {wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
+            </SubmitButton>
+          </form>
           <Link href={`/rezepte/${recipe.id}/bearbeiten`} className="btn">
             Ändern
           </Link>
@@ -105,6 +147,20 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           </li>
         ))}
       </ul>
+
+      {recipe.source_text && (
+        // A recipe that came in as text has no photo. Its text is kept as it was pasted.
+        <details className="group card mt-6">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
+            Zubereitung und Originaltext
+            <span className="text-sm font-semibold text-accent">
+              <span className="group-open:hidden">Ansehen</span>
+              <span className="hidden group-open:inline">Ausblenden</span>
+            </span>
+          </summary>
+          <p className="border-t border-line p-4 whitespace-pre-wrap">{recipe.source_text}</p>
+        </details>
+      )}
 
       {photoRows.length > 0 && (
         // Folded away: the ingredients above are what is cooked from. The page is there to

@@ -1,4 +1,3 @@
-import Form from "next/form";
 import Link from "next/link";
 import {
   DIETS,
@@ -9,8 +8,10 @@ import {
   type RecipeFilter,
 } from "@/domain/library/filter";
 import type { Category } from "@/domain/library/summary";
+import type { TagGroup } from "@/domain/library/tags";
 import { DIET_NAME } from "@/lib/plan-text";
-import { HeartIcon, SearchIcon } from "./icons";
+import { HeartIcon } from "./icons";
+import { LiveSearch } from "./live-search";
 
 interface Props {
   /** The page the filter belongs to. */
@@ -18,56 +19,61 @@ interface Props {
   filter: RecipeFilter;
   categories: Category[];
   books: string[];
+  tagGroups: TagGroup[];
   /** Parameters of the page that are not part of the filter and have to survive it. */
   keep?: Record<string, string>;
+  /** Set where a recipe is being chosen for a plan. See `LiveSearch`. */
+  plan?: { action: (form: FormData) => Promise<void>; fields: Record<string, string> };
+  /** Leave out the favourites chip, on a page that shows nothing else. */
+  favoritesOnly?: boolean;
 }
 
 /**
- * Search and filters of the recipe library. Everything is a link or a plain form that
- * changes the address of the page, so it works before any script has loaded.
+ * Search and filters of the recipe library. Every filter is a link that changes the address
+ * of the page, so it works before any script has loaded; the search field answers while
+ * typing once it has.
  */
-export function RecipeFilterBar({ path, filter, categories, books, keep = {} }: Props) {
+export function RecipeFilterBar({
+  path,
+  filter,
+  categories,
+  books,
+  tagGroups,
+  keep = {},
+  plan,
+  favoritesOnly = false,
+}: Props) {
   const href = (patch: Partial<RecipeFilter>) =>
     `${path}?${new URLSearchParams({ ...keep, ...filterParams({ ...filter, ...patch }) })}`;
   const chip = (on: boolean) => `chip ${on ? "chip-on" : ""}`;
   // The search field sends the text itself; everything else rides along hidden.
   const others = filterParams({ ...filter, text: "" });
-  const narrowed = filter.category !== null || filter.book !== null;
+  const narrowed = filter.category !== null || filter.book !== null || filter.tags.length > 0;
+  const toggled = (ref: string) =>
+    filter.tags.includes(ref) ? filter.tags.filter((tag) => tag !== ref) : [...filter.tags, ref];
 
   return (
     <div className="space-y-3">
-      <Form action={path} className="flex gap-2">
-        {Object.entries({ ...keep, ...others }).map(([name, value]) => (
-          <input key={name} type="hidden" name={name} value={value} />
-        ))}
-        <label className="relative flex-1">
-          <span className="sr-only">Rezepte durchsuchen</span>
-          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
-            <SearchIcon />
-          </span>
-          <input
-            // The field follows the address: emptied there, it is empty here.
-            key={filter.text}
-            type="search"
-            name="q"
-            defaultValue={filter.text}
-            placeholder="Titel oder Zutat"
-            className="field pl-10"
-            enterKeyHint="search"
-          />
-        </label>
-        <button className="btn">Suchen</button>
-      </Form>
+      {/* The field follows the address: emptied there, it starts empty here. */}
+      <LiveSearch
+        key={filter.text}
+        path={path}
+        hidden={{ ...keep, ...others }}
+        filter={filter}
+        plan={plan}
+      />
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter">
-        <Link
-          href={href({ favorites: !filter.favorites })}
-          className={chip(filter.favorites)}
-          aria-pressed={filter.favorites}
-        >
-          <HeartIcon filled={filter.favorites} />
-          Favoriten
-        </Link>
+        {!favoritesOnly && (
+          <Link
+            href={href({ favorites: !filter.favorites })}
+            className={chip(filter.favorites)}
+            aria-pressed={filter.favorites}
+          >
+            <HeartIcon filled={filter.favorites} />
+            Favoriten
+          </Link>
+        )}
         {TIME_LIMITS.slice(0, 2).map((minutes) => (
           <Link
             key={minutes}
@@ -92,11 +98,11 @@ export function RecipeFilterBar({ path, filter, categories, books, keep = {} }: 
 
       <details open={narrowed} className="group">
         <summary className="link inline-flex min-h-10 items-center">
-          <span className="group-open:hidden">Art und Kochbuch wählen</span>
-          <span className="hidden group-open:inline">Art und Kochbuch</span>
+          <span className="group-open:hidden">Mehr Filter: Art, Aufwand, Küche, Kochbuch</span>
+          <span className="hidden group-open:inline">Mehr Filter</span>
         </summary>
-        <div className="mt-2 space-y-3">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Art">
+        <div className="mt-2 space-y-4">
+          <Chips label="Art">
             {categories.map((category) => (
               <Link
                 key={category.key}
@@ -107,8 +113,22 @@ export function RecipeFilterBar({ path, filter, categories, books, keep = {} }: 
                 {category.name}
               </Link>
             ))}
-          </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Kochbuch">
+          </Chips>
+          {tagGroups.map((group) => (
+            <Chips key={group.name} label={group.name}>
+              {group.tags.map((tag) => (
+                <Link
+                  key={tag.ref}
+                  href={href({ tags: toggled(tag.ref) })}
+                  className={chip(filter.tags.includes(tag.ref))}
+                  aria-pressed={filter.tags.includes(tag.ref)}
+                >
+                  {tag.name}
+                </Link>
+              ))}
+            </Chips>
+          ))}
+          <Chips label="Kochbuch">
             {books.map((book) => (
               <Link
                 key={book}
@@ -119,15 +139,28 @@ export function RecipeFilterBar({ path, filter, categories, books, keep = {} }: 
                 {book}
               </Link>
             ))}
-          </div>
+          </Chips>
         </div>
       </details>
 
-      {!isNoFilter(filter) && (
-        <Link href={href(NO_FILTER)} className="link inline-flex min-h-10 items-center">
+      {!isNoFilter(favoritesOnly ? { ...filter, favorites: false } : filter) && (
+        <Link
+          href={href({ ...NO_FILTER, favorites: favoritesOnly })}
+          className="link inline-flex min-h-10 items-center"
+        >
           Alle Filter zurücksetzen
         </Link>
       )}
+    </div>
+  );
+}
+
+/** One group of filter chips under its name. */
+function Chips({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div role="group" aria-label={label}>
+      <p className="eyebrow mb-1.5">{label}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
 }
