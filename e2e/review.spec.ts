@@ -36,31 +36,32 @@ test("a recipe that needs a decision is reviewed, corrected and lands in the lib
   await expect(page.getByText("E2E Kochbuch, S. 12")).toBeVisible();
 });
 
-test("an unknown ingredient is confirmed once and then belongs to the catalog", async ({
-  page,
-}) => {
+test("unknown ingredients are decided in one list and one step", async ({ page }) => {
   await page.goto("/import/vorschlaege");
-  await expect(page.getByRole("heading", { name: "Topinambur" })).toBeVisible();
-  await expect(page.getByText("Kommt vor in: Ohne Titel")).toBeVisible();
+  await expect(page.getByText("Topinambur", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pak Choi", { exact: true })).toBeVisible();
 
-  const card = page.getByRole("listitem").filter({ hasText: "Kommt vor in: Ohne Titel" });
-  await card.getByLabel("Hält sich (Tage, leer = lange)").fill("14");
-  await card.getByRole("button", { name: "Übernehmen", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Topinambur" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Pak Choi" })).toBeVisible();
+  // One is really another name for something the catalog has, the other is new.
+  await page.getByLabel("Entscheidung für Topinambur").selectOption("same");
+  await page.getByLabel("Topinambur ist dasselbe wie").fill("Kartoffeln");
+  await page.getByRole("button", { name: "Alle 2 Entscheidungen übernehmen" }).click();
+  await expect(page.getByText("Keine offenen Vorschläge.")).toBeVisible();
 
-  // The recipe line now points at the new ingredient, so the hint is gone in review.
+  // The recipe line that waited now belongs to the catalog ingredient.
   await page.goto("/import/pruefen");
   await expect(page.getByText("Gedruckt: 300 g Topinambur")).toBeVisible();
   await expect(page.getByText("Steht noch nicht im Katalog.")).toHaveCount(0);
+  await expect(page.getByLabel("Zutat").nth(1)).toHaveValue("Kartoffeln");
 });
 
-test("several new ingredients are accepted in one go, as suggested", async ({ page }) => {
+test("a decision can be left for later, and a wrong one is refused", async ({ page }) => {
   await page.goto("/import/vorschlaege");
-  await page
-    .getByRole("button", { name: "Alle 2 neuen Zutaten wie vorgeschlagen übernehmen" })
-    .click();
-  await expect(page.getByText("Keine offenen Vorschläge.")).toBeVisible();
+  await page.getByLabel("Entscheidung für Pak Choi").selectOption("later");
+  await page.getByLabel("Entscheidung für Topinambur").selectOption("same");
+  await page.getByLabel("Topinambur ist dasselbe wie").fill("Gibt es nicht");
+  await page.getByRole("button", { name: "1 Entscheidung übernehmen" }).click();
+  await expect(page.getByText("Diese Zutat gibt es im Katalog nicht.")).toBeVisible();
+  await expect(page.getByText("Pak Choi", { exact: true })).toBeVisible();
 });
 
 test("a photo that is no recipe can be thrown out", async ({ page }) => {

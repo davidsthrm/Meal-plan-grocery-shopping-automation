@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Page } from "@playwright/test";
 import sharp from "sharp";
 import type { Database } from "../src/server/supabase/database.types";
+import { seedCatalog } from "../supabase/seed/catalog";
 
 /**
  * Known starting state for the browser tests, in the separate test household: one recipe that
@@ -55,6 +56,10 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
       `find ${name}`,
     );
   const potato = await ingredient("Kartoffeln");
+  // A test may have made "Topinambur" another name for potatoes. Undo that, or the catalog
+  // would know the ingredient the next test needs to be unknown.
+  const seeded = seedCatalog.ingredients.find((i) => i.id === "kartoffeln")!.synonyms;
+  await db.from("ingredient").update({ synonyms: seeded }).eq("id", potato.id);
   const salt = await ingredient("Salz");
 
   const photoPath = `${household}/e2e/pages/0000.jpg`;

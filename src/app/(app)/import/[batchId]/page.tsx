@@ -79,26 +79,27 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
 
       <BatchRunner batchId={batchId} initial={progress} />
 
-      {progress.done && openProposals > 0 && (
-        <div className="card mt-4 p-4">
-          <Link href="/import/vorschlaege" className="btn btn-primary w-full">
-            {openProposals === 1
-              ? "1 neue Zutat bestätigen"
-              : `${openProposals} neue Zutaten bestätigen`}
-          </Link>
-          <p className="mt-2 text-sm text-muted">
-            Am besten zuerst. Rezepte, die nur auf eine unbekannte Zutat warten, werden danach von
-            selbst übernommen und müssen nicht einzeln geprüft werden.
-          </p>
-        </div>
-      )}
       {progress.done && count.needsReview > 0 && (
-        <Link
-          href="/import/pruefen"
-          className={`btn mt-4 w-full ${openProposals > 0 ? "" : "btn-primary"}`}
-        >
+        <Link href="/import/pruefen" className="btn btn-primary mt-4 w-full">
           {count.needsReview === 1 ? "1 Rezept prüfen" : `${count.needsReview} Rezepte prüfen`}
         </Link>
+      )}
+      {progress.done && openProposals > 0 && (
+        <div className="card mt-4 p-4">
+          <Link
+            href="/import/vorschlaege"
+            className={`btn w-full ${count.needsReview > 0 ? "" : "btn-primary"}`}
+          >
+            {openProposals === 1
+              ? "1 neue Zutat zuordnen"
+              : `${openProposals} neue Zutaten zuordnen`}
+          </Link>
+          <p className="mt-2 text-sm text-muted">
+            Zutaten, die der Katalog noch nicht kennt. Die Rezepte sind trotzdem schon übernommen.
+            Zugeordnet werden sie, damit sie auf der Einkaufsliste im richtigen Laden und Regal
+            stehen und zusammengezählt werden.
+          </p>
+        </div>
       )}
 
       {jobRows.length > 0 && (
