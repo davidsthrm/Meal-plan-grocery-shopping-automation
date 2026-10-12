@@ -95,7 +95,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             list="zutaten"
             autoComplete="off"
             className="field"
-            placeholder="Etwas dazuschreiben, z. B. Milch WS 1.29"
+            placeholder="z. B. Milch WS 1.29"
           />
         </label>
         <SubmitButton>Hinzufügen</SubmitButton>
