@@ -1,6 +1,7 @@
 import "server-only";
-import type { TypedRecipe, TypedRecipeInput } from "@/domain/library/typed-recipe";
-import { loadCatalogIndex, must, type Db } from "./catalog";
+import type { TypedRecipe } from "@/domain/library/typed-recipe";
+import { loadCatalogIndex, loadIngredientNames, must, type Db } from "./catalog";
+import type { ReviewLine } from "./import/review";
 import { importModels } from "./import/models";
 import { saveImportedRecipe, saveReviewedRecipe } from "./import/save-recipe";
 
@@ -95,51 +96,77 @@ export async function updateTypedRecipe(
 }
 
 export interface RecipeFormData {
-  values: TypedRecipeInput;
-  /** True when the ingredients were typed by the household and can be typed again. */
-  typed: boolean;
+  title: string;
+  /** Key of the category, or empty. */
+  category: string;
+  /** Protein type, or empty for "not said". */
+  protein: string;
+  sourceBook: string;
+  sourcePage: number | null;
+  servingsMin: number | null;
+  servingsMax: number | null;
+  servingsUnit: string;
+  prepMinutes: number | null;
+  lines: ReviewLine[];
 }
 
-/** A recipe as the form shows it. Null when it does not exist for this household. */
+/** A recipe as the form for changing it shows it. Null when this household has no such recipe. */
 export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFormData | null> {
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, kind, source_book, source_page, servings_min, servings_unit, prep_minutes, protein_type",
+      "id, title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type",
     )
     .eq("id", recipeId)
     .maybeSingle();
   if (!recipe) return null;
-  const [lines, links, categories, photos] = await Promise.all([
+  const [lines, links, categories, ingredients] = await Promise.all([
     db
       .from("recipe_ingredient")
-      .select("original_text")
+      .select(
+        "id, position, ingredient_id, quantity, quantity_max, unit, is_optional, is_approximate, alternative_to, original_text, note, secondary_quantity, secondary_unit, secondary_scope",
+      )
       .eq("recipe_id", recipeId)
       .order("position"),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", recipeId),
     db.from("tag").select("id, key").eq("group_name", "Kategorie"),
-    db.from("recipe_photo").select("id", { count: "exact", head: true }).eq("recipe_id", recipeId),
+    loadIngredientNames(db),
   ]);
   const own = new Set(must(links, "load recipe tags").map((link) => link.tag_id));
   const category = must(categories, "load categories").find((tag) => own.has(tag.id));
-  // What was read from a photo keeps its printed lines; only typed recipes are typed again.
-  const typed = (photos.count ?? 0) === 0;
+  const names = new Map(ingredients.map((ingredient) => [ingredient.id, ingredient.name]));
+  const rows = must(lines, "load lines");
+  const positionOf = new Map(rows.map((row, at) => [row.id, at]));
   return {
-    typed,
-    values: {
-      title: recipe.title,
-      category: category?.key ?? "",
-      protein: recipe.protein_type ?? "",
-      servings: recipe.servings_min?.toString() ?? "",
-      servingsUnit: recipe.servings_unit ?? "",
-      minutes: recipe.prep_minutes?.toString() ?? "",
-      book: recipe.source_book ?? "",
-      page: recipe.source_page?.toString() ?? "",
-      lines: typed
-        ? must(lines, "load lines")
-            .map((line) => line.original_text)
-            .join("\n")
-        : null,
-    },
+    title: recipe.title,
+    category: category?.key ?? "",
+    protein: recipe.protein_type ?? "",
+    sourceBook: recipe.source_book ?? "",
+    sourcePage: recipe.source_page,
+    servingsMin: recipe.servings_min,
+    servingsMax: recipe.servings_max,
+    servingsUnit: recipe.servings_unit ?? "",
+    prepMinutes: recipe.prep_minutes,
+    lines: rows.map((row) => ({
+      // A line the catalog does not know shows as it was printed, to be corrected or kept.
+      ingredient: row.ingredient_id ? (names.get(row.ingredient_id) ?? "") : row.original_text,
+      known: row.ingredient_id !== null,
+      quantity: row.quantity,
+      quantityMax: row.quantity_max,
+      unit: row.unit,
+      note: row.note ?? "",
+      optional: row.is_optional,
+      approximate: row.is_approximate,
+      alternativeTo: row.alternative_to ? (positionOf.get(row.alternative_to) ?? null) : null,
+      originalText: row.original_text,
+      secondary:
+        row.secondary_quantity !== null && row.secondary_unit !== null
+          ? {
+              quantity: row.secondary_quantity,
+              unit: row.secondary_unit,
+              scope: row.secondary_scope,
+            }
+          : null,
+    })),
   };
 }
