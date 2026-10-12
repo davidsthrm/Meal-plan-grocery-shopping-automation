@@ -101,6 +101,21 @@ describe("readTypedRecipe", () => {
     expect(lines[3]).toMatchObject({ readName: "Topinambur", originalText: "200 g Topinambur" });
   });
 
+  it("reads several ingredients on one line as several ingredients", () => {
+    const result = readTypedRecipe(
+      form({ lines: "Salz, Pfeffer\nSalz und Zucker\n2 Zwiebeln, gewürfelt" }),
+      index,
+    );
+    const lines = result.ok ? (result.recipe.lines ?? []) : [];
+    expect(lines.map((entry) => [entry.ingredientId, entry.note, entry.originalText])).toEqual([
+      ["salz", null, "Salz, Pfeffer"],
+      ["pfeffer", null, "Salz, Pfeffer"],
+      ["salz", null, "Salz und Zucker"],
+      ["zucker", null, "Salz und Zucker"],
+      ["zwiebeln", "gewürfelt", "2 Zwiebeln, gewürfelt"],
+    ]);
+  });
+
   it("stores what a recipe makes when that is not persons", () => {
     const cake = readTypedRecipe(form({ servings: "1", servingsUnit: " Springform " }), index);
     expect(cake).toMatchObject({ ok: true, recipe: { servings: { min: 1, unit: "Springform" } } });
