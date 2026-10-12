@@ -24,10 +24,14 @@ test("screens @look", async ({ page }, info) => {
     await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
     await page.waitForLoadState("networkidle");
     await shot("2-rezept");
-    const photo = page.getByText("Originalseite aus dem Kochbuch");
+    const photo = page.getByText("Originalfoto");
     if (await photo.count()) {
       await photo.click();
-      await page.waitForLoadState("networkidle");
+      // The picture is only fetched once it is shown.
+      await page
+        .locator("details img")
+        .first()
+        .evaluate((image: HTMLImageElement) => image.decode());
       await shot("2-rezept-foto");
     }
   }

@@ -110,8 +110,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
         // Folded away: the ingredients above are what is cooked from. The page is there to
         // look something up, turned upright and cut to this recipe where it shares the page.
         <details className="group card mt-6">
-          <summary className="flex min-h-12 items-center justify-between gap-3 px-4 font-semibold">
-            Originalseite aus dem Kochbuch
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
+            Originalfoto
             <span className="text-sm font-semibold text-accent">
               <span className="group-open:hidden">Ansehen</span>
               <span className="hidden group-open:inline">Ausblenden</span>

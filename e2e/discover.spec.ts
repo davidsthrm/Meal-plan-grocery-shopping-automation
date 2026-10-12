@@ -78,7 +78,7 @@ test("the cookbook page is folded away and shows the recipe's own part", async (
   const photo = page.getByAltText("Seite 1 von Gemüse-Lasagne");
   await expect(photo).toBeHidden();
 
-  await page.getByText("Originalseite aus dem Kochbuch").click();
+  await page.getByText("Originalfoto").click();
   await expect(photo).toBeVisible();
   // What opens is the part cut out for this recipe, and it really loads.
   await expect(photo).toHaveAttribute("src", /crops\/lasagne\.jpg/);
@@ -93,7 +93,7 @@ test("the cookbook page is folded away and shows the recipe's own part", async (
   // A recipe without a part of its own shows the page.
   await page.goto("/rezepte?q=spätzle");
   await page.getByRole("link", { name: /Käsespätzle/ }).click();
-  await page.getByText("Originalseite aus dem Kochbuch").click();
+  await page.getByText("Originalfoto").click();
   await expect(page.getByAltText("Seite 1 von Käsespätzle")).toHaveAttribute(
     "src",
     /pages\/0001\.jpg/,
