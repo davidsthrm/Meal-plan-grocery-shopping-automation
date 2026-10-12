@@ -153,8 +153,15 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - One layout for all sizes: a single column on a phone, more columns from `sm` on. The week
   plan puts lunch and dinner side by side from tablet width. An iPad and an iPhone version
   with their own layouts are planned for later, so nothing may depend on hover or a mouse.
-- After changing `globals.css`, restart `npm run dev` if the old look stays: the dev server
-  has served a cached stylesheet before.
+- Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`
+  and so on). A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside use it.
+  The same colour marks the kind on a recipe card, next to a planned meal, in the week's
+  count and in the goals. Keep the palette pastel: the household asked for that.
+- Tailwind runs as a PostCSS plugin (`postcss.config.mjs`), as the Next.js guide sets it up.
+  The Turbopack loader `@tailwindcss/turbopack` used before never picked up a change to
+  `globals.css` in a running dev server: the household saw a day's worth of new pages
+  without their styles. After a change of the look, check it in the running app itself
+  (fetch the stylesheet or take a screenshot); passing tests do not show a missing style.
 
 ## Acceptance test
 
