@@ -27,6 +27,7 @@ export const COUNT_UNITS = [
   "Stange",
   "Prise",
   "Msp",
+  "Handvoll",
 ] as const;
 
 export type MassUnit = keyof typeof MASS;
@@ -173,6 +174,7 @@ const UNIT_ALIASES: Record<string, Unit> = {
   prisen: "Prise",
   msp: "Msp",
   messerspitze: "Msp",
+  handvoll: "Handvoll",
 };
 
 /**

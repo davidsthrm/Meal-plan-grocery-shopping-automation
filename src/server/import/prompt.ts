@@ -19,7 +19,7 @@ Ingredients: one entry per ingredient, in printed order
 - A range such as "1–2 Zwiebeln": the lower number in quantity, the upper in quantityMax. Otherwise quantityMax is null.
 - unit: one of the allowed units. A count without a printed unit ("3 Eier", "Zitrone ½") has the unit "Stück". Printed variants map to the allowed spelling: "Essl." is EL, "Teel." is TL, "Pck." is Packung, "Dosen" is Dose. A small container that is not in the list ("Döschen", "Briefchen", "Tütchen", "Päckchen", "Tube", "Flasche") is Packung.
 - No quantity printed ("Zucker", "Öl zum Braten"): quantity and unit are both null.
-- A size instead of an amount ("1 faustgroßes Stück Sellerie"): quantity 1, unit "Stück", and the size words go to note.
+- A size instead of an amount ("1 faustgroßes Stück Sellerie", "3 cm Meerrettich"): quantity 1, unit "Stück", and the size goes to note. A length is never a unit.
 - name: the ingredient as printed, without its amount. Words that only describe preparation or quality ("gehackt", "reif", "frisch gemahlen") go to note.
 - approximate: true when the main amount is printed with "etwa", "ca." or "ungefähr" ("ca. 500 ml Milch"). An "etwa" that belongs to a second measure in brackets does not count.
 - Two ingredients on one printed line ("Zimt und Zucker"): two entries with the same raw.
@@ -36,7 +36,7 @@ Recipe fields
 - subtitle, servingsRaw and note are empty strings when there is nothing to put there.
 
 uncertain and notes, both written in German because the family reads them
-- uncertain: one entry for each thing you could not read or decide with certainty: blurred or cut-off text, a digit that could be two different numbers, a line that could belong to another recipe. Every entry makes a person check the recipe by hand, so add one only when a person really has to decide something. A page you read without doubt has an empty list.
+- uncertain: one entry for each printed thing you could not read with certainty: blurred or cut-off text, a digit that could be two different numbers, a line that could belong to another recipe. It is only about the title, the servings and the ingredient lines. Doubt about dishType or proteinType does not belong here; choose "unbekannt" or "unknown" there instead. Every entry makes a person check the recipe by hand, so add one only when a person really has to decide something. A page you read without doubt has an empty list.
 - notes: observations that need no decision, such as a tip box or neighbouring recipe you left out, or a difference between the steps and the ingredient list. A title, page number or time that is simply not on the photo is not uncertain: return null and, at most, mention it here.`;
 
 /**
@@ -57,6 +57,8 @@ How the transcription is written. These are conventions, not mistakes:
 - No printed quantity means quantity and unit are both null.
 - Two ingredients printed on one line are two entries. An alternative ("oder ...") is its own entry with alternativeTo pointing at the entry it can replace.
 - Where the name ends and the note begins is a judgment call. Never report it.
+- A counted unit that is part of the ingredient's word ("4 Basilikumblättchen", "2 Knoblauchzehen") may be written as that unit (Blatt, Zehe) or as Stück. Both are correct.
+- A size instead of an amount ("3 cm Ingwer", "1 walnussgroßes Stück") is written as quantity 1, unit Stück, with the size in the note.
 - A second measure in brackets has secondaryScope "unknown" unless the print says per piece or in total.
 - approximate refers to the main amount only.
 - prepMinutes leaves out waiting times printed as an extra.

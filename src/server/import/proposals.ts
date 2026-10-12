@@ -1,7 +1,9 @@
 import "server-only";
-import type { ImportIssue } from "@/domain/import/checks";
+import { findIngredient, type CatalogIndex } from "@/domain/catalog";
+import { mapToCatalog, sameProductName } from "@/domain/import/map-ingredient";
+import { usualShop } from "@/domain/import/proposal";
 import { isUnit, type Unit } from "@/domain/units";
-import { must, type Db } from "../catalog";
+import { loadCatalogIndex, must, type Db } from "../catalog";
 import type { Database } from "../supabase/database.types";
 
 /**
@@ -92,29 +94,34 @@ async function resolve(db: Db, proposalId: string, ingredientId: string): Promis
     })
     .eq("id", proposalId);
   if (closed.error) throw new Error(`close proposal: ${closed.error.message}`);
-  await approveResolvedRecipes(db);
 }
 
-/** "Porree" is the same as "Lauch": remember the name, so the next recipe maps by itself. */
-export async function acceptAsSynonym(
+/**
+ * "Porree" is the same as "Lauch": remembers the names as other names of the ingredient, so
+ * the next recipe maps by itself, and points the waiting recipe lines at it.
+ * Several proposals for one ingredient are written together, or one would overwrite another.
+ */
+async function acceptAsSynonyms(
   db: Db,
-  proposalId: string,
   ingredientId: string,
+  proposals: { id: string; name: string }[],
 ): Promise<void> {
-  const [proposal, ingredient] = await Promise.all([
-    db.from("ingredient_proposal").select("name").eq("id", proposalId).single(),
-    db.from("ingredient").select("id, synonyms").eq("id", ingredientId).single(),
-  ]);
-  const name = must(proposal, "load proposal").name;
-  const target = must(ingredient, "load ingredient");
-  if (!target.synonyms.some((synonym) => synonym.toLowerCase() === name.toLowerCase())) {
+  const target = must(
+    await db.from("ingredient").select("id, synonyms").eq("id", ingredientId).single(),
+    "load ingredient",
+  );
+  const known = new Set(target.synonyms.map((synonym) => synonym.toLowerCase()));
+  const added = [...new Set(proposals.map((p) => p.name))].filter(
+    (name) => !known.has(name.toLowerCase()),
+  );
+  if (added.length > 0) {
     const updated = await db
       .from("ingredient")
-      .update({ synonyms: [...target.synonyms, name] })
+      .update({ synonyms: [...target.synonyms, ...added] })
       .eq("id", ingredientId);
-    if (updated.error) throw new Error(`add synonym: ${updated.error.message}`);
+    if (updated.error) throw new Error(`add synonyms: ${updated.error.message}`);
   }
-  await resolve(db, proposalId, ingredientId);
+  await Promise.all(proposals.map((proposal) => resolve(db, proposal.id, ingredientId)));
 }
 
 export interface NewIngredient {
@@ -128,19 +135,20 @@ export interface NewIngredient {
   shelfLifeDays: number | null;
 }
 
-/** Creates the catalog ingredient a proposal stands for. Returns a message if it cannot. */
-export async function acceptAsNew(
+/**
+ * Creates the catalog ingredient a proposal stands for and returns its id, or a message if it
+ * cannot be created.
+ */
+async function acceptAsNew(
   db: Db,
   householdId: string,
   proposalId: string,
   input: NewIngredient,
-): Promise<string | null> {
+): Promise<{ id: string } | { error: string }> {
   const name = input.name.trim();
-  if (name === "") return "Die Zutat braucht einen Namen.";
-  if (!isUnit(input.defaultUnit)) return "Bitte eine Einheit wählen.";
-  if (input.buyingMode === "pack" && !(input.packSize && input.packSize > 0)) {
-    return "Für Packungen wird die Packungsgröße gebraucht.";
-  }
+  if (name === "") return { error: "Die Zutat braucht einen Namen." };
+  if (!isUnit(input.defaultUnit)) return { error: "Die Einheit fehlt." };
+  const pack = input.buyingMode === "pack" && input.packSize && input.packSize > 0;
   const created = await db
     .from("ingredient")
     .insert({
@@ -149,24 +157,28 @@ export async function acceptAsNew(
       aisle_group_id: input.aisleGroupId,
       preferred_shop_id: input.shopId,
       default_unit: input.defaultUnit,
-      buying_mode: input.buyingMode,
-      pack_size: input.buyingMode === "pack" ? input.packSize : null,
+      // A pack without a size cannot be counted in packs. The name alone goes on the list.
+      buying_mode: input.buyingMode === "pack" && !pack ? "none" : input.buyingMode,
+      pack_size: pack ? input.packSize : null,
       is_pantry_staple: input.isPantryStaple,
       shelf_life_days: input.shelfLifeDays,
     })
     .select("id")
     .single();
   if (created.error) {
-    return created.error.code === "23505"
-      ? "Eine Zutat mit diesem Namen gibt es schon. Wähle sie unter „ist dasselbe wie“."
-      : `Konnte nicht gespeichert werden: ${created.error.message}`;
+    return {
+      error:
+        created.error.code === "23505"
+          ? "Eine Zutat mit diesem Namen gibt es schon. Wähle „dasselbe wie“."
+          : `Konnte nicht gespeichert werden: ${created.error.message}`,
+    };
   }
   await resolve(db, proposalId, created.data.id);
-  return null;
+  return { id: created.data.id };
 }
 
 /** Not wanted in the catalog. The recipe lines stay as printed text. */
-export async function rejectProposal(db: Db, proposalId: string): Promise<void> {
+async function rejectProposal(db: Db, proposalId: string): Promise<void> {
   const closed = await db
     .from("ingredient_proposal")
     .update({ status: "rejected", resolved_at: new Date().toISOString() })
@@ -175,62 +187,116 @@ export async function rejectProposal(db: Db, proposalId: string): Promise<void> 
 }
 
 /**
- * Approves recipes that waited for nothing but ingredient decisions and now have them all.
- * A recipe with any other open issue stays in review.
+ * Closes proposals the catalog can answer by now without anyone deciding: the name has become
+ * a known name in the meantime, or differs from one only by a plural ending or "Bio-".
+ * Called before the open proposals are shown, so the list only holds real questions.
  */
-export async function approveResolvedRecipes(db: Db): Promise<number> {
-  const jobs = must(
-    await db.from("import_job").select("id, recipe_id, issues").eq("status", "needs_review"),
-    "load recipes in review",
+export async function settleKnownProposals(db: Db, index: CatalogIndex): Promise<number> {
+  const open = must(
+    await db.from("ingredient_proposal").select("id, name").eq("status", "open"),
+    "load open proposals",
   );
-  let approved = 0;
-  for (const job of jobs) {
-    const issues = job.issues as unknown as ImportIssue[];
-    if (!job.recipe_id || issues.length === 0) continue;
-    if (!issues.every((issue) => issue.code === "unmapped_ingredient")) continue;
-    const open = must(
-      await db
-        .from("recipe_ingredient")
-        .select("id")
-        .eq("recipe_id", job.recipe_id)
-        .is("ingredient_id", null)
-        .limit(1),
-      "check recipe lines",
-    );
-    if (open.length > 0) continue;
-    const recipe = await db.from("recipe").update({ status: "approved" }).eq("id", job.recipe_id);
-    if (recipe.error) continue;
-    await db
-      .from("import_job")
-      .update({ status: "approved", issues: [], finished_at: new Date().toISOString() })
-      .eq("id", job.id);
-    approved++;
+  const byIngredient = new Map<string, { id: string; name: string }[]>();
+  for (const proposal of open) {
+    const known = mapToCatalog(index, { raw: proposal.name, name: proposal.name });
+    if (!known) continue;
+    byIngredient.set(known.id, [...(byIngredient.get(known.id) ?? []), proposal]);
   }
-  return approved;
+  for (const [ingredientId, proposals] of byIngredient) {
+    await acceptAsSynonyms(db, ingredientId, proposals);
+  }
+  return [...byIngredient.values()].reduce((sum, list) => sum + list.length, 0);
+}
+
+export interface ProposalDecision {
+  id: string;
+  /** "later" leaves the proposal open. */
+  decision: "new" | "same" | "reject" | "later";
+  /** For "same": the name of the existing ingredient, as typed or chosen. */
+  sameAs: string;
+  /** For "new": the aisle group the ingredient goes to. */
+  aisleGroupId: string;
 }
 
 /**
- * Accepts every open proposal for a new ingredient as suggested. Proposals that say "this is
- * the same as an existing ingredient" are left for a person: merging two different products
- * by mistake would quietly put the wrong thing on shopping lists.
- * Returns how many were accepted.
+ * Applies the household's decisions on a list of proposals. Returns a message per proposal
+ * that could not be decided as asked; those stay open.
  */
-export async function acceptAllNew(db: Db, householdId: string): Promise<number> {
-  const open = (await loadOpenProposals(db)).filter((p) => p.sameAsIngredientId === null);
-  let accepted = 0;
-  for (const proposal of open) {
-    const problem = await acceptAsNew(db, householdId, proposal.id, {
-      name: proposal.name,
-      aisleGroupId: proposal.aisleGroupId,
-      shopId: proposal.shopId,
-      defaultUnit: proposal.defaultUnit,
-      buyingMode: proposal.buyingMode,
-      packSize: proposal.packSize,
-      isPantryStaple: proposal.isPantryStaple,
-      shelfLifeDays: proposal.shelfLifeDays,
-    });
-    // One that cannot be accepted as it is stays open and is decided by hand.
-    if (problem === null) accepted++;
+export async function decideProposals(
+  db: Db,
+  householdId: string,
+  decisions: ProposalDecision[],
+): Promise<Record<string, string>> {
+  const index = await loadCatalogIndex(db);
+  const open = new Map((await loadOpenProposals(db)).map((proposal) => [proposal.id, proposal]));
+  const errors: Record<string, string> = {};
+  const todo = decisions.filter((d) => d.decision !== "later" && open.has(d.id));
+
+  // One write per existing ingredient, so that two new names for it do not overwrite each other.
+  const sameAs = new Map<string, { id: string; name: string }[]>();
+  for (const decision of todo.filter((d) => d.decision === "same")) {
+    const target = findIngredient(index, decision.sameAs);
+    if (!target) {
+      errors[decision.id] = "Diese Zutat gibt es im Katalog nicht. Bitte aus der Liste wählen.";
+      continue;
+    }
+    const proposal = open.get(decision.id)!;
+    sameAs.set(target.id, [
+      ...(sameAs.get(target.id) ?? []),
+      { id: proposal.id, name: proposal.name },
+    ]);
   }
-  return accepted;
+
+  // "Forellenfilet" and "Forellenfilets" become one ingredient with two names, not two.
+  const newGroups: ProposalDecision[][] = [];
+  for (const decision of todo.filter((d) => d.decision === "new")) {
+    const name = open.get(decision.id)!.name;
+    const group = newGroups.find((g) => sameProductName(open.get(g[0].id)!.name, name));
+    if (group) group.push(decision);
+    else newGroups.push([decision]);
+  }
+
+  const tasks: (() => Promise<void>)[] = [
+    ...[...sameAs].map(
+      ([ingredientId, proposals]) =>
+        () =>
+          acceptAsSynonyms(db, ingredientId, proposals),
+    ),
+    ...todo
+      .filter((d) => d.decision === "reject")
+      .map((decision) => () => rejectProposal(db, decision.id)),
+    ...newGroups.map(([first, ...others]) => async () => {
+      const proposal = open.get(first.id)!;
+      const aisle = index.aisleGroupById.has(first.aisleGroupId)
+        ? first.aisleGroupId
+        : proposal.aisleGroupId;
+      const created = await acceptAsNew(db, householdId, first.id, {
+        name: proposal.name,
+        aisleGroupId: aisle,
+        // A different aisle usually means a different shop too.
+        shopId: aisle === proposal.aisleGroupId ? proposal.shopId : usualShop(index, aisle),
+        defaultUnit: proposal.defaultUnit,
+        buyingMode: proposal.buyingMode,
+        packSize: proposal.packSize,
+        isPantryStaple: proposal.isPantryStaple,
+        shelfLifeDays: proposal.shelfLifeDays,
+      });
+      if ("error" in created) {
+        for (const decision of [first, ...others]) errors[decision.id] = created.error;
+        return;
+      }
+      if (others.length > 0) {
+        await acceptAsSynonyms(
+          db,
+          created.id,
+          others.map((decision) => ({ id: decision.id, name: open.get(decision.id)!.name })),
+        );
+      }
+    }),
+  ];
+  // A few at a time: fast enough for a long list without flooding the database.
+  for (let at = 0; at < tasks.length; at += 6) {
+    await Promise.all(tasks.slice(at, at + 6).map((task) => task()));
+  }
+  return errors;
 }

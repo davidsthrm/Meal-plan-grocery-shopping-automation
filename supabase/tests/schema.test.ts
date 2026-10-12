@@ -211,6 +211,55 @@ describe("schema", () => {
     await db.query("delete from public.recipe where title = 'Ohne Portionen'");
   });
 
+  it("approves recipes that waited only for unknown ingredients, and no others", async () => {
+    // The rule arrived as a migration. Run its statements again on rows made for this test.
+    const batch = await db.query<{ id: string }>(
+      "insert into public.import_batch (household_id) values ($1) returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const make = async (title: string, issues: object[]) => {
+      const recipe = await db.query<{ id: string }>(
+        "insert into public.recipe (household_id, title, servings_min, servings_max, status) values ($1, $2, 2, 2, 'needs_review') returning id",
+        [SEED_HOUSEHOLD_ID, title],
+      );
+      await db.query(
+        "insert into public.import_job (household_id, batch_id, status, recipe_id, issues) values ($1, $2, 'needs_review', $3, $4)",
+        [SEED_HOUSEHOLD_ID, batch.rows[0].id, recipe.rows[0].id, JSON.stringify(issues)],
+      );
+    };
+    const unknown = { code: "unmapped_ingredient", ingredientIndex: 1, detail: "Harissa" };
+    await make("Nur unbekannte Zutat", [unknown, unknown]);
+    await make("Auch ohne Einheit", [
+      unknown,
+      { code: "unit_missing", ingredientIndex: 2, detail: "2 Hände Rucola" },
+    ]);
+    await db.exec(
+      readFileSync(
+        fileURLToPath(
+          new URL(
+            "../migrations/20261012001100_unknown_ingredients_do_not_block.sql",
+            import.meta.url,
+          ),
+        ),
+        "utf8",
+      ),
+    );
+    const after = await db.query(
+      `select r.title, r.status as recipe, j.status as job, jsonb_array_length(j.issues) as issues
+       from public.import_job j join public.recipe r on r.id = j.recipe_id
+       where j.batch_id = $1 order by r.title`,
+      [batch.rows[0].id],
+    );
+    expect(after.rows).toEqual([
+      { title: "Auch ohne Einheit", recipe: "needs_review", job: "needs_review", issues: 1 },
+      { title: "Nur unbekannte Zutat", recipe: "approved", job: "approved", issues: 0 },
+    ]);
+    await db.query(
+      "delete from public.recipe where title in ('Nur unbekannte Zutat', 'Auch ohne Einheit')",
+    );
+    await db.query("delete from public.import_batch where id = $1", [batch.rows[0].id]);
+  });
+
   it("does not let a row point into another household", async () => {
     // Even with full rights: a recipe line of one household cannot use another's ingredient.
     await db.query(

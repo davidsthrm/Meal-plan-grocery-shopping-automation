@@ -6,13 +6,7 @@ import { reviewInput, type ReviewErrors, type ReviewInput } from "@/domain/impor
 import { requireHousehold } from "@/server/auth";
 import { must } from "@/server/catalog";
 import { addPages, createBatch, deleteBatch, type UploadTarget } from "@/server/import/batch";
-import {
-  acceptAllNew,
-  acceptAsNew,
-  acceptAsSynonym,
-  rejectProposal,
-  type NewIngredient,
-} from "@/server/import/proposals";
+import { decideProposals, type ProposalDecision } from "@/server/import/proposals";
 import {
   approveReview,
   discardJob,
@@ -97,28 +91,13 @@ export async function readIgnoredPage(pageId: string): Promise<void> {
   redirect(`/import/${batchId}`);
 }
 
-export async function decideProposal(
-  proposalId: string,
-  decision:
-    | { kind: "same"; ingredientId: string }
-    | { kind: "new"; ingredient: NewIngredient }
-    | { kind: "reject" },
-): Promise<{ error: string | null }> {
+export async function submitProposalDecisions(
+  decisions: ProposalDecision[],
+): Promise<{ errors: Record<string, string> }> {
   const household = await requireHousehold();
-  const db = await createSessionClient();
-  let error: string | null = null;
-  if (decision.kind === "same") await acceptAsSynonym(db, proposalId, decision.ingredientId);
-  else if (decision.kind === "new") {
-    error = await acceptAsNew(db, household.id, proposalId, decision.ingredient);
-  } else await rejectProposal(db, proposalId);
-  if (!error) revalidatePath("/", "layout");
-  return { error };
-}
-
-export async function acceptAllNewProposals(): Promise<void> {
-  const household = await requireHousehold();
-  await acceptAllNew(await createSessionClient(), household.id);
+  const errors = await decideProposals(await createSessionClient(), household.id, decisions);
   revalidatePath("/", "layout");
+  return { errors };
 }
 
 export async function removeBatch(batchId: string): Promise<void> {

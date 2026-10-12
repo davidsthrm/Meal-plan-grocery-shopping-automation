@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import type { CatalogIndex } from "@/domain/catalog";
+import { sameProductName } from "@/domain/import/map-ingredient";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
 import type { RecipeIngredient, Servings } from "@/domain/recipe";
 import { must, type Db } from "../catalog";
@@ -53,22 +54,28 @@ export async function ensureProposals(
   index: CatalogIndex,
   suggest: CatalogSuggester,
 ): Promise<Map<string, string>> {
-  const byName = new Map<string, string>();
-  if (names.length === 0) return byName;
-  const key = (name: string) => name.trim().toLowerCase();
+  const result = new Map<string, string>();
+  if (names.length === 0) return result;
 
-  const loadOpen = async () => {
-    const open = must(
+  const loadOpen = async () =>
+    must(
       await db.from("ingredient_proposal").select("id, name").eq("status", "open"),
       "load open proposals",
     );
-    for (const proposal of open) byName.set(key(proposal.name), proposal.id);
+  // "Forellenfilet" and "Forellenfilets" are one question for the household, not two.
+  const match = (open: { id: string; name: string }[]) => {
+    for (const name of names) {
+      const known = open.find((proposal) => sameProductName(proposal.name, name));
+      if (known) result.set(name, known.id);
+    }
   };
-  await loadOpen();
+  match(await loadOpen());
 
-  const fresh = [...new Set(names.map((name) => name.trim()))].filter(
-    (name) => !byName.has(key(name)),
-  );
+  const fresh: string[] = [];
+  for (const name of names.map((n) => n.trim())) {
+    if (result.has(name) || fresh.some((other) => sameProductName(other, name))) continue;
+    fresh.push(name);
+  }
   if (fresh.length > 0) {
     const proposals = await suggest(fresh, index);
     const { error } = await db.from("ingredient_proposal").insert(
@@ -88,9 +95,9 @@ export async function ensureProposals(
     // Another recipe of the same batch may have proposed the name in the meantime. That is
     // fine: the open proposal is picked up below.
     if (error && error.code !== "23505") throw new Error(`save proposals: ${error.message}`);
-    await loadOpen();
+    match(await loadOpen());
   }
-  return new Map(names.map((name) => [name, byName.get(key(name)) as string]));
+  return result;
 }
 
 function lineRows(

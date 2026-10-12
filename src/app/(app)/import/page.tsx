@@ -49,7 +49,7 @@ export default async function ImportPage() {
               href="/import/vorschlaege"
               className="rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn"
             >
-              {open === 1 ? "1 neue Zutat bestätigen" : `${open} neue Zutaten bestätigen`}
+              {open === 1 ? "1 neue Zutat zuordnen" : `${open} neue Zutaten zuordnen`}
             </Link>
           )}
         </div>
