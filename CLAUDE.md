@@ -15,22 +15,28 @@ is easier than pen and paper.
 
 ## Commands
 
-| Task                                                                | Command                                        |
-| ------------------------------------------------------------------- | ---------------------------------------------- |
-| Dev server                                                          | `npm run dev`                                  |
-| Unit tests (domain, schema, acceptance)                             | `npm test`                                     |
-| One test file                                                       | `npx vitest run src/domain/units.test.ts`      |
-| Typecheck                                                           | `npm run typecheck`                            |
-| Lint                                                                | `npm run lint`                                 |
-| Format                                                              | `npm run format`                               |
-| Print the sample week list and compare with the handwritten one     | `npm run sample-week`                          |
-| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`            | `npm run seed:build`                           |
-| Check the Supabase project in `.env.local`                          | `npm run db:check`                             |
-| Measure a model on the five sample recipe photos (calls the API)    | `npm run import:eval`                          |
-| Measure the second check pass with planted mistakes (calls the API) | `npm run import:eval-verify`                   |
-| Run the complete import on photos without touching the database     | `npm run import:photo -- <photo> --book "..."` |
-| The same for the five sample recipes                                | `npm run import:photo -- --samples`            |
-| Apply new migrations to the linked Supabase project                 | `npx supabase db push`                         |
+| Task                                                                      | Command                                        |
+| ------------------------------------------------------------------------- | ---------------------------------------------- |
+| Dev server                                                                | `npm run dev`                                  |
+| Unit tests (domain, schema, acceptance)                                   | `npm test`                                     |
+| One test file                                                             | `npx vitest run src/domain/units.test.ts`      |
+| Typecheck                                                                 | `npm run typecheck`                            |
+| Lint                                                                      | `npm run lint`                                 |
+| Format                                                                    | `npm run format`                               |
+| Print the sample week list and compare with the handwritten one           | `npm run sample-week`                          |
+| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`                  | `npm run seed:build`                           |
+| Check the Supabase project in `.env.local`                                | `npm run db:check`                             |
+| Measure a model on the five sample recipe photos (calls the API)          | `npm run import:eval`                          |
+| Measure the second check pass with planted mistakes (calls the API)       | `npm run import:eval-verify`                   |
+| Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
+| The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
+| Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
+| Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
+| Browser test of a real upload with the models (about 1 ct)                | `npm run e2e:upload`                           |
+| Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
+| A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
+| Regenerate the database types after a migration                           | `npm run db:types`                             |
+| Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
 
 Docker is not required for tests. Migrations, seed and RLS run against an embedded Postgres
 (PGlite) in `supabase/tests/`.
@@ -41,6 +47,14 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   4 recurring items, leftovers, at-home step, history, 5 recommendations, 6 deployment, PWA,
   export. One branch per phase, named `phase-N-topic`, stacked on the previous one. Small
   commits, one concern each.
+- Phase 3 is split, each part with its own pull request: 3a login, batch import, review and
+  new ingredients (done); 3b recipe library and week planner; 3c shopping list, print and PDF.
+- Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
+  migration that is needed to test a branch is applied earlier with `npx supabase db push`;
+  the merge then finds it already applied. Keep such migrations additive.
+- There is no local Supabase (Docker does not start on this machine). Development and browser
+  tests run against the hosted project, in a separate test household that row level security
+  keeps apart from the real one. Never write test data into the real household.
 - After each phase: stop, summarize, and say how to test it manually.
 - Never commit secrets or anything from `samples/`. That folder holds private photos with GPS
   data and stays gitignored.
@@ -79,7 +93,21 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 
 - `src/domain/`: pure TypeScript. No imports from Next.js, React, Supabase, the Anthropic SDK
   or Node built-ins. ESLint enforces this. Tests sit next to the code as `*.test.ts`.
-- `src/server/`: database access, import pipeline, PDF. `src/app/`: routes and UI.
+- `src/server/`: everything that talks to the database, storage or a model. `src/app/`:
+  routes and UI. `src/lib/`: small helpers shared by server and browser code.
+- `src/proxy.ts` (the Next.js 16 name for middleware) keeps the session fresh and sends anyone
+  without one to `/login`. Pages get the household through `requireHousehold()`.
+- Two Supabase clients on the server: `createSessionClient()` acts as the signed-in user and
+  is bound by row level security; use it for all table access. `createAdminClient()` bypasses
+  it and exists only for storage. Never use it for a table without checking access first.
+- Cache Components are switched off (`next.config.ts`): every page is private and read per
+  request. Read `node_modules/next/dist/docs/` before using a Next.js API; version 16 differs
+  from older ones (`proxy.ts`, async `params`, `PageProps<"/route">`).
+- UI text is written in German directly in the components. There is no strings file.
+- Server actions of one browser tab run one after the other. Work that should run side by side
+  (the import steps) goes through a route handler instead: `src/app/api/import/`.
+- `e2e/`: Playwright tests. `e2e/fixtures.ts` puts the test household into a known state
+  without calling a model.
 - `supabase/migrations/`: schema. `supabase/seed/*.ts` is the single source for the catalog
   and seed recipes; `supabase/seed.sql` is generated from it.
 - `supabase/tests/`: applies migrations and seed to an embedded Postgres and tests schema
@@ -165,6 +193,18 @@ Import
   suggested aisle group, shop, buying mode and shelf life. The household confirms in a batch.
 - The second pass never sees the printed lines of the transcription, only the values.
   Otherwise it would compare the transcription with itself instead of with the photo.
+- A batch is one sitting with one cookbook: any number of page photos, in page order. Each
+  request does one step and records it (`src/server/import/batch.ts`): look at a page, group
+  pages into recipes, import a recipe. The batch page drives this with three requests side by
+  side. A closed tab loses nothing; a step abandoned for five minutes is done again.
+- Pages are grouped into recipes by `groupPages`: complete on one page, title and ingredients
+  on facing pages in either order (page numbers decide which pages face each other), or
+  running on to the next page. Pages without a recipe are left out and shown as such.
+- The photo bucket has no storage policies. Uploads and views go through signed URLs from the
+  server. The upload from the phone is deleted as soon as the clean JPEG is stored.
+- Review (`/import/pruefen`) shows photo and fields side by side. Everything typed is checked
+  again on the server by `readReview`. Approving replaces the recipe's lines.
+- A recipe that waited only for ingredient decisions is approved by itself once they are made.
 - Model instructions live in `src/server/import/prompt.ts`. Their examples must not come from
   the sample recipes, or the measurements stop meaning anything.
 - Measured on the five sample photos with `claude-haiku-5-5` (October 2026): 15 of 15 readings
@@ -182,9 +222,12 @@ Import
   household, because the printed title was not photographed.
 - The Anthropic API is billed separately from a Claude Pro subscription. The measurement
   scripts and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
-- The import runs end to end from the command line but does not write to the database yet.
-  Phase 3 adds: upload tab with the metadata form, storing photos in the private bucket,
-  saving recipes, import jobs and proposals, the review screen and the proposal confirmation.
+- Grouping title and ingredient pages has only been tested with made-up page descriptions.
+  The sample photos contain no recipe that spans two photos. Check it on the first real batch.
+- Not built yet in the import: retrying a failed page from the screen, editing a recipe after
+  it was approved, deleting a batch.
+- The test household "E2E-Test (automatisch)" and its login exist in the hosted project.
+  `npm run e2e:teardown` removes them.
 - The measurements cover five clean, well-lit pages. Watch the review rate and spot-check the
   first real cookbook batch.
 - Shelf life, pack sizes and default shops in the catalog are estimates. The household
