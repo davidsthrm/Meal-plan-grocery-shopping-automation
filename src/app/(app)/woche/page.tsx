@@ -20,6 +20,7 @@ import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balan
 import { suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
 import {
   GROUP_NAME,
+  kindMark,
   MEAL_NAME,
   plannedText,
   slotText,
@@ -232,6 +233,22 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   );
 }
 
+/** A recipe's title as a link to it, with a dot in the colour of its kind in front. */
+function KindTitle({ recipe, id }: { recipe: RecipeSummary | undefined; id: string }) {
+  const kind = kindMark(recipe?.proteinType ?? null);
+  return (
+    <span className={`flex items-baseline gap-2 ${kind?.className ?? ""}`}>
+      {kind && <span className="dot -translate-y-px" title={kind.label} />}
+      <Link
+        href={`/rezepte/${id}`}
+        className="font-semibold decoration-line underline-offset-4 hover:underline"
+      >
+        {recipe?.title ?? "Rezept"}
+      </Link>
+    </span>
+  );
+}
+
 /** Plus and minus for how much of a recipe is made. Zero takes the recipe away. */
 function Amount({
   action,
@@ -345,8 +362,11 @@ function Balance({ lines }: { lines: BalanceLine[] }) {
           const over = line.max !== null && line.count > line.max;
           const reached = line.min !== null ? missing(line) === 0 : !over && line.count > 0;
           return (
-            <li key={line.group}>
-              <span className="eyebrow block">{GROUP_NAME[line.group]}</span>
+            <li key={line.group} className={`kind-${line.group}`}>
+              <span className="eyebrow flex items-center gap-1.5">
+                <span className="dot" />
+                {GROUP_NAME[line.group]}
+              </span>
               <span className="flex items-baseline gap-2">
                 <span
                   className={`text-2xl font-semibold tabular-nums ${
@@ -408,12 +428,7 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
             const recipe = recipeOf.get(item.recipeId);
             return (
               <li key={item.recipeId}>
-                <Link
-                  href={`/rezepte/${item.recipeId}`}
-                  className="font-semibold decoration-line underline-offset-4 hover:underline"
-                >
-                  {recipe?.title ?? "Rezept"}
-                </Link>
+                <KindTitle recipe={recipe} id={item.recipeId} />
                 <Amount
                   action={changeServings}
                   fields={{ week, date, meal, recipe: item.recipeId }}
@@ -439,12 +454,7 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
       {!slot && suggestion && !placing && (
         <div className="mt-1 rounded-lg border border-dashed border-line px-3 py-2">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
-          <Link
-            href={`/rezepte/${suggestion.recipe.id}`}
-            className="font-semibold decoration-line underline-offset-4 hover:underline"
-          >
-            {suggestion.recipe.title}
-          </Link>
+          <KindTitle recipe={suggestion.recipe} id={suggestion.recipe.id} />
           {suggestion.reasons.length > 0 && (
             <p className="text-sm text-muted">{whyText(suggestion.reasons)}</p>
           )}

@@ -15,13 +15,14 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   await expect(page.getByRole("heading", { name: "Ziele der Woche" })).toBeVisible();
 
   // What makes no sense is refused with a reason.
-  await page.getByLabel("Fisch mindestens").fill("5");
-  await page.getByLabel("Fisch höchstens").fill("2");
+  await page.getByLabel("Fisch mindestens").selectOption("5");
+  await page.getByLabel("Fisch höchstens").selectOption("2");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page.getByText("Das passt nicht zusammen")).toBeVisible();
 
-  await page.getByLabel("Fisch mindestens").fill("2");
-  await page.getByLabel("Fleisch höchstens").fill("1");
+  await page.getByLabel("Fisch mindestens").selectOption("2");
+  await page.getByLabel("Fisch höchstens").selectOption("");
+  await page.getByLabel("Fleisch höchstens").selectOption("1");
   await page.getByRole("button", { name: "Speichern" }).click();
   await expect(page).toHaveURL(/\/woche$/);
   const balance = page.getByRole("list", { name: "Ausgewogenheit der Woche" });

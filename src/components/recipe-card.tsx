@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { RecipeSummary } from "@/domain/library/summary";
+import { kindMark } from "@/lib/plan-text";
 import { servingsText } from "@/lib/recipe-text";
 import { ClockIcon, HeartIcon } from "./icons";
 
@@ -32,25 +33,35 @@ export function RecipeCard({
   category: string | null;
   className?: string;
 }) {
+  const kind = kindMark(recipe.proteinType);
   return (
     <Link
       href={`/rezepte/${recipe.id}`}
-      className={`card flex min-h-36 flex-col gap-2 p-4 transition-colors hover:border-muted ${className}`}
+      className={`card flex min-h-44 flex-col overflow-hidden transition-colors hover:border-muted ${kind?.className ?? ""} ${className}`}
     >
-      <span className="flex items-start justify-between gap-2">
-        <span className="eyebrow">{category ?? "Rezept"}</span>
-        {recipe.isFavorite && (
-          <span className="text-accent" title="Favorit">
-            <HeartIcon filled />
+      {/* A band in the colour of the kind: a shelf can be read at a glance. */}
+      <span aria-hidden className="h-1.5 bg-(--kind,var(--color-line))" />
+      <span className="flex flex-1 flex-col gap-2 p-4">
+        <span className="flex items-start justify-between gap-2">
+          <span className="eyebrow">{category ?? "Rezept"}</span>
+          {recipe.isFavorite && (
+            <span className="text-accent" title="Favorit">
+              <HeartIcon filled />
+            </span>
+          )}
+        </span>
+        <span className="line-clamp-3 text-[1.1rem] leading-snug font-semibold">
+          {recipe.title}
+        </span>
+        <span className="mt-auto space-y-1.5 pt-2">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {kind && <span className="tag">{kind.label}</span>}
+            <RecipeFacts recipe={recipe} />
           </span>
-        )}
-      </span>
-      <span className="line-clamp-3 text-[1.1rem] leading-snug font-semibold">{recipe.title}</span>
-      <span className="mt-auto space-y-1">
-        <RecipeFacts recipe={recipe} />
-        {recipe.sourceBook && (
-          <span className="block truncate text-sm text-muted">{recipe.sourceBook}</span>
-        )}
+          {recipe.sourceBook && (
+            <span className="block truncate text-sm text-muted">{recipe.sourceBook}</span>
+          )}
+        </span>
       </span>
     </Link>
   );

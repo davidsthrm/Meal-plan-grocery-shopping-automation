@@ -18,6 +18,19 @@
   --color-danger: #a3352a;
   --color-danger-soft: #f6e1dd;
 
+  /*
+   * One pastel per kind of meal. The same colour marks the kind wherever it shows: on a
+   * recipe card, next to a planned meal, in the week's count and in the goals.
+   */
+  --color-veg: #dce9d9;
+  --color-veg-ink: #3a6344;
+  --color-fish: #d7e5ee;
+  --color-fish-ink: #2f5c77;
+  --color-poultry: #f5e3c8;
+  --color-poultry-ink: #7f5318;
+  --color-meat: #f1d9d5;
+  --color-meat-ink: #86423a;
+
   /* One sans-serif family for everything, from the fonts the devices bring along. */
   --font-sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
 }
@@ -147,6 +160,46 @@ body {
     border-color: var(--color-accent);
     background: var(--color-accent-soft);
     color: var(--color-accent);
+  }
+
+  /* The kind of a meal sets the colours that a tag or a dot inside it uses. */
+  .kind-vegetarian {
+    --kind: var(--color-veg);
+    --kind-ink: var(--color-veg-ink);
+  }
+  .kind-fish {
+    --kind: var(--color-fish);
+    --kind-ink: var(--color-fish-ink);
+  }
+  .kind-poultry {
+    --kind: var(--color-poultry);
+    --kind-ink: var(--color-poultry-ink);
+  }
+  .kind-red_meat {
+    --kind: var(--color-meat);
+    --kind-ink: var(--color-meat-ink);
+  }
+
+  /* A small coloured label: "Vegetarisch", "Fisch". */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: var(--kind, var(--color-accent-soft));
+    padding: 0.1rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--kind-ink, var(--color-accent));
+  }
+
+  /* A coloured dot in front of a name. */
+  .dot {
+    display: inline-block;
+    width: 0.6rem;
+    height: 0.6rem;
+    flex: none;
+    border-radius: 999px;
+    background: var(--kind-ink, var(--color-line));
   }
 
   .btn-small {

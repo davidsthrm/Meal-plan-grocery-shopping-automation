@@ -1,6 +1,7 @@
 import type { Diet } from "@/domain/library/filter";
 import type { Meal, PlanSlot } from "@/domain/plan";
-import type { BalanceGroup, BalanceLine } from "@/domain/recommend/balance";
+import type { ProteinType } from "@/domain/library/summary";
+import { groupOf, type BalanceGroup, type BalanceLine } from "@/domain/recommend/balance";
 import type { Reason } from "@/domain/recommend/suggest";
 
 /** The words the week plan and the library use, in one place. */
@@ -32,6 +33,29 @@ export const GROUP_NAME: Record<BalanceGroup, string> = {
   poultry: "Geflügel",
   red_meat: "Fleisch",
 };
+
+/** What counts as which kind of meal, for whoever sets the goals. */
+export const GROUP_HINT: Record<BalanceGroup, string> = {
+  vegetarian: "ohne Fleisch und Fisch, auch vegan",
+  fish: "Fisch und Meeresfrüchte",
+  poultry: "Huhn, Pute, Ente",
+  red_meat: "Rind, Schwein, Lamm, Wurst",
+};
+
+/**
+ * How a recipe's kind is marked: the class that sets its colour, and its name. Null for a
+ * recipe that is none of the kinds the week counts.
+ */
+export function kindMark(
+  proteinType: ProteinType | null,
+): { className: string; label: string } | null {
+  const group = groupOf(proteinType);
+  if (!group) return null;
+  return {
+    className: `kind-${group}`,
+    label: proteinType === "vegan" ? "Vegan" : GROUP_NAME[group],
+  };
+}
 
 export const DIET_NAME: Record<Diet, string> = {
   vegetarisch: "Vegetarisch",
