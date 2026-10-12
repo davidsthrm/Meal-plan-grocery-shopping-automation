@@ -349,7 +349,7 @@ describe("row level security", () => {
   it("lets a member add to their own household", async () => {
     await asUser(db, MEMBER, async () => {
       await db.query(
-        "insert into public.shop (household_id, name, short_label, sort_order) values ($1, 'Metzger', 'Metzger', 3)",
+        "insert into public.shop (household_id, name, short_label, sort_order) values ($1, 'Wochenmarkt', 'Markt', 3)",
         [SEED_HOUSEHOLD_ID],
       );
       expect(await count("select 1 from public.shop")).toBe(seedCatalog.shops.length + 1);

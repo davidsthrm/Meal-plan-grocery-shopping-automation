@@ -51,8 +51,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   commits, one concern each.
 - Phase 3 is split, each part with its own pull request: 3a login, batch import, review and
   new ingredients (done); 3b week planner with suggestions and the library to browse (done),
-  then quick meals typed in by hand, editing recipes and a screen for the balance targets;
-  3c shopping list, print and PDF. The suggestions were planned as phase 5 and came forward:
+  then the goals of a week, coffee on Sundays, extras, foods for a cold supper, recipes
+  typed in by hand and a search that forgives (done); 3c shopping list, print and PDF (done). The suggestions were planned as phase 5 and came forward:
   the household wants planning to start from them.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
@@ -104,12 +104,20 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   shelves of the browse page. `src/domain/recommend/`: the balance of a week and the
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
-- Pages: `/woche` (the week plan, start page), `/woche/auswahl` (choosing what one meal is),
-  `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`, `/import`.
+- Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
+  its meals), `/woche/auswahl` (choosing a recipe for a meal or for the extras),
+  `/woche/lebensmittel` (what to buy for a meal without a recipe), `/woche/ziele` (the goals
+  of a week), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`,
+  `/rezepte/neu` and `/rezepte/[id]/bearbeiten` (a recipe typed or corrected by hand),
+  `/einkauf` (the shopping list of a week) with `/einkauf/pdf` (the same as a PDF), `/import`.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
-- The API returns at most 1000 rows per request. Anything that can grow beyond that is read
-  with `allRows` (`src/server/library.ts`): recipes, recipe tags, ingredient lines.
+- The API returns at most 1000 rows per request and cuts a longer answer off without saying
+  so. Anything that can grow beyond that is read with `allRows` (`src/server/catalog.ts`):
+  recipes, recipe tags, ingredient lines, import jobs, and the catalog itself. The catalog
+  was read in one request until it had 1024 ingredients; Zucker and Zwiebeln then did not
+  exist for the app. `tests/paging.test.ts` scans the source for reads of growing tables that
+  are neither narrowed nor paged.
 - `src/proxy.ts` (the Next.js 16 name for middleware) keeps the session fresh and sends anyone
   without one to `/login`. Pages get the household through `requireHousehold()`.
 - Two Supabase clients on the server: `createSessionClient()` acts as the signed-in user and
@@ -145,8 +153,15 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - One layout for all sizes: a single column on a phone, more columns from `sm` on. The week
   plan puts lunch and dinner side by side from tablet width. An iPad and an iPhone version
   with their own layouts are planned for later, so nothing may depend on hover or a mouse.
-- After changing `globals.css`, restart `npm run dev` if the old look stays: the dev server
-  has served a cached stylesheet before.
+- Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`
+  and so on). A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside use it.
+  The same colour marks the kind on a recipe card, next to a planned meal, in the week's
+  count and in the goals. Keep the palette pastel: the household asked for that.
+- Tailwind runs as a PostCSS plugin (`postcss.config.mjs`), as the Next.js guide sets it up.
+  The Turbopack loader `@tailwindcss/turbopack` used before never picked up a change to
+  `globals.css` in a running dev server: the household saw a day's worth of new pages
+  without their styles. After a change of the look, check it in the running app itself
+  (fetch the stylesheet or take a screenshot); passing tests do not show a missing style.
 
 ## Acceptance test
 
@@ -170,6 +185,9 @@ Units and conversion
 - Mass and volume convert only through an ingredient's own density. Counted units (Stück,
   Bund, Zehe, Dose, ...) convert only through the ingredient's own grams-per-unit values.
 - If two amounts of one ingredient cannot be converted, keep separate lines. Never guess.
+- The exception is a spoonful or a pinch (EL, TL, Prise, Msp) that cannot be converted: it
+  counts as "some" on the ingredient's line. Otherwise three tablespoons of butter would be
+  the line "55 ml Butter".
 
 Recipes
 
@@ -203,7 +221,22 @@ Week plan
   vegetarian (vegan counts as vegetarian). Only recipes that are a meal by themselves count
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
 - What the household aims for per week (`DEFAULT_TARGETS`): at least 3 vegetarian meals and
-  1 fish meal, at most 2 with poultry and 2 with red meat. Not configurable yet.
+  1 fish meal, at most 2 with poultry and 2 with red meat. The household sets its own on
+  `/woche/ziele` (`household.balance_targets`, read with `readTargets`). Every device is shown
+  that page once before the plan, remembered in the cookie `ziele-gesehen`: each person
+  should see the goals and be able to change them, but they belong to the household.
+- Sunday has a third meal, "Kaffee & Kuchen" (`meal` value `coffee`, `mealsOf`). It is
+  optional: nothing is suggested on the plan, and choosing for it suggests cakes and desserts.
+  Cakes and desserts are never suggested for lunch or dinner.
+- "Außerdem" holds recipes a week needs outside its meals (`plan_extra`): two cakes for an
+  invitation. They count for the shopping list, not for the balance.
+- A meal without a recipe can carry foods to buy (`plan_slot_food`): bread, cold cuts and a
+  cucumber for a "Vesper". A food is a name, not an amount. It may name where it is bought
+  for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
+  the catalog says for cooking. Foods are copied with the meal to the next week.
+- A typed meal whose text is the title of a recipe is planned as that recipe. Any other typed
+  meal stays text and offers "Rezept anlegen", which opens the recipe form with the title
+  filled in and puts the saved recipe on that meal.
 - A suggestion has points and reasons (`scoreRecipe`): +3 when its group is still below the
   least the week should have, -4 when its group is used up, +2 for a favourite, -3 when it
   was on a plan in the last 4 weeks, +1 when it was last cooked 8 weeks ago or longer. Equal
@@ -222,9 +255,20 @@ Week plan
 Library
 
 - The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`).
-  The search compares words without umlauts, so "kurbis" finds "Kürbis". It looks at the
-  title, and from three letters on at the ingredients: their catalog name, other names, and
-  the printed line of ingredients the catalog does not know.
+- The search is meant to find, not to be exact (`searchRecipes`). Words are compared without
+  umlauts. A word fits a recipe as a word of its title, the start of one, a part of one
+  ("nudel" in "Pestonudeln"), an ingredient (catalog name, other names, or the printed line
+  of an ingredient the catalog does not know), or a word of its category, diet or cookbook.
+  The closer the fit, the higher the recipe. A word that fits nothing in the whole library
+  may be one typing mistake away (two from nine letters on); short words must be right, or
+  "Reis" would find "Eis". Recipes that fit only some words are listed as "Ähnliche Rezepte".
+- A recipe typed in by hand (`readTypedRecipe`) has one ingredient per line, written as on a
+  shopping note: "200 g Spaghetti", "2-3 Tomaten", "Parmesan". A number without a unit counts
+  pieces, what follows a comma is a note. It is approved at once, and a quick meal unless a
+  cookbook is named. Unknown ingredients become proposals, as in the import.
+- The same form corrects a recipe. What stands above the ingredients can always be changed;
+  the ingredients only when they were typed. Lines read from a photo keep their printed text
+  and their second measures, which a line of text cannot hold.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows shelves: favourites, quick meals, long not cooked, then
   by category, diet and cookbook. A shelf shows ten recipes, favourites first, the others in
@@ -239,9 +283,15 @@ Shopping list
 - Line text follows the handwritten list: quantity, name, note ("600 g Leberkäse",
   "Milch WS 1.29"). The exact sum and the meals it comes from stay available per line.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
-  catalog ingredient.
+  catalog ingredient. One piece takes the singular when the catalog lists it among the other
+  names: "1 Zitrone".
 - Shop is a household setting per ingredient and can be overridden per line for one week.
-  Lines are grouped by shop, then by aisle group. A shop can override the aisle order.
+  The list by shop (`presentList`: by shop, then by aisle group, a shop can override the
+  aisle order) is what the acceptance test compares with the handwritten list.
+- The household does not plan by supermarket for now. What it sees, prints and exports is
+  the list by kind of grocery (`presentByAisle`): one walk through a shop, Obst & Gemüse to
+  Sonstiges. A line shows its shop only where one was named on purpose (`shopByChoice`):
+  "Brot · Bäcker" for a cold supper.
 - Freshness: an ingredient with a shelf life shorter than the days between the shopping day
   and the meal goes to a "buy later" section with the day it is needed. Everything else is
   bought on the main shopping day.
@@ -253,6 +303,18 @@ Shopping list
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`). Notes, shop overrides, at-home marks and check-offs belong to the key
   and survive. A change is reported only when the quantity shown on the list changes.
+- The list is worked out from the plan every time it is shown (`loadShoppingList`), so it
+  cannot disagree with the plan. Stored are only what the household does by hand: typed
+  entries (`shopping_manual_entry`) and, per line key, tick, note and "we have that"
+  (`shopping_line_state`). The table `shopping_line` is not written yet.
+- Besides the cooked meals the list holds the week's extras, scaled like a meal and bought on
+  the main shopping day, and the foods of meals without a recipe, by name and without an
+  amount. A food bought somewhere else than the catalog says is its own line
+  (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.
+- The main shopping day is the household's weekday of the planned week (Monday).
+- Export: the page has a print layout (black on white, two columns, a box per line, no
+  controls), and `/einkauf/pdf` writes the same list with `pdf-lib`. Both show what is still
+  to buy, without what is ticked off or at home.
 
 Import
 
@@ -282,6 +344,10 @@ Import
   entered never overwrites it.
 - Mapping to the catalog: the longest part of the printed line that contains the ingredient's
   name and is a catalog name wins ("1 getrocknete Chilischote" is not the fresh one).
+- A line without an amount that names several ingredients the catalog knows one by one is
+  split after reading (`splitJoinedLines`): "Salz und Pfeffer" is salt and pepper. The
+  household had "Salz & Pfeffer" as an ingredient in 264 recipe lines before. Typed recipes
+  are split the same way.
 - An ingredient the catalog does not know is never created silently. It becomes one open
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
@@ -349,14 +415,17 @@ Import
   scripts and the import itself need `ANTHROPIC_API_KEY` in `.env.local`.
 - Grouping title and ingredient pages has only been tested with made-up page descriptions.
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
-- Not built yet in the import: retrying a failed page or recipe from the screen, editing a
-  recipe after it was approved.
+- Not built yet in the import: retrying a failed page or recipe from the screen, and
+  correcting the ingredient lines of a recipe that was read from a photo.
+- The shopping list does not show yet what changed since it was last looked at, the shop of
+  a line cannot be changed for one week, and ticking off needs a connection. The "Haben wir
+  schon?" step is a plain section of the list for now.
 - A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose
   recipes are planned therefore fails with an error instead of an explanation.
 - The week's balance does not count legumes, although the brief asks for it: the import does
   not mark them, only two seed recipes carry the tag.
-- A baking recipe without a printed servings line gets whatever was entered in review, so far
-  mostly "4 Portionen". Its unit can only be set once recipes can be edited.
+- A baking recipe without a printed servings line got whatever was entered in review, mostly
+  "4 Portionen". "Ändern" on the recipe page sets its unit.
 - A book that prints no servings with its recipes sends every one of them to review for that
   alone (106 recipes of "Freude am Kochen"). The upload form has no "servings unless printed"
   field yet.

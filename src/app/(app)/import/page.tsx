@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { must } from "@/server/catalog";
+import { allRows, must } from "@/server/catalog";
 import { createSessionClient } from "@/server/supabase/server";
 import { NewBatchForm } from "./new-batch-form";
 
@@ -15,11 +15,14 @@ export default async function ImportPage() {
       .from("import_batch")
       .select("id, source_book, created_at")
       .order("created_at", { ascending: false }),
-    db.from("import_job").select("batch_id, status"),
+    allRows(
+      (from, to) => db.from("import_job").select("batch_id, status").order("id").range(from, to),
+      "load recipes of batches",
+    ),
     db.from("ingredient_proposal").select("id").eq("status", "open"),
   ]);
   const batchRows = must(batches, "load batches");
-  const jobRows = must(jobs, "load recipes of batches");
+  const jobRows = jobs;
   const waiting = jobRows.filter((job) => job.status === "needs_review").length;
   const open = must(proposals, "load proposals").length;
   const books = [
@@ -32,6 +35,11 @@ export default async function ImportPage() {
       <p className="mt-1 text-muted">
         Fotografiere ein Kochbuch Seite für Seite und lade die Fotos hier hoch. Was sicher gelesen
         wurde, landet direkt bei den Rezepten. Alles andere bekommst du zum Prüfen.
+      </p>
+      <p className="mt-2">
+        <Link href="/rezepte/neu" className="link">
+          Ohne Foto: Rezept eintippen
+        </Link>
       </p>
 
       {(waiting > 0 || open > 0) && (

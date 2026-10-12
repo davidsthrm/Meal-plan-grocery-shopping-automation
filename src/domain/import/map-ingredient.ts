@@ -60,3 +60,23 @@ export function sameProductName(a: string, b: string): boolean {
   const forms = new Set(nameVariants(a).map(normalizeName));
   return nameVariants(b).some((variant) => forms.has(normalizeName(variant)));
 }
+
+/**
+ * The ingredients a name stands for when it joins several the catalog knows one by one:
+ * "Salz und Pfeffer", "Salz & Pfeffer", "Pfeffer, Salz". Null for a name that is one thing:
+ * a single ingredient, a product the catalog has under the joined name, or a name with a part
+ * the catalog does not know ("Zwiebeln, gewürfelt").
+ */
+export function splitJoinedName(index: CatalogIndex, name: string): Ingredient[] | null {
+  if (findIngredient(index, name)) return null;
+  const parts = name
+    .split(/\s*(?:,|&|\+|\/|\bund\b|\bsowie\b)\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+  const found = parts.map((part) => mapToCatalog(index, { raw: part, name: part }));
+  if (found.some((ingredient) => ingredient === null)) return null;
+  // "Salz, Salz" is one ingredient, however often it is named.
+  const unique = [...new Map((found as Ingredient[]).map((i) => [i.id, i])).values()];
+  return unique.length < 2 ? null : unique;
+}

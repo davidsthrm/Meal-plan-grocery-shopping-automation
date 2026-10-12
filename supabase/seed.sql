@@ -5,7 +5,9 @@ insert into public.household (id, name, default_servings, shopping_weekday) valu
 
 insert into public.shop (id, household_id, name, short_label, sort_order, is_default) values
   ('17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Aldi', 'Aldi', 1, true),
-  ('2937c317-bc42-5bbb-bc76-28d591523784', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'E-Center', 'EC', 2, false);
+  ('2937c317-bc42-5bbb-bc76-28d591523784', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'E-Center', 'EC', 2, false),
+  ('bdb47144-3502-5bfc-bc18-d0a1f9d9c010', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Metzger', 'Metzger', 3, false),
+  ('50378ec7-dd05-549f-a93d-b33b8cc7f768', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Bäcker', 'Bäcker', 4, false);
 
 insert into public.aisle_group (id, household_id, name, sort_order, is_fallback) values
   ('8fc04d75-d4f9-579c-a616-1b15b1b9fe1c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Obst & Gemüse', 10, false),
@@ -179,6 +181,7 @@ insert into public.ingredient (id, household_id, name, synonyms, aisle_group_id,
   ('10ecde58-3669-5d83-bf54-20ad52a3f5a0', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Bergkäse', '{}'::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'none', null, null, '{}'::jsonb, false, 21),
   ('30d23f28-74e3-533c-b271-a5ab2dc3d1a8', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Parmesan', array['Parmigiano', 'geriebener Parmesan']::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'none', null, null, '{}'::jsonb, false, 30),
   ('0d79e858-0398-5715-be0b-e7e56d817a33', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'geriebener Käse', array['Reibekäse', 'Streukäse', 'geriebener Emmentaler', 'geriebener Gouda']::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'pack', 200, null, '{}'::jsonb, false, 14),
+  ('c3213986-4c96-57c8-bed4-27a265e347ea', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Käse', array['Schnittkäse']::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'none', null, null, '{}'::jsonb, false, 14),
   ('78c921ec-0e0a-5c76-9b72-054e59e9b7f3', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Schafskäse', array['Feta', 'Hirtenkäse']::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'pack', 200, null, '{}'::jsonb, false, 14),
   ('36e943eb-0454-554f-a615-a7dc771e753f', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Ofenkäse', array['Backcamembert']::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'Stück', 'count', null, null, '{}'::jsonb, false, 14),
   ('753e05ba-0aca-5518-8909-85e9e2409f64', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Camembert', '{}'::text[], '18f421eb-f72e-5e47-8eab-351da7694431', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'Stück', 'count', null, null, '{}'::jsonb, false, 10),
@@ -207,6 +210,8 @@ insert into public.ingredient (id, household_id, name, synonyms, aisle_group_id,
   ('8f5bc522-fd37-55b4-9e1e-89efaa147e98', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Mini-Salami', array['Salami-Sticks']::text[], 'ab459dc3-de9d-595d-9e8b-28a02663dd58', '2937c317-bc42-5bbb-bc76-28d591523784', 'g', 'none', null, null, '{}'::jsonb, false, 21),
   ('10cc1415-e8e5-597e-88cc-4fbb4768295b', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Leberkäse', array['Fleischkäse']::text[], 'ab459dc3-de9d-595d-9e8b-28a02663dd58', '2937c317-bc42-5bbb-bc76-28d591523784', 'g', 'weight', null, 50, '{}'::jsonb, false, 5),
   ('bb9276f1-7671-585e-a3b4-17be02514d22', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Lyoner', array['Fleischwurst']::text[], 'ab459dc3-de9d-595d-9e8b-28a02663dd58', '2937c317-bc42-5bbb-bc76-28d591523784', 'g', 'none', null, null, '{}'::jsonb, false, 5),
+  ('e6b0e07f-0352-550b-8633-c1d3f04b39cc', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Frischwurst', array['Aufschnitt', 'Wurstaufschnitt']::text[], 'ab459dc3-de9d-595d-9e8b-28a02663dd58', 'bdb47144-3502-5bfc-bc18-d0a1f9d9c010', 'g', 'none', null, null, '{}'::jsonb, false, 4),
+  ('5ce349d0-26ce-5bf2-80f0-dd58ad54e232', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fleischsalat', '{}'::text[], 'ab459dc3-de9d-595d-9e8b-28a02663dd58', 'bdb47144-3502-5bfc-bc18-d0a1f9d9c010', 'g', 'none', null, null, '{}'::jsonb, false, 4),
   ('3d8d1c3f-b2f4-540b-bdb2-098686748ce2', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Garnelen', array['Shrimps', 'Riesengarnelen', 'Garnelenschwänze']::text[], 'c9d82177-bd61-5611-9e90-001c0117eaaa', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'pack', 225, null, '{}'::jsonb, false, 5),
   ('6cb0ca28-e46d-5b98-862c-8b405d299471', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Lachsfilet', array['Lachs', 'frischer Lachs']::text[], 'c9d82177-bd61-5611-9e90-001c0117eaaa', '2937c317-bc42-5bbb-bc76-28d591523784', 'g', 'weight', null, 50, '{"Stück":150}'::jsonb, false, 1),
   ('336df1ac-6575-53d3-a154-b4841a47782f', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Räucherlachs', '{}'::text[], 'c9d82177-bd61-5611-9e90-001c0117eaaa', '17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'g', 'pack', 200, null, '{}'::jsonb, false, 10),

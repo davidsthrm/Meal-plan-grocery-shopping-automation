@@ -48,6 +48,7 @@ export type Database = {
       }
       household: {
         Row: {
+          balance_targets: Json | null
           created_at: string
           default_servings: number
           id: string
@@ -55,6 +56,7 @@ export type Database = {
           shopping_weekday: number
         }
         Insert: {
+          balance_targets?: Json | null
           created_at?: string
           default_servings?: number
           id?: string
@@ -62,6 +64,7 @@ export type Database = {
           shopping_weekday?: number
         }
         Update: {
+          balance_targets?: Json | null
           created_at?: string
           default_servings?: number
           id?: string
@@ -469,6 +472,58 @@ export type Database = {
           },
         ]
       }
+      plan_extra: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          note: string | null
+          recipe_id: string
+          servings: number
+          week_plan_id: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          note?: string | null
+          recipe_id: string
+          servings: number
+          week_plan_id: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          note?: string | null
+          recipe_id?: string
+          servings?: number
+          week_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_extra_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_extra_household_id_recipe_id_fkey"
+            columns: ["household_id", "recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipe"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "plan_extra_household_id_week_plan_id_fkey"
+            columns: ["household_id", "week_plan_id"]
+            isOneToOne: false
+            referencedRelation: "week_plan"
+            referencedColumns: ["household_id", "id"]
+          },
+        ]
+      }
       plan_slot: {
         Row: {
           date: string
@@ -521,6 +576,65 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plan_slot"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_slot_food: {
+        Row: {
+          household_id: string
+          id: string
+          ingredient_id: string | null
+          label: string
+          plan_slot_id: string
+          position: number
+          shop_id: string | null
+        }
+        Insert: {
+          household_id: string
+          id?: string
+          ingredient_id?: string | null
+          label: string
+          plan_slot_id: string
+          position?: number
+          shop_id?: string | null
+        }
+        Update: {
+          household_id?: string
+          id?: string
+          ingredient_id?: string | null
+          label?: string
+          plan_slot_id?: string
+          position?: number
+          shop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_slot_food_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_slot_food_household_id_ingredient_id_fkey"
+            columns: ["household_id", "ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "plan_slot_food_household_id_plan_slot_id_fkey"
+            columns: ["household_id", "plan_slot_id"]
+            isOneToOne: false
+            referencedRelation: "plan_slot"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "plan_slot_food_household_id_shop_id_fkey"
+            columns: ["household_id", "shop_id"]
+            isOneToOne: false
+            referencedRelation: "shop"
+            referencedColumns: ["household_id", "id"]
           },
         ]
       }
@@ -1331,7 +1445,7 @@ export type Database = {
         | "failed"
         | "discarded"
       ingredient_status: "active" | "proposed"
-      meal: "lunch" | "dinner"
+      meal: "lunch" | "dinner" | "coffee"
       measure_scope: "total" | "perPiece"
       proposal_status: "open" | "accepted" | "rejected"
       protein_type:
@@ -1516,7 +1630,7 @@ export const Constants = {
         "discarded",
       ],
       ingredient_status: ["active", "proposed"],
-      meal: ["lunch", "dinner"],
+      meal: ["lunch", "dinner", "coffee"],
       measure_scope: ["total", "perPiece"],
       proposal_status: ["open", "accepted", "rejected"],
       protein_type: [

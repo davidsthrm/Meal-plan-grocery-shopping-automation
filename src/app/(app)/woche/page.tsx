@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
@@ -13,22 +15,46 @@ import {
   type IsoDate,
 } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
-import { MEALS, type Meal, type PlanSlot } from "@/domain/plan";
+import { mealsOf, MEALS, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
 import { suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
-import { GROUP_NAME, MEAL_NAME, plannedText, slotText, targetText, whyText } from "@/lib/plan-text";
+import {
+  GROUP_NAME,
+  kindMark,
+  MEAL_NAME,
+  plannedText,
+  slotText,
+  targetText,
+  TARGETS_SEEN,
+  whyText,
+} from "@/lib/plan-text";
 import { today } from "@/lib/today";
+import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
-import { loadHistory, loadWeek } from "@/server/planning/week";
+import { loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { acceptSuggestions, changeServings, clearSlot, copyLastWeek, planRecipe } from "./actions";
+import {
+  acceptSuggestions,
+  changeExtraServings,
+  changeServings,
+  clearSlot,
+  copyLastWeek,
+  noteExtra,
+  planExtra,
+  planRecipe,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Wochenplan" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export default async function WeekPage(props: PageProps<"/woche">) {
+  // Whoever opens the plan on a device for the first time is shown what the household aims
+  // for in a week, and can change it.
+  if (!(await cookies()).has(TARGETS_SEEN)) redirect("/woche/ziele?start=1");
+
   const params = await props.searchParams;
+  const household = await requireHousehold();
   const now = today();
   const asked = one(params.w);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : planningWeek(now);
@@ -37,41 +63,45 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const placingId = one(params.rezept) ?? null;
 
   const db = await createSessionClient();
-  const [library, slots, history, previous] = await Promise.all([
+  const [library, slots, history, previous, extras] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
     loadHistory(db, week),
     loadWeek(db, addDays(week, -7)),
+    loadExtras(db, week),
   ]);
   const recipeOf = new Map(library.recipes.map((recipe) => [recipe.id, recipe]));
   const placing = placingId ? (recipeOf.get(placingId) ?? null) : null;
+  // The second view of a week: what it needs outside its meals.
+  const showExtras = one(params.t) === "extra" && !placing;
   const slotAt = (date: IsoDate, meal: Meal) =>
     slots.find((slot) => slot.date === date && slot.meal === meal);
 
-  const balance = weekBalance(slots, (id) => recipeOf.get(id));
+  const balance = weekBalance(slots, (id) => recipeOf.get(id), household.targets);
   const days = weekDates(week);
-  // Nothing is suggested for meals that are over.
+  // Nothing is suggested for meals that are over, and coffee on Sunday stays optional.
   const open = days
     .filter((date) => date >= now)
     .flatMap((date) => MEALS.filter((meal) => !slotAt(date, meal)).map((meal) => ({ date, meal })));
-  const picks = placing
-    ? []
-    : suggestWeek(library.recipes, open, {
-        balance,
-        planned: new Set(
-          slots.flatMap((slot) =>
-            slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
+  const picks =
+    placing || showExtras
+      ? []
+      : suggestWeek(library.recipes, open, {
+          balance,
+          planned: new Set(
+            slots.flatMap((slot) =>
+              slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
+            ),
           ),
-        ),
-        history,
-        weekStart: week,
-        seed: `${week}:${draw}`,
-      });
+          history,
+          weekStart: week,
+          seed: `${week}:${draw}`,
+        });
   const suggestionAt = (date: IsoDate, meal: Meal) =>
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
 
-  const weekLink = (monday: IsoDate, extra = "") =>
-    `/woche?w=${monday}${placing ? `&rezept=${placing.id}` : ""}${extra}`;
+  const weekLink = (monday: IsoDate) =>
+    `/woche?w=${monday}${placing ? `&rezept=${placing.id}` : ""}${showExtras ? "&t=extra" : ""}`;
   const thisWeek = planningWeek(now);
 
   return (
@@ -98,19 +128,45 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
       <Balance lines={balance} />
 
-      {placing && (
+      {placing ? (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-3">
           <p>
             <span className="font-semibold">{placing.title}</span> einplanen: Mahlzeit wählen.
           </p>
-          <Link href={`/woche?w=${week}`} className="link">
-            Abbrechen
-          </Link>
+          <span className="flex flex-wrap items-center gap-4">
+            <form action={planExtra}>
+              <input type="hidden" name="week" value={week} />
+              <input type="hidden" name="recipe" value={placing.id} />
+              <SubmitButton className="btn btn-small">Zu keiner Mahlzeit</SubmitButton>
+            </form>
+            <Link href={`/woche?w=${week}`} className="link">
+              Abbrechen
+            </Link>
+          </span>
         </div>
+      ) : (
+        <nav aria-label="Ansicht" className="mt-5 flex gap-2">
+          <Link
+            href={`/woche?w=${week}`}
+            className={`chip ${showExtras ? "" : "chip-on"}`}
+            aria-current={showExtras ? undefined : "page"}
+          >
+            Mahlzeiten
+          </Link>
+          <Link
+            href={`/woche?w=${week}&t=extra`}
+            className={`chip ${showExtras ? "chip-on" : ""}`}
+            aria-current={showExtras ? "page" : undefined}
+          >
+            Außerdem{extras.length > 0 ? ` (${extras.length})` : ""}
+          </Link>
+        </nav>
       )}
 
-      {!placing && (picks.length > 0 || (slots.length === 0 && previous.length > 0)) && (
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+      {showExtras && <Extras week={week} extras={extras} recipeOf={recipeOf} />}
+
+      {!placing && !showExtras && (picks.length > 0 || slots.length === 0) && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {picks.length > 1 && (
             <form action={acceptSuggestions}>
               <input type="hidden" name="week" value={week} />
@@ -141,67 +197,194 @@ export default async function WeekPage(props: PageProps<"/woche">) {
         </div>
       )}
 
-      <ol className="card mt-5 divide-y divide-line overflow-hidden">
-        {days.map((date) => (
-          <li
-            key={date}
-            id={`tag-${date}`}
-            className={`grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] ${
-              date === now ? "bg-accent-soft/40" : ""
-            }`}
-          >
-            <h2 className="flex items-baseline gap-2 sm:block">
-              <span className="text-lg font-bold tracking-tight">{weekdayLong(date)}</span>
-              <span className="text-sm text-muted sm:block">
-                {date === now ? "Heute" : dayAndMonth(date)}
-              </span>
-            </h2>
-            {MEALS.map((meal) => (
-              <MealCell
-                key={meal}
-                week={week}
-                date={date}
-                meal={meal}
-                slot={slotAt(date, meal)}
-                suggestion={suggestionAt(date, meal)}
-                recipeOf={recipeOf}
-                placing={placing}
-              />
-            ))}
-          </li>
-        ))}
-      </ol>
+      {!showExtras && (
+        <ol className="card mt-5 divide-y divide-line overflow-hidden">
+          {days.map((date) => (
+            <li
+              key={date}
+              id={`tag-${date}`}
+              className={`grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] ${
+                date === now ? "bg-accent-soft/40" : ""
+              }`}
+            >
+              <h2 className="flex items-baseline gap-2 sm:block">
+                <span className="text-lg font-bold tracking-tight">{weekdayLong(date)}</span>
+                <span className="text-sm text-muted sm:block">
+                  {date === now ? "Heute" : dayAndMonth(date)}
+                </span>
+              </h2>
+              {mealsOf(date).map((meal) => (
+                <MealCell
+                  key={meal}
+                  week={week}
+                  date={date}
+                  meal={meal}
+                  slot={slotAt(date, meal)}
+                  suggestion={suggestionAt(date, meal)}
+                  recipeOf={recipeOf}
+                  placing={placing}
+                />
+              ))}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
+  );
+}
+
+/** A recipe's title as a link to it, with a dot in the colour of its kind in front. */
+function KindTitle({ recipe, id }: { recipe: RecipeSummary | undefined; id: string }) {
+  const kind = kindMark(recipe?.proteinType ?? null);
+  return (
+    <span className={`flex items-baseline gap-2 ${kind?.className ?? ""}`}>
+      {kind && <span className="dot -translate-y-px" title={kind.label} />}
+      <Link
+        href={`/rezepte/${id}`}
+        className="font-semibold decoration-line underline-offset-4 hover:underline"
+      >
+        {recipe?.title ?? "Rezept"}
+      </Link>
+    </span>
+  );
+}
+
+/** Plus and minus for how much of a recipe is made. Zero takes the recipe away. */
+function Amount({
+  action,
+  fields,
+  servings,
+  unit,
+  title,
+}: {
+  action: (form: FormData) => Promise<void>;
+  /** What says which recipe of what is meant. */
+  fields: Record<string, string>;
+  servings: number;
+  unit: string | null;
+  title: string;
+}) {
+  const step = (to: number, sign: string, label: string) => (
+    <form action={action}>
+      {Object.entries(fields).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
+      <input type="hidden" name="servings" value={to} />
+      <SubmitButton
+        className="btn h-10 min-h-0 w-10 rounded-full p-0 text-lg leading-none"
+        label={label}
+      >
+        {sign}
+      </SubmitButton>
+    </form>
+  );
+  return (
+    <div className="mt-1 flex items-center gap-2">
+      {step(servings - 1, "−", `Weniger von ${title}`)}
+      <span className="min-w-24 text-center text-sm text-muted">{plannedText(servings, unit)}</span>
+      {step(Math.min(99, servings + 1), "+", `Mehr von ${title}`)}
+    </div>
+  );
+}
+
+/** The recipes of a week that belong to none of its meals. */
+function Extras({
+  week,
+  extras,
+  recipeOf,
+}: {
+  week: IsoDate;
+  extras: PlanExtra[];
+  recipeOf: ReadonlyMap<string, RecipeSummary>;
+}) {
+  return (
+    <section aria-label="Außerdem" className="mt-4">
+      <p className="text-muted">
+        Was diese Woche gebraucht wird und zu keiner Mahlzeit gehört, etwa ein Kuchen für eine
+        Einladung. Es kommt mit auf die Einkaufsliste.
+      </p>
+      {extras.length > 0 && (
+        <ul className="card mt-3 divide-y divide-line">
+          {extras.map((extra) => {
+            const recipe = recipeOf.get(extra.recipeId);
+            const title = recipe?.title ?? "Rezept";
+            return (
+              <li key={extra.recipeId} className="space-y-2 px-4 py-3">
+                <Link
+                  href={`/rezepte/${extra.recipeId}`}
+                  className="font-semibold decoration-line underline-offset-4 hover:underline"
+                >
+                  {title}
+                </Link>
+                <Amount
+                  action={changeExtraServings}
+                  fields={{ week, recipe: extra.recipeId }}
+                  servings={extra.servings}
+                  unit={recipe?.servings?.unit ?? null}
+                  title={title}
+                />
+                <form action={noteExtra} className="flex gap-2">
+                  <input type="hidden" name="week" value={week} />
+                  <input type="hidden" name="recipe" value={extra.recipeId} />
+                  <label className="flex-1">
+                    <span className="sr-only">Wofür ist {title}?</span>
+                    <input
+                      name="note"
+                      defaultValue={extra.note ?? ""}
+                      maxLength={80}
+                      className="field"
+                      placeholder="Wofür? z. B. Einladung am Samstag"
+                    />
+                  </label>
+                  <SubmitButton className="btn btn-small">Merken</SubmitButton>
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <Link href={`/woche/auswahl?w=${week}&ziel=extra`} className="btn btn-primary mt-4">
+        Rezept hinzufügen
+      </Link>
+    </section>
   );
 }
 
 /** The week counted: how many meals of each kind, against what the household aims for. */
 function Balance({ lines }: { lines: BalanceLine[] }) {
   return (
-    <ul
-      aria-label="Ausgewogenheit der Woche"
-      className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 border-y border-line py-3 sm:grid-cols-4"
-    >
-      {lines.map((line) => {
-        const over = line.max !== null && line.count > line.max;
-        const reached = line.min !== null ? missing(line) === 0 : !over && line.count > 0;
-        return (
-          <li key={line.group}>
-            <span className="eyebrow block">{GROUP_NAME[line.group]}</span>
-            <span className="flex items-baseline gap-2">
-              <span
-                className={`text-2xl font-semibold tabular-nums ${
-                  over ? "text-warn" : reached ? "text-accent" : ""
-                }`}
-              >
-                {line.count}
+    <div className="mt-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-1 border-y border-line py-3">
+      <ul
+        aria-label="Ausgewogenheit der Woche"
+        className="grid flex-1 grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4"
+      >
+        {lines.map((line) => {
+          const over = line.max !== null && line.count > line.max;
+          const reached = line.min !== null ? missing(line) === 0 : !over && line.count > 0;
+          return (
+            <li key={line.group} className={`kind-${line.group}`}>
+              <span className="eyebrow flex items-center gap-1.5">
+                <span className="dot" />
+                {GROUP_NAME[line.group]}
               </span>
-              <span className="text-sm text-muted">{targetText(line)}</span>
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+              <span className="flex items-baseline gap-2">
+                <span
+                  className={`text-2xl font-semibold tabular-nums ${
+                    over ? "text-warn" : reached ? "text-accent" : ""
+                  }`}
+                >
+                  {line.count}
+                </span>
+                <span className="text-sm text-muted">{targetText(line)}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <Link href="/woche/ziele" className="link inline-flex min-h-10 items-center text-sm">
+        Ziele ändern
+      </Link>
+    </div>
   );
 }
 
@@ -227,47 +410,32 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
   const choose = (mode: "replace" | "add") =>
     `/woche/auswahl?w=${week}&d=${date}&m=${meal}&modus=${mode}`;
   const what = `${weekdayLong(date)} ${MEAL_NAME[meal]}`;
+  // From tablet width on, coffee sits below lunch and dinner stays in the right column.
+  const column =
+    meal === "coffee"
+      ? "sm:col-start-2 sm:row-start-2"
+      : meal === "dinner"
+        ? "sm:col-start-3 sm:row-start-1"
+        : "";
 
   return (
-    <section aria-label={what} className="min-w-0">
+    <section aria-label={what} className={`min-w-0 ${column}`}>
       <p className="eyebrow">{MEAL_NAME[meal]}</p>
 
       {slot?.kind === "recipes" && (
         <ul className="mt-1 space-y-2">
           {slot.items.map((item) => {
             const recipe = recipeOf.get(item.recipeId);
-            const amount = (servings: number, sign: string, label: string) => (
-              <form action={changeServings}>
-                {where}
-                <input type="hidden" name="recipe" value={item.recipeId} />
-                <input type="hidden" name="servings" value={servings} />
-                <SubmitButton
-                  className="btn h-10 min-h-0 w-10 rounded-full p-0 text-lg leading-none"
-                  label={label}
-                >
-                  {sign}
-                </SubmitButton>
-              </form>
-            );
             return (
               <li key={item.recipeId}>
-                <Link
-                  href={`/rezepte/${item.recipeId}`}
-                  className="font-semibold decoration-line underline-offset-4 hover:underline"
-                >
-                  {recipe?.title ?? "Rezept"}
-                </Link>
-                <div className="mt-1 flex items-center gap-2">
-                  {amount(item.servings - 1, "−", `Weniger von ${recipe?.title ?? "dem Rezept"}`)}
-                  <span className="min-w-24 text-center text-sm text-muted">
-                    {plannedText(item.servings, recipe?.servings?.unit ?? null)}
-                  </span>
-                  {amount(
-                    Math.min(99, item.servings + 1),
-                    "+",
-                    `Mehr von ${recipe?.title ?? "dem Rezept"}`,
-                  )}
-                </div>
+                <KindTitle recipe={recipe} id={item.recipeId} />
+                <Amount
+                  action={changeServings}
+                  fields={{ week, date, meal, recipe: item.recipeId }}
+                  servings={item.servings}
+                  unit={recipe?.servings?.unit ?? null}
+                  title={recipe?.title ?? "dem Rezept"}
+                />
               </li>
             );
           })}
@@ -279,16 +447,14 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
           {slotText(slot)}
         </p>
       )}
+      {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
+        <p className="text-sm text-muted">{slot.foods?.map((food) => food.label).join(", ")}</p>
+      )}
 
       {!slot && suggestion && !placing && (
         <div className="mt-1 rounded-lg border border-dashed border-line px-3 py-2">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
-          <Link
-            href={`/rezepte/${suggestion.recipe.id}`}
-            className="font-semibold decoration-line underline-offset-4 hover:underline"
-          >
-            {suggestion.recipe.title}
-          </Link>
+          <KindTitle recipe={suggestion.recipe} id={suggestion.recipe.id} />
           {suggestion.reasons.length > 0 && (
             <p className="text-sm text-muted">{whyText(suggestion.reasons)}</p>
           )}
@@ -317,6 +483,25 @@ function MealCell({ week, date, meal, slot, suggestion, recipeOf, placing }: Cel
                 aria-label={`${what}: etwas dazu`}
               >
                 Etwas dazu
+              </Link>
+            )}
+            {slot.kind === "free_text" && (
+              <Link
+                href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+                className="link text-sm"
+                aria-label={`${what}: Lebensmittel`}
+              >
+                Lebensmittel
+              </Link>
+            )}
+            {/* A typed meal the library has no recipe for can become one. */}
+            {slot.kind === "free_text" && slot.label !== "Vesper" && (
+              <Link
+                href={`/rezepte/neu?${new URLSearchParams({ titel: slot.label, w: week, d: date, m: meal })}`}
+                className="link text-sm"
+                aria-label={`${what}: Rezept anlegen`}
+              >
+                Rezept anlegen
               </Link>
             )}
             <form action={clearSlot}>

@@ -43,6 +43,8 @@ export function isMeal(recipe: Pick<RecipeSummary, "category">): boolean {
 
 /** What is eaten in the evening rather than cooked for lunch. */
 const EVENING_ONLY = new Set(["vesper", "salat"]);
+/** What goes with coffee in the afternoon. */
+const SWEET = new Set(["kuchen", "dessert"]);
 
 /**
  * Whether a recipe is something to suggest for this meal. In this household lunch is the
@@ -50,6 +52,8 @@ const EVENING_ONLY = new Set(["vesper", "salat"]);
  * lunch by hand is always possible.
  */
 export function suitsMeal(recipe: Pick<RecipeSummary, "category">, meal: Meal): boolean {
+  // Cakes and desserts are never suggested for lunch or dinner, only for coffee.
+  if (meal === "coffee") return recipe.category !== null && SWEET.has(recipe.category);
   if (!isMeal(recipe)) return false;
   return meal === "dinner" || recipe.category === null || !EVENING_ONLY.has(recipe.category);
 }

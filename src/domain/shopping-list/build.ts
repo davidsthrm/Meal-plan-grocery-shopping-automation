@@ -1,17 +1,27 @@
 import type { CatalogIndex, Ingredient } from "../catalog";
 import { normalizeName } from "../catalog";
 import { daysBetween, type IsoDate } from "../dates";
-import type { PlanSlot } from "../plan";
+import type { PlanExtra, PlanSlot } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
-import { baseUnitOf, convert, dimensionOf, tidy, type Amount, type Dimension } from "../units";
+import {
+  baseUnitOf,
+  convert,
+  dimensionOf,
+  tidy,
+  type Amount,
+  type Dimension,
+  type Unit,
+} from "../units";
 import { parseFreeEntry } from "./free-entry";
 import { purchaseFor } from "./rounding";
-import type { Contribution, ManualEntry, ShoppingLine, Trip } from "./types";
+import type { Contribution, ContributionSource, ManualEntry, ShoppingLine, Trip } from "./types";
 
 export interface BuildInput {
   index: CatalogIndex;
   recipes: Recipe[];
   slots: PlanSlot[];
+  /** Recipes the week needs outside its meals. */
+  extras?: PlanExtra[];
   /** Day of the main shopping trip. */
   shoppingDate: IsoDate;
   manualEntries?: ManualEntry[];
@@ -42,20 +52,47 @@ export function toDefaultUnit(ingredient: Ingredient, amount: Amount): number | 
   return meansPacks && ingredient.packSize ? amount.quantity * ingredient.packSize : null;
 }
 
+/** Amounts too small to shop for when they cannot be added to the rest. */
+const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp"]);
+
+/**
+ * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
+ * The catalog names things in the plural and lists the singular among the other names.
+ */
+function nameForOne(ingredient: Ingredient): string {
+  const plural = ingredient.name.toLowerCase();
+  const singular = ingredient.synonyms.find((name) => {
+    const short = name.toLowerCase();
+    return (
+      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
+    );
+  });
+  return singular ?? ingredient.name;
+}
+
 interface Bucket {
   ingredient: Ingredient;
   trip: Trip;
+  /** Where it is bought when that is not where the catalog says. */
+  shopId: string | null;
   contributions: Contribution[];
   notes: string[];
 }
 
 function neededBy(contributions: Contribution[]): IsoDate | null {
-  const dates = contributions.flatMap((c) => (c.source.type === "recipe" ? [c.source.date] : []));
+  const dates = contributions.flatMap((c) =>
+    c.source.type === "recipe" || c.source.type === "food" ? [c.source.date] : [],
+  );
   return dates.length > 0 ? dates.reduce((a, b) => (a < b ? a : b)) : null;
 }
 
 function isOptional(contributions: Contribution[]): boolean {
   return contributions.length > 0 && contributions.every((c) => c.optional);
+}
+
+/** One line per ingredient and trip, and one more per shop it is bought at on purpose. */
+function bucketKey(ingredient: Ingredient, trip: Trip, shopId: string | null): string {
+  return shopId ? `${ingredient.id}@${trip}@${shopId}` : `${ingredient.id}@${trip}`;
 }
 
 function linesForBucket(bucket: Bucket): ShoppingLine[] {
@@ -81,6 +118,14 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       primary.push(contribution);
       continue;
     }
+    // A spoonful or a pinch of something bought by weight or by the piece changes nothing
+    // about what to buy. It counts as "some", and does not become a line of its own that
+    // would read "55 ml Butter".
+    if (SPOONFULS.has(contribution.amount.unit)) {
+      hasUnquantified = true;
+      primary.push(contribution);
+      continue;
+    }
     const dimension = dimensionOf(contribution.amount.unit);
     const inBase = convert(
       contribution.amount.quantity,
@@ -97,11 +142,15 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     ingredientId: ingredient.id,
     label: ingredient.name,
     trip,
-    shopId: ingredient.preferredShopId,
+    shopId: bucket.shopId ?? ingredient.preferredShopId,
+    shopByChoice: bucket.shopId !== null,
     aisleGroupId: ingredient.aisleGroupId,
   };
-  const manuallyAdded = bucket.contributions.some((c) => c.source.type === "manual");
-  const defaultAtHome = ingredient.isPantryStaple && !manuallyAdded;
+  // What someone put on the list on purpose is not assumed to be at home.
+  const askedFor = bucket.contributions.some(
+    (c) => c.source.type === "manual" || c.source.type === "food",
+  );
+  const defaultAtHome = ingredient.isPantryStaple && !askedFor;
   const note = bucket.notes.length > 0 ? bucket.notes.join(", ") : null;
   const primaryAmounts: Amount[] = hasSum
     ? [{ quantity: tidy(primarySum), unit: ingredient.defaultUnit }]
@@ -110,7 +159,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     quantity: tidy(group.sum),
     unit: baseUnitOf(dimension),
   }));
-  const key = `${ingredient.id}@${trip}`;
+  const key = bucketKey(ingredient, trip, bucket.shopId);
 
   // No quantity is shown anyway, so differing units need no separate lines.
   if (ingredient.buyingMode === "none") {
@@ -132,11 +181,16 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
 
   const lines: ShoppingLine[] = [];
   if (primary.length > 0) {
+    const purchase = hasSum ? purchaseFor(ingredient, primarySum) : null;
     lines.push({
       ...common,
+      label:
+        purchase?.unit === "Stück" && purchase.quantity === 1
+          ? nameForOne(ingredient)
+          : ingredient.name,
       key,
       neededBy: trip === "later" ? neededBy(primary) : null,
-      purchase: hasSum ? purchaseFor(ingredient, primarySum) : null,
+      purchase,
       amounts: primaryAmounts,
       hasUnquantified,
       contributions: primary,
@@ -181,9 +235,17 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
   // Lines without a catalog ingredient: unmapped recipe lines and free text.
   const loose = new Map<string, ShoppingLine>();
 
-  const add = (ingredient: Ingredient, trip: Trip, contribution: Contribution, note?: string) => {
-    const key = `${ingredient.id}@${trip}`;
-    const bucket = buckets.get(key) ?? { ingredient, trip, contributions: [], notes: [] };
+  const add = (
+    ingredient: Ingredient,
+    trip: Trip,
+    contribution: Contribution,
+    note?: string,
+    shop?: string | null,
+  ) => {
+    // A shop that is the catalog's own is no exception.
+    const shopId = shop && shop !== ingredient.preferredShopId ? shop : null;
+    const key = bucketKey(ingredient, trip, shopId);
+    const bucket = buckets.get(key) ?? { ingredient, trip, shopId, contributions: [], notes: [] };
     bucket.contributions.push(contribution);
     if (note) bucket.notes.push(note);
     buckets.set(key, bucket);
@@ -193,7 +255,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     key: string,
     label: string,
     contribution: Contribution,
-    entry?: ManualEntry,
+    entry?: { shopId?: string | null; aisleGroupId?: string | null },
   ) => {
     const line = loose.get(key) ?? {
       key,
@@ -202,6 +264,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       trip: "main" as const,
       neededBy: null,
       shopId: entry?.shopId ?? catalog.defaultShopId,
+      shopByChoice: Boolean(entry?.shopId),
       aisleGroupId: entry?.aisleGroupId ?? catalog.fallbackAisleGroupId,
       purchase: null,
       amounts: [],
@@ -215,45 +278,101 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     loose.set(key, line);
   };
 
-  for (const slot of input.slots) {
-    if (slot.kind !== "recipes") continue;
-    for (const item of slot.items) {
-      const recipe = recipeById.get(item.recipeId);
-      if (!recipe) throw new Error(`slot ${slot.id} refers to unknown recipe ${item.recipeId}`);
-      const factor = scaleFactor(recipe.servings, item.servings);
-      const source = {
-        type: "recipe" as const,
-        slotId: slot.id,
-        date: slot.date,
-        meal: slot.meal,
-        recipeId: recipe.id,
-        recipeTitle: recipe.title,
-      };
-
-      for (const line of recipe.ingredients) {
-        if (line.alternativeTo !== null) continue;
-        const ingredient = line.ingredientId
-          ? index.ingredientById.get(line.ingredientId)
-          : undefined;
-        if (!ingredient) {
-          const contribution = {
-            source,
-            amount: null,
-            originalText: line.originalText,
-            optional: line.optional,
-          };
-          addLoose(`unmapped:${normalizeName(line.originalText)}`, line.originalText, contribution);
-          continue;
-        }
-        const base = shoppingAmount(line, ingredient.defaultUnit, ingredient.gramsPer);
-        add(ingredient, tripFor(slot.date, shoppingDate, ingredient.shelfLifeDays), {
+  /** Adds every line of a recipe, scaled, as needed on `date` (null: no particular day). */
+  const addRecipe = (
+    recipe: Recipe,
+    servings: number,
+    source: ContributionSource,
+    date: IsoDate | null,
+  ) => {
+    const factor = scaleFactor(recipe.servings, servings);
+    for (const line of recipe.ingredients) {
+      if (line.alternativeTo !== null) continue;
+      const ingredient = line.ingredientId
+        ? index.ingredientById.get(line.ingredientId)
+        : undefined;
+      if (!ingredient) {
+        const contribution = {
           source,
-          amount: base && { quantity: tidy(base.quantity * factor), unit: base.unit },
+          amount: null,
           originalText: line.originalText,
           optional: line.optional,
-        });
+        };
+        addLoose(`unmapped:${normalizeName(line.originalText)}`, line.originalText, contribution);
+        continue;
+      }
+      const base = shoppingAmount(line, ingredient.defaultUnit, ingredient.gramsPer);
+      const trip = date ? tripFor(date, shoppingDate, ingredient.shelfLifeDays) : "main";
+      add(ingredient, trip, {
+        source,
+        amount: base && { quantity: tidy(base.quantity * factor), unit: base.unit },
+        originalText: line.originalText,
+        optional: line.optional,
+      });
+    }
+  };
+
+  for (const slot of input.slots) {
+    if (slot.kind === "recipes") {
+      for (const item of slot.items) {
+        const recipe = recipeById.get(item.recipeId);
+        if (!recipe) throw new Error(`slot ${slot.id} refers to unknown recipe ${item.recipeId}`);
+        const source = {
+          type: "recipe" as const,
+          slotId: slot.id,
+          date: slot.date,
+          meal: slot.meal,
+          recipeId: recipe.id,
+          recipeTitle: recipe.title,
+        };
+        addRecipe(recipe, item.servings, source, slot.date);
       }
     }
+    // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".
+    if (slot.kind === "free_text") {
+      for (const food of slot.foods ?? []) {
+        const contribution: Contribution = {
+          source: {
+            type: "food",
+            slotId: slot.id,
+            date: slot.date,
+            meal: slot.meal,
+            mealLabel: slot.label,
+          },
+          amount: null,
+          originalText: food.label,
+          optional: false,
+        };
+        const ingredient = food.ingredientId
+          ? index.ingredientById.get(food.ingredientId)
+          : undefined;
+        if (ingredient) {
+          const trip = tripFor(slot.date, shoppingDate, ingredient.shelfLifeDays);
+          add(ingredient, trip, contribution, undefined, food.shopId);
+        } else {
+          addLoose(
+            `food:${normalizeName(food.label)}@${food.shopId ?? ""}`,
+            food.label,
+            contribution,
+            {
+              shopId: food.shopId,
+            },
+          );
+        }
+      }
+    }
+  }
+
+  for (const extra of input.extras ?? []) {
+    const recipe = recipeById.get(extra.recipeId);
+    if (!recipe) throw new Error(`an extra refers to unknown recipe ${extra.recipeId}`);
+    const source = {
+      type: "extra" as const,
+      recipeId: recipe.id,
+      recipeTitle: recipe.title,
+      note: extra.note,
+    };
+    addRecipe(recipe, extra.servings, source, null);
   }
 
   for (const entry of input.manualEntries ?? []) {

@@ -1,17 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
 import type { NewSlot, SlotContent } from "@/domain/plan";
 import { slotKey } from "@/domain/plan";
 import { plannedServings } from "@/domain/recipe";
+import { BALANCE_GROUPS, readTargets } from "@/domain/recommend/balance";
+import { TARGETS_SEEN } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
 import { must, type Db } from "@/server/catalog";
 import {
+  addExtra,
+  addFood,
   addToSlot,
+  changeExtra,
   changeItem,
+  removeFood,
   copyPreviousWeek,
   loadWeek,
   planOpenSlots,
@@ -26,7 +33,7 @@ import { createSessionClient } from "@/server/supabase/server";
 
 const date = z.string().refine(isIsoDate);
 const place = z
-  .object({ week: date, date, meal: z.enum(["lunch", "dinner"]) })
+  .object({ week: date, date, meal: z.enum(["lunch", "dinner", "coffee"]) })
   // A meal belongs to the week it is planned in, and a week starts on a Monday.
   .refine((value) => mondayOf(value.week) === value.week && mondayOf(value.date) === value.week);
 // Any id in the usual form: the seeded recipes have ids that are no version 4 UUIDs.
@@ -42,6 +49,11 @@ function read<T extends z.ZodType>(schema: T, form: FormData): z.infer<T> {
 function backToWeek(week: string, day?: string): never {
   revalidatePath("/woche");
   redirect(`/woche?w=${week}${day ? `#tag-${day}` : ""}`);
+}
+
+function backToExtras(week: string): never {
+  revalidatePath("/woche");
+  redirect(`/woche?w=${week}&t=extra`);
 }
 
 /** How much of each recipe is planned unless someone says otherwise. Unknown ids are left out. */
@@ -157,6 +169,25 @@ export async function markSlot(form: FormData): Promise<void> {
   }
   const household = await requireHousehold();
   const db = await createSessionClient();
+  // A typed meal that is the title of a recipe is planned as that recipe, so its ingredients
+  // reach the shopping list. Wildcard characters would make the comparison a pattern.
+  if (content.kind === "free_text" && !/[%_*\\]/.test(content.label)) {
+    const known = must(
+      await db
+        .from("recipe")
+        .select("id")
+        .eq("status", "approved")
+        .ilike("title", content.label)
+        .limit(1),
+      "look up typed meal",
+    );
+    const servings = known[0]
+      ? (await plannedAmounts(db, [known[0].id], household.defaultServings)).get(known[0].id)
+      : undefined;
+    if (known[0] && servings !== undefined) {
+      content = { kind: "recipes", items: [{ recipeId: known[0].id, servings }] };
+    }
+  }
   await writeSlot(db, household.id, input.week, input.date, input.meal, content);
   backToWeek(input.week, input.date);
 }
@@ -198,4 +229,120 @@ export async function copyLastWeek(form: FormData): Promise<void> {
   const db = await createSessionClient();
   await copyPreviousWeek(db, household.id, week);
   backToWeek(week);
+}
+
+/** Adds a recipe to the week outside its meals. */
+export async function planExtra(form: FormData): Promise<void> {
+  const input = read(z.object({ week: weekStart, recipe: recipeId }), form);
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const servings = (await plannedAmounts(db, [input.recipe], household.defaultServings)).get(
+    input.recipe,
+  );
+  if (servings !== undefined) {
+    await addExtra(db, household.id, input.week, { recipeId: input.recipe, servings });
+  }
+  backToExtras(input.week);
+}
+
+/** Sets how much of an extra is made. Zero takes it off the week. */
+export async function changeExtraServings(form: FormData): Promise<void> {
+  const input = read(
+    z.object({
+      week: weekStart,
+      recipe: recipeId,
+      servings: z.coerce.number().int().min(0).max(99),
+    }),
+    form,
+  );
+  await requireHousehold();
+  const db = await createSessionClient();
+  await changeExtra(db, input.week, input.recipe, {
+    servings: input.servings === 0 ? null : input.servings,
+  });
+  backToExtras(input.week);
+}
+
+/** Notes what an extra is for: "Einladung am Samstag". */
+export async function noteExtra(form: FormData): Promise<void> {
+  const input = read(
+    z.object({ week: weekStart, recipe: recipeId, note: z.string().trim().max(80) }),
+    form,
+  );
+  await requireHousehold();
+  const db = await createSessionClient();
+  await changeExtra(db, input.week, input.recipe, { note: input.note || null });
+  backToExtras(input.week);
+}
+
+function backToFoods(input: { week: string; date: string; meal: string }): never {
+  revalidatePath("/woche");
+  redirect(`/woche/lebensmittel?w=${input.week}&d=${input.date}&m=${input.meal}`);
+}
+
+/** Adds something to buy for a meal without a recipe. */
+export async function addSlotFood(form: FormData): Promise<void> {
+  const input = read(
+    z.intersection(
+      place,
+      z.object({ label: z.string().trim().max(60), shop: z.string().trim().max(60).optional() }),
+    ),
+    form,
+  );
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  if (input.label !== "") await addFood(db, household.id, input, input.label, input.shop || null);
+  backToFoods(input);
+}
+
+export async function removeSlotFood(form: FormData): Promise<void> {
+  const input = read(z.intersection(place, z.object({ label: z.string().max(60) })), form);
+  await requireHousehold();
+  const db = await createSessionClient();
+  await removeFood(db, input, input.label);
+  backToFoods(input);
+}
+
+/** Remembers on this device that its user has seen the household's goals. */
+async function markTargetsSeen(): Promise<void> {
+  (await cookies()).set(TARGETS_SEEN, "1", {
+    maxAge: 60 * 60 * 24 * 400,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+}
+
+/** Stores what the household aims for in a week. An empty field is no limit. */
+export async function saveTargets(form: FormData): Promise<void> {
+  const limit = (name: string) => {
+    const typed = String(form.get(name) ?? "").trim();
+    return typed === "" ? null : Number(typed);
+  };
+  const targets = readTargets(
+    Object.fromEntries(
+      BALANCE_GROUPS.map((group) => [
+        group,
+        { min: limit(`${group}-min`), max: limit(`${group}-max`) },
+      ]),
+    ),
+  );
+  // What makes no sense is sent back to the form, which says so.
+  if (!targets) redirect("/woche/ziele?fehler=1");
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const stored = await db
+    .from("household")
+    .update({ balance_targets: targets })
+    .eq("id", household.id);
+  if (stored.error) throw new Error(`store targets: ${stored.error.message}`);
+  await markTargetsSeen();
+  revalidatePath("/woche");
+  redirect("/woche");
+}
+
+/** Leaves the goals as they are. */
+export async function keepTargets(): Promise<void> {
+  await markTargetsSeen();
+  redirect("/woche");
 }

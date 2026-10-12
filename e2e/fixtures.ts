@@ -213,6 +213,7 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
 }
 
 type Protein = Database["public"]["Enums"]["protein_type"];
+type Unit = Database["public"]["Enums"]["unit"];
 
 /** A small cookbook: enough meals of every kind to fill a week, and a few that are no meals. */
 const LIBRARY: {
@@ -224,7 +225,8 @@ const LIBRARY: {
   favorite?: boolean;
   /** What it makes when that is not four persons. */
   makes?: { count: number; unit: string };
-  ingredient?: string;
+  /** Ingredient lines: catalog name, quantity and unit. */
+  lines?: [string, number | null, Unit | null][];
 }[] = [
   {
     title: "Gemüse-Lasagne",
@@ -289,6 +291,11 @@ const LIBRARY: {
     protein: "vegetarian",
     minutes: 35,
     book: "E2E Kochbuch",
+    lines: [
+      ["Kartoffeln", 1000, "g"],
+      ["Karotten", 2, "Stück"],
+      ["Sahne", 100, "ml"],
+    ],
   },
   { title: "Tomatensalat", category: "salat", protein: "vegan", minutes: 10, book: "E2E Kochbuch" },
   {
@@ -304,7 +311,7 @@ const LIBRARY: {
     protein: "fish",
     minutes: 25,
     book: "Zweites Buch",
-    ingredient: "Butter",
+    lines: [["Butter", 50, "g"]],
   },
   {
     title: "Zitronenhähnchen",
@@ -333,6 +340,11 @@ const LIBRARY: {
     protein: "red_meat",
     minutes: 25,
     book: "E2E Kochbuch",
+    lines: [
+      ["Rindersteaks", 4, "Stück"],
+      ["Sahne", 200, "ml"],
+      ["Salz", null, null],
+    ],
   },
   {
     title: "Rindergulasch",
@@ -362,6 +374,10 @@ const LIBRARY: {
     minutes: null,
     book: "E2E Kochbuch",
     makes: { count: 1, unit: "Springform (Ø 26 cm)" },
+    lines: [
+      ["Butter", 250, "g"],
+      ["Eier", 4, "Stück"],
+    ],
   },
 ];
 
@@ -373,6 +389,8 @@ export async function resetLibrary(): Promise<void> {
   const household = await testHousehold();
   // Only ever the test household: every statement is scoped to its id.
   await clearRecipes(household);
+  const goals = await db.from("household").update({ balance_targets: null }).eq("id", household);
+  if (goals.error) throw new Error(`reset goals: ${goals.error.message}`);
 
   const recipes = check(
     await db
@@ -409,33 +427,45 @@ export async function resetLibrary(): Promise<void> {
   );
   if (linked.error) throw new Error(`categorise library: ${linked.error.message}`);
 
-  for (const entry of LIBRARY.filter((item) => item.ingredient)) {
-    const ingredient = check(
-      await db
-        .from("ingredient")
-        .select("id")
-        .eq("household_id", household)
-        .eq("name", entry.ingredient!)
-        .single(),
-      `find ${entry.ingredient}`,
-    );
-    const line = await db.from("recipe_ingredient").insert({
+  const catalog = check(
+    await db.from("ingredient").select("id, name").eq("household_id", household),
+    "load catalog",
+  );
+  const lines = LIBRARY.flatMap((entry) =>
+    (entry.lines ?? []).map(([name, quantity, unit], position) => ({
       household_id: household,
       recipe_id: idOf.get(entry.title)!,
-      position: 0,
-      ingredient_id: ingredient.id,
-      quantity: 50,
-      unit: "g",
-      original_text: `50 g ${entry.ingredient}`,
-    });
-    if (line.error) throw new Error(`create line: ${line.error.message}`);
-  }
+      position,
+      ingredient_id: catalog.find((ingredient) => ingredient.name === name)!.id,
+      quantity,
+      unit,
+      original_text: [quantity, unit, name].filter((part) => part !== null).join(" "),
+    })),
+  );
+  const stored = await db.from("recipe_ingredient").insert(lines);
+  if (stored.error) throw new Error(`create lines: ${stored.error.message}`);
 }
 
-export async function signIn(page: Page): Promise<void> {
+/**
+ * Signs the test user in. A device that opens the plan for the first time is asked about the
+ * goals of a week; the tests are no first visit unless they say so.
+ */
+export async function signIn(
+  page: Page,
+  visit: "first" | "returning" = "returning",
+): Promise<void> {
+  if (visit === "returning") {
+    await page.context().addCookies([
+      {
+        name: "ziele-gesehen",
+        value: "1",
+        url: `http://localhost:${process.env.E2E_PORT ?? 3100}`,
+      },
+    ]);
+  }
   await page.goto("/login");
   await page.getByLabel("E-Mail").fill(process.env.E2E_EMAIL!);
   await page.getByLabel("Passwort").fill(process.env.E2E_PASSWORD!);
   await page.getByRole("button", { name: "Anmelden" }).click();
-  await page.waitForURL("**/woche");
+  await page.waitForURL(visit === "first" ? "**/woche/ziele?start=1" : "**/woche");
 }

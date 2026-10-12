@@ -77,3 +77,41 @@ export function presentList(
 
   return { shops, later, atHome: resolved.filter((v) => v.atHome).sort(byLabel) };
 }
+
+export interface AisleView {
+  /** To buy on the shopping day, by kind of grocery, in the household's order. */
+  groups: { aisleGroup: AisleGroup; lines: ViewLine[] }[];
+  /** To buy fresh later in the week, ordered by the day they are needed. */
+  later: ViewLine[];
+  /** Already at home. Not on the list, but listed in the "Haben wir schon?" step. */
+  atHome: ViewLine[];
+}
+
+/**
+ * The list as one walk through a shop: grouped by kind of grocery only, whichever shop each
+ * thing comes from. This is the list the household uses while it does not plan by shop.
+ */
+export function presentByAisle(
+  lines: ShoppingLine[],
+  states: Record<string, LineState>,
+  index: CatalogIndex,
+): AisleView {
+  const resolved = lines.map((line) => resolveLine(line, states[line.key]));
+  const toBuy = resolved.filter((view) => !view.atHome);
+  const main = toBuy.filter((view) => view.line.trip === "main");
+  return {
+    groups: [...index.catalog.aisleGroups]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((aisleGroup) => ({
+        aisleGroup,
+        lines: main.filter((view) => view.line.aisleGroupId === aisleGroup.id).sort(byLabel),
+      }))
+      .filter((group) => group.lines.length > 0),
+    later: toBuy
+      .filter((view) => view.line.trip === "later")
+      .sort(
+        (a, b) => (a.line.neededBy ?? "").localeCompare(b.line.neededBy ?? "") || byLabel(a, b),
+      ),
+    atHome: resolved.filter((view) => view.atHome).sort(byLabel),
+  };
+}

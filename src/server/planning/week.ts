@@ -5,12 +5,14 @@ import {
   slotKey,
   type Meal,
   type NewSlot,
+  type PlanExtra,
   type PlanSlot,
+  type SlotFood,
   type SlotContent,
   type SlotItem,
 } from "@/domain/plan";
-import { allRows } from "../library";
-import { must, type Db } from "../catalog";
+import { findIngredient } from "@/domain/catalog";
+import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned
@@ -45,6 +47,19 @@ export async function loadWeek(db: Db, weekStart: IsoDate): Promise<PlanSlot[]> 
           "load recipes of week",
         );
 
+  const noRecipe = slots.filter((slot) => slot.kind === "free_text").map((slot) => slot.id);
+  const foods =
+    noRecipe.length === 0
+      ? []
+      : must(
+          await db
+            .from("plan_slot_food")
+            .select("plan_slot_id, label, ingredient_id, shop_id, position")
+            .in("plan_slot_id", noRecipe)
+            .order("position"),
+          "load foods of week",
+        );
+
   return slots.map((slot): PlanSlot => {
     const base = { id: slot.id, date: slot.date, meal: slot.meal };
     switch (slot.kind) {
@@ -57,8 +72,20 @@ export async function loadWeek(db: Db, weekStart: IsoDate): Promise<PlanSlot[]> 
             .map((item) => ({ recipeId: item.recipe_id, servings: item.servings })),
         };
       case "free_text":
+        return {
+          ...base,
+          kind: "free_text",
+          label: slot.label ?? "",
+          foods: foods
+            .filter((food) => food.plan_slot_id === slot.id)
+            .map((food) => ({
+              label: food.label,
+              ingredientId: food.ingredient_id,
+              shopId: food.shop_id,
+            })),
+        };
       case "away":
-        return { ...base, kind: slot.kind, label: slot.label ?? "" };
+        return { ...base, kind: "away", label: slot.label ?? "" };
       case "leftovers":
         return { ...base, kind: "leftovers", ofSlotId: slot.leftovers_of_slot_id };
       default:
@@ -67,7 +94,28 @@ export async function loadWeek(db: Db, weekStart: IsoDate): Promise<PlanSlot[]> 
   });
 }
 
-async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<string> {
+async function storeFoods(
+  db: Db,
+  householdId: string,
+  slotId: string,
+  foods: readonly SlotFood[],
+): Promise<void> {
+  if (foods.length === 0) return;
+  const stored = await db.from("plan_slot_food").insert(
+    foods.map((food, position) => ({
+      household_id: householdId,
+      plan_slot_id: slotId,
+      label: food.label,
+      ingredient_id: food.ingredientId,
+      shop_id: food.shopId,
+      position,
+    })),
+  );
+  if (stored.error) throw new Error(`store foods of meal: ${stored.error.message}`);
+}
+
+/** The id of a week's plan. The week comes into being when something is first stored in it. */
+export async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<string> {
   const plan = must(
     await db
       .from("week_plan")
@@ -118,6 +166,7 @@ export async function writeSlot(
       .single(),
     "plan meal",
   );
+  if (content.kind === "free_text") await storeFoods(db, householdId, slot.id, content.foods ?? []);
   if (content.kind !== "recipes") return;
   const items = await db.from("plan_slot_item").insert(
     content.items.map((item, position) => ({
@@ -167,6 +216,10 @@ export async function planOpenSlots(
     "plan meals",
   );
   const idOf = new Map(created.map((slot) => [slotKey(slot.date, slot.meal), slot.id]));
+  for (const { date, meal, content } of wanted) {
+    if (content.kind !== "free_text") continue;
+    await storeFoods(db, householdId, idOf.get(slotKey(date, meal)) as string, content.foods ?? []);
+  }
   const items = wanted.flatMap(({ date, meal, content }) =>
     content.kind === "recipes"
       ? content.items.map((item, position) => ({
@@ -286,4 +339,123 @@ export async function loadHistory(db: Db, before: IsoDate): Promise<Map<string, 
     }
   }
   return history;
+}
+
+/** The meal of a week at a day and time, if it is one without a recipe. */
+async function mealWithoutRecipe(db: Db, weekStart: IsoDate, date: IsoDate, meal: Meal) {
+  const slot = (await loadWeek(db, weekStart)).find(
+    (entry) => entry.date === date && entry.meal === meal,
+  );
+  return slot?.kind === "free_text" ? slot : null;
+}
+
+/**
+ * Adds something to buy for a meal without a recipe. The name is looked up in the catalog,
+ * so "Gurke" ends up on the list as the household's "Gurken". `shopName` says where it is
+ * bought for this meal, if not where the catalog says.
+ */
+export async function addFood(
+  db: Db,
+  householdId: string,
+  place: { week: IsoDate; date: IsoDate; meal: Meal },
+  label: string,
+  shopName: string | null,
+): Promise<void> {
+  const slot = await mealWithoutRecipe(db, place.week, place.date, place.meal);
+  if (!slot) return;
+  const name = label.trim().replace(/\s+/g, " ");
+  if (name === "" || slot.foods?.some((food) => food.label.toLowerCase() === name.toLowerCase())) {
+    return;
+  }
+  const [index, shops] = await Promise.all([
+    loadCatalogIndex(db),
+    db.from("shop").select("id, name"),
+  ]);
+  const shop = shopName ? must(shops, "load shops").find((entry) => entry.name === shopName) : null;
+  const stored = await db.from("plan_slot_food").insert({
+    household_id: householdId,
+    plan_slot_id: slot.id,
+    label: name,
+    ingredient_id: findIngredient(index, name)?.id ?? null,
+    shop_id: shop?.id ?? null,
+    position: slot.foods?.length ?? 0,
+  });
+  if (stored.error) throw new Error(`add food: ${stored.error.message}`);
+}
+
+export async function removeFood(
+  db: Db,
+  place: { week: IsoDate; date: IsoDate; meal: Meal },
+  label: string,
+): Promise<void> {
+  const slot = await mealWithoutRecipe(db, place.week, place.date, place.meal);
+  if (!slot) return;
+  const removed = await db
+    .from("plan_slot_food")
+    .delete()
+    .eq("plan_slot_id", slot.id)
+    .eq("label", label);
+  if (removed.error) throw new Error(`remove food: ${removed.error.message}`);
+}
+
+/** The recipes a week needs outside its meals, oldest first. */
+export async function loadExtras(db: Db, weekStart: IsoDate): Promise<PlanExtra[]> {
+  const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
+  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
+  if (!plan.data) return [];
+  const rows = must(
+    await db
+      .from("plan_extra")
+      .select("recipe_id, servings, note")
+      .eq("week_plan_id", plan.data.id)
+      .order("created_at"),
+    "load extras of week",
+  );
+  return rows.map((row) => ({ recipeId: row.recipe_id, servings: row.servings, note: row.note }));
+}
+
+/** Adds a recipe to a week outside its meals. Adding it twice changes nothing. */
+export async function addExtra(
+  db: Db,
+  householdId: string,
+  weekStart: IsoDate,
+  item: SlotItem,
+): Promise<void> {
+  const planId = await ensureWeek(db, householdId, weekStart);
+  const stored = await db.from("plan_extra").upsert(
+    {
+      household_id: householdId,
+      week_plan_id: planId,
+      recipe_id: item.recipeId,
+      servings: item.servings,
+    },
+    { onConflict: "week_plan_id,recipe_id", ignoreDuplicates: true },
+  );
+  if (stored.error) throw new Error(`add extra: ${stored.error.message}`);
+}
+
+/** Changes an extra: how much of it, what it is for, or (servings null) not at all. */
+export async function changeExtra(
+  db: Db,
+  weekStart: IsoDate,
+  recipeId: string,
+  change: { servings: number | null } | { note: string | null },
+): Promise<void> {
+  const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
+  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
+  if (!plan.data) return;
+  const planId = plan.data.id;
+  const update = (values: { servings: number } | { note: string | null }) =>
+    db.from("plan_extra").update(values).eq("week_plan_id", planId).eq("recipe_id", recipeId);
+  let done;
+  if ("note" in change) done = await update({ note: change.note });
+  else if (change.servings !== null) done = await update({ servings: change.servings });
+  else {
+    done = await db
+      .from("plan_extra")
+      .delete()
+      .eq("week_plan_id", planId)
+      .eq("recipe_id", recipeId);
+  }
+  if (done.error) throw new Error(`change extra: ${done.error.message}`);
 }

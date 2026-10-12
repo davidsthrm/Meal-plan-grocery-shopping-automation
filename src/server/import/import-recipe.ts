@@ -2,6 +2,7 @@ import type { CatalogIndex } from "@/domain/catalog";
 import { checkDraft, type ImportIssue } from "@/domain/import/checks";
 import { toDraft, type ProvidedMetadata, type RecipeDraft } from "@/domain/import/draft";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
+import { splitJoinedLines } from "@/domain/import/split-lines";
 import type { Verification } from "@/domain/import/verification";
 import { normalizeImage, type PreparedImage } from "./normalize-image";
 import {
@@ -74,7 +75,8 @@ export async function importFromImages(
   let extraction: ExtractedRecipe;
   try {
     const reading = await deps.read(images, options);
-    extraction = reading.recipe;
+    // "Salz und Pfeffer" is two ingredients, whatever the model made of the line.
+    extraction = splitJoinedLines(reading.recipe, deps.index);
     spend(reading.usage);
   } catch (error) {
     // A declined or unusable answer is an outcome of the import. Anything else is a bug or an
