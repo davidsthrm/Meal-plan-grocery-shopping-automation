@@ -21,7 +21,10 @@
     "db:types": "supabase gen types typescript --linked --schema public > src/server/supabase/database.types.ts",
     "e2e:setup": "tsx --env-file=.env.local scripts/e2e-household.ts",
     "e2e:teardown": "tsx --env-file=.env.local scripts/e2e-household.ts --teardown",
-    "e2e:batch": "tsx --conditions=react-server --env-file=.env.local scripts/batch-smoke.ts"
+    "e2e:batch": "tsx --conditions=react-server --env-file=.env.local scripts/batch-smoke.ts",
+    "e2e": "playwright test --grep-invert \"@look|@api\"",
+    "e2e:look": "playwright test --grep @look",
+    "e2e:upload": "playwright test --grep @api --project desktop"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
