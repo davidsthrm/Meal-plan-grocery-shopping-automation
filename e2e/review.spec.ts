@@ -43,14 +43,24 @@ test("an unknown ingredient is confirmed once and then belongs to the catalog", 
   await expect(page.getByRole("heading", { name: "Topinambur" })).toBeVisible();
   await expect(page.getByText("Kommt vor in: Ohne Titel")).toBeVisible();
 
-  await page.getByLabel("Hält sich (Tage, leer = lange)").fill("14");
-  await page.getByRole("button", { name: "Übernehmen" }).click();
-  await expect(page.getByText("Keine offenen Vorschläge.")).toBeVisible();
+  const card = page.getByRole("listitem").filter({ hasText: "Kommt vor in: Ohne Titel" });
+  await card.getByLabel("Hält sich (Tage, leer = lange)").fill("14");
+  await card.getByRole("button", { name: "Übernehmen", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Topinambur" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Pak Choi" })).toBeVisible();
 
   // The recipe line now points at the new ingredient, so the hint is gone in review.
   await page.goto("/import/pruefen");
   await expect(page.getByText("Gedruckt: 300 g Topinambur")).toBeVisible();
   await expect(page.getByText("Steht noch nicht im Katalog.")).toHaveCount(0);
+});
+
+test("several new ingredients are accepted in one go, as suggested", async ({ page }) => {
+  await page.goto("/import/vorschlaege");
+  await page
+    .getByRole("button", { name: "Alle 2 neuen Zutaten wie vorgeschlagen übernehmen" })
+    .click();
+  await expect(page.getByText("Keine offenen Vorschläge.")).toBeVisible();
 });
 
 test("a photo that is no recipe can be thrown out", async ({ page }) => {

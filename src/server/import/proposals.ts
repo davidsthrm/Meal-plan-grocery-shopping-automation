@@ -208,3 +208,29 @@ export async function approveResolvedRecipes(db: Db): Promise<number> {
   }
   return approved;
 }
+
+/**
+ * Accepts every open proposal for a new ingredient as suggested. Proposals that say "this is
+ * the same as an existing ingredient" are left for a person: merging two different products
+ * by mistake would quietly put the wrong thing on shopping lists.
+ * Returns how many were accepted.
+ */
+export async function acceptAllNew(db: Db, householdId: string): Promise<number> {
+  const open = (await loadOpenProposals(db)).filter((p) => p.sameAsIngredientId === null);
+  let accepted = 0;
+  for (const proposal of open) {
+    const problem = await acceptAsNew(db, householdId, proposal.id, {
+      name: proposal.name,
+      aisleGroupId: proposal.aisleGroupId,
+      shopId: proposal.shopId,
+      defaultUnit: proposal.defaultUnit,
+      buyingMode: proposal.buyingMode,
+      packSize: proposal.packSize,
+      isPantryStaple: proposal.isPantryStaple,
+      shelfLifeDays: proposal.shelfLifeDays,
+    });
+    // One that cannot be accepted as it is stays open and is decided by hand.
+    if (problem === null) accepted++;
+  }
+  return accepted;
+}

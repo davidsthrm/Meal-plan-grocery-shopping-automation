@@ -99,9 +99,27 @@ describe("groupPages", () => {
       pages([40, part("Rührei"), part("Spiegelei")], [41, part("Omelett")]),
     );
     expect(units).toEqual([
-      { pageIds: ["p1"], focusTitle: "Rührei", title: "Rührei" },
-      { pageIds: ["p1"], focusTitle: "Spiegelei", title: "Spiegelei" },
-      { pageIds: ["p2"], focusTitle: null, title: "Omelett" },
+      { pageIds: ["p1"], focusTitle: "Rührei", focus: { position: 1, count: 2 }, title: "Rührei" },
+      {
+        pageIds: ["p1"],
+        focusTitle: "Spiegelei",
+        focus: { position: 2, count: 2 },
+        title: "Spiegelei",
+      },
+      { pageIds: ["p2"], focusTitle: null, focus: null, title: "Omelett" },
+    ]);
+  });
+
+  it("points at a recipe without a title on a shared photo by its position", () => {
+    // A double page with four recipes, one of which has its title cut off.
+    const { units } = groupPages(
+      pages([82, part("Steak"), part("Suppe"), part("Eintopf"), body()]),
+    );
+    expect(units.map((u) => [u.title, u.focus])).toEqual([
+      ["Steak", { position: 1, count: 4 }],
+      ["Suppe", { position: 2, count: 4 }],
+      ["Eintopf", { position: 3, count: 4 }],
+      [null, { position: 4, count: 4 }],
     ]);
   });
 

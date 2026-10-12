@@ -141,6 +141,8 @@ export type Database = {
           created_at: string
           extraction: Json | null
           finished_at: string | null
+          focus_count: number | null
+          focus_position: number | null
           focus_title: string | null
           household_id: string
           id: string
@@ -164,6 +166,8 @@ export type Database = {
           created_at?: string
           extraction?: Json | null
           finished_at?: string | null
+          focus_count?: number | null
+          focus_position?: number | null
           focus_title?: string | null
           household_id: string
           id?: string
@@ -187,6 +191,8 @@ export type Database = {
           created_at?: string
           extraction?: Json | null
           finished_at?: string | null
+          focus_count?: number | null
+          focus_position?: number | null
           focus_title?: string | null
           household_id?: string
           id?: string
@@ -235,6 +241,7 @@ export type Database = {
           created_at: string
           error: string | null
           file_name: string
+          full_path: string | null
           household_id: string
           id: string
           original_path: string | null
@@ -250,6 +257,7 @@ export type Database = {
           created_at?: string
           error?: string | null
           file_name: string
+          full_path?: string | null
           household_id: string
           id?: string
           original_path?: string | null
@@ -265,6 +273,7 @@ export type Database = {
           created_at?: string
           error?: string | null
           file_name?: string
+          full_path?: string | null
           household_id?: string
           id?: string
           original_path?: string | null

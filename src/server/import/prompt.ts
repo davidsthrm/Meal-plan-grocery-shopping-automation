@@ -28,6 +28,7 @@ Ingredients: one entry per ingredient, in printed order
 
 Recipe fields
 - servingsMin and servingsMax: "für 4 Personen" is 4 and 4, "für 2–3 Personen" is 2 and 3.
+- page: the number printed on the page this recipe is on. On a double page that is the number on the recipe's own side.
 - prepMinutes: the printed preparation time in minutes, without waiting times printed as an extra ("+ 1 Std. Kühlzeit").
 - dishType and proteinType: your judgment from the recipe as a whole. Meat stock or bacon makes a dish non-vegetarian.
 - subtitle, servingsRaw and note are empty strings when there is nothing to put there.

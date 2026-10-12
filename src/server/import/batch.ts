@@ -7,12 +7,13 @@ import { loadCatalogIndex, must, type Db } from "../catalog";
 import type { Json } from "../supabase/database.types";
 import { importFromImages } from "./import-recipe";
 import { importModels } from "./models";
-import { normalizeImage, type PreparedImage } from "./normalize-image";
+import { normalizeImage, prepareForModel, type PreparedImage } from "./normalize-image";
 import { RecipeReadError } from "./read-recipe";
 import { saveImportedRecipe, type StoredRecipe } from "./save-recipe";
 import {
   createUploadTarget,
   downloadPhoto,
+  fullPhotoPath,
   originalPath,
   pagePhotoPath,
   removePhotos,
@@ -27,6 +28,9 @@ import {
  * result, so a closed tab or a dropped connection loses nothing and the batch simply
  * continues when it is opened again.
  */
+
+/** Longest edge of the full-size copy. Larger than any phone photo, so nothing is scaled. */
+const FULL_SIZE_EDGE = 8192;
 
 /** A step that has been "in progress" for longer than this was abandoned and is redone. */
 const ABANDONED_AFTER_MS = 5 * 60 * 1000;
@@ -196,10 +200,12 @@ async function lookAtPage(db: Db, householdId: string, pageId: string): Promise<
       .eq("id", page.id);
 
   let image: PreparedImage;
+  let upload: Buffer;
   let photoPath = page.photo_path;
   try {
     // A page that is looked at again already has its stored photo.
-    image = await normalizeImage(await downloadPhoto((page.original_path ?? photoPath) as string));
+    upload = await downloadPhoto((page.original_path ?? photoPath) as string);
+    image = await normalizeImage(upload);
   } catch (error) {
     await finish({ status: "failed", error: `Kein lesbares Foto: ${(error as Error).message}` });
     return;
@@ -210,9 +216,17 @@ async function lookAtPage(db: Db, householdId: string, pageId: string): Promise<
       await storePhoto(photoPath, image.data);
     }
     const { survey } = await importModels().look(image);
+    // Several recipes on one photo have small print. Keep a clean full-size copy, so they
+    // can be read from enlarged parts. It is removed once the batch is through.
+    let fullPath: string | null = null;
+    if (page.original_path && survey.recipes.length > 1) {
+      fullPath = fullPhotoPath(householdId, page.batch_id, page.position);
+      await storePhoto(fullPath, (await normalizeImage(upload, "Page 1", FULL_SIZE_EDGE)).data);
+    }
     await finish({
       status: survey.recipes.length > 0 ? "read" : "ignored",
       photo_path: photoPath,
+      full_path: fullPath,
       original_path: null,
       printed_page: survey.printedPage,
       survey: json(survey),
@@ -274,6 +288,8 @@ async function groupBatch(db: Db, householdId: string, batchId: string): Promise
           page_ids: unit.pageIds,
           photo_paths: unit.pageIds.map((id) => photoOf.get(id) as string),
           focus_title: unit.focusTitle,
+          focus_position: unit.focus?.position ?? null,
+          focus_count: unit.focus?.count ?? null,
         })),
       );
       if (created.error) throw new Error(`create recipes of batch: ${created.error.message}`);
@@ -307,7 +323,9 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
   const job = must(
     await db
       .from("import_job")
-      .select("id, batch_id, page_ids, photo_paths, focus_title, provided_title, provided_page")
+      .select(
+        "id, batch_id, page_ids, photo_paths, focus_title, focus_position, focus_count, provided_title, provided_page",
+      )
       .eq("id", jobId)
       .single(),
     "load recipe job",
@@ -321,17 +339,25 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
   try {
     const [batch, pages, index] = await Promise.all([
       db.from("import_batch").select("source_book").eq("id", job.batch_id).single(),
-      db.from("import_page").select("id, printed_page").in("id", job.page_ids),
+      db.from("import_page").select("id, printed_page, full_path").in("id", job.page_ids),
       loadCatalogIndex(db),
     ]);
-    const images = await Promise.all(
-      job.photo_paths.map(async (path, i): Promise<PreparedImage> => {
-        const data = await downloadPhoto(path);
-        const { width = 0, height = 0 } = await sharp(data).metadata();
-        return { label: `Page ${i + 1}`, data, width, height };
-      }),
-    );
-    const printed = new Map(must(pages, "load pages").map((p) => [p.id, p.printed_page]));
+    const pageRows = must(pages, "load pages");
+    const fullOf = new Map(pageRows.map((p) => [p.id, p.full_path]));
+    const images = (
+      await Promise.all(
+        job.photo_paths.map(async (path, i): Promise<PreparedImage[]> => {
+          const label = `Page ${i + 1}`;
+          const full = fullOf.get(job.page_ids[i]);
+          // A photo shared by several recipes is read from the page plus enlarged parts.
+          if (full) return prepareForModel(await downloadPhoto(full), label);
+          const data = await downloadPhoto(path);
+          const { width = 0, height = 0 } = await sharp(data).metadata();
+          return [{ label, data, width, height }];
+        }),
+      )
+    ).flat();
+    const printed = new Map(pageRows.map((p) => [p.id, p.printed_page]));
     const firstPrinted = job.page_ids.map((id) => printed.get(id)).find((n) => n != null);
     const models = importModels();
     const result = await importFromImages(
@@ -339,10 +365,17 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
       {
         title: job.provided_title,
         book: must(batch, "load batch").source_book,
-        page: job.provided_page ?? firstPrinted ?? null,
+        // On a photo shared by several recipes the reader sees which page each one is on.
+        page: job.provided_page ?? (job.focus_position === null ? (firstPrinted ?? null) : null),
       },
       { read: models.read, verify: models.verify, index },
-      { focusTitle: job.focus_title },
+      {
+        focusTitle: job.focus_title,
+        focus:
+          job.focus_position !== null && job.focus_count !== null
+            ? { position: job.focus_position, count: job.focus_count }
+            : null,
+      },
     );
 
     const recipeId = result.draft
@@ -420,5 +453,28 @@ export async function processNext(
       .limit(1),
     "check recipes",
   );
-  return busyJobs.length > 0 ? "waiting" : "done";
+  if (busyJobs.length > 0) return "waiting";
+  await removeFullCopies(db, batchId);
+  return "done";
+}
+
+/** The full-size copies were only needed for reading. They go once the batch is through. */
+async function removeFullCopies(db: Db, batchId: string): Promise<void> {
+  const kept = must(
+    await db
+      .from("import_page")
+      .select("id, full_path")
+      .eq("batch_id", batchId)
+      .not("full_path", "is", null),
+    "load full-size copies",
+  );
+  if (kept.length === 0) return;
+  await removePhotos(kept.map((page) => page.full_path as string));
+  await db
+    .from("import_page")
+    .update({ full_path: null })
+    .in(
+      "id",
+      kept.map((page) => page.id),
+    );
 }

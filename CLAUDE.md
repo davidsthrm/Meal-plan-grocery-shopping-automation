@@ -200,6 +200,15 @@ Import
 - Pages are grouped into recipes by `groupPages`: complete on one page, title and ingredients
   on facing pages in either order (page numbers decide which pages face each other), or
   running on to the next page. Pages without a recipe are left out and shown as such.
+- A photo may show several recipes, such as a double page with four. Each becomes its own
+  job that says which recipe is meant, by position in reading order and by title. Such a photo
+  is read from the page plus enlarged parts at full size, because the print is too small
+  otherwise. A clean full-size copy is kept for that and removed when the batch is through.
+  Measured on a made-up double page with four sample recipes: read from the page alone, one
+  fraction was misread; with enlarged parts all were correct, at about 0.95 cents per recipe.
+- New-ingredient proposals can be accepted all at once. Proposals that say "same as an
+  existing ingredient" are always decided one by one: a wrong merge would quietly put the
+  wrong product on shopping lists.
 - The photo bucket has no storage policies. Uploads and views go through signed URLs from the
   server. The upload from the phone is deleted as soon as the clean JPEG is stored.
 - Review (`/import/pruefen`) shows photo and fields side by side. Everything typed is checked

@@ -40,9 +40,14 @@ function imageBlocks(images: PreparedImage[]): Anthropic.ContentBlockParam[] {
 
 /** Tells the model which recipe is meant when the photos show more than one. */
 function focus(read: ReadOptions | undefined): string {
-  return read?.focusTitle
-    ? ` The photos show more than one recipe. Only the recipe titled "${read.focusTitle}" is meant.`
-    : "";
+  if (!read?.focus && !read?.focusTitle) return "";
+  const which = read.focus
+    ? `Only recipe ${read.focus.position} of the ${read.focus.count} on the page is meant, counted in reading order`
+    : "Only one of them is meant";
+  const named = read.focusTitle
+    ? `: the one titled "${read.focusTitle}".`
+    : ": the one whose title is not on the photos.";
+  return ` The photos show more than one recipe. ${which}${named}`;
 }
 
 /** Sends one structured-output request and returns the parsed answer with its token usage. */
