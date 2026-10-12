@@ -147,6 +147,12 @@ Recipes
   slot servings fall inside the range, the recipe is cooked as written.
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
+- A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
+  Snack & Fingerfood, Dessert & Süßspeise, Kuchen & Gebäck, Frühstück, Getränk, or Soße, Dip &
+  Grundrezept. A category is a tag of the group "Kategorie" with a stable `key`. The import's
+  `dishType` is that key. Find such tags by key, never by name: the household may rename them.
+  A new category needs a migration that adds its tag to every household, an entry in
+  `DISH_TYPES` and a line in the reading instructions.
 - The household may rename a recipe and edit its ingredients. The printed text is kept in
   `original_text` and `source_title`.
 
