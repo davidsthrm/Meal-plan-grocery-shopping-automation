@@ -1,4 +1,5 @@
 import "server-only";
+import { chosenTags, OWN_GROUP, TAG_GROUPS } from "@/domain/library/tags";
 import type { TypedRecipe } from "@/domain/library/typed-recipe";
 import { loadCatalogIndex, loadIngredientNames, must, type Db } from "./catalog";
 import type { ReviewLine } from "./import/review";
@@ -95,6 +96,63 @@ export async function updateTypedRecipe(
   }
 }
 
+/**
+ * Sets the tags that describe a recipe beyond its category, replacing the ones it had. Names
+ * the household typed become tags of its own group, unless a tag of that name exists.
+ */
+export async function saveRecipeTags(
+  db: Db,
+  householdId: string,
+  recipeId: string,
+  chosen: readonly string[],
+  ownNames: readonly string[],
+): Promise<void> {
+  const rows = must(await db.from("tag").select("id, key, name, group_name"), "load tags");
+  const described = rows.filter((row) =>
+    (TAG_GROUPS as readonly string[]).includes(row.group_name),
+  );
+  const all = described.map((row) => ({
+    ref: row.key ?? row.id,
+    name: row.name,
+    group: row.group_name,
+  }));
+  const idOf = new Map(described.map((row) => [row.key ?? row.id, row.id]));
+  const ids = chosenTags(chosen, all).map((ref) => idOf.get(ref) as string);
+
+  for (const name of ownNames) {
+    const existing = rows.find((row) => row.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      // A name that is a category or a diet is not a tag to put on a recipe here.
+      if (described.includes(existing) && !ids.includes(existing.id)) ids.push(existing.id);
+      continue;
+    }
+    const created = must(
+      await db
+        .from("tag")
+        .insert({ household_id: householdId, name, group_name: OWN_GROUP })
+        .select("id")
+        .single(),
+      "create tag",
+    );
+    ids.push(created.id);
+  }
+
+  const removed = await db
+    .from("recipe_tag")
+    .delete()
+    .eq("recipe_id", recipeId)
+    .in(
+      "tag_id",
+      described.map((row) => row.id),
+    );
+  if (removed.error) throw new Error(`clear tags: ${removed.error.message}`);
+  if (ids.length === 0) return;
+  const linked = await db
+    .from("recipe_tag")
+    .insert(ids.map((tag_id) => ({ household_id: householdId, recipe_id: recipeId, tag_id })));
+  if (linked.error) throw new Error(`set tags: ${linked.error.message}`);
+}
+
 export interface RecipeFormData {
   title: string;
   /** Key of the category, or empty. */
@@ -107,6 +165,8 @@ export interface RecipeFormData {
   servingsMax: number | null;
   servingsUnit: string;
   prepMinutes: number | null;
+  /** The tags that describe it beyond its category, as the app refers to them. */
+  tags: string[];
   lines: ReviewLine[];
 }
 
@@ -129,11 +189,12 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
       .eq("recipe_id", recipeId)
       .order("position"),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", recipeId),
-    db.from("tag").select("id, key").eq("group_name", "Kategorie"),
+    db.from("tag").select("id, key, group_name"),
     loadIngredientNames(db),
   ]);
   const own = new Set(must(links, "load recipe tags").map((link) => link.tag_id));
-  const category = must(categories, "load categories").find((tag) => own.has(tag.id));
+  const ownTags = must(categories, "load tags").filter((tag) => own.has(tag.id));
+  const category = ownTags.find((tag) => tag.group_name === "Kategorie");
   const names = new Map(ingredients.map((ingredient) => [ingredient.id, ingredient.name]));
   const rows = must(lines, "load lines");
   const positionOf = new Map(rows.map((row, at) => [row.id, at]));
@@ -147,6 +208,9 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
     servingsMax: recipe.servings_max,
     servingsUnit: recipe.servings_unit ?? "",
     prepMinutes: recipe.prep_minutes,
+    tags: ownTags
+      .filter((tag) => (TAG_GROUPS as readonly string[]).includes(tag.group_name))
+      .map((tag) => tag.key ?? tag.id),
     lines: rows.map((row) => ({
       // A line the catalog does not know shows as it was printed, to be corrected or kept.
       ingredient: row.ingredient_id ? (names.get(row.ingredient_id) ?? "") : row.original_text,

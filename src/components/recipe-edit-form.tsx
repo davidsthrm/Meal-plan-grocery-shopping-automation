@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { saveRecipeEdit } from "@/app/(app)/rezepte/actions";
 import type { ReviewErrors } from "@/domain/import/review-input";
 import type { Category } from "@/domain/library/summary";
+import { toggleTag, type TagGroup } from "@/domain/library/tags";
 import type { RecipeFormData } from "@/server/recipes";
 import { IngredientRows, rowsToLines, toRows } from "./ingredient-rows";
 
@@ -20,6 +21,8 @@ interface Props {
   recipeId: string;
   recipe: RecipeFormData;
   categories: Category[];
+  /** The tags a recipe can be described by, in their groups. */
+  tagGroups: TagGroup[];
   units: string[];
   ingredientNames: string[];
   /** Normalised names and synonyms of the catalog, to tell at once whether a name is known. */
@@ -31,10 +34,14 @@ export function RecipeEditForm({
   recipeId,
   recipe,
   categories,
+  tagGroups,
   units,
   ingredientNames,
   knownNames,
 }: Props) {
+  const allTags = tagGroups.flatMap((group) => group.tags);
+  const [tags, setTags] = useState(recipe.tags);
+  const [ownTags, setOwnTags] = useState("");
   const [title, setTitle] = useState(recipe.title);
   const [category, setCategory] = useState(recipe.category);
   const [protein, setProtein] = useState(recipe.protein);
@@ -66,7 +73,7 @@ export function RecipeEditForm({
           prepMinutes,
           lines: rowsToLines(rows),
         },
-        { category, protein },
+        { category, protein, tags, ownTags },
       );
       setErrors(result.errors);
     });
@@ -211,6 +218,48 @@ export function RecipeEditForm({
           />
         </div>
       </div>
+
+      <fieldset className="card space-y-3 p-4">
+        <legend className="px-1 text-xl font-bold tracking-tight">Stichworte</legend>
+        <p className="text-sm text-muted">
+          Danach lässt sich das Kochbuch durchstöbern, und der Wochenplan schlägt unter der Woche
+          nichts vor, das Zeit braucht.
+        </p>
+        {tagGroups.map((group) => (
+          <div key={group.name} role="group" aria-label={group.name}>
+            <p className="eyebrow mb-1.5">{group.name}</p>
+            <div className="flex flex-wrap gap-2">
+              {group.tags.map((tag) => {
+                const on = tags.includes(tag.ref);
+                return (
+                  <button
+                    key={tag.ref}
+                    type="button"
+                    className={`chip ${on ? "chip-on" : ""}`}
+                    aria-pressed={on}
+                    onClick={() => setTags(toggleTag(tags, tag, allTags))}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div>
+          <label className="label" htmlFor="own-tags">
+            Eigenes Stichwort
+          </label>
+          <input
+            id="own-tags"
+            className="field"
+            value={ownTags}
+            onChange={(event) => setOwnTags(event.target.value)}
+            maxLength={120}
+            placeholder="z. B. Omas Rezept, Kindergeburtstag"
+          />
+        </div>
+      </fieldset>
       {problem("sourcePage")}
 
       <h2 className="pt-2 text-xl font-bold tracking-tight">Zutaten</h2>

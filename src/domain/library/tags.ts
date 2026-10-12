@@ -66,3 +66,35 @@ export function toggleTag(own: readonly string[], tag: Tag, all: readonly Tag[])
     : new Set<string>();
   return [...own.filter((ref) => !rivals.has(ref)), tag.ref];
 }
+
+/**
+ * The tags to store for a recipe from what was chosen: only tags that exist, each once, and
+ * in a group that allows one tag the last one chosen.
+ */
+export function chosenTags(chosen: readonly string[], all: readonly Tag[]): string[] {
+  const known = new Map(all.map((tag) => [tag.ref, tag]));
+  let kept: string[] = [];
+  for (const ref of chosen) {
+    const tag = known.get(ref);
+    if (!tag || kept.includes(ref)) continue;
+    if (SINGLE_GROUPS.has(tag.group)) {
+      kept = kept.filter((other) => known.get(other)?.group !== tag.group);
+    }
+    kept.push(ref);
+  }
+  return kept;
+}
+
+const OWN_TAG_LENGTH = 30;
+const OWN_TAGS_AT_ONCE = 5;
+
+/** Tags the household types itself, separated by commas: "Omas Rezept, Kindergeburtstag". */
+export function readOwnTags(text: string): string[] {
+  const names: string[] = [];
+  for (const part of text.split(/[,;\n]/)) {
+    const name = part.trim().replace(/\s+/g, " ").slice(0, OWN_TAG_LENGTH);
+    const seen = names.some((other) => other.toLowerCase() === name.toLowerCase());
+    if (name !== "" && !seen) names.push(name);
+  }
+  return names.slice(0, OWN_TAGS_AT_ONCE);
+}

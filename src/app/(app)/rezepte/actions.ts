@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
 import { DISH_TYPES, PROTEIN_TYPES } from "@/domain/import/extraction";
@@ -11,6 +12,8 @@ import {
   type ReviewErrors,
   type ReviewInput,
 } from "@/domain/import/review-input";
+import { PASTED_TEXT_MAX, pastedRecipe, type PastedRecipe } from "@/domain/library/pasted-recipe";
+import { readOwnTags } from "@/domain/library/tags";
 import {
   readTypedRecipe,
   type TypedRecipeErrors,
@@ -19,9 +22,11 @@ import {
 import { plannedServings } from "@/domain/recipe";
 import { requireHousehold } from "@/server/auth";
 import { loadCatalogIndex } from "@/server/catalog";
+import { importModels } from "@/server/import/models";
 import { writeSlot } from "@/server/planning/week";
-import { createTypedRecipe, updateTypedRecipe } from "@/server/recipes";
+import { createTypedRecipe, saveRecipeTags, updateTypedRecipe } from "@/server/recipes";
 import { createSessionClient } from "@/server/supabase/server";
+import { tagRecipes } from "@/server/tagging";
 
 /** Marks a recipe as one of the household's favourites, or takes the mark away. */
 export async function setFavorite(form: FormData): Promise<void> {
@@ -91,7 +96,21 @@ export async function saveTypedRecipe(
     return { errors: { lines: "Mindestens eine Zutat, eine pro Zeile." }, values };
   }
   const created = await createTypedRecipe(db, household.id, read.recipe);
+  // A recipe that was pasted in keeps its text: the steps are nowhere else.
+  const sourceText = text("sourceText").trim().slice(0, PASTED_TEXT_MAX);
+  if (sourceText !== "") {
+    const kept = await db.from("recipe").update({ source_text: sourceText }).eq("id", created);
+    if (kept.error) throw new Error(`keep pasted text: ${kept.error.message}`);
+  }
   revalidatePath("/", "layout");
+  // The tags that describe it are suggested once the page is on its way: nobody waits for it.
+  after(async () => {
+    try {
+      await tagRecipes(db, household.id, importModels().tag, [created]);
+    } catch (error) {
+      console.error("describing a new recipe failed", error);
+    }
+  });
 
   const week = text("w");
   const date = text("d");
@@ -111,6 +130,52 @@ export async function saveTypedRecipe(
   redirect(`/rezepte/${created}`);
 }
 
+export interface PastedState {
+  /** What was read from the text, as the fields of the form for a new recipe. */
+  read: PastedRecipe | null;
+  /** The text as it was pasted. */
+  text: string;
+  error: string | null;
+}
+
+/**
+ * Reads a recipe from text someone pasted in. Nothing is saved here: what was read fills the
+ * form for a new recipe, where a person looks at it first.
+ */
+export async function readPastedRecipe(
+  _previous: PastedState,
+  form: FormData,
+): Promise<PastedState> {
+  const text = String(form.get("text") ?? "").trim();
+  if (text.length < 20) {
+    return {
+      read: null,
+      text,
+      error: "Füge den Text des Rezepts ein: Titel, Zutaten, Zubereitung.",
+    };
+  }
+  if (text.length > PASTED_TEXT_MAX) {
+    return {
+      read: null,
+      text,
+      error: "Das ist mehr Text als ein Rezept hat. Kürze ihn auf das Rezept selbst.",
+    };
+  }
+  const household = await requireHousehold();
+  try {
+    const { recipe } = await importModels().readText(text);
+    return { read: pastedRecipe(recipe, household.defaultServings), text, error: null };
+  } catch (error) {
+    console.error("reading a pasted recipe failed", error);
+    return {
+      read: null,
+      text,
+      error:
+        "Der Text konnte gerade nicht eingelesen werden. Versuch es noch einmal, oder trag das Rezept unter „Eintippen“ selbst ein.",
+    };
+  }
+}
+
 /**
  * Saves the changes to a recipe: what stands above its ingredients, and every ingredient
  * line as it was corrected, added or removed. Returns what is wrong where, if anything is.
@@ -118,7 +183,7 @@ export async function saveTypedRecipe(
 export async function saveRecipeEdit(
   recipeId: string,
   input: ReviewInput,
-  kind: { category: string; protein: string },
+  kind: { category: string; protein: string; tags: string[]; ownTags: string },
 ): Promise<{ errors: ReviewErrors }> {
   const household = await requireHousehold();
   const id = z.guid().safeParse(recipeId);
@@ -146,6 +211,14 @@ export async function saveRecipeEdit(
     proteinType,
     lines: read.lines,
   });
+  const tags = z.array(z.string().max(64)).max(40).safeParse(kind.tags);
+  await saveRecipeTags(
+    db,
+    household.id,
+    id.data,
+    tags.success ? tags.data : [],
+    readOwnTags(String(kind.ownTags ?? "")),
+  );
   revalidatePath("/", "layout");
   redirect(`/rezepte/${id.data}`);
 }
