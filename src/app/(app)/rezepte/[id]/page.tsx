@@ -34,7 +34,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       .order("position"),
     db
       .from("recipe_photo")
-      .select("storage_path, sort_order")
+      .select("storage_path, crop_path, sort_order")
       .eq("recipe_id", id)
       .order("sort_order"),
     loadIngredientNames(db),
@@ -44,8 +44,13 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const ownTags = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
   const category = must(categories, "load categories").find((tag) => ownTags.has(tag.id));
   const names = new Map(ingredients.map((i) => [i.id, i.name]));
-  const photoPaths = must(photos, "load photos").map((photo) => photo.storage_path);
-  const urls = await viewUrls(photoPaths);
+  const photoRows = must(photos, "load photos");
+  const urls = await viewUrls(
+    photoRows.flatMap((photo) => [
+      photo.storage_path,
+      ...(photo.crop_path ? [photo.crop_path] : []),
+    ]),
+  );
   const source = sourceText(recipe.source_book, recipe.source_page);
 
   return (
@@ -101,22 +106,41 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
         ))}
       </ul>
 
-      {photoPaths.length > 0 && (
-        <>
-          <h2 className="mt-6 mb-2 text-xl font-bold tracking-tight">Aus dem Kochbuch</h2>
-          <div className="space-y-3">
-            {photoPaths.map((path, i) => (
-              <a key={path} href={urls[path]} target="_blank" rel="noreferrer" className="block">
+      {photoRows.length > 0 && (
+        // Folded away: the ingredients above are what is cooked from. The page is there to
+        // look something up, turned upright and cut to this recipe where it shares the page.
+        <details className="group card mt-6">
+          <summary className="flex min-h-12 items-center justify-between gap-3 px-4 font-semibold">
+            Originalseite aus dem Kochbuch
+            <span className="text-sm font-semibold text-accent">
+              <span className="group-open:hidden">Ansehen</span>
+              <span className="hidden group-open:inline">Ausblenden</span>
+            </span>
+          </summary>
+          <div className="space-y-4 border-t border-line p-4">
+            {photoRows.map((photo, i) => (
+              <figure key={photo.storage_path}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- signed, short-lived URL */}
                 <img
-                  src={urls[path]}
+                  src={urls[photo.crop_path ?? photo.storage_path]}
                   alt={`Seite ${i + 1} von ${recipe.title}`}
+                  loading="lazy"
                   className="w-full rounded-lg border border-line"
                 />
-              </a>
+                <figcaption className="mt-2">
+                  <a
+                    href={urls[photo.storage_path]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="link text-sm"
+                  >
+                    {photo.crop_path ? "Ganze Seite ansehen" : "In voller Größe ansehen"}
+                  </a>
+                </figcaption>
+              </figure>
             ))}
           </div>
-        </>
+        </details>
       )}
     </article>
   );
