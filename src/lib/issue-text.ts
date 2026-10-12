@@ -7,6 +7,8 @@ export function issueText(issue: ImportIssue): string {
       return "Auf dem Foto steht kein Titel. Bitte trage ihn ein.";
     case "servings_missing":
       return "Auf dem Foto steht nicht, für wie viele Portionen das Rezept ist.";
+    case "servings_unclear":
+      return `Die App kann „${issue.detail}“ nicht einordnen. Bitte eintragen, wofür das Rezept reicht.`;
     case "no_ingredients":
       return "Es wurden keine Zutaten gefunden.";
     case "unmapped_ingredient":

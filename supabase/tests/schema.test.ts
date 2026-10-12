@@ -211,6 +211,39 @@ describe("schema", () => {
     await db.query("delete from public.recipe where title = 'Ohne Portionen'");
   });
 
+  it("stores what a recipe makes instead of persons, and only together with a number", async () => {
+    const insert = (title: string, columns: string, values: string) =>
+      db.query(
+        `insert into public.recipe (household_id, title, ${columns}) values ($1, $2, ${values})`,
+        [SEED_HOUSEHOLD_ID, title],
+      );
+    await expect(
+      insert(
+        "Probekuchen",
+        "servings_min, servings_max, servings_unit",
+        "1, 1, 'Springform (Ø 26 cm)'",
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      insert("Probekuchen", "servings_min, servings_max, servings_unit", "1, 1, '  '"),
+    ).rejects.toThrow(/recipe_servings_unit_valid/);
+    await expect(
+      insert("Probekuchen", "status, servings_unit", "'needs_review', 'Blech'"),
+    ).rejects.toThrow(/recipe_servings_unit_valid/);
+    await expect(
+      insert(
+        "Probekuchen",
+        "servings_min, servings_max, servings_unit",
+        `1, 1, '${"x".repeat(61)}'`,
+      ),
+    ).rejects.toThrow(/recipe_servings_unit_valid/);
+    const seeded = await db.query<{ n: number }>(
+      "select count(*)::int as n from public.recipe where servings_unit is not null and title <> 'Probekuchen'",
+    );
+    expect(seeded.rows[0].n).toBe(0);
+    await db.query("delete from public.recipe where title = 'Probekuchen'");
+  });
+
   it("approves recipes that waited only for unknown ingredients, and no others", async () => {
     // The rule arrived as a migration. Run its statements again on rows made for this test.
     const batch = await db.query<{ id: string }>(

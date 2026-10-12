@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ExtractedRecipe } from "./extraction";
+import { resolveServings } from "./servings";
 
 /**
  * The second pass: a separate request that gets the photos and the finished transcription and
@@ -43,10 +44,14 @@ export type Verification = z.infer<typeof verificationSchema>;
  * with itself instead of with the photo.
  */
 export function transcriptionForVerification(recipe: ExtractedRecipe) {
+  // The servings as they will be stored, so the second pass checks what the household gets:
+  // "1 Springform (Ø 26 cm)" and not a number of persons nobody printed.
+  const servings = resolveServings(recipe);
   return {
     title: recipe.title,
-    servingsMin: recipe.servingsMin,
-    servingsMax: recipe.servingsMax,
+    servingsMin: servings?.min ?? null,
+    servingsMax: servings?.max ?? null,
+    servingsUnit: servings?.unit ?? null,
     page: recipe.page,
     prepMinutes: recipe.prepMinutes,
     ingredients: recipe.ingredients.map((line, index) => ({

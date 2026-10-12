@@ -12,7 +12,7 @@ export default async function RecipesPage() {
     db
       .from("recipe")
       .select(
-        "id, title, source_book, source_page, servings_min, servings_max, prep_minutes, status",
+        "id, title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, status",
       )
       .order("title"),
     db.from("tag").select("id, name").eq("group_name", "Kategorie").order("sort_order"),
@@ -81,7 +81,7 @@ export default async function RecipesPage() {
                   <span className="block text-sm text-muted">
                     {[
                       sourceText(recipe.source_book, recipe.source_page),
-                      `${servingsText(recipe.servings_min, recipe.servings_max)} Portionen`,
+                      servingsText(recipe.servings_min, recipe.servings_max, recipe.servings_unit),
                       recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null,
                     ]
                       .filter(Boolean)

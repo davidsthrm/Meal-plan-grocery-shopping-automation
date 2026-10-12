@@ -584,6 +584,7 @@ export type Database = {
           protein_type: Database["public"]["Enums"]["protein_type"] | null
           servings_max: number | null
           servings_min: number | null
+          servings_unit: string | null
           source_book: string | null
           source_page: number | null
           source_title: string | null
@@ -602,6 +603,7 @@ export type Database = {
           protein_type?: Database["public"]["Enums"]["protein_type"] | null
           servings_max?: number | null
           servings_min?: number | null
+          servings_unit?: string | null
           source_book?: string | null
           source_page?: number | null
           source_title?: string | null
@@ -620,6 +622,7 @@ export type Database = {
           protein_type?: Database["public"]["Enums"]["protein_type"] | null
           servings_max?: number | null
           servings_min?: number | null
+          servings_unit?: string | null
           source_book?: string | null
           source_page?: number | null
           source_title?: string | null

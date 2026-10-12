@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { findIngredient, type CatalogIndex } from "../catalog";
-import type { RecipeIngredient } from "../recipe";
+import type { RecipeIngredient, Servings } from "../recipe";
 import { parseQuantity } from "../quantity";
 import { isUnit, type Unit } from "../units";
 import { mapToCatalog } from "./map-ingredient";
+import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "./servings";
 
 /**
  * What the household submits when it reviews an imported recipe, and the check of it.
@@ -39,6 +40,8 @@ export const reviewInput = z.object({
   sourcePage: z.string(),
   servingsMin: z.string(),
   servingsMax: z.string(),
+  /** What the recipe counts when it is not persons: "Springform", "Stück". Empty for persons. */
+  servingsUnit: z.string().default(""),
   prepMinutes: z.string(),
   lines: z.array(lineInput),
 });
@@ -63,7 +66,7 @@ export function readReview(
   | {
       ok: true;
       lines: ReviewedLine[];
-      servings: { min: number; max: number };
+      servings: Servings;
       page: number | null;
       prep: number | null;
     }
@@ -76,6 +79,12 @@ export function readReview(
   if (!min) errors.servingsMin = "Für wie viele Portionen ist das Rezept?";
   if (max === undefined || (max !== null && min && max < min)) {
     errors.servingsMax = "Muss eine Zahl sein und nicht kleiner als die erste.";
+  }
+  // "Personen" typed into the unit is what an empty unit already means.
+  const typedUnit = input.servingsUnit.trim().replace(/\s+/g, " ");
+  const unit = typedUnit === "" || meansPersons(typedUnit) ? null : typedUnit;
+  if (unit !== null && unit.length > SERVINGS_UNIT_MAX_LENGTH) {
+    errors.servingsUnit = `Höchstens ${SERVINGS_UNIT_MAX_LENGTH} Zeichen.`;
   }
   const page = wholeNumber(input.sourcePage);
   if (page === undefined) errors.sourcePage = "Die Seite muss eine Zahl sein.";
@@ -129,7 +138,7 @@ export function readReview(
   return {
     ok: true,
     lines,
-    servings: { min, max: max ?? min },
+    servings: { min, max: max ?? min, unit },
     page: page ?? null,
     prep: prep ?? null,
   };

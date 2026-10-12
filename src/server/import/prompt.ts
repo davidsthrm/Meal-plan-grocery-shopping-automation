@@ -28,7 +28,8 @@ Ingredients: one entry per ingredient, in printed order
 - optional: true only when the recipe itself says the ingredient can be left out. Recipes often say this in the steps rather than in the list ("wer mag", "nach Belieben", "kann man weglassen"), so read the steps for it.
 
 Recipe fields
-- servingsMin and servingsMax: "für 4 Personen" is 4 and 4, "für 2–3 Personen" is 2 and 3.
+- servingsRaw: the printed line that says what the amounts are for, copied exactly as printed. Most recipes count persons ("Für 4 Personen"). Baking and finger food often count what the recipe makes instead: a cake tin, a baking tray, pieces ("Zutaten für 1 Springform (Ø 26 cm)", "Ergibt ca. 30 Stück"). Copy that line just the same.
+- servingsMin and servingsMax: the number in that line. "für 4 Personen" is 4 and 4, "für 2–3 Personen" is 2 and 3, "für 1 Blech" is 1 and 1.
 - page: the number printed on the page this recipe is on. On a double page that is the number on the recipe's own side.
 - prepMinutes: the printed preparation time in minutes, without waiting times printed as an extra ("+ 1 Std. Kühlzeit").
 - dishType: what kind of dish the recipe is, judged from the recipe as a whole. hauptgericht: a main course. suppe-eintopf: a soup or stew. salat: a salad. beilage: a side dish. vesper: a cold supper with bread, cold cuts or cheese. snack: finger food, small bites and nibbles. dessert: a sweet dish that is not baked goods, such as a cream, pudding, ice cream or sweet main dish. kuchen: cake, biscuits, bread and other baking. fruehstueck: breakfast. getraenk: a drink. grundrezept: a sauce, dip, dressing, dough, stock or other basic. unbekannt: none of these fits.
@@ -54,6 +55,7 @@ How the transcription is written. These are conventions, not mistakes:
 - Quantities are decimals: ½ is 0.5, 1 ¼ is 1.25. A range has its lower number in quantity and its upper in quantityMax.
 - A count without a printed unit has the unit "Stück". Unit spellings are normalised ("El" is EL). A small container that is not a unit of its own ("Döschen", "Briefchen", "Tütchen", "Päckchen", "Tube", "Flasche") is written as Packung.
 - A title printed all in lower case or all in capitals is written with normal German capitalisation.
+- servingsUnit is null when the recipe's amounts are for persons or portions. When the print counts what the recipe makes instead, such as a cake tin, a baking tray or pieces ("Zutaten für 1 Springform (Ø 26 cm)", "ergibt 20 Stück"), servingsMin and servingsMax are that number and servingsUnit is what is counted, as printed. How servingsUnit is spelled or capitalised is never a mistake. Report servings when a number differs from the print, or when persons and something else are mixed up.
 - No printed quantity means quantity and unit are both null.
 - Two ingredients printed on one line are two entries. An alternative ("oder ...") is its own entry with alternativeTo pointing at the entry it can replace.
 - Where the name ends and the note begins is a judgment call. Never report it.

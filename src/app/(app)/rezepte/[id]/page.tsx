@@ -15,7 +15,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_title, source_book, source_page, servings_min, servings_max, prep_minutes, status",
+      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, status",
     )
     .eq("id", id)
     .maybeSingle();
@@ -54,7 +54,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       <p className="mt-1 text-muted">
         {[
           category?.name ?? null,
-          `${servingsText(recipe.servings_min, recipe.servings_max)} Portionen`,
+          servingsText(recipe.servings_min, recipe.servings_max, recipe.servings_unit),
           recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null,
           source || null,
         ]

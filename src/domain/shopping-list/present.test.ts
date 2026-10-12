@@ -12,7 +12,7 @@ const lines = buildShoppingList({
       id: "r",
       title: "Sonntagsessen",
       kind: "cookbook",
-      servings: { min: 4, max: 4 },
+      servings: { min: 4, max: 4, unit: null },
       ingredients: [
         line("karotten", 2, "Stück"),
         line("ingwer", 1, "Stück"),

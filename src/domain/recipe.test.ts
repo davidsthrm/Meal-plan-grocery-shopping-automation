@@ -1,27 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { scaleFactor, shoppingAmount } from "./recipe";
+import { plannedServings, scaleFactor, shoppingAmount } from "./recipe";
 import { line } from "./shopping-list/test-catalog";
 
 describe("scaleFactor", () => {
   it("scales by servings over base servings", () => {
-    expect(scaleFactor({ min: 2, max: 2 }, 4)).toBe(2);
-    expect(scaleFactor({ min: 4, max: 4 }, 2)).toBe(0.5);
-    expect(scaleFactor({ min: 4, max: 4 }, 4)).toBe(1);
+    expect(scaleFactor({ min: 2, max: 2, unit: null }, 4)).toBe(2);
+    expect(scaleFactor({ min: 4, max: 4, unit: null }, 2)).toBe(0.5);
+    expect(scaleFactor({ min: 4, max: 4, unit: null }, 4)).toBe(1);
   });
 
   it("cooks as written when the servings fall inside the printed range", () => {
-    expect(scaleFactor({ min: 4, max: 6 }, 4)).toBe(1);
-    expect(scaleFactor({ min: 4, max: 6 }, 5)).toBe(1);
-    expect(scaleFactor({ min: 4, max: 6 }, 6)).toBe(1);
+    expect(scaleFactor({ min: 4, max: 6, unit: null }, 4)).toBe(1);
+    expect(scaleFactor({ min: 4, max: 6, unit: null }, 5)).toBe(1);
+    expect(scaleFactor({ min: 4, max: 6, unit: null }, 6)).toBe(1);
   });
 
   it("scales from the nearer end outside the range", () => {
-    expect(scaleFactor({ min: 4, max: 6 }, 2)).toBe(0.5);
-    expect(scaleFactor({ min: 4, max: 6 }, 9)).toBe(1.5);
+    expect(scaleFactor({ min: 4, max: 6, unit: null }, 2)).toBe(0.5);
+    expect(scaleFactor({ min: 4, max: 6, unit: null }, 9)).toBe(1.5);
   });
 
   it("rejects servings that are not positive", () => {
-    expect(() => scaleFactor({ min: 4, max: 4 }, 0)).toThrow(/positive/);
+    expect(() => scaleFactor({ min: 4, max: 4, unit: null }, 0)).toThrow(/positive/);
+  });
+});
+
+describe("plannedServings", () => {
+  it("plans a recipe for persons for the household", () => {
+    expect(plannedServings({ min: 2, max: 2, unit: null }, 4)).toBe(4);
+    expect(plannedServings({ min: 4, max: 6, unit: null }, 4)).toBe(4);
+  });
+
+  it("plans a recipe that counts what it makes as written", () => {
+    const cake = { min: 1, max: 1, unit: "Springform (Ø 26 cm)" };
+    expect(plannedServings(cake, 4)).toBe(1);
+    expect(scaleFactor(cake, plannedServings(cake, 4))).toBe(1);
+    const waffles = { min: 6, max: 8, unit: "Waffeln" };
+    expect(scaleFactor(waffles, plannedServings(waffles, 4))).toBe(1);
+  });
+
+  it("still scales such a recipe when someone asks for more", () => {
+    expect(scaleFactor({ min: 1, max: 1, unit: "Blech" }, 2)).toBe(2);
+    expect(scaleFactor({ min: 12, max: 12, unit: "Muffins" }, 6)).toBe(0.5);
   });
 });
 
