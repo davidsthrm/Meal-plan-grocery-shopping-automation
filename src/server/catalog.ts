@@ -1,0 +1,82 @@
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  createCatalogIndex,
+  type Catalog,
+  type CatalogIndex,
+  type Ingredient,
+} from "@/domain/catalog";
+import type { GramsPer } from "@/domain/units";
+import type { Database } from "./supabase/database.types";
+
+export type Db = SupabaseClient<Database>;
+
+/** Throws with the failed operation's name. Database errors here are bugs or outages. */
+export function must<T>(
+  result: { data: T; error: { message: string } | null },
+  what: string,
+): NonNullable<T> {
+  if (result.error) throw new Error(`${what}: ${result.error.message}`);
+  if (result.data === null || result.data === undefined) throw new Error(`${what}: no data`);
+  return result.data;
+}
+
+/**
+ * Loads the household's catalog in the shape the domain logic works with. Which household is
+ * decided by row level security: the client only sees its own.
+ */
+export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
+  const [shops, overrides, aisles, ingredients] = await Promise.all([
+    db.from("shop").select("id, name, short_label, sort_order, is_default").order("sort_order"),
+    db.from("shop_aisle_order").select("shop_id, aisle_group_id, sort_order"),
+    db.from("aisle_group").select("id, name, sort_order, is_fallback").order("sort_order"),
+    db
+      .from("ingredient")
+      .select(
+        "id, name, synonyms, aisle_group_id, preferred_shop_id, preferred_brand, default_unit, buying_mode, pack_size, rounding_step, grams_per, is_pantry_staple, shelf_life_days",
+      )
+      .eq("status", "active")
+      .order("name"),
+  ]);
+  const shopRows = must(shops, "load shops");
+  const aisleRows = must(aisles, "load aisle groups");
+  const overrideRows = must(overrides, "load aisle order");
+
+  const catalog: Catalog = {
+    shops: shopRows.map((shop) => ({
+      id: shop.id,
+      name: shop.name,
+      shortLabel: shop.short_label,
+      sortOrder: shop.sort_order,
+      aisleSortOverrides: Object.fromEntries(
+        overrideRows
+          .filter((row) => row.shop_id === shop.id)
+          .map((row) => [row.aisle_group_id, row.sort_order]),
+      ),
+    })),
+    aisleGroups: aisleRows.map((aisle) => ({
+      id: aisle.id,
+      name: aisle.name,
+      sortOrder: aisle.sort_order,
+    })),
+    ingredients: must(ingredients, "load ingredients").map((row): Ingredient => ({
+      id: row.id,
+      name: row.name,
+      synonyms: row.synonyms,
+      aisleGroupId: row.aisle_group_id,
+      preferredShopId: row.preferred_shop_id,
+      preferredBrand: row.preferred_brand,
+      defaultUnit: row.default_unit,
+      buyingMode: row.buying_mode,
+      packSize: row.pack_size,
+      roundingStep: row.rounding_step,
+      gramsPer: (row.grams_per ?? {}) as GramsPer,
+      isPantryStaple: row.is_pantry_staple,
+      shelfLifeDays: row.shelf_life_days,
+    })),
+    defaultShopId: (shopRows.find((s) => s.is_default) ?? shopRows[0])?.id ?? "",
+    fallbackAisleGroupId:
+      (aisleRows.find((a) => a.is_fallback) ?? aisleRows[aisleRows.length - 1])?.id ?? "",
+  };
+  return createCatalogIndex(catalog);
+}

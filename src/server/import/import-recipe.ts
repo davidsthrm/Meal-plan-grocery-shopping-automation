@@ -45,6 +45,7 @@ export interface ImportResult {
   images: PreparedImage[];
 }
 
+/** Imports a recipe from photos as they come from a phone. */
 export async function importRecipe(
   photos: Buffer[],
   provided: ProvidedMetadata,
@@ -54,6 +55,16 @@ export async function importRecipe(
   const images = await Promise.all(
     photos.map((photo, i) => normalizeImage(photo, `Page ${i + 1}`)),
   );
+  return importFromImages(images, provided, deps, options);
+}
+
+/** Imports a recipe from photos that are already upright JPEGs without metadata. */
+export async function importFromImages(
+  images: PreparedImage[],
+  provided: ProvidedMetadata,
+  deps: ImportDeps,
+  options: ReadOptions = {},
+): Promise<ImportResult> {
   const usage = { inputTokens: 0, outputTokens: 0 };
   const spend = (used: { inputTokens: number; outputTokens: number }) => {
     usage.inputTokens += used.inputTokens;

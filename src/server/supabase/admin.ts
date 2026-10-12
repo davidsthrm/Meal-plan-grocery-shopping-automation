@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 import { supabaseSecretKey, supabaseUrl } from "./env";
 
 /**
@@ -8,7 +9,7 @@ import { supabaseSecretKey, supabaseUrl } from "./env";
  * Needed for storage: the photo bucket has no policies and is reachable only this way.
  */
 export function createAdminClient() {
-  return createClient(supabaseUrl(), supabaseSecretKey(), {
+  return createClient<Database>(supabaseUrl(), supabaseSecretKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
