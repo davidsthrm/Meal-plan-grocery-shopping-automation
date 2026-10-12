@@ -1,7 +1,7 @@
 import { daysBetween, type IsoDate } from "../dates";
 import { LONG_AGO_DAYS } from "../library/discover";
-import { suitsMeal, type History, type RecipeSummary } from "../library/summary";
-import type { Meal } from "../plan";
+import { isMeal, suitsMeal, type History, type RecipeSummary } from "../library/summary";
+import { byDayAndMeal, type Meal } from "../plan";
 import { rank } from "../rank";
 import { groupOf, isFull, missing, withMeal, type BalanceGroup, type BalanceLine } from "./balance";
 
@@ -51,7 +51,8 @@ export function scoreRecipe(recipe: RecipeSummary, context: SuggestContext): Sug
   const reasons: Reason[] = [];
   let score = 0;
 
-  const group = groupOf(recipe.proteinType);
+  // A cake for coffee fills no gap in the week's meals.
+  const group = isMeal(recipe) ? groupOf(recipe.proteinType) : null;
   const line = context.balance.find((entry) => entry.group === group);
   if (group && line) {
     if (missing(line) > 0) {
@@ -118,10 +119,7 @@ export function suggestWeek(
   const result: (OpenSlot & { suggestion: Suggestion })[] = [];
   let balance = context.balance;
   const planned = new Set(context.planned);
-  const slots = [...open].sort(
-    (a, b) =>
-      a.date.localeCompare(b.date) || Number(a.meal === "dinner") - Number(b.meal === "dinner"),
-  );
+  const slots = [...open].sort(byDayAndMeal);
   for (const slot of slots) {
     // Each slot draws its own order, or two slots with the same needs would get the same dish.
     const [suggestion] = suggest(

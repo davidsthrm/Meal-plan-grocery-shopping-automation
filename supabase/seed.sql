@@ -5,7 +5,9 @@ insert into public.household (id, name, default_servings, shopping_weekday) valu
 
 insert into public.shop (id, household_id, name, short_label, sort_order, is_default) values
   ('17ca3c63-50e1-53b8-87b9-c976b7b0297a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Aldi', 'Aldi', 1, true),
-  ('2937c317-bc42-5bbb-bc76-28d591523784', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'E-Center', 'EC', 2, false);
+  ('2937c317-bc42-5bbb-bc76-28d591523784', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'E-Center', 'EC', 2, false),
+  ('bdb47144-3502-5bfc-bc18-d0a1f9d9c010', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Metzger', 'Metzger', 3, false),
+  ('50378ec7-dd05-549f-a93d-b33b8cc7f768', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Bäcker', 'Bäcker', 4, false);
 
 insert into public.aisle_group (id, household_id, name, sort_order, is_fallback) values
   ('8fc04d75-d4f9-579c-a616-1b15b1b9fe1c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Obst & Gemüse', 10, false),

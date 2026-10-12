@@ -20,6 +20,8 @@ export const shops: Shop[] = [
     // On the sample list, bread comes after the meat counter and before the eggs.
     aisleSortOverrides: { brot: 95 },
   },
+  { id: "metzger", name: "Metzger", shortLabel: "Metzger", sortOrder: 3, aisleSortOverrides: {} },
+  { id: "baecker", name: "Bäcker", shortLabel: "Bäcker", sortOrder: 4, aisleSortOverrides: {} },
 ];
 
 export const aisleGroups: AisleGroup[] = [

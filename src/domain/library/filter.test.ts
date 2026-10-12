@@ -25,24 +25,12 @@ const stew = summary("eintopf", {
 });
 const steak = summary("steak", { title: "Pfeffersteak", proteinType: "red_meat", prepMinutes: 25 });
 const all = [lasagne, salmon, stew, steak];
-const titles = (filter: Partial<typeof NO_FILTER>, hits?: Set<string>) =>
-  filterRecipes(all, { ...NO_FILTER, ...filter }, hits).map((recipe) => recipe.id);
+const titles = (filter: Partial<typeof NO_FILTER>) =>
+  filterRecipes(all, { ...NO_FILTER, ...filter }).map((recipe) => recipe.id);
 
 describe("filterRecipes", () => {
   it("lists everything without a filter, favourites first and then by title", () => {
     expect(titles({})).toEqual(["lachs", "lasagne", "eintopf", "steak"]);
-  });
-
-  it("finds words of the title in any order, whatever the spelling", () => {
-    expect(titles({ text: "lasagne gemuse" })).toEqual(["lasagne"]);
-    expect(titles({ text: "gemuese" })).toEqual(["lasagne"]);
-    expect(titles({ text: "LINSEN" })).toEqual(["eintopf"]);
-    expect(titles({ text: "gibt es nicht" })).toEqual([]);
-  });
-
-  it("also finds recipes that contain the searched ingredient", () => {
-    // "Sahne" is in no title but one, and the database says the lasagne has cream in it.
-    expect(titles({ text: "sahne" }, new Set(["lasagne"]))).toEqual(["lachs", "lasagne"]);
   });
 
   it("narrows by category, cookbook and favourites", () => {
@@ -64,9 +52,7 @@ describe("filterRecipes", () => {
   });
 
   it("combines everything that is set", () => {
-    expect(titles({ diet: "vegetarisch", book: "Speed Cooking", text: "lasagne" })).toEqual([
-      "lasagne",
-    ]);
+    expect(titles({ diet: "vegetarisch", book: "Speed Cooking" })).toEqual(["lasagne"]);
     expect(matchesFilter(salmon, { ...NO_FILTER, favorites: true, diet: "fleisch" })).toBe(false);
   });
 });

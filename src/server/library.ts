@@ -1,5 +1,11 @@
 import "server-only";
-import { searchKey } from "@/domain/library/filter";
+import { searchKey, type RecipeFilter } from "@/domain/library/filter";
+import {
+  nearlyContains,
+  searchRecipes,
+  searchWords,
+  type SearchResult,
+} from "@/domain/library/search";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
 import { must, type Db } from "./catalog";
 
@@ -98,57 +104,83 @@ export async function loadLibrary(db: Db): Promise<Library> {
   };
 }
 
-/** Shorter searches would match half the catalog ("ei" is in "Reis" and "Weizenmehl"). */
-const MIN_INGREDIENT_SEARCH = 3;
+/** Shorter words would match half the catalog ("ei" is in "Reis" and "Weizenmehl"). */
+const MIN_INGREDIENT_WORD = 3;
+/** A word that names more ingredients than this names no ingredient in particular. */
+const MAX_INGREDIENTS_PER_WORD = 150;
 
 /**
- * The recipes that contain an ingredient whose name, or one of its other names, contains the
- * searched text. Lines the catalog does not know yet are searched as printed.
+ * Per word of a search, the recipes with an ingredient of that name: its catalog name, one of
+ * its other names, or the printed line of an ingredient the catalog does not know yet. A word
+ * that names no ingredient as written may be one typing mistake away from one.
  */
-export async function recipesWithIngredient(db: Db, text: string): Promise<Set<string>> {
-  const key = searchKey(text);
-  const hits = new Set<string>();
-  if (key.length < MIN_INGREDIENT_SEARCH) return hits;
+async function ingredientHits(db: Db, text: string): Promise<Map<string, Set<string>>> {
+  const printed = text.split(/[\s,;/]+/).filter(Boolean);
+  const words = searchWords(text).filter((word) => word.length >= MIN_INGREDIENT_WORD);
+  const hits = new Map<string, Set<string>>();
+  if (words.length === 0) return hits;
 
   const ingredients = must(
     await db.from("ingredient").select("id, name, synonyms"),
     "load ingredients",
-  );
-  const ids = ingredients
-    .filter((ingredient) =>
-      [ingredient.name, ...ingredient.synonyms].some((name) => searchKey(name).includes(key)),
-    )
-    .map((ingredient) => ingredient.id);
-  // Only letters, digits and spaces reach the pattern, so nothing in it is a wildcard.
-  const printed = text.replace(/[^\p{L}\p{N} ]/gu, " ").trim();
+  ).map((ingredient) => ({
+    id: ingredient.id,
+    names: [ingredient.name, ...ingredient.synonyms].map(searchKey),
+  }));
 
-  const [known, unknown] = await Promise.all([
-    ids.length === 0
-      ? []
-      : allRows(
-          (from, to) =>
-            db
-              .from("recipe_ingredient")
-              .select("recipe_id")
-              .in("ingredient_id", ids.slice(0, 150))
-              .order("id")
-              .range(from, to),
-          "find recipes by ingredient",
-        ),
-    printed.length < MIN_INGREDIENT_SEARCH
-      ? []
-      : allRows(
-          (from, to) =>
-            db
-              .from("recipe_ingredient")
-              .select("recipe_id")
-              .is("ingredient_id", null)
-              .ilike("original_text", `%${printed}%`)
-              .order("id")
-              .range(from, to),
-          "find recipes by printed ingredient",
-        ),
-  ]);
-  for (const row of [...known, ...unknown]) hits.add(row.recipe_id);
+  await Promise.all(
+    words.map(async (word) => {
+      const named = (fits: (name: string) => boolean) =>
+        ingredients.filter((ingredient) => ingredient.names.some(fits)).map((i) => i.id);
+      let ids = named((name) => name.includes(word));
+      if (ids.length === 0) ids = named((name) => nearlyContains(name, word));
+      // As typed, and only letters, digits and spaces, so nothing in the pattern is a wildcard.
+      const typed = (printed.find((entry) => searchKey(entry) === word) ?? "").replace(
+        /[^\p{L}\p{N} ]/gu,
+        "",
+      );
+      const [known, unknown] = await Promise.all([
+        ids.length === 0
+          ? []
+          : allRows(
+              (from, to) =>
+                db
+                  .from("recipe_ingredient")
+                  .select("recipe_id")
+                  .in("ingredient_id", ids.slice(0, MAX_INGREDIENTS_PER_WORD))
+                  .order("id")
+                  .range(from, to),
+              "find recipes by ingredient",
+            ),
+        typed.length < MIN_INGREDIENT_WORD
+          ? []
+          : allRows(
+              (from, to) =>
+                db
+                  .from("recipe_ingredient")
+                  .select("recipe_id")
+                  .is("ingredient_id", null)
+                  .ilike("original_text", `%${typed}%`)
+                  .order("id")
+                  .range(from, to),
+              "find recipes by printed ingredient",
+            ),
+      ]);
+      hits.set(word, new Set([...known, ...unknown].map((row) => row.recipe_id)));
+    }),
+  );
   return hits;
+}
+
+/** Searches the library with a filter: what fits, best first, and what fits in part. */
+export async function searchLibrary(
+  db: Db,
+  library: Library,
+  filter: RecipeFilter,
+): Promise<SearchResult> {
+  const names = new Map(library.categories.map((category) => [category.key, category.name]));
+  return searchRecipes(library.recipes, filter, {
+    ingredientHits: filter.text.trim() === "" ? undefined : await ingredientHits(db, filter.text),
+    categoryName: (key) => names.get(key),
+  });
 }

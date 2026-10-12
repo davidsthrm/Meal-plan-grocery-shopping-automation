@@ -5,8 +5,26 @@ import type { Reason } from "@/domain/recommend/suggest";
 
 /** The words the week plan and the library use, in one place. */
 
-export const MEAL_NAME: Record<Meal, string> = { lunch: "Mittag", dinner: "Abend" };
-export const MEAL_LONG: Record<Meal, string> = { lunch: "Mittagessen", dinner: "Abendessen" };
+/** Name of the cookie that says this device's user has seen the household's weekly goals. */
+export const TARGETS_SEEN = "ziele-gesehen";
+
+export const MEAL_NAME: Record<Meal, string> = {
+  lunch: "Mittag",
+  coffee: "Kaffee & Kuchen",
+  dinner: "Abend",
+};
+/** The heading over choosing what a meal is. */
+export const MEAL_PLAN: Record<Meal, string> = {
+  lunch: "Mittagessen planen",
+  coffee: "Kaffee & Kuchen planen",
+  dinner: "Abendessen planen",
+};
+/** The heading over adding something to a meal. */
+export const MEAL_ADD: Record<Meal, string> = {
+  lunch: "Zum Mittagessen dazu",
+  coffee: "Zu Kaffee & Kuchen dazu",
+  dinner: "Zum Abendessen dazu",
+};
 
 export const GROUP_NAME: Record<BalanceGroup, string> = {
   vegetarian: "Vegetarisch",

@@ -110,6 +110,16 @@ describe("suggest", () => {
     ]);
   });
 
+  it("suggests cakes and desserts for coffee, and for nothing else", () => {
+    const dessert = summary("pudding", { category: "dessert" });
+    expect(ids(suggest([...all, dessert], "coffee", context(), 10)).sort()).toEqual([
+      "kuchen",
+      "pudding",
+    ]);
+    // A cake is vegetarian, but it is no answer to a week without vegetarian meals.
+    expect(suggest(all, "coffee", context(), 1)[0].reasons).toEqual([]);
+  });
+
   it("never suggests what is on this week's plan already", () => {
     const planned = new Set(["lachs", "lasagne"]);
     expect(ids(suggest(all, "lunch", context({ planned }), 10)).sort()).toEqual(["huhn", "steak"]);
