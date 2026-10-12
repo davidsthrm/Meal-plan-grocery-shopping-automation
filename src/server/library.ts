@@ -7,31 +7,12 @@ import {
   type SearchResult,
 } from "@/domain/library/search";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
-import { must, type Db } from "./catalog";
+import { allRows, loadIngredientNames, must, type Db } from "./catalog";
 
 /**
  * The recipe library as the pages need it. Which household is decided by row level
  * security: the client only sees its own.
  */
-
-/** The API returns at most this many rows per request. */
-const PAGE = 1000;
-
-/** Loads every row of a query that can have more than one page of them. */
-export async function allRows<T>(
-  page: (
-    from: number,
-    to: number,
-  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
-  what: string,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const loaded = must(await page(from, from + PAGE - 1), what);
-    rows.push(...loaded);
-    if (loaded.length < PAGE) return rows;
-  }
-}
 
 export interface Library {
   /** Every approved recipe. */
@@ -120,10 +101,7 @@ async function ingredientHits(db: Db, text: string): Promise<Map<string, Set<str
   const hits = new Map<string, Set<string>>();
   if (words.length === 0) return hits;
 
-  const ingredients = must(
-    await db.from("ingredient").select("id, name, synonyms"),
-    "load ingredients",
-  ).map((ingredient) => ({
+  const ingredients = (await loadIngredientNames(db)).map((ingredient) => ({
     id: ingredient.id,
     names: [ingredient.name, ...ingredient.synonyms].map(searchKey),
   }));

@@ -6,8 +6,7 @@ import { presentList, type ListView } from "@/domain/shopping-list/present";
 import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
 import type { CatalogIndex } from "@/domain/catalog";
 import type { Household } from "../auth";
-import { loadCatalogIndex, must, type Db } from "../catalog";
-import { allRows } from "../library";
+import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 import { ensureWeek, loadExtras, loadWeek } from "../planning/week";
 
 /**

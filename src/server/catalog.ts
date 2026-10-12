@@ -21,6 +21,41 @@ export function must<T>(
   return result.data;
 }
 
+/** The API returns at most this many rows per request, whatever is asked for. */
+const PAGE = 1000;
+
+/**
+ * Loads every row of a query, page by page. Anything that can grow past a thousand rows has
+ * to be read this way: the API cuts a longer answer off without saying so. The catalog was
+ * read in one request until it had 1024 ingredients, and the last 24 of the alphabet, sugar
+ * and onions among them, silently stopped existing for the app.
+ */
+export async function allRows<T>(
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  what: string,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const loaded = must(await page(from, from + PAGE - 1), what);
+    rows.push(...loaded);
+    if (loaded.length < PAGE) return rows;
+  }
+}
+
+/** Every ingredient of the catalog with its names, for lists to choose from and to search. */
+export async function loadIngredientNames(
+  db: Db,
+): Promise<{ id: string; name: string; synonyms: string[] }[]> {
+  return allRows(
+    (from, to) =>
+      db.from("ingredient").select("id, name, synonyms").order("name").order("id").range(from, to),
+    "load ingredient names",
+  );
+}
+
 /**
  * Loads the household's catalog in the shape the domain logic works with. Which household is
  * decided by row level security: the client only sees its own.
@@ -30,13 +65,19 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
     db.from("shop").select("id, name, short_label, sort_order, is_default").order("sort_order"),
     db.from("shop_aisle_order").select("shop_id, aisle_group_id, sort_order"),
     db.from("aisle_group").select("id, name, sort_order, is_fallback").order("sort_order"),
-    db
-      .from("ingredient")
-      .select(
-        "id, name, synonyms, aisle_group_id, preferred_shop_id, preferred_brand, default_unit, buying_mode, pack_size, rounding_step, grams_per, is_pantry_staple, shelf_life_days",
-      )
-      .eq("status", "active")
-      .order("name"),
+    allRows(
+      (from, to) =>
+        db
+          .from("ingredient")
+          .select(
+            "id, name, synonyms, aisle_group_id, preferred_shop_id, preferred_brand, default_unit, buying_mode, pack_size, rounding_step, grams_per, is_pantry_staple, shelf_life_days",
+          )
+          .eq("status", "active")
+          .order("name")
+          .order("id")
+          .range(from, to),
+      "load ingredients",
+    ),
   ]);
   const shopRows = must(shops, "load shops");
   const aisleRows = must(aisles, "load aisle groups");
@@ -59,7 +100,7 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
       name: aisle.name,
       sortOrder: aisle.sort_order,
     })),
-    ingredients: must(ingredients, "load ingredients").map((row): Ingredient => ({
+    ingredients: ingredients.map((row): Ingredient => ({
       id: row.id,
       name: row.name,
       synonyms: row.synonyms,
