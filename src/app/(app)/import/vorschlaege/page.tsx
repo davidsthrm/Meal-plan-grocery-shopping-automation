@@ -4,6 +4,7 @@ import { UNITS } from "@/domain/units";
 import { must } from "@/server/catalog";
 import { loadOpenProposals } from "@/server/import/proposals";
 import { createSessionClient } from "@/server/supabase/server";
+import { acceptAllNewProposals } from "../actions";
 import { ProposalCard } from "./proposal-card";
 
 export const metadata: Metadata = { title: "Neue Zutaten" };
@@ -16,6 +17,8 @@ export default async function ProposalsPage() {
     db.from("aisle_group").select("id, name").order("sort_order"),
     db.from("shop").select("id, name").order("sort_order"),
   ]);
+
+  const newOnes = proposals.filter((proposal) => proposal.sameAsIngredientId === null).length;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -33,6 +36,18 @@ export default async function ProposalsPage() {
             Diese Zutaten kommen in eingelesenen Rezepten vor und stehen noch nicht im Katalog. Die
             Angaben sind Vorschläge. Passe sie an, wenn sie nicht stimmen.
           </p>
+          {newOnes > 1 && (
+            <form action={acceptAllNewProposals} className="card mt-4 p-4">
+              <button className="btn btn-primary w-full">
+                Alle {newOnes} neuen Zutaten wie vorgeschlagen übernehmen
+              </button>
+              <p className="mt-2 text-sm text-muted">
+                Regal, Laden und Haltbarkeit kannst du später noch ändern. Vorschläge „ist dasselbe
+                wie …“ bleiben einzeln stehen, damit nicht versehentlich zwei verschiedene Zutaten
+                zusammengelegt werden.
+              </p>
+            </form>
+          )}
           <ul className="mt-4 space-y-4">
             {proposals.map((proposal) => (
               <ProposalCard

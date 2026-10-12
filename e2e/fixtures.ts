@@ -38,7 +38,11 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
   await db.from("import_batch").delete().eq("household_id", household);
   await db.from("recipe").delete().eq("household_id", household);
   await db.from("ingredient_proposal").delete().eq("household_id", household);
-  await db.from("ingredient").delete().eq("household_id", household).eq("name", "Topinambur");
+  await db
+    .from("ingredient")
+    .delete()
+    .eq("household_id", household)
+    .in("name", ["Topinambur", "Pak Choi"]);
 
   const ingredient = async (name: string) =>
     check(
@@ -107,6 +111,17 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
       .single(),
     "create proposal",
   );
+  // A second unknown ingredient, used by no recipe line, for accepting several at once.
+  const second = await db.from("ingredient_proposal").insert({
+    household_id: household,
+    name: "Pak Choi",
+    aisle_group_id: potato.aisle_group_id,
+    preferred_shop_id: potato.preferred_shop_id,
+    default_unit: "Stück",
+    buying_mode: "count",
+    shelf_life_days: 5,
+  });
+  if (second.error) throw new Error(`create second proposal: ${second.error.message}`);
   const recipe = check(
     await db
       .from("recipe")

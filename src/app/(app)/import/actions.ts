@@ -7,6 +7,7 @@ import { requireHousehold } from "@/server/auth";
 import { must } from "@/server/catalog";
 import { addPages, createBatch, type UploadTarget } from "@/server/import/batch";
 import {
+  acceptAllNew,
   acceptAsNew,
   acceptAsSynonym,
   rejectProposal,
@@ -112,4 +113,10 @@ export async function decideProposal(
   } else await rejectProposal(db, proposalId);
   if (!error) revalidatePath("/", "layout");
   return { error };
+}
+
+export async function acceptAllNewProposals(): Promise<void> {
+  const household = await requireHousehold();
+  await acceptAllNew(await createSessionClient(), household.id);
+  revalidatePath("/", "layout");
 }
