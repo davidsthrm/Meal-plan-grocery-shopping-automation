@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { cropFor, cropsFor, turnFor, type PageFrame } from "./frame";
+import { cropFor, cropsFor, turnFor, turnOfCopy, type PageFrame } from "./frame";
 
 const near = (crop: ReturnType<typeof cropFor>) =>
   crop && Object.fromEntries(Object.entries(crop).map(([key, value]) => [key, +value.toFixed(2)]));
+
+describe("turnOfCopy", () => {
+  it("knows how far each of the four copies was turned", () => {
+    expect(turnOfCopy("A")).toBe(0);
+    expect(turnOfCopy("B")).toBe(90);
+    expect(turnOfCopy("C")).toBe(180);
+    expect(turnOfCopy("D")).toBe(270);
+  });
+});
 
 describe("turnFor", () => {
   it("turns the photo so that the top of the text is at the top", () => {

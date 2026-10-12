@@ -1,7 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { extractedRecipeSchema, type ExtractedRecipe } from "@/domain/import/extraction";
-import { pageFrameSchema, type PageFrame } from "@/domain/import/frame";
+import {
+  pageFrameSchema,
+  uprightChoiceSchema,
+  type PageFrame,
+  type UprightChoice,
+} from "@/domain/import/frame";
 import {
   transcriptionForVerification,
   verificationSchema,
@@ -15,6 +20,7 @@ import {
   FRAME_PROMPT,
   SUGGESTION_PROMPT,
   SURVEY_PROMPT,
+  UPRIGHT_PROMPT,
   VERIFICATION_PROMPT,
 } from "./prompt";
 import {
@@ -25,6 +31,7 @@ import {
   type ReadOptions,
   type RecipeReader,
   type RecipeVerifier,
+  type UprightFinder,
 } from "./read-recipe";
 
 export interface AnthropicReaderOptions {
@@ -139,6 +146,19 @@ export function createAnthropicFramer(options: AnthropicReaderOptions): PageFram
       zodOutputFormat(pageFrameSchema),
     );
     return { frame: output, usage };
+  };
+}
+
+/** Picks the upright one of four copies of a page with a Claude model. Low effort. */
+export function createAnthropicUprightFinder(options: AnthropicReaderOptions): UprightFinder {
+  return async (copies) => {
+    const { output, usage } = await ask<UprightChoice>(
+      { effort: "low", ...options },
+      UPRIGHT_PROMPT,
+      [...imageBlocks(copies), { type: "text", text: "Which copy is upright?" }],
+      zodOutputFormat(uprightChoiceSchema),
+    );
+    return { upright: output.upright, usage };
   };
 }
 

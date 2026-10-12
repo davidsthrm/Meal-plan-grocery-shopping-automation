@@ -497,7 +497,7 @@ export async function processNext(
     const framed = await frameNextPage(
       db,
       householdId,
-      importModels().frame,
+      importModels(),
       `${householdId}/${batchId}/`,
     );
     if (framed !== null) return "worked";

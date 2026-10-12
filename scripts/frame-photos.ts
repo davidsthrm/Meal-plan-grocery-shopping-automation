@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { createAnthropicFramer } from "@/server/import/anthropic-reader";
+import {
+  createAnthropicFramer,
+  createAnthropicUprightFinder,
+} from "@/server/import/anthropic-reader";
 import type { Db } from "@/server/catalog";
 import { frameNextPage } from "@/server/import/frame-stored";
 
@@ -11,6 +14,7 @@ import { frameNextPage } from "@/server/import/frame-stored";
  *   npm run import:frame-photos -- "Zuhause"              every page not framed yet
  *   npm run import:frame-photos -- "Zuhause" --limit 10   a few, to look at the result first
  *   npm run import:frame-photos -- "Zuhause" --path <storage path>   one page, or one batch
+ *   npm run import:frame-photos -- "Zuhause" --path <storage path> --again   frame them anew
  */
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,7 +25,10 @@ if (!url || !secret || !model) {
   process.exit(1);
 }
 const db = createClient(url, secret, { auth: { persistSession: false } }) as unknown as Db;
-const frame = createAnthropicFramer({ model });
+const models = {
+  upright: createAnthropicUprightFinder({ model }),
+  frame: createAnthropicFramer({ model }),
+};
 
 /** Pages worked on side by side. More would only run into the model's rate limits. */
 const WORKERS = 4;
@@ -47,27 +54,42 @@ async function main() {
   const limit = Number(option("--limit")) || Infinity;
   const prefix = option("--path") ?? `${householdId}/`;
 
+  if (flags.includes("--again")) {
+    // Pages that were framed before are looked at once more, as if they were new.
+    const reset = await db
+      .from("recipe_photo")
+      .update({ framed_at: null })
+      .eq("household_id", householdId)
+      .like("storage_path", `${prefix}%`);
+    if (reset.error) throw new Error(`frame again: ${reset.error.message}`);
+  }
+
   let pages = 0;
   let turned = 0;
   let cropped = 0;
+  let unclear = 0;
   let failed = 0;
   let failedInARow = 0;
   let cost = 0;
   const worker = async () => {
     while (pages + failed < limit && failedInARow < MAX_FAILURES_IN_A_ROW) {
       try {
-        const done = await frameNextPage(db, householdId, frame, prefix);
+        const done = await frameNextPage(db, householdId, models, prefix);
         if (!done) return;
         if (done === "taken") continue;
         failedInARow = 0;
         pages++;
         if (done.turned !== 0) turned++;
+        if (!done.certain) unclear++;
         cropped += done.cropped;
         // $0.10 and $0.50 per million tokens in and out.
         cost += (done.usage.inputTokens * 0.1 + done.usage.outputTokens * 0.5) / 1e6;
-        if (done.turned !== 0 || process.argv.includes("--verbose")) {
+        if (done.turned !== 0 || !done.certain || process.argv.includes("--verbose")) {
           console.log(
-            `${done.path.split("/").slice(1).join("/")}  turned ${done.turned}°, ${done.cropped} views cut`,
+            `${done.path.split("/").slice(1).join("/")}  ` +
+              (done.certain
+                ? `turned ${done.turned}°, ${done.cropped} views cut`
+                : "unclear how it lies, left as photographed"),
           );
         }
         if (pages % 50 === 0) console.log(`… ${pages} pages`);
@@ -83,7 +105,7 @@ async function main() {
   };
   await Promise.all(Array.from({ length: WORKERS }, worker));
   console.log(
-    `\n${pages} pages framed: ${turned} turned upright, ${cropped} recipe views cut out, ${failed} failed. About ${(cost * 100).toFixed(1)} ct.`,
+    `\n${pages} pages framed: ${turned} turned upright, ${unclear} left as photographed because it stayed unclear how they lie, ${cropped} recipe views cut out, ${failed} failed. About ${(cost * 100).toFixed(1)} ct.`,
   );
 }
 

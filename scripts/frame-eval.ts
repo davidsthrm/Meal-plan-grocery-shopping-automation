@@ -1,5 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { createAnthropicFramer } from "@/server/import/anthropic-reader";
+import {
+  createAnthropicFramer,
+  createAnthropicUprightFinder,
+} from "@/server/import/anthropic-reader";
 import { framePage } from "@/server/import/frame";
 import { normalizeImage, turnImage } from "@/server/import/normalize-image";
 
@@ -12,7 +15,10 @@ import { normalizeImage, turnImage } from "@/server/import/normalize-image";
  */
 const model = process.env.ANTHROPIC_EXTRACT_MODEL;
 if (!model) throw new Error("ANTHROPIC_EXTRACT_MODEL is not set. See .env.example.");
-const frame = createAnthropicFramer({ model });
+const models = {
+  upright: createAnthropicUprightFinder({ model }),
+  frame: createAnthropicFramer({ model }),
+};
 
 /** Photos measured side by side. More would only run into the model's rate limits. */
 const WORKERS = 4;
@@ -21,6 +27,7 @@ async function main() {
   const folder = process.argv[2] ?? "samples/recipes";
   const files = readdirSync(folder).filter((name) => /\.(heic|jpe?g)$/i.test(name));
   let right = 0;
+  let unclear = 0;
   let total = 0;
   let cost = 0;
   const measure = async (file: string) => {
@@ -28,13 +35,16 @@ async function main() {
     const row: string[] = [];
     for (const laid of [0, 90, 180, 270]) {
       const photo = laid === 0 ? upright : await turnImage(upright, laid);
-      const result = await framePage(photo, [file], frame);
+      const result = await framePage(photo, [file], models);
       const ok = (laid + result.turned) % 360 === 0;
       total++;
       if (ok) right++;
+      else if (!result.certain) unclear++;
       // $0.10 and $0.50 per million tokens in and out.
       cost += (result.usage.inputTokens * 0.1 + result.usage.outputTokens * 0.5) / 1e6;
-      row.push(`${laid}°: ${ok ? "upright" : `WRONG (turned ${result.turned}°)`}`);
+      row.push(
+        `${laid}°: ${ok ? "upright" : result.certain ? `WRONG (turned ${result.turned}°)` : "left as it was"}`,
+      );
     }
     console.log(`${file.padEnd(18)} ${row.join("   ")}`);
   };
@@ -45,7 +55,7 @@ async function main() {
     }),
   );
   console.log(
-    `\n=> ${right} of ${total} came back upright, ${((cost / total) * 100).toFixed(3)} ct per page.`,
+    `\n=> ${right} of ${total} came back upright, ${unclear} were left as they were, ${total - right - unclear} were turned wrongly. ${((cost / total) * 100).toFixed(3)} ct per page.`,
   );
 }
 

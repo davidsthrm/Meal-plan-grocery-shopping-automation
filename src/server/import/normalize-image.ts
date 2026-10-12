@@ -125,13 +125,20 @@ export async function turnImage(jpeg: Buffer, degrees: number): Promise<Buffer> 
   return sharp(jpeg).rotate(degrees).jpeg({ quality: 90 }).toBuffer();
 }
 
-/** A small copy of a stored page: enough to see how it lies and where things are on it. */
+/**
+ * A small copy of a stored page, turned clockwise if asked: enough to see how it lies and
+ * where things are on it.
+ */
 export async function shrinkImage(
   jpeg: Buffer,
   edge: number,
   label = "Page 1",
+  degrees = 0,
 ): Promise<PreparedImage> {
-  return toJpeg(sharp(jpeg).resize(edge, edge, { fit: "inside", withoutEnlargement: true }), label);
+  const small = await sharp(jpeg)
+    .resize(edge, edge, { fit: "inside", withoutEnlargement: true })
+    .toBuffer();
+  return toJpeg(degrees === 0 ? sharp(small) : sharp(small).rotate(degrees), label);
 }
 
 /** The part of a stored page given as fractions of its width and height. */

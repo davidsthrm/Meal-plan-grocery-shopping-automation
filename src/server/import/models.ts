@@ -4,6 +4,7 @@ import {
   createAnthropicReader,
   createAnthropicSuggester,
   createAnthropicSurveyor,
+  createAnthropicUprightFinder,
   createAnthropicVerifier,
 } from "./anthropic-reader";
 
@@ -18,6 +19,7 @@ export function importModels() {
   const reading = { model: model("ANTHROPIC_EXTRACT_MODEL") };
   return {
     look: createAnthropicSurveyor(reading),
+    upright: createAnthropicUprightFinder(reading),
     frame: createAnthropicFramer(reading),
     read: createAnthropicReader(reading),
     verify: createAnthropicVerifier({ model: model("ANTHROPIC_VERIFY_MODEL") }),

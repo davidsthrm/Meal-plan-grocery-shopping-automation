@@ -3,8 +3,8 @@ import type { Turn } from "@/domain/import/frame";
 import { must, type Db } from "../catalog";
 import { framePage, type FramedPage } from "./frame";
 import { cropImage } from "./normalize-image";
-import { RecipeReadError, type PageFramer } from "./read-recipe";
-import { downloadPhoto, storePhoto } from "./storage";
+import { RecipeReadError, type FrameModels } from "./read-recipe";
+import { downloadPhoto, removePhotos, storePhoto } from "./storage";
 
 /**
  * Framing the page photos that are in storage: each page once, for all recipes that show it.
@@ -15,6 +15,8 @@ export interface FramedStoredPage {
   turned: Turn;
   /** How many recipes got a cut-out view of their own. */
   cropped: number;
+  /** False when it stayed unclear how the page lies. It was then left as photographed. */
+  certain: boolean;
   usage: FramedPage["usage"];
 }
 
@@ -36,7 +38,7 @@ export function cropPath(pagePath: string, recipeId: string, sortOrder: number):
 export async function frameNextPage(
   db: Db,
   householdId: string,
-  frame: PageFramer,
+  models: FrameModels,
   pathPrefix = `${householdId}/`,
 ): Promise<FramedStoredPage | "taken" | null> {
   const waiting = must(
@@ -58,7 +60,7 @@ export async function frameNextPage(
       .eq("household_id", householdId)
       .eq("storage_path", path)
       .is("framed_at", null)
-      .select("id, recipe_id, sort_order"),
+      .select("id, recipe_id, sort_order, crop_path"),
     "claim page to frame",
   );
   // Another request took it in the meantime.
@@ -79,21 +81,32 @@ export async function frameNextPage(
     const framed = await framePage(
       await downloadPhoto(path),
       [...new Set(titleOf.values())],
-      frame,
+      models,
     );
     if (framed.turned !== 0) await storePhoto(path, framed.image);
 
     let cropped = 0;
     for (const row of claimed) {
       const crop = framed.crops.get(titleOf.get(row.recipe_id) ?? "") ?? null;
-      if (!crop) continue;
+      if (!crop) {
+        // A page that is framed again may come out differently: an earlier view goes.
+        if (row.crop_path) {
+          const cleared = await db
+            .from("recipe_photo")
+            .update({ crop_path: null })
+            .eq("id", row.id);
+          if (cleared.error) throw new Error(`clear view of recipe: ${cleared.error.message}`);
+          await removePhotos([row.crop_path]);
+        }
+        continue;
+      }
       const target = cropPath(path, row.recipe_id, row.sort_order);
       await storePhoto(target, await cropImage(framed.image, crop));
       const stored = await db.from("recipe_photo").update({ crop_path: target }).eq("id", row.id);
       if (stored.error) throw new Error(`store view of recipe: ${stored.error.message}`);
       cropped++;
     }
-    return { path, turned: framed.turned, cropped, usage: framed.usage };
+    return { path, turned: framed.turned, cropped, certain: framed.certain, usage: framed.usage };
   } catch (error) {
     if (!(error instanceof RecipeReadError)) {
       await db

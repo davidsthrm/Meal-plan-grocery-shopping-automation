@@ -1,6 +1,6 @@
 import type { CatalogIndex } from "@/domain/catalog";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
-import type { PageFrame } from "@/domain/import/frame";
+import type { CopyName, PageFrame } from "@/domain/import/frame";
 import type { IngredientProposal } from "@/domain/import/proposal";
 import type { PageSurvey } from "@/domain/import/survey";
 import type { Verification } from "@/domain/import/verification";
@@ -58,6 +58,20 @@ export interface PageFraming {
 
 /** Says how a page photo lies and where the recipes with the given titles are on it. */
 export type PageFramer = (image: PreparedImage, titles: string[]) => Promise<PageFraming>;
+
+/**
+ * Says which of four copies of a page photo is upright. The copies show the photo in its
+ * four turns and carry the names A to D as their labels.
+ */
+export type UprightFinder = (
+  copies: PreparedImage[],
+) => Promise<{ upright: CopyName; usage: { inputTokens: number; outputTokens: number } }>;
+
+/** The two model calls that make a page photo presentable. */
+export interface FrameModels {
+  upright: UprightFinder;
+  frame: PageFramer;
+}
 
 /** Suggests catalog entries for ingredient names the catalog does not know. */
 export type CatalogSuggester = (

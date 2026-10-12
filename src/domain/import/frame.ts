@@ -27,7 +27,31 @@ export const pageFrameSchema = z.object({
 
 export type PageFrame = z.infer<typeof pageFrameSchema>;
 
-export type Turn = 0 | 90 | 180 | 270;
+/** The four ways a photo can lie, as turns clockwise from how it was taken. */
+export const TURNS = [0, 90, 180, 270] as const;
+export type Turn = (typeof TURNS)[number];
+
+/**
+ * How a photo lies is asked as a choice: the model sees the photo in all four turns, named
+ * A to D, and says which one is upright. Asked about one photo alone, it tells a page on its
+ * side from an upright one, but mixes up the two sides and sometimes takes an upside-down
+ * page for upright.
+ */
+export const COPY_NAMES = ["A", "B", "C", "D"] as const;
+export type CopyName = (typeof COPY_NAMES)[number];
+
+export const uprightChoiceSchema = z.object({
+  // Asked before the choice, so that it is made from letters that were read.
+  words: z.string(),
+  upright: z.enum(COPY_NAMES),
+});
+
+export type UprightChoice = z.infer<typeof uprightChoiceSchema>;
+
+/** How far the photo was turned in the copy with this name. */
+export function turnOfCopy(name: CopyName): Turn {
+  return TURNS[COPY_NAMES.indexOf(name)];
+}
 
 /** How far a photo has to be turned clockwise so that its text is upright. */
 export function turnFor(textTop: TextTop): Turn {
