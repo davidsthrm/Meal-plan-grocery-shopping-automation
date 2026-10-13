@@ -79,16 +79,17 @@ export function presentList(
 }
 
 export interface AisleView {
-  /** To buy on the shopping day, by kind of grocery, in the household's order. */
+  /**
+   * What is to buy, by kind of grocery, in the household's order. What is bought shortly
+   * before it is needed stands among the rest, after the line bought on the day itself.
+   */
   groups: { aisleGroup: AisleGroup; lines: ViewLine[] }[];
-  /** To buy fresh later in the week, ordered by the day they are needed. */
-  later: ViewLine[];
-  /** Already at home. Not on the list, but listed in the "Haben wir schon?" step. */
+  /** Already at home. Not on the list, but listed under "Haben wir schon". */
   atHome: ViewLine[];
 }
 
 /**
- * The list as one walk through a shop: grouped by kind of grocery only, whichever shop each
+ * A note as one walk through a shop: grouped by kind of grocery only, whichever shop each
  * thing comes from. This is the list the household uses while it does not plan by shop.
  */
 export function presentByAisle(
@@ -98,20 +99,18 @@ export function presentByAisle(
 ): AisleView {
   const resolved = lines.map((line) => resolveLine(line, states[line.key]));
   const toBuy = resolved.filter((view) => !view.atHome);
-  const main = toBuy.filter((view) => view.line.trip === "main");
+  const inOrder = (a: ViewLine, b: ViewLine) =>
+    byLabel(a, b) ||
+    Number(a.line.trip === "later") - Number(b.line.trip === "later") ||
+    (a.line.neededBy ?? "").localeCompare(b.line.neededBy ?? "");
   return {
     groups: [...index.catalog.aisleGroups]
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((aisleGroup) => ({
         aisleGroup,
-        lines: main.filter((view) => view.line.aisleGroupId === aisleGroup.id).sort(byLabel),
+        lines: toBuy.filter((view) => view.line.aisleGroupId === aisleGroup.id).sort(inOrder),
       }))
       .filter((group) => group.lines.length > 0),
-    later: toBuy
-      .filter((view) => view.line.trip === "later")
-      .sort(
-        (a, b) => (a.line.neededBy ?? "").localeCompare(b.line.neededBy ?? "") || byLabel(a, b),
-      ),
     atHome: resolved.filter((view) => view.atHome).sort(byLabel),
   };
 }

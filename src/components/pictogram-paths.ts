@@ -270,4 +270,5 @@ export const PICTOGRAM_PATHS: Record<Pictogram, string[]> = {
   ],
   buch: ["M24 12c-4-3-9-4-16-4v28c7 0 12 1 16 4 4-3 9-4 16-4V8c-7 0-12 1-16 4Z", "M24 12v28"],
   etikett: ["M5 25 23 7h16a2 2 0 0 1 2 2v16L23 43Z", circle(33, 15, 2.5)],
+  wagen: ["M4 8h6l5 22h21l4-15H13", "M15 30l-2 6h25", circle(18, 40, 2.5), circle(34, 40, 2.5)],
 };

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TickIcon } from "@/components/icons";
+import { NoteIcon, TickIcon } from "@/components/icons";
+import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
-import { RestockNote } from "@/components/restock-note";
 import { SubmitButton } from "@/components/submit-button";
 import type { CatalogIndex } from "@/domain/catalog";
 import {
@@ -10,40 +10,52 @@ import {
   isIsoDate,
   mondayOf,
   planningWeek,
-  weekdayShort,
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
+import { dayProblems } from "@/domain/shopping-list/change-day";
 import type { ViewLine } from "@/domain/shopping-list/present";
+import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import {
   coversText,
+  dayName,
   dayTitle,
   exactText,
-  KIND_NAME,
   neededText,
+  noteName,
+  PLACE_LOOK,
+  PLACE_NAME,
+  problemText,
   sourceText,
+  whenText,
 } from "@/lib/list-text";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
-import { chosenShop, loadShoppingLists, type DayList } from "@/server/shopping/list";
-import { loadRestock, placeRestock } from "@/server/shopping/restock";
+import { chosenShop, loadShoppingNotes, type NoteList } from "@/server/shopping/list";
+import { loadRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
-import { addListEntry, checkLine, markAtHome, noteLine, removeListEntry } from "./actions";
+import {
+  addListEntry,
+  changeNoteDay,
+  checkLine,
+  completeListNote,
+  markAtHome,
+  moveListLine,
+  noteLine,
+  removeListEntry,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Einkaufszettel" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** Where a form of the page leads back to: the week, and the shopping day if one is shown. */
-interface Place {
-  week: IsoDate;
-  /** The one shopping day shown, or null for all of them. */
-  shown: IsoDate | null;
-}
+/** How many lines a note shows of itself while it lies among the others. */
+const PREVIEW = 7;
 
 /**
- * The shopping lists of a week, one per shopping day: what its meals, its extras and its
- * hand-written lines need on that day, grouped by kind of grocery.
+ * The shopping notes of a week. Every errand has a note of its own: the supermarket on
+ * Monday, the market on Saturday. They lie next to each other as small notes; one is picked
+ * up to work through it.
  */
 export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const params = await props.searchParams;
@@ -53,29 +65,40 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const thisWeek = planningWeek(now);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
   const db = await createSessionClient();
-  const [lists, noted] = await Promise.all([
-    loadShoppingLists(db, household, week),
-    loadRestock(db),
+  const [{ notes, atHome, index }, noted] = await Promise.all([
+    loadShoppingNotes(db, household, week),
+    loadRestock(db, household, now),
   ]);
-  const { days, index } = lists;
+  const picked = notes.find((note) => note.id === one(params.zettel));
 
-  // One day is shown when it is asked for, and on a shopping day that day. "alle" shows all.
-  const tag = one(params.tag);
-  const wanted = tag === undefined ? now : tag;
-  const shown = days.find((day) => day.trip.date === wanted)?.trip.date ?? null;
-  const visible = days.filter((day) => shown === null || day.trip.date === shown);
-  const place: Place = { week, shown };
-  const here = `/einkauf?w=${week}${shown ? `&tag=${shown}` : tag === "alle" ? "&tag=alle" : ""}`;
-  const moved = (one(params.auf) ?? "").split(".").filter(isIsoDate);
+  if (picked) {
+    // A line can be moved to every other note of the week.
+    const others = notes.map((note) => note.trip).filter((trip) => noteId(trip) !== picked.id);
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+          <Link href={`/einkauf?w=${week}`} className="link">
+            ← Alle Zettel
+          </Link>
+          <span className="flex gap-2">
+            {picked.open > 0 && <PrintButton />}
+            <a href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`} className="btn btn-small">
+              Als PDF
+            </a>
+          </span>
+        </div>
+        <NoteSheet note={picked} week={week} index={index} others={others} today={now} />
+      </div>
+    );
+  }
 
-  const open = days.reduce((sum, day) => sum + day.open, 0);
-  const done = days.reduce((sum, day) => sum + day.done, 0);
-  const nothing = days.every((day) => day.open + day.done + day.view.atHome.length === 0);
-  const printable = visible.some((day) => day.open > 0);
+  const open = notes.reduce((sum, note) => sum + note.open, 0);
+  const done = notes.reduce((sum, note) => sum + note.done, 0);
+  const nothing = open + done + atHome.length === 0;
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 print:hidden">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
           <p className="eyebrow">Einkaufszettel</p>
           <h1 className="title mt-1">{weekRange(week)}</h1>
@@ -85,7 +108,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             </p>
           )}
         </div>
-        <nav aria-label="Woche wechseln" className="flex gap-2">
+        <nav aria-label="Woche wechseln" className="flex flex-wrap gap-2">
           <Link href={`/einkauf?w=${addDays(week, -7)}`} className="btn btn-small">
             <span aria-hidden>←</span> Vorige
           </Link>
@@ -97,64 +120,14 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           <Link href={`/einkauf?w=${addDays(week, 7)}`} className="btn btn-small">
             Nächste <span aria-hidden>→</span>
           </Link>
-        </nav>
-      </div>
-
-      <nav
-        aria-label="Einkaufstag"
-        className="mt-5 flex flex-wrap items-center gap-2 border-y border-line py-3 print:hidden"
-      >
-        <Link
-          href={`/einkauf?w=${week}&tag=alle`}
-          className={`chip ${shown === null ? "chip-on" : ""}`}
-          aria-current={shown === null ? "page" : undefined}
-        >
-          Alle Tage
-        </Link>
-        {days.map(({ trip, open: left }) => (
-          <Link
-            key={trip.date}
-            href={`/einkauf?w=${week}&tag=${trip.date}`}
-            className={`chip ${shown === trip.date ? "chip-on" : ""}`}
-            aria-current={shown === trip.date ? "page" : undefined}
-            aria-label={`${dayTitle(trip)}, ${left} offen`}
-          >
-            {weekdayShort(trip.date)} {Number(trip.date.slice(8))}.
-            {trip.kind === "market" && " Markt"}
-            {left > 0 && <span className="font-normal text-muted tabular-nums">{left}</span>}
-          </Link>
-        ))}
-        <span className="ml-auto flex flex-wrap gap-2">
           <Link href={`/woche?w=${week}`} className="btn btn-small">
             Zum Wochenplan
           </Link>
-          {printable && (
-            <>
-              <PrintButton />
-              <a
-                href={`/einkauf/pdf?w=${week}${shown ? `&tag=${shown}` : ""}`}
-                className="btn btn-small"
-              >
-                Als PDF
-              </a>
-            </>
-          )}
-        </span>
-      </nav>
-
-      {(noted.length > 0 || moved.length > 0) && (
-        <div className="mx-auto mt-7 max-w-xl">
-          <RestockNote
-            items={placeRestock(noted, index, household, now)}
-            back={here}
-            moved={moved}
-            suggestions={[]}
-          />
-        </div>
-      )}
+        </nav>
+      </div>
 
       {nothing && (
-        <p className="mt-8 text-muted print:hidden">
+        <p className="mt-6 text-muted">
           Für diese Woche steht noch nichts auf den Einkaufszetteln. Sie füllen sich aus dem{" "}
           <Link href={`/woche?w=${week}`} className="link underline">
             Wochenplan
@@ -163,58 +136,237 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         </p>
       )}
 
-      <div className="mt-7 space-y-9 print:mt-0 print:space-y-0">
-        {visible.map((day) => (
-          <DaySheet key={day.trip.date} day={day} place={place} index={index} />
+      <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {notes.map((note) => (
+          <li key={note.id}>
+            <NoteTile note={note} week={week} today={now} />
+          </li>
         ))}
-      </div>
-      <datalist id="zutaten">
-        {index.catalog.ingredients.map((ingredient) => (
-          <option key={ingredient.id} value={ingredient.name} />
-        ))}
-      </datalist>
+        {noted.length > 0 && (
+          <li>
+            <a
+              href="#merkzettel"
+              className="note lift flex h-full min-h-56 flex-col px-4 pt-6 pb-4"
+            >
+              <span className="flex items-center gap-2 text-lg font-bold tracking-tight">
+                <NoteIcon />
+                Merkzettel
+              </span>
+              <span className="muted text-sm">Was zu Hause ausgegangen ist</span>
+              <span className="note-lines mt-2 block flex-1">
+                {noted.slice(0, PREVIEW).map((item) => (
+                  <span key={item.id} className="block truncate py-1">
+                    {item.text}
+                  </span>
+                ))}
+              </span>
+              <span className="muted mt-2 text-sm">
+                {noted.length === 1 ? "1 Eintrag" : `${noted.length} Einträge`}, noch auf keinem
+                Zettel
+              </span>
+            </a>
+          </li>
+        )}
+      </ul>
+
+      {atHome.length > 0 && (
+        <details className="card mt-8 px-4 py-2">
+          <summary className="flex min-h-11 items-center justify-between gap-3 font-semibold">
+            <span>Haben wir schon</span>
+            <span className="text-sm font-normal text-muted tabular-nums">{atHome.length}</span>
+          </summary>
+          <p className="text-sm text-muted">
+            Wird für die Woche gebraucht, steht aber auf keinem Zettel.
+          </p>
+          <ul className="mt-2 gap-x-10 sm:columns-2 lg:columns-3">
+            {atHome.map(({ trip, line }) => (
+              <li
+                key={`${noteId(trip)}|${line.line.key}`}
+                className="flex break-inside-avoid items-center justify-between gap-3 border-b border-rule py-1"
+              >
+                <span className="min-w-0">
+                  {line.text}
+                  <span className="text-sm text-muted"> · {noteName(trip)}</span>
+                </span>
+                <form action={markAtHome}>
+                  <input type="hidden" name="week" value={week} />
+                  <input type="hidden" name="note" value={noteId(trip)} />
+                  <input type="hidden" name="back" value="all" />
+                  <input type="hidden" name="key" value={line.line.key} />
+                  <input type="hidden" name="atHome" value="0" />
+                  <SubmitButton
+                    className="link min-h-10 text-sm whitespace-nowrap"
+                    label={`${line.line.label} doch kaufen`}
+                  >
+                    Doch kaufen
+                  </SubmitButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {open > 0 && (
+        <nav
+          aria-label="Als PDF"
+          className="mt-8 flex flex-wrap items-center gap-2 border-t border-line pt-4"
+        >
+          <span className="eyebrow mr-1">Als PDF</span>
+          <a href={`/einkauf/pdf?w=${week}`} className="chip">
+            Alle Zettel
+          </a>
+          {notes
+            .filter((note) => note.open > 0)
+            .map((note) => (
+              <a key={note.id} href={`/einkauf/pdf?w=${week}&zettel=${note.id}`} className="chip">
+                {noteName(note.trip)}
+              </a>
+            ))}
+        </nav>
+      )}
     </div>
   );
 }
 
-/** The fields that say which list of which week a form is about. */
-function Where({ place, day }: { place: Place; day: IsoDate }) {
+/** The heading every note has: where, and when. */
+function NoteHead({ note, today: now }: { note: NoteList; today?: IsoDate }) {
+  const { trip } = note;
+  const look = PLACE_LOOK[trip.place];
+  return (
+    <span className={`flex items-center gap-3 ${look.tone}`}>
+      <span className="badge size-11">
+        <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-lg leading-tight font-bold tracking-tight">
+          {PLACE_NAME[trip.place]}
+        </span>
+        <span className="block text-sm font-normal text-muted print:text-black">
+          {now && trip.date === now ? "Heute" : whenText(trip)}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** A note as it lies among the others: its heading, its first lines, and how much is open. */
+function NoteTile({ note, week, today: now }: { note: NoteList; week: IsoDate; today: IsoDate }) {
+  const lines = note.view.groups.flatMap((group) => group.lines);
+  const more = lines.length - PREVIEW;
+  return (
+    <Link
+      href={`/einkauf?w=${week}&zettel=${note.id}`}
+      className="sheet lift relative flex h-full min-h-56 flex-col"
+      aria-label={`${PLACE_NAME[note.trip.place]}, ${whenText(note.trip)}: ${
+        note.completed ? "erledigt" : `${note.open} offen`
+      }`}
+    >
+      <span className={`flex flex-1 flex-col px-4 pt-3 pb-4 ${note.completed ? "done-note" : ""}`}>
+        <NoteHead note={note} today={now} />
+        <span className="mt-3 block flex-1 text-[0.95rem]">
+          {lines.slice(0, PREVIEW).map((entry) => (
+            <span
+              key={entry.line.key}
+              className={`block truncate border-b border-rule py-1 ${
+                entry.checked ? "text-muted line-through" : ""
+              }`}
+            >
+              {entry.text}
+            </span>
+          ))}
+          {lines.length === 0 && <span className="block py-1 text-muted">Nichts zu kaufen</span>}
+        </span>
+        <span className="mt-2 flex items-baseline justify-between gap-3 text-sm text-muted">
+          <span>{more > 0 ? `und ${more} weitere` : ""}</span>
+          {lines.length > 0 && (
+            <span className="tabular-nums">
+              {note.open} offen{note.done > 0 ? `, ${note.done} erledigt` : ""}
+            </span>
+          )}
+        </span>
+      </span>
+      {note.completed && <Stamp by={note.completed.by} />}
+    </Link>
+  );
+}
+
+/** The stamp on an errand that is done, with the name of whoever did it. */
+function Stamp({ by }: { by: string | null }) {
+  return (
+    <span className="stamp">
+      <span className="flex items-center gap-1.5 text-lg font-bold">
+        <TickIcon />
+        Erledigt
+      </span>
+      {by && <span className="block text-sm">von {by}</span>}
+    </span>
+  );
+}
+
+/** The fields that say which note of which week a form on the note is about. */
+function Where({ week, note }: { week: IsoDate; note: string }) {
   return (
     <>
-      <input type="hidden" name="week" value={place.week} />
-      <input type="hidden" name="day" value={day} />
-      <input type="hidden" name="shown" value={place.shown ?? ""} />
+      <input type="hidden" name="week" value={week} />
+      <input type="hidden" name="note" value={note} />
+      <input type="hidden" name="back" value="note" />
     </>
   );
 }
 
-/** The list of one shopping day, as a sheet of a pad. On paper each starts a new page. */
-function DaySheet({ day, place, index }: { day: DayList; place: Place; index: CatalogIndex }) {
-  const { trip, view } = day;
+/** A note picked up: every line, to tick, to annotate, and to move to another note. */
+function NoteSheet({
+  note,
+  week,
+  index,
+  others,
+  today: now,
+}: {
+  note: NoteList;
+  week: IsoDate;
+  index: CatalogIndex;
+  /** The notes a line can be moved to. */
+  others: ShoppingTrip[];
+  today: IsoDate;
+}) {
+  const { trip, view } = note;
   const covers = coversText(view);
-  const empty = view.groups.length === 0 && view.later.length === 0;
-
+  // The errand on another day: which of the days around it would work, and why the others
+  // would not.
+  const lines = view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
+  const days = [-3, -2, -1, 1, 2, 3]
+    .map((offset) => addDays(trip.date, offset))
+    .map((day) => ({ day, problems: dayProblems(lines, day, now, index) }));
   return (
     <section
-      aria-label={dayTitle(trip)}
-      id={`tag-${trip.date}`}
-      className="sheet scroll-mt-4 print:break-before-page print:first:break-before-auto"
+      aria-label={`${PLACE_NAME[trip.place]}, ${whenText(trip)}`}
+      className="sheet zoom-in mt-4"
     >
       <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="text-xl font-bold tracking-tight print:text-2xl">{dayTitle(trip)}</h2>
-          {day.open + day.done > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h1>
+            <NoteHead note={note} />
+          </h1>
+          {note.open + note.done > 0 && (
             <p className="text-sm text-muted tabular-nums print:hidden">
-              {day.open} offen{day.done > 0 ? `, ${day.done} erledigt` : ""}
+              {note.open} offen{note.done > 0 ? `, ${note.done} erledigt` : ""}
             </p>
           )}
         </div>
-        <p className="text-sm text-muted print:text-black">
-          {KIND_NAME[trip.kind]}
-          {covers !== "" && ` · ${covers}`}
-        </p>
-
-        {empty && <p className="mt-4 text-muted print:hidden">Nichts zu kaufen.</p>}
+        {covers !== "" && <p className="mt-2 text-sm text-muted print:text-black">{covers}</p>}
+        {note.completed && (
+          <p
+            role="status"
+            className="mt-3 flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-2 font-semibold text-accent print:hidden"
+          >
+            <TickIcon />
+            Erledigt{note.completed.by ? ` von ${note.completed.by}` : ""}
+          </p>
+        )}
+        {view.groups.length === 0 && (
+          <p className="mt-4 text-muted print:hidden">Nichts zu kaufen.</p>
+        )}
 
         <div className="mt-4 gap-x-10 sm:columns-2 print:columns-2">
           {view.groups.map(({ aisleGroup, lines }) => (
@@ -223,43 +375,27 @@ function DaySheet({ day, place, index }: { day: DayList; place: Place; index: Ca
               aria-label={aisleGroup.name}
               className="mb-5 break-inside-avoid-column"
             >
-              <h3 className="eyebrow print:font-bold print:text-black">{aisleGroup.name}</h3>
+              <h2 className="eyebrow print:font-bold print:text-black">{aisleGroup.name}</h2>
               <ul className="ruled mt-1">
                 {lines.map((line) => (
                   <Line
                     key={line.line.key}
                     view={line}
-                    place={place}
-                    day={trip.date}
+                    week={week}
+                    note={trip}
                     shop={chosenShop(index, line)}
+                    others={others}
                   />
                 ))}
               </ul>
             </section>
           ))}
-
-          {view.later.length > 0 && (
-            <section aria-label="Kurz vorher besorgen" className="mb-5 break-inside-avoid-column">
-              <h3 className="eyebrow print:font-bold print:text-black">Kurz vorher besorgen</h3>
-              <ul className="ruled mt-1">
-                {view.later.map((line) => (
-                  <Line
-                    key={line.line.key}
-                    view={line}
-                    place={place}
-                    day={trip.date}
-                    shop={chosenShop(index, line)}
-                  />
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
 
         <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
-          <Where place={place} day={trip.date} />
+          <Where week={week} note={note.id} />
           <label className="flex-1">
-            <span className="sr-only">Auf den Zettel für {dayTitle(trip)} schreiben</span>
+            <span className="sr-only">Auf den Zettel schreiben</span>
             <input
               name="text"
               maxLength={120}
@@ -271,32 +407,60 @@ function DaySheet({ day, place, index }: { day: DayList; place: Place; index: Ca
           </label>
           <SubmitButton>Hinzufügen</SubmitButton>
         </form>
+        <datalist id="zutaten">
+          {index.catalog.ingredients.map((ingredient) => (
+            <option key={ingredient.id} value={ingredient.name} />
+          ))}
+        </datalist>
 
-        {view.atHome.length > 0 && (
-          <details className="mt-4 print:hidden">
-            <summary className="link inline-flex min-h-10 items-center text-sm">
-              Haben wir schon ({view.atHome.length})
+        {note.open > 0 && (
+          <form action={completeListNote} className="mt-5 print:hidden">
+            <Where week={week} note={note.id} />
+            <SubmitButton className="btn btn-primary w-full sm:w-auto">
+              <TickIcon />
+              Einkauf erledigt
+            </SubmitButton>
+          </form>
+        )}
+
+        {lines.length > 0 && (
+          <details className="mt-3 print:hidden">
+            <summary className="link inline-flex min-h-10 items-center">
+              An einem anderen Tag einkaufen
             </summary>
-            <p className="mt-1 text-sm text-muted">
-              Wird gebraucht, steht aber nicht auf dem Zettel.
-            </p>
-            <ul className="mt-2 divide-y divide-rule">
-              {view.atHome.map((line) => (
-                <li key={line.line.key} className="flex items-center justify-between gap-3 py-1">
-                  <span>{line.text}</span>
-                  <form action={markAtHome}>
-                    <Where place={place} day={trip.date} />
-                    <input type="hidden" name="key" value={line.line.key} />
-                    <input type="hidden" name="atHome" value="0" />
+            <div
+              className="mt-1 flex flex-wrap gap-2"
+              role="group"
+              aria-label="Geht an diesen Tagen"
+            >
+              {days
+                .filter((option) => option.problems.length === 0)
+                .map(({ day }) => (
+                  <form key={day} action={changeNoteDay}>
+                    <Where week={week} note={note.id} />
+                    <input type="hidden" name="day" value={day} />
                     <SubmitButton
-                      className="link min-h-10 text-sm"
-                      label={`${line.line.label} doch kaufen`}
+                      className="chip"
+                      label={`Einkauf verlegen auf ${dayTitle({ date: day })}`}
                     >
-                      Doch kaufen
+                      {dayName(day)}
                     </SubmitButton>
                   </form>
-                </li>
-              ))}
+                ))}
+            </div>
+            <ul className="mt-2 space-y-1 text-sm text-muted">
+              {days
+                .filter((option) => option.problems.length > 0)
+                .map(({ day, problems }) => (
+                  <li key={day}>
+                    <span className="font-semibold text-ink">{dayName(day)} geht nicht:</span>{" "}
+                    {problemText(problems[0])}
+                    {problems.length > 1 &&
+                      ` Dasselbe gilt für ${problems.length - 1} ${
+                        problems.length === 2 ? "weitere Zeile" : "weitere Zeilen"
+                      }.`}
+                  </li>
+                ))}
             </ul>
           </details>
         )}
@@ -305,23 +469,26 @@ function DaySheet({ day, place, index }: { day: DayList; place: Place; index: Ca
   );
 }
 
-/** One line of a list: a box to tick, the text, and behind it where it comes from. */
+/** One line of a note: a box to tick, the text, and behind it where it comes from. */
 function Line({
   view,
-  place,
-  day,
+  week,
+  note,
   shop,
+  others,
 }: {
   view: ViewLine;
-  place: Place;
-  day: IsoDate;
+  week: IsoDate;
+  note: ShoppingTrip;
   /** The shop, where the line names one on purpose. */
   shop: string | null;
+  others: ShoppingTrip[];
 }) {
   const { line } = view;
+  const here = noteId(note);
   const where = (
     <>
-      <Where place={place} day={day} />
+      <Where week={week} note={here} />
       <input type="hidden" name="key" value={line.key} />
     </>
   );
@@ -329,16 +496,22 @@ function Line({
   const typed = line.contributions.flatMap((entry) =>
     entry.source.type === "manual" ? [{ id: entry.source.entryId, text: entry.originalText }] : [],
   );
+  // The notes the parts of the line would be on by themselves: a moved part is told apart.
+  const origins = [...new Set(line.contributions.map((entry) => noteId(entry.origin ?? note)))];
+  const needed = line.trip === "later" ? neededText(view) : "";
 
   return (
     <li className="flex items-start gap-3 print:gap-2 print:py-0.5">
       <form action={checkLine} className="print:hidden">
         {where}
         <input type="hidden" name="checked" value={view.checked ? "0" : "1"} />
-        <TickBox
-          on={view.checked}
+        <SubmitButton
+          className="tickbox"
           label={`${view.text}: ${view.checked ? "wieder offen" : "erledigt"}`}
-        />
+          on={view.checked}
+        >
+          <TickIcon />
+        </SubmitButton>
       </form>
       <span aria-hidden className="mt-1 hidden size-3 shrink-0 border border-black print:block" />
       <details className="min-w-0 flex-1">
@@ -350,16 +523,21 @@ function Line({
           <span>
             {view.text}
             {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
-            {line.trip === "later" && (
-              <span className="text-sm text-muted print:text-black"> · {neededText(view)}</span>
+            {needed !== "" && (
+              <span className="text-sm text-muted print:text-black"> · {needed}</span>
             )}
           </span>
         </summary>
-        <div className="mt-1 mb-2 space-y-2 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
+        <div className="mt-1 mb-2 space-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
           {exact !== "" && <p>Genau: {exact}</p>}
           <ul className="text-muted">
             {line.contributions.map((entry, at) => (
-              <li key={at}>{sourceText(entry)}</li>
+              <li key={at}>
+                {sourceText(entry)}
+                {entry.origin && noteId(entry.origin) !== here && (
+                  <> · verschoben von {noteName(entry.origin)}</>
+                )}
+              </li>
             ))}
           </ul>
           <form action={noteLine} className="flex gap-2">
@@ -386,7 +564,7 @@ function Line({
             </form>
             {typed.map((entry) => (
               <form key={entry.id} action={removeListEntry}>
-                <Where place={place} day={day} />
+                <Where week={week} note={here} />
                 <input type="hidden" name="entry" value={entry.id} />
                 <SubmitButton
                   className="btn btn-small btn-danger"
@@ -397,17 +575,28 @@ function Line({
               </form>
             ))}
           </div>
+          {others.length > 0 && (
+            <div role="group" aria-label={`${line.label} verschieben`}>
+              <p className="mb-1.5 text-muted">Lieber woanders kaufen:</p>
+              <div className="flex flex-wrap gap-2">
+                {others.map((other) => (
+                  <form key={noteId(other)} action={moveListLine}>
+                    {where}
+                    <input type="hidden" name="origins" value={origins.join(",")} />
+                    <input type="hidden" name="to" value={noteId(other)} />
+                    <SubmitButton
+                      className="chip min-h-9 text-sm"
+                      label={`${line.label} verschieben: ${noteName(other)}`}
+                    >
+                      {noteName(other)}
+                    </SubmitButton>
+                  </form>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </details>
     </li>
-  );
-}
-
-/** The box of a line, with the tick of a pen in it when the line is done. */
-function TickBox({ on, label }: { on: boolean; label: string }) {
-  return (
-    <SubmitButton className="tickbox" label={label} on={on}>
-      <TickIcon />
-    </SubmitButton>
   );
 }

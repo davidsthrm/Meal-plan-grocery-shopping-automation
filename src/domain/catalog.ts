@@ -1,5 +1,9 @@
 import type { GramsPer, Unit } from "./units";
 
+/** Where the household shops. Every place it goes to on a day has a note of its own. */
+export const PLACES = ["supermarket", "market", "butcher", "bakery"] as const;
+export type Place = (typeof PLACES)[number];
+
 /**
  * How an ingredient is bought, which decides what the shopping line shows.
  * - count: a number of pieces ("2 Karotten", "20 Eier")
@@ -17,14 +21,19 @@ export interface Shop {
   sortOrder: number;
   /** Aisle groups that sit somewhere else in this shop: aisle group id to sort order. */
   aisleSortOverrides: Record<string, number>;
+  /** What kind of place it is. A supermarket unless it says otherwise. */
+  kind?: Place;
 }
 
 export interface AisleGroup {
   id: string;
   name: string;
   sortOrder: number;
-  /** Sold fresh at the market or the butcher: bought there when a market day reaches the meal. */
-  market?: boolean;
+  /**
+   * Where this kind of grocery is bought fresh when a shopping day goes there. Null or left
+   * out: at the supermarket.
+   */
+  freshPlace?: "market" | "butcher" | null;
 }
 
 export interface Ingredient {

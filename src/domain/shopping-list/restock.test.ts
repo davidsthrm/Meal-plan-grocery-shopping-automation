@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readRestock, restockTrip } from "./restock";
+import { freshPlaceOf, readRestock, restockTrip } from "./restock";
 import { testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS } from "./trips";
 
@@ -8,8 +8,8 @@ const FRIDAY = "2026-10-16";
 const SATURDAY = "2026-10-17";
 const NEXT_MONDAY = "2026-10-19";
 
-const day = (text: string, today: string) =>
-  restockTrip(text, testIndex, DEFAULT_SHOPPING_DAYS, today)?.date;
+const errand = (text: string, today: string) =>
+  restockTrip({ freshPlace: freshPlaceOf(text, testIndex) }, DEFAULT_SHOPPING_DAYS, today);
 
 describe("readRestock", () => {
   it("tidies what was written", () => {
@@ -19,24 +19,34 @@ describe("readRestock", () => {
   });
 });
 
+describe("freshPlaceOf", () => {
+  it("knows from the catalog where something is bought fresh", () => {
+    expect(freshPlaceOf("Karotten", testIndex)).toBe("market");
+    expect(freshPlaceOf("2 Möhren", testIndex)).toBe("market");
+    expect(freshPlaceOf("600 g Leberkäse", testIndex)).toBe("butcher");
+    expect(freshPlaceOf("Milch WS 1.29", testIndex)).toBeNull();
+    expect(freshPlaceOf("Spülmittel", testIndex)).toBeNull();
+  });
+});
+
 describe("restockTrip", () => {
   it("puts an entry on the next shopping day", () => {
-    expect(day("Milch", TUESDAY)).toBe(FRIDAY);
-    expect(day("Milch", FRIDAY)).toBe(FRIDAY);
+    expect(errand("Milch", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
+    expect(errand("Milch", FRIDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
   });
 
   it("lets what the market does not sell wait for the supermarket", () => {
-    expect(day("Milch WS 1.29", SATURDAY)).toBe(NEXT_MONDAY);
-    expect(day("Spülmittel", SATURDAY)).toBe(NEXT_MONDAY);
+    expect(errand("Milch WS 1.29", SATURDAY)?.date).toBe(NEXT_MONDAY);
+    expect(errand("Spülmittel", SATURDAY)?.date).toBe(NEXT_MONDAY);
   });
 
-  it("buys what is fresh at the market when that is the next shopping day", () => {
-    expect(day("Karotten", SATURDAY)).toBe(SATURDAY);
-    expect(day("2 Möhren", SATURDAY)).toBe(SATURDAY);
-    expect(day("Karotten", TUESDAY)).toBe(FRIDAY);
+  it("buys what is fresh at its place when that is the next errand", () => {
+    expect(errand("Karotten", SATURDAY)).toEqual({ date: SATURDAY, place: "market" });
+    expect(errand("Leberkäse", SATURDAY)).toEqual({ date: SATURDAY, place: "butcher" });
+    expect(errand("Karotten", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
   });
 
-  it("has no day for a household that never shops", () => {
-    expect(restockTrip("Milch", testIndex, [], TUESDAY)).toBeNull();
+  it("has no errand for a household that never shops", () => {
+    expect(restockTrip({ freshPlace: null }, [], TUESDAY)).toBeNull();
   });
 });

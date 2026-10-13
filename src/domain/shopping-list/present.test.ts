@@ -105,7 +105,6 @@ describe("presentByAisle", () => {
     const view = presentByAisle(lines, states, testIndex);
     return {
       groups: view.groups.map((g) => [g.aisleGroup.name, g.lines.map((l) => l.text)]),
-      later: view.later.map((l) => l.text),
       atHome: view.atHome.map((l) => l.text),
     };
   };
@@ -117,11 +116,16 @@ describe("presentByAisle", () => {
         ["Brot & Backwaren", ["Brot"]],
         // Cream from one shop and eggs and milk from the other stand together.
         ["Molkerei & Kühlregal", ["20 Eier", "Milch WS 1.29", "Sahne"]],
-        ["Fleisch & Wurst", ["600 g Leberkäse"]],
+        // The steaks would not keep until Sunday. They stand with the rest of the meat, and
+        // the line says for which day they are bought.
+        ["Fleisch & Wurst", ["600 g Leberkäse", "4 Rindersteaks"]],
       ],
-      later: ["4 Rindersteaks"],
       atHome: ["Salz"],
     });
+    const steaks = presentByAisle(lines, {}, testIndex)
+      .groups.flatMap((group) => group.lines)
+      .find((entry) => entry.line.key === "steak@later");
+    expect(steaks?.line).toMatchObject({ trip: "later", neededBy: "2026-10-18" });
   });
 
   it("applies what the household changed, like the list by shop", () => {

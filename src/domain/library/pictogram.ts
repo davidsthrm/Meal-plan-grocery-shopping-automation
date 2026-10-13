@@ -5,7 +5,7 @@ import type { RecipeSummary } from "./summary";
  * The little picture a recipe is shown with, so that cards can be told apart at a glance: a
  * bowl of pasta, a fish, a cake. Chosen from what is known about the recipe; never a photo.
  * The second half of the list is for the ways the library is narrowed down: how much work,
- * which cuisine, which season.
+ * which cuisine, which season. The last one is the cart of a shopping note.
  */
 export const PICTOGRAMS = [
   "pasta",
@@ -53,6 +53,7 @@ export const PICTOGRAMS = [
   "spross",
   "buch",
   "etikett",
+  "wagen",
 ] as const;
 export type Pictogram = (typeof PICTOGRAMS)[number];
 

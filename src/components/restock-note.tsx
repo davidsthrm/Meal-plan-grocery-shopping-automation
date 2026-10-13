@@ -1,77 +1,71 @@
+"use client";
+
 import Link from "next/link";
-import { listRestock, noteRestock, strikeRestock } from "@/app/(app)/merkzettel/actions";
-import { mondayOf, weekdayLong, type IsoDate } from "@/domain/dates";
-import { dayTitle } from "@/lib/list-text";
-import type { PlacedRestock } from "@/server/shopping/restock";
+import { useActionState } from "react";
+import { tellRestock } from "@/app/(app)/merkzettel/actions";
+import { mondayOf } from "@/domain/dates";
+import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import { noteName } from "@/lib/list-text";
 import { CloseIcon } from "./icons";
 import { SubmitButton } from "./submit-button";
 
 interface Props {
-  items: readonly PlacedRestock[];
-  /** The page the note is shown on: where its buttons lead back to. */
-  back: string;
-  /** The shopping days entries were just put on. */
-  moved?: readonly IsoDate[];
-  /** Names the field offers while typing. */
-  suggestions?: readonly string[];
+  /** The entries, each with the errand it would be bought on. */
+  items: readonly { id: string; text: string; trip: ShoppingTrip | null }[];
   /** On its own page the note is the page: its name is the page's title. */
   asPage?: boolean;
+  /** Told when a link on the note is followed, so that what holds the note can put it away. */
+  onLeave?: () => void;
 }
 
 /**
  * The yellow note for what ran out at home. Anyone writes on it; "Auf den Einkaufszettel"
- * moves an entry to the list of the next shopping day.
+ * moves an entry to the note of the next errand that sells it.
  */
-export function RestockNote({ items, back, moved = [], suggestions = [], asPage = false }: Props) {
+export function RestockNote({ items, asPage = false, onLeave }: Props) {
+  const [state, tell] = useActionState(tellRestock, { moved: [] });
+  const quiet = "border-note-line bg-white/60";
   return (
     <section aria-label="Merkzettel" className="note px-4 pt-6 pb-4 sm:px-5 print:hidden">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         {asPage ? (
           <h1 className="text-2xl font-bold tracking-tight">Merkzettel</h1>
         ) : (
-          <h2 className="text-lg font-bold tracking-tight">Merkzettel</h2>
+          <h2 className="text-xl font-bold tracking-tight">Merkzettel</h2>
         )}
         <p className="muted text-sm">Was zu Hause ausgegangen ist</p>
       </div>
 
-      <form action={noteRestock} className="mt-3 flex gap-2">
-        <input type="hidden" name="back" value={back} />
+      <form action={tell} className="mt-3 flex gap-2">
+        <input type="hidden" name="do" value="note" />
         <label className="flex-1">
           <span className="sr-only">Auf den Merkzettel schreiben</span>
           <input
             name="text"
             maxLength={120}
-            list="merkzettel-namen"
             autoComplete="off"
-            className="field border-note-line bg-white/60"
+            className={`field ${quiet}`}
             placeholder="z. B. Mehl"
           />
         </label>
-        <SubmitButton className="btn border-note-line bg-white/60">Notieren</SubmitButton>
+        <SubmitButton className={`btn ${quiet}`}>Notieren</SubmitButton>
       </form>
-      {suggestions.length > 0 && (
-        <datalist id="merkzettel-namen">
-          {suggestions.map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
-      )}
 
-      {moved.length > 0 && (
+      {state.moved.length > 0 && (
         <p role="status" className="mt-3 text-sm font-semibold">
-          Steht auf dem Einkaufszettel für{" "}
-          {moved.map((date, at) => (
-            <span key={date}>
-              {at > 0 && " und "}
+          Steht auf dem Einkaufszettel:{" "}
+          {state.moved.map((trip, at) => (
+            <span key={noteId(trip)}>
+              {at > 0 && ", "}
               <Link
-                href={`/einkauf?w=${mondayOf(date)}&tag=${date}`}
+                href={`/einkauf?w=${mondayOf(trip.date)}&zettel=${noteId(trip)}`}
                 className="underline underline-offset-4"
+                onClick={onLeave}
               >
-                {dayTitle({ date })}
+                {noteName(trip)}
               </Link>
             </span>
           ))}
-          .
         </p>
       )}
 
@@ -83,23 +77,21 @@ export function RestockNote({ items, back, moved = [], suggestions = [], asPage 
             <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
               <span className="min-w-32 flex-1">
                 <span className="font-semibold">{item.text}</span>
-                {item.trip && (
-                  <span className="muted text-sm"> · {weekdayLong(item.trip.date)}</span>
-                )}
+                {item.trip && <span className="muted text-sm"> · {noteName(item.trip)}</span>}
               </span>
               <span className="flex items-center gap-1">
-                <form action={listRestock}>
-                  <input type="hidden" name="back" value={back} />
+                <form action={tell}>
+                  <input type="hidden" name="do" value="list" />
                   <input type="hidden" name="id" value={item.id} />
                   <SubmitButton
-                    className="btn btn-small border-note-line bg-white/60"
+                    className={`btn btn-small ${quiet}`}
                     label={`${item.text} auf den Einkaufszettel`}
                   >
                     Auf den Einkaufszettel
                   </SubmitButton>
                 </form>
-                <form action={strikeRestock}>
-                  <input type="hidden" name="back" value={back} />
+                <form action={tell}>
+                  <input type="hidden" name="do" value="strike" />
                   <input type="hidden" name="id" value={item.id} />
                   <SubmitButton
                     className="muted flex size-10 items-center justify-center rounded-full hover:text-danger"
@@ -115,8 +107,8 @@ export function RestockNote({ items, back, moved = [], suggestions = [], asPage 
       )}
 
       {items.length > 1 && (
-        <form action={listRestock} className="mt-3">
-          <input type="hidden" name="back" value={back} />
+        <form action={tell} className="mt-3">
+          <input type="hidden" name="do" value="list" />
           <SubmitButton className="btn btn-primary btn-small">
             Alles auf den Einkaufszettel
           </SubmitButton>

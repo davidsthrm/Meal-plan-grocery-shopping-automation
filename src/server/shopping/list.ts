@@ -1,38 +1,48 @@
 import "server-only";
-import { addDays, type IsoDate } from "@/domain/dates";
+import { PLACES, type CatalogIndex, type Place } from "@/domain/catalog";
+import { addDays, isIsoDate, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
-import { buildShoppingList } from "@/domain/shopping-list/build";
+import { buildShoppingList, moveKey } from "@/domain/shopping-list/build";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
-import { tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
-import type { CatalogIndex } from "@/domain/catalog";
 import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 import { loadExtras, loadWeeks } from "../planning/week";
 
 /**
- * The shopping lists of a week: one per shopping day. Their lines are worked out from the
- * plan every time they are shown, so they can never disagree with the plan. What the
- * household adds or changes by hand is stored per shopping day: typed entries, and per line
- * the check-off, the note and "we have that".
+ * The shopping notes of a week: one per errand, which is a place on a day. Their lines are
+ * worked out from the plan every time they are shown, so they can never disagree with the
+ * plan. What the household adds or changes by hand is stored per note: typed entries, and
+ * per line the check-off, the note, "we have that", and the note it was moved to.
  */
 
-/** The list of one shopping day. */
-export interface DayList {
+/** The note of one errand. */
+export interface NoteList {
   trip: ShoppingTrip;
-  /** The list as one walk through a shop: by kind of grocery, whichever shop a thing is from. */
+  /** The note as an address: "2026-10-12.supermarket". */
+  id: string;
+  /** The note as one walk through a shop: by kind of grocery. */
   view: AisleView;
   /** Lines still to buy, and lines ticked off. */
   open: number;
   done: number;
+  /**
+   * The errand is done: everything on the note is ticked. With the name of whoever made the
+   * last tick, where the household knows it.
+   */
+  completed: { by: string | null } | null;
 }
 
-export interface WeekLists {
+export interface WeekNotes {
   /**
-   * The shopping days of the week, in order. A day before the week is among them when it
-   * buys for the week: Saturday's market for Monday.
+   * The errands of the week, in order: the household's shopping days, and every other day
+   * something is bought on. One before the week is among them when it buys for the week:
+   * Saturday's market for Monday.
    */
-  days: DayList[];
+  notes: NoteList[];
+  /** What is needed and at home, over all notes. */
+  atHome: { trip: ShoppingTrip; line: ViewLine }[];
   index: CatalogIndex;
 }
 
@@ -93,28 +103,31 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
   }));
 }
 
-export async function loadShoppingLists(
+export async function loadShoppingNotes(
   db: Db,
   household: Pick<Household, "shoppingDays">,
   weekStart: IsoDate,
-): Promise<WeekLists> {
+): Promise<WeekNotes> {
   const weekEnd = addDays(weekStart, 6);
   const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
-  // A shopping day can buy for two weeks, so the weeks around this one are read with it.
-  const [weeks, extras, index, listRows] = await Promise.all([
+  // An errand can buy for two weeks, so the weeks around this one are read with it.
+  const [weeks, extras, index, memberRows, listRows] = await Promise.all([
     loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
     loadExtras(db, weekStart),
     loadCatalogIndex(db),
+    db.from("household_member").select("user_id, display_name"),
     db
       .from("shopping_list")
-      .select("id, shopping_date")
+      .select("id, shopping_date, place")
       .gte("shopping_date", addDays(weekStart, -7))
       .lte("shopping_date", weekEnd),
   ]);
   const slots = weeks.flatMap((week) => week.slots);
   const lists = must(listRows, "load shopping lists");
   const listIds = lists.map((list) => list.id);
-  const dateOf = new Map(lists.map((list) => [list.id, list.shopping_date]));
+  const tripOf = new Map(
+    lists.map((list) => [list.id, { date: list.shopping_date, place: list.place as Place }]),
+  );
   const recipeIds = [
     ...new Set([
       ...slots.flatMap((slot) =>
@@ -135,7 +148,9 @@ export async function loadShoppingLists(
     listIds.length > 0
       ? db
           .from("shopping_line_state")
-          .select("shopping_list_id, line_key, at_home, shop_id, note, checked_at")
+          .select(
+            "shopping_list_id, line_key, at_home, shop_id, note, checked_at, checked_by, moved_date, moved_place",
+          )
           .in("shopping_list_id", listIds)
       : null,
   ]);
@@ -143,28 +158,40 @@ export async function loadShoppingLists(
     (row): ManualEntry => ({
       id: row.id,
       text: row.text,
-      shoppingDate: dateOf.get(row.shopping_list_id),
+      shoppingDate: tripOf.get(row.shopping_list_id)?.date,
+      place: tripOf.get(row.shopping_list_id)?.place,
       shopId: row.shop_id,
       aisleGroupId: row.aisle_group_id,
     }),
   );
-  // What the household changed on a line, per shopping day.
-  const states = new Map<IsoDate, Record<string, LineState>>();
+  // What the household changed on a line, per note, and the lines it moved to another one.
+  const states = new Map<string, Record<string, LineState>>();
+  const moves = new Map<string, ShoppingTrip>();
+  // Who ticked a line, and when: the last tick on a note says who finished the errand.
+  const ticks = new Map<string, { at: string; by: string | null }>();
   for (const row of stateRows ? must(stateRows, "load line states") : []) {
-    const date = dateOf.get(row.shopping_list_id) as IsoDate;
-    const ofDay = states.get(date) ?? {};
-    ofDay[row.line_key] = {
+    const trip = tripOf.get(row.shopping_list_id) as ShoppingTrip;
+    if (row.checked_at !== null) {
+      ticks.set(`${noteId(trip)}|${row.line_key}`, { at: row.checked_at, by: row.checked_by });
+    }
+    if (row.moved_date !== null && row.moved_place !== null) {
+      moves.set(moveKey(trip, row.line_key), {
+        date: row.moved_date,
+        place: row.moved_place as Place,
+      });
+    }
+    const ofNote = states.get(noteId(trip)) ?? {};
+    ofNote[row.line_key] = {
       ...(row.at_home !== null ? { atHome: row.at_home } : {}),
       ...(row.note !== null ? { note: row.note === "" ? null : row.note } : {}),
       ...(row.shop_id !== null ? { shopId: row.shop_id } : {}),
       checked: row.checked_at !== null,
     };
-    states.set(date, ofDay);
+    states.set(noteId(trip), ofNote);
   }
 
   // Far enough back that the first meal read has a shopping day before it.
   const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
-  const ofWeek = trips.filter((trip) => inWeek(trip.date));
   const lines = buildShoppingList({
     index,
     recipes,
@@ -172,46 +199,78 @@ export async function loadShoppingLists(
     extras,
     trips,
     // The week's first trip to the supermarket.
-    extrasDate: (ofWeek.find((trip) => trip.kind === "all") ?? ofWeek[0])?.date,
+    extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
     manualEntries: entries,
+    moves,
   });
-  const buysForWeek = (date: IsoDate) =>
-    lines.some(
-      (line) =>
-        line.shoppingDate === date &&
-        line.contributions.some(
-          ({ source }) =>
-            (source.type === "recipe" || source.type === "food") && inWeek(source.date),
-        ),
+  const linesOf = (trip: ShoppingTrip) =>
+    lines.filter((line) => line.shoppingDate === trip.date && line.place === trip.place);
+  const buysForWeek = (trip: ShoppingTrip) =>
+    linesOf(trip).some((line) =>
+      line.contributions.some(
+        ({ source }) => (source.type === "recipe" || source.type === "food") && inWeek(source.date),
+      ),
     );
-  const days = trips
-    .filter((trip) => inWeek(trip.date) || (trip.date < weekStart && buysForWeek(trip.date)))
-    .map((trip): DayList => {
-      const view = presentByAisle(
-        lines.filter((line) => line.shoppingDate === trip.date),
-        states.get(trip.date) ?? {},
-        index,
-      );
-      const toBuy = [...view.groups.flatMap((group) => group.lines), ...view.later];
-      const done = toBuy.filter((line) => line.checked).length;
-      return { trip, view, open: toBuy.length - done, done };
-    });
-  return { days, index };
+  // The household's shopping days of the week, and every other day something is bought on:
+  // the bakery on the day of a cold supper, a note the household moved to another day.
+  const shown = new Map<string, ShoppingTrip>();
+  for (const trip of trips) if (inWeek(trip.date)) shown.set(noteId(trip), trip);
+  for (const line of lines) {
+    const trip = { date: line.shoppingDate, place: line.place };
+    if (inWeek(trip.date) || (trip.date < weekStart && buysForWeek(trip))) {
+      shown.set(noteId(trip), trip);
+    }
+  }
+  const inOrder = [...shown.values()].sort(
+    (a, b) => a.date.localeCompare(b.date) || PLACES.indexOf(a.place) - PLACES.indexOf(b.place),
+  );
+  const nameOf = new Map(
+    must(memberRows, "load members").map((member) => [member.user_id, member.display_name]),
+  );
+
+  const atHome: WeekNotes["atHome"] = [];
+  const notes = inOrder.map((trip): NoteList => {
+    const id = noteId(trip);
+    const view = presentByAisle(linesOf(trip), states.get(id) ?? {}, index);
+    atHome.push(...view.atHome.map((line) => ({ trip, line })));
+    const toBuy = view.groups.flatMap((group) => group.lines);
+    const done = toBuy.filter((line) => line.checked).length;
+    const last = toBuy
+      .flatMap((line) => ticks.get(`${id}|${line.line.key}`) ?? [])
+      .sort((a, b) => b.at.localeCompare(a.at))[0];
+    return {
+      trip,
+      id,
+      view,
+      open: toBuy.length - done,
+      done,
+      completed:
+        toBuy.length > 0 && done === toBuy.length
+          ? { by: (last?.by && nameOf.get(last.by)) || null }
+          : null,
+    };
+  });
+  atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));
+  return { notes, atHome, index };
 }
 
-/** Whether the household shops on a day. Nothing is stored for a day it does not. */
-export function isShoppingDay(household: Pick<Household, "shoppingDays">, date: IsoDate): boolean {
-  return tripsBetween(household.shoppingDays, date, date).length > 0;
+/**
+ * Whether something can be a note: a known place on a real day. Any day will do, not only
+ * the household's shopping days: the bakery is gone to when a meal asks for bread, and an
+ * errand can be moved to another day.
+ */
+export function isNote(trip: ShoppingTrip): boolean {
+  return PLACES.includes(trip.place) && isIsoDate(trip.date);
 }
 
-/** The id of a shopping day's list. It comes into being with the first thing stored on it. */
-async function ensureList(db: Db, householdId: string, date: IsoDate): Promise<string> {
+/** The id of a note's list. It comes into being with the first thing stored on it. */
+async function ensureList(db: Db, householdId: string, trip: ShoppingTrip): Promise<string> {
   const list = must(
     await db
       .from("shopping_list")
       .upsert(
-        { household_id: householdId, shopping_date: date },
-        { onConflict: "household_id,shopping_date" },
+        { household_id: householdId, shopping_date: trip.date, place: trip.place },
+        { onConflict: "household_id,shopping_date,place" },
       )
       .select("id")
       .single(),
@@ -224,10 +283,10 @@ async function ensureList(db: Db, householdId: string, date: IsoDate): Promise<s
 export async function addEntry(
   db: Db,
   household: Pick<Household, "id" | "userId">,
-  date: IsoDate,
+  trip: ShoppingTrip,
   text: string,
 ): Promise<void> {
-  const listId = await ensureList(db, household.id, date);
+  const listId = await ensureList(db, household.id, trip);
   const stored = await db.from("shopping_manual_entry").insert({
     household_id: household.id,
     shopping_list_id: listId,
@@ -242,28 +301,21 @@ export async function removeEntry(db: Db, entryId: string): Promise<void> {
   if (removed.error) throw new Error(`remove entry: ${removed.error.message}`);
 }
 
-/**
- * Stores what the household changed on one line of a shopping day's list. The line is known
- * by its key, which stays the same when the plan changes, so the change stays with the line.
- */
-export async function changeLine(
+async function storeState(
   db: Db,
-  household: Pick<Household, "id" | "userId">,
-  date: IsoDate,
+  household: Pick<Household, "id">,
+  trip: ShoppingTrip,
   lineKey: string,
-  change: { checked: boolean } | { atHome: boolean } | { note: string },
+  values: {
+    checked_at?: string | null;
+    checked_by?: string | null;
+    at_home?: boolean;
+    note?: string;
+    moved_date?: string | null;
+    moved_place?: string | null;
+  },
 ): Promise<void> {
-  const listId = await ensureList(db, household.id, date);
-  const values =
-    "checked" in change
-      ? {
-          checked_at: change.checked ? new Date().toISOString() : null,
-          checked_by: change.checked ? household.userId : null,
-        }
-      : "atHome" in change
-        ? { at_home: change.atHome }
-        : // An empty note is stored as such: it says "no note", also where the line has one.
-          { note: change.note };
+  const listId = await ensureList(db, household.id, trip);
   const stored = await db.from("shopping_line_state").upsert(
     {
       household_id: household.id,
@@ -278,9 +330,111 @@ export async function changeLine(
 }
 
 /**
- * The shop a line names on purpose, such as the bakery for the bread of a cold supper. Null
- * for everything that is simply bought where it always is: the list does not sort by shop.
+ * Stores what the household changed on one line of a note. The line is known by its key,
+ * which stays the same when the plan changes, so the change stays with the line.
+ */
+export async function changeLine(
+  db: Db,
+  household: Pick<Household, "id" | "userId">,
+  trip: ShoppingTrip,
+  lineKey: string,
+  change: { checked: boolean } | { atHome: boolean } | { note: string },
+): Promise<void> {
+  await storeState(
+    db,
+    household,
+    trip,
+    lineKey,
+    "checked" in change
+      ? {
+          checked_at: change.checked ? new Date().toISOString() : null,
+          checked_by: change.checked ? household.userId : null,
+        }
+      : "atHome" in change
+        ? { at_home: change.atHome }
+        : // An empty note is stored as such: it says "no note", also where the line has one.
+          { note: change.note },
+  );
+}
+
+/** A line as far as moving it needs to know it: its key, and the notes its parts are from. */
+export interface LineToMove {
+  key: string;
+  origins: readonly ShoppingTrip[];
+}
+
+/**
+ * Moves lines to another note: the household decided to buy them on another errand. What
+ * makes up a line may come from several notes, one of them the target itself. Each part is
+ * told where to go, and a part that is at home on the target is no longer moved.
+ */
+export async function moveLines(
+  db: Db,
+  household: Pick<Household, "id">,
+  lines: readonly LineToMove[],
+  target: ShoppingTrip,
+): Promise<void> {
+  const listOf = new Map<string, string>();
+  const rows = [];
+  for (const line of lines) {
+    // Amounts that could not be merged are lines of their own, but move together.
+    const key = line.key.replace(/#\w+$/, "");
+    for (const origin of line.origins) {
+      const id = noteId(origin);
+      if (!listOf.has(id)) listOf.set(id, await ensureList(db, household.id, origin));
+      const home = id === noteId(target);
+      rows.push({
+        household_id: household.id,
+        shopping_list_id: listOf.get(id) as string,
+        line_key: key,
+        updated_at: new Date().toISOString(),
+        moved_date: home ? null : target.date,
+        moved_place: home ? null : target.place,
+      });
+    }
+  }
+  if (rows.length === 0) return;
+  // The same part may be named by two lines of a note: once is enough.
+  const once = [
+    ...new Map(rows.map((row) => [`${row.shopping_list_id}|${row.line_key}`, row])).values(),
+  ];
+  const stored = await db
+    .from("shopping_line_state")
+    .upsert(once, { onConflict: "shopping_list_id,line_key" });
+  if (stored.error) throw new Error(`move lines: ${stored.error.message}`);
+}
+
+/** Ticks every line named: the errand is done, and whoever says so has done it. */
+export async function completeNote(
+  db: Db,
+  household: Pick<Household, "id" | "userId">,
+  trip: ShoppingTrip,
+  lineKeys: readonly string[],
+): Promise<void> {
+  if (lineKeys.length === 0) return;
+  const listId = await ensureList(db, household.id, trip);
+  const now = new Date().toISOString();
+  const stored = await db.from("shopping_line_state").upsert(
+    lineKeys.map((key) => ({
+      household_id: household.id,
+      shopping_list_id: listId,
+      line_key: key,
+      updated_at: now,
+      checked_at: now,
+      checked_by: household.userId,
+    })),
+    { onConflict: "shopping_list_id,line_key" },
+  );
+  if (stored.error) throw new Error(`complete note: ${stored.error.message}`);
+}
+
+/**
+ * The shop a line names on purpose, such as the butcher for the cold cuts of a supper, where
+ * the note is not that shop's own. Null for everything that is simply bought where it
+ * always is: a note does not sort by shop.
  */
 export function chosenShop(index: CatalogIndex, view: ViewLine): string | null {
-  return view.line.shopByChoice ? (index.shopById.get(view.shopId)?.name ?? null) : null;
+  if (!view.line.shopByChoice) return null;
+  const shop = index.shopById.get(view.shopId);
+  return shop && shop.kind !== view.line.place ? shop.name : null;
 }
