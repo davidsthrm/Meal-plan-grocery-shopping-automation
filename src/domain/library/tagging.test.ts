@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { settleEffort, taggingLine, tagsFromSuggestion, type TagSuggestion } from "./tagging";
+import {
+  settleEffort,
+  surplusTags,
+  taggingLine,
+  tagsFromSuggestion,
+  type TagSuggestion,
+} from "./tagging";
 
 const suggestion = (patch: Partial<TagSuggestion> = {}): TagSuggestion => ({
   n: 1,
@@ -64,5 +70,17 @@ describe("tagsFromSuggestion", () => {
         40,
       ),
     ).toEqual(["alltag", "reis", "italienisch", "herbst", "winter", "fuer-gaeste"]);
+  });
+});
+
+describe("surplusTags", () => {
+  it("finds nothing to take away from a recipe that is described once", () => {
+    expect(surplusTags(["schnell", "pasta", "italienisch", "sommer", "herbst"])).toEqual([]);
+  });
+
+  it("leaves one effort, the longer one, and one cuisine", () => {
+    expect(surplusTags(["schnell", "alltag", "pasta"])).toEqual(["schnell"]);
+    expect(surplusTags(["aufwendig", "schnell", "alltag"])).toEqual(["schnell", "alltag"]);
+    expect(surplusTags(["mediterran", "italienisch", "schnell"])).toEqual(["mediterran"]);
   });
 });

@@ -87,3 +87,15 @@ export function tagsFromSuggestion(
     ]),
   ];
 }
+
+/**
+ * Which of a recipe's suggested tags are one too many. A recipe has one effort and one
+ * cuisine, but two requests that describe the same recipe at the same moment can each leave
+ * theirs. Of two efforts the one that takes longer stays: better a dish kept for the weekend
+ * than one suggested for a Tuesday evening that takes two hours.
+ */
+export function surplusTags(keys: readonly string[]): string[] {
+  const efforts = EFFORTS.filter((effort) => keys.includes(effort));
+  const cuisines = SUGGESTED_TAGS.cuisine.filter((cuisine) => keys.includes(cuisine));
+  return [...efforts.slice(0, -1), ...cuisines.slice(1)];
+}

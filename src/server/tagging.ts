@@ -1,5 +1,10 @@
 import "server-only";
-import { ALL_SUGGESTED, tagsFromSuggestion, type RecipeToTag } from "@/domain/library/tagging";
+import {
+  ALL_SUGGESTED,
+  surplusTags,
+  tagsFromSuggestion,
+  type RecipeToTag,
+} from "@/domain/library/tagging";
 import { EFFORTS } from "@/domain/library/tags";
 import { loadIngredientNames, must, type Db } from "./catalog";
 import type { RecipeTagger } from "./import/read-recipe";
@@ -98,6 +103,29 @@ export async function tagRecipes(
       .from("recipe_tag")
       .upsert(links, { onConflict: "recipe_id,tag_id", ignoreDuplicates: true });
     if (stored.error) throw new Error(`store tags: ${stored.error.message}`);
+  }
+
+  // Another request may have described the same recipes at the same moment, with another
+  // answer. Whatever is one too many then goes, by a rule that gives every request the
+  // same result.
+  const keyOf = new Map(suggested.map((row) => [row.id, row.key as string]));
+  const now = must(
+    await db.from("recipe_tag").select("recipe_id, tag_id").in("recipe_id", batch),
+    "load tags after describing",
+  );
+  for (const id of batch) {
+    const own = now.filter((link) => link.recipe_id === id);
+    const surplus = surplusTags(own.flatMap((link) => keyOf.get(link.tag_id) ?? []));
+    if (surplus.length === 0) continue;
+    const removed = await db
+      .from("recipe_tag")
+      .delete()
+      .eq("recipe_id", id)
+      .in(
+        "tag_id",
+        surplus.map((key) => idOf.get(key) as string),
+      );
+    if (removed.error) throw new Error(`tidy tags: ${removed.error.message}`);
   }
   return { tagged: new Set(links.map((link) => link.recipe_id)).size, usage };
 }
