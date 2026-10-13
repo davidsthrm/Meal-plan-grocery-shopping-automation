@@ -7,6 +7,7 @@ import { RecipeFilterBar } from "@/components/recipe-filter";
 import { byCategory } from "@/domain/library/discover";
 import { filterRecipes, isNoFilter, readFilter } from "@/domain/library/filter";
 import { pictogramFor } from "@/domain/library/pictogram";
+import { FROM_FAVORITES } from "@/lib/origin";
 import { loadLibrary, searchLibrary } from "@/server/library";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -57,6 +58,7 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
                 recipe={recipe}
                 category={nameOf(recipe.category)}
                 className="w-60"
+                from={FROM_FAVORITES}
               />
             ))}
           </div>
@@ -108,7 +110,12 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
           </h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {group.recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} category={nameOf(recipe.category)} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                category={nameOf(recipe.category)}
+                from={FROM_FAVORITES}
+              />
             ))}
           </div>
         </section>

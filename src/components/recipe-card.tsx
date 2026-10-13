@@ -65,16 +65,19 @@ export function RecipeCard({
   recipe,
   category,
   className = "",
+  from = "",
 }: {
   recipe: RecipeSummary;
   /** The category as the household named it. */
   category: string | null;
   className?: string;
+  /** What says where the card stands, for the way back: see `lib/origin.ts`. */
+  from?: string;
 }) {
   const tone = recipeTone(recipe);
   return (
     <Link
-      href={`/rezepte/${recipe.id}`}
+      href={`/rezepte/${recipe.id}${from}`}
       className={`card lift relative flex min-h-44 flex-col overflow-hidden ${tone?.className ?? ""} ${className}`}
     >
       {/* A band in the colour of the kind: a shelf can be read at a glance. */}

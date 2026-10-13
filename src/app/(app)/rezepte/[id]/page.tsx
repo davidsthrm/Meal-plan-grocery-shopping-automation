@@ -9,13 +9,18 @@ import { TAG_GROUPS } from "@/domain/library/tags";
 import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
+import { readOrigin } from "@/lib/origin";
 import { createSessionClient } from "@/server/supabase/server";
 import { setFavorite, setWanted } from "../actions";
 
 export const metadata: Metadata = { title: "Rezept" };
 
+const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
 export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { id } = await props.params;
+  const query = await props.searchParams;
+  const back = readOrigin(one(query.von), one(query.w));
   const db = await createSessionClient();
   // Row level security decides whether this recipe exists for the person asking.
   const { data: recipe } = await db
@@ -64,8 +69,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
 
   return (
     <article className="mx-auto max-w-3xl">
-      <Link href="/rezepte" className="link text-sm">
-        ← Entdecken
+      <Link href={back.href} className="link text-sm">
+        ← {back.label}
       </Link>
       <div className="mt-3 flex items-start gap-3.5">
         <RecipeBadge
