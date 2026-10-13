@@ -19,6 +19,7 @@ export type Database = {
           household_id: string
           id: string
           is_fallback: boolean
+          is_market: boolean
           name: string
           sort_order: number
         }
@@ -26,6 +27,7 @@ export type Database = {
           household_id: string
           id?: string
           is_fallback?: boolean
+          is_market?: boolean
           name: string
           sort_order?: number
         }
@@ -33,6 +35,7 @@ export type Database = {
           household_id?: string
           id?: string
           is_fallback?: boolean
+          is_market?: boolean
           name?: string
           sort_order?: number
         }
@@ -106,6 +109,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          for_date: string | null
+          for_meal: Database["public"]["Enums"]["meal"] | null
           grouped_at: string | null
           household_id: string
           id: string
@@ -114,6 +119,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          for_date?: string | null
+          for_meal?: Database["public"]["Enums"]["meal"] | null
           grouped_at?: string | null
           household_id: string
           id?: string
@@ -122,6 +129,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          for_date?: string | null
+          for_meal?: Database["public"]["Enums"]["meal"] | null
           grouped_at?: string | null
           household_id?: string
           id?: string
@@ -586,6 +595,7 @@ export type Database = {
           ingredient_id: string | null
           label: string
           plan_slot_id: string
+          planned_on: string | null
           position: number
           shop_id: string | null
         }
@@ -595,6 +605,7 @@ export type Database = {
           ingredient_id?: string | null
           label: string
           plan_slot_id: string
+          planned_on?: string | null
           position?: number
           shop_id?: string | null
         }
@@ -604,6 +615,7 @@ export type Database = {
           ingredient_id?: string | null
           label?: string
           plan_slot_id?: string
+          planned_on?: string | null
           position?: number
           shop_id?: string | null
         }
@@ -643,6 +655,7 @@ export type Database = {
           household_id: string
           id: string
           plan_slot_id: string
+          planned_on: string | null
           position: number
           recipe_id: string
           servings: number
@@ -651,6 +664,7 @@ export type Database = {
           household_id: string
           id?: string
           plan_slot_id: string
+          planned_on?: string | null
           position?: number
           recipe_id: string
           servings: number
@@ -659,6 +673,7 @@ export type Database = {
           household_id?: string
           id?: string
           plan_slot_id?: string
+          planned_on?: string | null
           position?: number
           recipe_id?: string
           servings?: number
@@ -990,6 +1005,38 @@ export type Database = {
           },
         ]
       }
+      restock_item: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          household_id: string
+          id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          household_id: string
+          id?: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          household_id?: string
+          id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restock_item_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shop: {
         Row: {
           household_id: string
@@ -1228,21 +1275,21 @@ export type Database = {
           household_id: string
           id: string
           shopping_date: string
-          week_plan_id: string
+          week_plan_id: string | null
         }
         Insert: {
           generated_at?: string | null
           household_id: string
           id?: string
           shopping_date: string
-          week_plan_id: string
+          week_plan_id?: string | null
         }
         Update: {
           generated_at?: string | null
           household_id?: string
           id?: string
           shopping_date?: string
-          week_plan_id?: string
+          week_plan_id?: string | null
         }
         Relationships: [
           {

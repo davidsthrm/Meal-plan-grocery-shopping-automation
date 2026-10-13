@@ -91,13 +91,14 @@ export function buildSeedSql(): string {
     ),
     insert(
       "aisle_group",
-      ["id", "household_id", "name", "sort_order", "is_fallback"],
+      ["id", "household_id", "name", "sort_order", "is_fallback", "is_market"],
       seedCatalog.aisleGroups.map((a) => [
         aisleId(a.id),
         household,
         a.name,
         a.sortOrder,
         a.id === seedCatalog.fallbackAisleGroupId,
+        a.market ?? false,
       ]),
     ),
     insert(

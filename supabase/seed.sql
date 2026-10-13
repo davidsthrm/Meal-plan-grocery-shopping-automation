@@ -9,22 +9,22 @@ insert into public.shop (id, household_id, name, short_label, sort_order, is_def
   ('bdb47144-3502-5bfc-bc18-d0a1f9d9c010', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Metzger', 'Metzger', 3, false),
   ('50378ec7-dd05-549f-a93d-b33b8cc7f768', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Bäcker', 'Bäcker', 4, false);
 
-insert into public.aisle_group (id, household_id, name, sort_order, is_fallback) values
-  ('8fc04d75-d4f9-579c-a616-1b15b1b9fe1c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Obst & Gemüse', 10, false),
-  ('91799563-e67b-5802-aabc-3edccf2e5efc', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Konserven & Gläser', 20, false),
-  ('88f8666a-45ac-53cc-8acd-cec6a7a93d07', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Backzutaten', 30, false),
-  ('953d8647-2332-53cc-b54b-c9d36dea7fb5', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Nudeln, Reis & Hülsenfrüchte', 40, false),
-  ('89c0f680-bbe7-5659-8a0e-a9a5f064613e', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Gewürze, Öl & Essig', 50, false),
-  ('e48c3508-2c5c-51ef-b608-c75e1a6f6cfd', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Brot & Backwaren', 60, false),
-  ('18f421eb-f72e-5e47-8eab-351da7694431', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Molkerei & Kühlregal', 70, false),
-  ('ab459dc3-de9d-595d-9e8b-28a02663dd58', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fleisch & Wurst', 80, false),
-  ('c9d82177-bd61-5611-9e90-001c0117eaaa', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fisch & Meeresfrüchte', 90, false),
-  ('7a6ccdc9-bda5-581e-8123-ede1f2b4b229', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Eier', 100, false),
-  ('a224357e-8f0f-5ebd-b50e-dde755a1178c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Tiefkühl', 110, false),
-  ('beea7ec8-b4d0-5940-accb-c44e765e410a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Getränke', 120, false),
-  ('1909ee6f-56fa-55bd-8839-ab6408adf44f', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Süßes & Snacks', 130, false),
-  ('5b29329c-5711-5e16-8fca-12c404332474', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Haushalt & Drogerie', 140, false),
-  ('e3eb31a8-8521-5804-a86f-2883f421f17c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Sonstiges', 150, true);
+insert into public.aisle_group (id, household_id, name, sort_order, is_fallback, is_market) values
+  ('8fc04d75-d4f9-579c-a616-1b15b1b9fe1c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Obst & Gemüse', 10, false, true),
+  ('91799563-e67b-5802-aabc-3edccf2e5efc', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Konserven & Gläser', 20, false, false),
+  ('88f8666a-45ac-53cc-8acd-cec6a7a93d07', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Backzutaten', 30, false, false),
+  ('953d8647-2332-53cc-b54b-c9d36dea7fb5', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Nudeln, Reis & Hülsenfrüchte', 40, false, false),
+  ('89c0f680-bbe7-5659-8a0e-a9a5f064613e', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Gewürze, Öl & Essig', 50, false, false),
+  ('e48c3508-2c5c-51ef-b608-c75e1a6f6cfd', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Brot & Backwaren', 60, false, false),
+  ('18f421eb-f72e-5e47-8eab-351da7694431', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Molkerei & Kühlregal', 70, false, false),
+  ('ab459dc3-de9d-595d-9e8b-28a02663dd58', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fleisch & Wurst', 80, false, true),
+  ('c9d82177-bd61-5611-9e90-001c0117eaaa', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Fisch & Meeresfrüchte', 90, false, true),
+  ('7a6ccdc9-bda5-581e-8123-ede1f2b4b229', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Eier', 100, false, false),
+  ('a224357e-8f0f-5ebd-b50e-dde755a1178c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Tiefkühl', 110, false, false),
+  ('beea7ec8-b4d0-5940-accb-c44e765e410a', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Getränke', 120, false, false),
+  ('1909ee6f-56fa-55bd-8839-ab6408adf44f', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Süßes & Snacks', 130, false, false),
+  ('5b29329c-5711-5e16-8fca-12c404332474', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Haushalt & Drogerie', 140, false, false),
+  ('e3eb31a8-8521-5804-a86f-2883f421f17c', 'b0c19ca6-9913-57d4-b718-2c412d90b8d7', 'Sonstiges', 150, true, false);
 
 insert into public.shop_aisle_order (household_id, shop_id, aisle_group_id, sort_order) values
   ('b0c19ca6-9913-57d4-b718-2c412d90b8d7', '2937c317-bc42-5bbb-bc76-28d591523784', 'e48c3508-2c5c-51ef-b608-c75e1a6f6cfd', 95);
