@@ -33,7 +33,7 @@ is easier than pen and paper.
 | Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
 | The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
-| Browser test of a real upload with the models (about 1 ct)                | `npm run e2e:upload`                           |
+| Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                           |
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
@@ -64,6 +64,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
+- Run the browser tests through `npm run e2e`, never through `npx playwright test`: only
+  the script leaves out the paid upload test. A file is named with its path
+  (`npm run e2e -- e2e/list.spec.ts`); a bare word such as "plan" matches the name of the
+  project folder and with it every test.
 - There is no local Supabase (Docker does not start on this machine). Development and browser
   tests run against the hosted project, in a separate test household that row level security
   keeps apart from the real one. Never write test data into the real household.
@@ -309,7 +313,11 @@ Library
   request, for recipes that do not say yet how much work they are: at the end of a batch,
   after a recipe was pasted as text, and for a whole library with
   `npm run import:tag-recipes`. A printed time is a fact the suggestion cannot overrule
-  downwards (`settleEffort`): more than an hour is never quick.
+  downwards (`settleEffort`): more than an hour is never quick. The batch page asks with
+  three requests side by side, so two can describe the same recipe at once and each leave
+  an effort or a cuisine; what is one too many is removed again (`surplusTags`: of two
+  efforts the longer one stays). The paid upload test found a recipe that was both
+  "Mediterran" and "Italienisch".
 - A recipe's effort is its tag, or without one its printed time: up to 30 minutes quick, up
   to 60 everyday, more takes time (`effortOf`). With neither it is not known.
 - Described with `claude-haiku-5-5` (October 2026): 880 recipes for about 9 cents; 474
