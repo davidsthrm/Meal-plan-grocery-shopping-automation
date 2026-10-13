@@ -3,18 +3,20 @@ import type { ReactNode } from "react";
 import { pictogramFor } from "@/domain/library/pictogram";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { recipeTone } from "@/lib/plan-text";
-import { servingsText } from "@/lib/recipe-text";
+import { servingsText, timeText } from "@/lib/recipe-text";
 import { ClockIcon, HeartIcon, WishIcon } from "./icons";
 import { PictogramIcon } from "./pictogram";
 
 /** What a card or a row says under the title: time and amount. */
 export function RecipeFacts({ recipe }: { recipe: RecipeSummary }) {
+  // Half the cookbooks print no time. Their recipes say how much work they are instead.
+  const time = timeText(recipe);
   return (
     <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-      {recipe.prepMinutes !== null && (
+      {time && (
         <span className="inline-flex items-center gap-1">
           <ClockIcon />
-          {recipe.prepMinutes} Min.
+          {time}
         </span>
       )}
       {recipe.servings && (

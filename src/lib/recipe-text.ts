@@ -1,5 +1,23 @@
+import type { RecipeSummary } from "@/domain/library/summary";
+import { effortOf, type Effort } from "@/domain/library/tags";
 import { formatAmount } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
+
+const EFFORT_NAME: Record<Effort, string> = {
+  schnell: "Schnell",
+  alltag: "Alltagsküche",
+  aufwendig: "Braucht Zeit",
+};
+
+/**
+ * How long a recipe takes, as a card says it: the printed minutes, or where the cookbook
+ * prints none, how much work it is. Null when neither is known.
+ */
+export function timeText(recipe: Pick<RecipeSummary, "tags" | "prepMinutes">): string | null {
+  if (recipe.prepMinutes !== null) return `${recipe.prepMinutes} Min.`;
+  const effort = effortOf(recipe);
+  return effort && EFFORT_NAME[effort];
+}
 
 /**
  * What a recipe's amounts are for: "4 Portionen", "4–6 Portionen", or what it makes when that
