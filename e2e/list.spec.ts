@@ -30,7 +30,7 @@ const group = (page: Page, note: string, name: string) =>
 const all = (page: Page) => page.getByRole("link", { name: "← Alle Zettel" });
 
 const MARKET = "Markt, Samstag, 27. Februar";
-const BUTCHER = "Metzger, Samstag, 27. Februar";
+const BUTCHER = "Metzger, Montag, 1. März";
 const MONDAY = "Supermarkt, Montag, 1. März";
 const FRIDAY = "Supermarkt, Freitag, 5. März";
 const BAKERY = "Bäcker, Montag, 1. März";
@@ -57,12 +57,12 @@ test("the week becomes a note for every errand, to pick up and work through", as
 
   await page.goto(`/einkauf?w=${WEEK}`);
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
-  // Every errand is a note: market and butcher before the week, because they buy for Monday
-  // and Tuesday, the supermarket twice, market and butcher again, and the bakery on the day
-  // of the cold supper.
-  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(7);
-  // What is fresh comes from the market, the meat from the butcher: the steaks keep until
-  // Monday. A note shows its first lines while it lies among the others.
+  // Every errand is a note: the market before the week, because it buys for Monday and
+  // Tuesday, the supermarket twice, the market again, and the butcher and the bakery on the
+  // day of the meal that needs something from them. Neither has a day of its own.
+  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(6);
+  // What is fresh comes from the market, the meat from the butcher on the day it is cooked.
+  // A note shows its first lines while it lies among the others.
   await expect(tile(page, MARKET)).toContainText("2 Karotten");
   await expect(tile(page, MARKET)).toContainText("1 Gurke");
   await expect(tile(page, BUTCHER)).toContainText("4 Rindersteaks");

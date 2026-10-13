@@ -566,3 +566,22 @@ export async function signIn(
   await page.getByRole("button", { name: "Anmelden" }).click();
   await page.waitForURL(visit === "first" ? "**/woche/ziele?start=1" : "**/woche");
 }
+
+/**
+ * Takes the made-up cookbook out of the test household again: its recipes, plans, batches
+ * and the tags and proposals tests made. Run after every test run, so that the recipes of
+ * the "E2E Kochbuch" exist only while tests are running.
+ */
+export async function clearTestHousehold(): Promise<void> {
+  const household = await testHousehold();
+  // Only ever the test household: every statement is scoped to its id.
+  await clearRecipes(household);
+  const proposals = await db.from("ingredient_proposal").delete().eq("household_id", household);
+  if (proposals.error) throw new Error(`clear proposals: ${proposals.error.message}`);
+  const own = await db
+    .from("tag")
+    .delete()
+    .eq("household_id", household)
+    .eq("group_name", "Eigene");
+  if (own.error) throw new Error(`clear own tags: ${own.error.message}`);
+}

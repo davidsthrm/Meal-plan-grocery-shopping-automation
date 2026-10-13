@@ -63,6 +63,16 @@ test("a saved plan is read, with what there is today on top and a pen for a chan
   await expect(page.getByRole("button", { name: `${lunch} leeren` })).toBeVisible();
 });
 
+test("a recipe opened from the plan leads back to the plan", async ({ page }) => {
+  await page.goto("/woche?w=2027-03-01");
+  await plan(page, "Montag Mittag", "Pilzrisotto");
+  await meal(page, "Montag Mittag").getByRole("link", { name: "Pilzrisotto" }).click();
+  await expect(page.getByRole("heading", { name: "Pilzrisotto" })).toBeVisible();
+  // Not the library: the week it was opened from.
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
+  await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
+});
+
 test("a week is rubbed out as a whole, after asking", async ({ page }) => {
   await page.goto("/woche?w=2027-03-01");
   await plan(page, "Montag Mittag", "Pilzrisotto");
@@ -76,6 +86,10 @@ test("a week is rubbed out as a whole, after asking", async ({ page }) => {
   await page.getByRole("button", { name: "Ganze Woche leeren" }).click();
   await page.getByRole("button", { name: "Ja, leeren" }).click();
   await expect(page.getByRole("link", { name: "Montag Mittag planen" })).toBeVisible();
+  // The rubber is gone and the empty plan can be seen: it once stayed rubbed out.
+  await expect(page.locator("#wochenblatt")).not.toHaveClass(/erasing/);
+  await expect(page.getByRole("link", { name: "Montag Mittag planen" })).toHaveCSS("opacity", "1");
+  await expect(page.locator("#wochenblatt > li").first()).toHaveCSS("opacity", "1");
   await expect(page.getByRole("link", { name: "Mittwoch Abend planen" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Ganze Woche leeren" })).toHaveCount(0);
 });
