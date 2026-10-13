@@ -38,11 +38,11 @@ export const testCatalog: Catalog = {
     },
   ],
   aisleGroups: [
-    { id: "obst", name: "Obst & Gemüse", sortOrder: 10 },
+    { id: "obst", name: "Obst & Gemüse", sortOrder: 10, market: true },
     { id: "gewuerze", name: "Gewürze, Öl & Essig", sortOrder: 50 },
     { id: "brot", name: "Brot & Backwaren", sortOrder: 60 },
     { id: "molkerei", name: "Molkerei & Kühlregal", sortOrder: 70 },
-    { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80 },
+    { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80, market: true },
     { id: "sonstiges", name: "Sonstiges", sortOrder: 150 },
   ],
   ingredients: [

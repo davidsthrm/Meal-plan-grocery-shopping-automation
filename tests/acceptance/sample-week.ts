@@ -4,6 +4,7 @@ import { buildShoppingList } from "@/domain/shopping-list/build";
 import { formatAmount } from "@/domain/shopping-list/format";
 import { parseFreeEntry } from "@/domain/shopping-list/free-entry";
 import { presentList, type ListView } from "@/domain/shopping-list/present";
+import { singleTrip } from "@/domain/shopping-list/trips";
 import type { LineState, ShoppingLine } from "@/domain/shopping-list/types";
 import type { Amount } from "@/domain/units";
 import { seedCatalog } from "../../supabase/seed/catalog";
@@ -100,7 +101,8 @@ export function buildSampleWeek(): SampleWeek {
     index,
     recipes: seedRecipes,
     slots,
-    shoppingDate: inputs.shoppingDate,
+    // The handwritten week had one shopping day.
+    trips: singleTrip(inputs.shoppingDate),
     manualEntries: inputs.freeEntries.lines.map((text, i) => ({ id: `free-${i}`, text })),
   });
 

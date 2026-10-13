@@ -2,7 +2,10 @@ import type { IsoDate } from "../dates";
 import type { Meal } from "../plan";
 import type { Amount, Unit } from "../units";
 
-/** "main" is bought on the shopping day, "later" shortly before it is needed. */
+/**
+ * "main" is bought on the shopping day whose list the line is on, "later" shortly before it
+ * is needed: because it would not keep, or because the meal was planned after that day.
+ */
 export type Trip = "main" | "later";
 
 export type ContributionSource =
@@ -34,16 +37,23 @@ export interface Contribution {
 export interface ManualEntry {
   id: string;
   text: string;
+  /** The shopping day whose list it was written on. Without one, the first. */
+  shoppingDate?: IsoDate;
   /** Only used when the text matches no catalog ingredient. */
   shopId?: string | null;
   aisleGroupId?: string | null;
 }
 
 export interface ShoppingLine {
-  /** Stable across regeneration. Notes, overrides and check-offs are stored against it. */
+  /**
+   * Stable across regeneration, and unique on the list of one shopping day. Notes, overrides
+   * and check-offs are stored against it.
+   */
   key: string;
   ingredientId: string | null;
   label: string;
+  /** The shopping day whose list the line is on. */
+  shoppingDate: IsoDate;
   trip: Trip;
   /** For "later" lines: the first day the ingredient is needed. */
   neededBy: IsoDate | null;

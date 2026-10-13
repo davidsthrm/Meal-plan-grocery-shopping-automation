@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
 import type { Recipe, RecipeIngredient, Servings } from "../recipe";
-import { buildShoppingList, tripFor, toDefaultUnit } from "./build";
+import { buildShoppingList, toDefaultUnit } from "./build";
 import { line, testIndex } from "./test-catalog";
+import { DEFAULT_SHOPPING_DAYS, singleTrip, tripsBetween } from "./trips";
 import type { ManualEntry, ShoppingLine } from "./types";
 
 const MONDAY = "2026-10-12";
@@ -32,21 +33,11 @@ function build(recipes: Recipe[], slots: PlanSlot[], manualEntries: ManualEntry[
     index: testIndex,
     recipes,
     slots,
-    shoppingDate: MONDAY,
+    trips: singleTrip(MONDAY),
     manualEntries,
   });
   return new Map<string, ShoppingLine>(lines.map((l) => [l.key, l]));
 }
-
-describe("tripFor", () => {
-  it("buys on the shopping day what keeps until it is needed", () => {
-    expect(tripFor(SUNDAY, MONDAY, null)).toBe("main");
-    expect(tripFor(SUNDAY, MONDAY, 6)).toBe("main");
-    expect(tripFor(SUNDAY, MONDAY, 5)).toBe("later");
-    expect(tripFor(TUESDAY, MONDAY, 1)).toBe("main");
-    expect(tripFor(MONDAY, MONDAY, 0)).toBe("main");
-  });
-});
 
 describe("toDefaultUnit", () => {
   const prawns = testIndex.ingredientById.get("garnelen")!;
@@ -444,7 +435,7 @@ describe("what a week needs besides its cooked meals", () => {
       },
       recipes: [],
       slots: [{ ...vesper([{ label: "Eier", ingredientId: "eier", shopId: null }]), date: SUNDAY }],
-      shoppingDate: MONDAY,
+      trips: singleTrip(MONDAY),
     });
     expect(lines.find((entry) => entry.key === "eier@later")).toMatchObject({ neededBy: SUNDAY });
   });
@@ -460,7 +451,7 @@ describe("what a week needs besides its cooked meals", () => {
       recipes: [cake],
       slots: [],
       extras: [{ recipeId: "kuchen", servings: 2, note: "Einladung" }],
-      shoppingDate: MONDAY,
+      trips: singleTrip(MONDAY),
     });
     const butter = lines.find((entry) => entry.ingredientId === "butter")!;
     expect(butter.amounts).toEqual([{ quantity: 500, unit: "g" }]);
@@ -482,9 +473,125 @@ describe("what a week needs besides its cooked meals", () => {
       recipes: [cake],
       slots: [slot(MONDAY, "kuchen")],
       extras: [{ recipeId: "kuchen", servings: 4, note: null }],
-      shoppingDate: MONDAY,
+      trips: singleTrip(MONDAY),
     });
     expect(lines.filter((entry) => entry.ingredientId === "eier")).toHaveLength(1);
     expect(lines[0].amounts).toEqual([{ quantity: 8, unit: "Stück" }]);
+  });
+});
+
+describe("several shopping days", () => {
+  const SAT_BEFORE = "2026-10-10";
+  const THURSDAY = "2026-10-15";
+  const FRIDAY = "2026-10-16";
+  const SATURDAY = "2026-10-17";
+  const trips = tripsBetween(DEFAULT_SHOPPING_DAYS, "2026-10-03", "2026-10-25");
+  const onDay = (lines: ShoppingLine[], date: string) =>
+    lines.filter((entry) => entry.shoppingDate === date).map((entry) => entry.key);
+  const lists = (recipes: Recipe[], slots: PlanSlot[], manualEntries: ManualEntry[] = []) =>
+    buildShoppingList({ index: testIndex, recipes, slots, trips, manualEntries });
+
+  it("puts every meal on the list of the last supermarket day before it", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const lines = lists([soup], [slot(TUESDAY, "suppe"), slot(SUNDAY, "suppe")]);
+    expect(onDay(lines, MONDAY)).toEqual(["sahne@main"]);
+    expect(onDay(lines, FRIDAY)).toEqual(["sahne@main"]);
+    expect(lines).toHaveLength(2);
+  });
+
+  it("sums per shopping day, not over the week", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const lines = lists(
+      [soup],
+      [slot(MONDAY, "suppe"), slot(THURSDAY, "suppe"), slot(SATURDAY, "suppe")],
+    );
+    const monday = lines.find((entry) => entry.shoppingDate === MONDAY)!;
+    expect(monday.amounts).toEqual([{ quantity: 400, unit: "ml" }]);
+    expect(monday.purchase).toEqual({ quantity: 2, unit: "Packung" });
+    expect(lines.find((entry) => entry.shoppingDate === FRIDAY)!.purchase).toBeNull();
+  });
+
+  it("buys vegetables and meat for the weekend and Monday at the market", () => {
+    const roast = recipe("braten", [
+      line("karotten", 4, "Stück"),
+      line("leberkaese", 600, "g"),
+      line("sahne", 200, "ml"),
+    ]);
+    const lines = lists([roast], [slot(SUNDAY, "braten"), slot(MONDAY, "braten")]);
+    expect(onDay(lines, SATURDAY).sort()).toEqual(["karotten@main", "leberkaese@main"]);
+    expect(onDay(lines, SAT_BEFORE).sort()).toEqual(["karotten@main", "leberkaese@main"]);
+    // What the market does not sell comes from the supermarket.
+    expect(onDay(lines, FRIDAY)).toEqual(["sahne@main"]);
+    expect(onDay(lines, MONDAY)).toEqual(["sahne@main"]);
+  });
+
+  it("does not buy at the market what would not keep until the meal", () => {
+    // The steaks keep two days: for Sunday they come from the market the day before, for
+    // Tuesday from the supermarket on Monday.
+    const steaks = recipe("steaks", [line("steak", 4, "Stück")]);
+    const lines = lists([steaks], [slot(SUNDAY, "steaks"), slot(TUESDAY, "steaks")]);
+    expect(onDay(lines, SATURDAY)).toEqual(["steak@main"]);
+    expect(onDay(lines, MONDAY)).toEqual(["steak@main"]);
+    expect(onDay(lines, SAT_BEFORE)).toEqual([]);
+  });
+
+  it("leaves a market day that is over out of a meal planned after it", () => {
+    const stew = recipe("eintopf", [line("karotten", 4, "Stück")]);
+    const planned = (plannedOn: string): PlanSlot => ({
+      id: "s",
+      date: MONDAY,
+      meal: "lunch",
+      kind: "recipes",
+      items: [{ recipeId: "eintopf", servings: 4, plannedOn }],
+    });
+    expect(onDay(lists([stew], [planned("2026-10-11")]), MONDAY)).toEqual(["karotten@main"]);
+    expect(onDay(lists([stew], [planned(SAT_BEFORE)]), SAT_BEFORE)).toEqual(["karotten@main"]);
+  });
+
+  it("lists a meal planned after its shopping day as bought shortly before", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const late: PlanSlot = {
+      id: "s",
+      date: THURSDAY,
+      meal: "dinner",
+      kind: "recipes",
+      items: [{ recipeId: "suppe", servings: 4, plannedOn: "2026-10-14" }],
+    };
+    const [only] = lists([soup], [late]);
+    expect(only).toMatchObject({ shoppingDate: MONDAY, trip: "later", neededBy: THURSDAY });
+  });
+
+  it("keeps a typed line on the list it was written on", () => {
+    const lines = lists(
+      [],
+      [],
+      [
+        { id: "a", text: "Milch", shoppingDate: FRIDAY },
+        { id: "b", text: "Geschenkpapier", shoppingDate: SATURDAY },
+        { id: "c", text: "Milch", shoppingDate: MONDAY },
+      ],
+    );
+    expect(onDay(lines, FRIDAY)).toEqual(["milch@main"]);
+    expect(onDay(lines, SATURDAY)).toEqual(["manual:b"]);
+    expect(onDay(lines, MONDAY)).toEqual(["milch@main"]);
+  });
+
+  it("buys the extras on the day named for them", () => {
+    const cake = recipe("kuchen", [line("butter", 250, "g")]);
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [],
+      extras: [{ recipeId: "kuchen", servings: 4, note: null }],
+      trips,
+      extrasDate: MONDAY,
+    });
+    expect(onDay(lines, MONDAY)).toEqual(["butter@main"]);
+  });
+
+  it("refuses to build a list without a shopping day", () => {
+    expect(() =>
+      buildShoppingList({ index: testIndex, recipes: [], slots: [], trips: [] }),
+    ).toThrow(/shopping day/);
   });
 });

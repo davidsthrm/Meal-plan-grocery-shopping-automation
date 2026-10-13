@@ -4,6 +4,7 @@ import type { Recipe } from "../recipe";
 import { buildShoppingList } from "./build";
 import { diffLines, orphanedStateKeys } from "./diff";
 import { line, testIndex } from "./test-catalog";
+import { singleTrip } from "./trips";
 
 const recipes: Recipe[] = [
   {
@@ -34,7 +35,7 @@ function listFor(recipeIds: string[]) {
     kind: "recipes",
     items: [{ recipeId, servings: 4 }],
   }));
-  return buildShoppingList({ index: testIndex, recipes, slots, shoppingDate: "2026-10-12" });
+  return buildShoppingList({ index: testIndex, recipes, slots, trips: singleTrip("2026-10-12") });
 }
 
 describe("diffLines", () => {

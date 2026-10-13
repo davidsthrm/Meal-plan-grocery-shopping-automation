@@ -25,15 +25,16 @@ export const shops: Shop[] = [
 ];
 
 export const aisleGroups: AisleGroup[] = [
-  { id: "obst", name: "Obst & Gemüse", sortOrder: 10 },
+  // What the market and the butcher sell fresh is marked: it is bought there on a market day.
+  { id: "obst", name: "Obst & Gemüse", sortOrder: 10, market: true },
   { id: "konserven", name: "Konserven & Gläser", sortOrder: 20 },
   { id: "backzutaten", name: "Backzutaten", sortOrder: 30 },
   { id: "trockenwaren", name: "Nudeln, Reis & Hülsenfrüchte", sortOrder: 40 },
   { id: "gewuerze", name: "Gewürze, Öl & Essig", sortOrder: 50 },
   { id: "brot", name: "Brot & Backwaren", sortOrder: 60 },
   { id: "molkerei", name: "Molkerei & Kühlregal", sortOrder: 70 },
-  { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80 },
-  { id: "fisch", name: "Fisch & Meeresfrüchte", sortOrder: 90 },
+  { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80, market: true },
+  { id: "fisch", name: "Fisch & Meeresfrüchte", sortOrder: 90, market: true },
   { id: "eier", name: "Eier", sortOrder: 100 },
   { id: "tk", name: "Tiefkühl", sortOrder: 110 },
   { id: "getraenke", name: "Getränke", sortOrder: 120 },

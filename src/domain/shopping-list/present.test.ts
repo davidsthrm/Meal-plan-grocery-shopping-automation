@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { buildShoppingList } from "./build";
 import { presentByAisle, presentList, resolveLine } from "./present";
 import { line, testIndex } from "./test-catalog";
+import { singleTrip } from "./trips";
 import type { LineState } from "./types";
 
 const lines = buildShoppingList({
   index: testIndex,
-  shoppingDate: "2026-10-12",
+  trips: singleTrip("2026-10-12"),
   recipes: [
     {
       id: "r",

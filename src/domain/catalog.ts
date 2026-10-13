@@ -23,6 +23,8 @@ export interface AisleGroup {
   id: string;
   name: string;
   sortOrder: number;
+  /** Sold fresh at the market or the butcher: bought there when a market day reaches the meal. */
+  market?: boolean;
 }
 
 export interface Ingredient {

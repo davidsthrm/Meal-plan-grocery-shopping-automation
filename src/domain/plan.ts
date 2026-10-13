@@ -13,6 +13,11 @@ interface SlotBase {
 export interface SlotItem {
   recipeId: string;
   servings: number;
+  /**
+   * The day the recipe was put on this meal. A shopping day before that cannot have bought
+   * for it. Not known for meals planned before this was recorded.
+   */
+  plannedOn?: IsoDate | null;
 }
 
 /**
@@ -39,6 +44,8 @@ export interface SlotFood {
   ingredientId: string | null;
   /** Where it is bought for this meal. Null means where the catalog says. */
   shopId: string | null;
+  /** The day it was added to the meal, as for a recipe. */
+  plannedOn?: IsoDate | null;
 }
 
 /** A recipe the week needs outside its meals: two cakes for an invitation. */
@@ -102,10 +109,22 @@ export function copyOfWeek(
     if (taken.has(slotKey(date, slot.meal))) continue;
     let content: SlotContent;
     if (slot.kind === "recipes") {
-      content = { kind: "recipes", items: slot.items.map((item) => ({ ...item })) };
+      // Planned anew: nothing was bought for it on a shopping day that is over.
+      content = {
+        kind: "recipes",
+        items: slot.items.map(({ recipeId, servings }) => ({ recipeId, servings })),
+      };
     } else if (slot.kind === "free_text") {
       // The same cold supper needs the same bread next week.
-      content = { kind: "free_text", label: slot.label, foods: [...(slot.foods ?? [])] };
+      content = {
+        kind: "free_text",
+        label: slot.label,
+        foods: (slot.foods ?? []).map(({ label, ingredientId, shopId }) => ({
+          label,
+          ingredientId,
+          shopId,
+        })),
+      };
     } else if (slot.kind === "away") {
       content = { kind: "away", label: slot.label };
     } else {
