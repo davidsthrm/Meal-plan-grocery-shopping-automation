@@ -31,20 +31,33 @@ test("screens @look", async ({ page }, info) => {
   const ask = page.getByRole("link", { name: /Hast du einen Vorschlag/ }).first();
   if (await ask.count()) {
     await ask.click();
-    await page.getByText("Vorschlag", { exact: true }).waitFor();
-    await shot("2-woche-vorschlag");
+    // A library with nothing left to suggest answers with nothing: then there is no picture.
+    const answer = page.getByText("Vorschlag", { exact: true });
+    const answered = await answer.waitFor({ timeout: 5000 }).then(
+      () => true,
+      () => false,
+    );
+    if (answered) await shot("2-woche-vorschlag");
   }
   await page.goto("/woche/verlauf");
   await page.waitForLoadState("networkidle");
   await shot("2-wochen");
   // A planned week has a list for every shopping day, and the note has something on it.
+  // One meal is typed in and has no recipe yet.
   await page.goto("/woche?w=2027-03-01");
+  const typed = page.getByRole("link", { name: "Donnerstag Abend planen" });
+  if (await typed.count()) {
+    await typed.click();
+    await page.getByLabel("Eigener Eintrag").fill("Lasagne nach Oma");
+    await page.getByRole("button", { name: "Eintragen" }).click();
+    await page.getByText("Noch kein Rezept dazu").first().waitFor();
+  }
   const complete = page.getByRole("button", { name: "Plan vervollständigen" });
   if (await complete.count()) {
     await complete.click();
     await page.getByRole("link", { name: "Montag Mittag ändern" }).waitFor();
-    await shot("2-woche-geplant");
   }
+  await shot("2-woche-geplant");
   await page.goto("/merkzettel");
   for (const text of ["Mehl", "Spülmittel", "Karotten"]) {
     await page.getByLabel("Auf den Merkzettel schreiben").fill(text);
