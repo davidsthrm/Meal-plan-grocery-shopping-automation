@@ -42,7 +42,8 @@ describe("restockTrip", () => {
 
   it("buys what is fresh at its place when that is the next errand", () => {
     expect(errand("Karotten", SATURDAY)).toEqual({ date: SATURDAY, place: "market" });
-    expect(errand("Leberkäse", SATURDAY)).toEqual({ date: SATURDAY, place: "butcher" });
+    // The butcher has no day to wait for: meat that ran out is on the supermarket's note.
+    expect(errand("Leberkäse", SATURDAY)).toEqual({ date: NEXT_MONDAY, place: "supermarket" });
     expect(errand("Karotten", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
   });
 

@@ -25,6 +25,11 @@ export interface BuildInput {
   extras?: PlanExtra[];
   /** The household's errands around the planned meals, in order. At least one. */
   trips: readonly ShoppingTrip[];
+  /**
+   * The places gone to for the meal that needs something from there: the butcher and the
+   * bakery, unless said otherwise. Empty for a household that buys everything in one go.
+   */
+  onDemand?: readonly Place[];
   /** The supermarket day the extras are bought on. Without one, the first. */
   extrasDate?: IsoDate;
   manualEntries?: ManualEntry[];
@@ -180,6 +185,9 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     unit: baseUnitOf(dimension),
   }));
   const key = bucketKey(ingredient, trip, bucket.shopId);
+  // The day it is needed is said only for what goes bad: tomatoes and yoghurt are bought
+  // close to their meal, flour is simply on the list.
+  const dated = trip === "later" && ingredient.shelfLifeDays !== null;
 
   // No quantity is shown anyway, so differing units need no separate lines.
   if (ingredient.buyingMode === "none") {
@@ -187,7 +195,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       {
         ...common,
         key,
-        neededBy: trip === "later" ? neededBy(bucket.contributions) : null,
+        neededBy: dated ? neededBy(bucket.contributions) : null,
         purchase: null,
         amounts: [...primaryAmounts, ...apartAmounts],
         hasUnquantified,
@@ -209,7 +217,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
           ? nameForOne(ingredient)
           : ingredient.name,
       key,
-      neededBy: trip === "later" ? neededBy(primary) : null,
+      neededBy: dated ? neededBy(primary) : null,
       purchase,
       amounts: primaryAmounts,
       hasUnquantified,
@@ -224,7 +232,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     lines.push({
       ...common,
       key: `${key}#${dimension}`,
-      neededBy: trip === "later" ? neededBy(group.contributions) : null,
+      neededBy: dated ? neededBy(group.contributions) : null,
       purchase: apartAmounts[index],
       amounts: [apartAmounts[index]],
       hasUnquantified: false,
@@ -282,6 +290,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         shelfLifeDays: ingredient?.shelfLifeDays ?? null,
       },
       trips,
+      input.onDemand,
     ) as Assignment;
 
   /** Where a line ends up: on its own note, or on the one the household moved it to. */
@@ -351,7 +360,6 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       ...contribution,
       origin: { date: origin.date, place: origin.place },
     });
-    if (line.trip === "later") line.neededBy = neededBy(line.contributions);
     loose.set(key, line);
   };
 

@@ -63,7 +63,10 @@ export interface ShoppingLine {
   shoppingDate: IsoDate;
   place: Place;
   trip: Trip;
-  /** For "later" lines: the first day it is needed. The line says so: "für Do. 15. Oktober". */
+  /**
+   * For a "later" line of something that goes bad: the first day it is needed. The line
+   * says so: "für Do. 15. Oktober". Null for what keeps, which is simply on the list.
+   */
   neededBy: IsoDate | null;
   shopId: string;
   /** True when the shop was named on purpose: bread for a cold supper from the bakery. */

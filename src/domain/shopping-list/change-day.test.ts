@@ -34,6 +34,9 @@ const notes = buildShoppingList({
   recipes: [recipe],
   slots: [slot(MONDAY), slot(WEDNESDAY)],
   trips,
+  // A household that buys its meat at the supermarket, so that something perishable is on
+  // the note whose day is changed.
+  onDemand: [],
   manualEntries: [{ id: "x", text: "Geschenkpapier", shoppingDate: MONDAY, place: "supermarket" }],
 });
 const monday = notes.filter(
@@ -43,7 +46,7 @@ const check = (target: string) => dayProblems(monday, target, TODAY, testIndex);
 
 describe("dayProblems", () => {
   it("finds nothing wrong with a day everything is bought in time and keeps from", () => {
-    // Monday's note holds cream for Monday and Wednesday, and carrots and steaks for Wednesday.
+    // Monday's note holds cream and steaks for Monday and Wednesday, and carrots for Wednesday.
     expect(monday.map((entry) => entry.key).sort()).toEqual([
       "karotten@main",
       "manual:x",
@@ -54,7 +57,13 @@ describe("dayProblems", () => {
   });
 
   it("says what is needed before a later day", () => {
-    expect(check(TUESDAY)).toEqual([{ kind: "too-late", label: "Sahne", neededOn: MONDAY }]);
+    expect(check(TUESDAY)).toEqual(
+      expect.arrayContaining([
+        { kind: "too-late", label: "Sahne", neededOn: MONDAY },
+        { kind: "too-late", label: "Rindersteaks", neededOn: MONDAY },
+      ]),
+    );
+    expect(check(TUESDAY)).toHaveLength(2);
   });
 
   it("says what would not keep from an earlier day", () => {

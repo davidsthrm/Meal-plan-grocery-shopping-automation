@@ -4,6 +4,7 @@ import {
   DEFAULT_SHOPPING_DAYS,
   nextTrip,
   noteId,
+  onDemandDay,
   readDaysForm,
   readNoteId,
   readShoppingDays,
@@ -38,11 +39,9 @@ describe("tripsBetween", () => {
   it("lists the errands of a span in order, one per place and day", () => {
     expect(tripsBetween(DEFAULT_SHOPPING_DAYS, SAT_BEFORE, SATURDAY)).toEqual([
       { date: SAT_BEFORE, place: "market" },
-      { date: SAT_BEFORE, place: "butcher" },
       { date: MONDAY, place: "supermarket" },
       { date: FRIDAY, place: "supermarket" },
       { date: SATURDAY, place: "market" },
-      { date: SATURDAY, place: "butcher" },
     ]);
   });
 });
@@ -51,13 +50,26 @@ describe("readShoppingDays", () => {
   it("reads what a household stored", () => {
     expect(
       readShoppingDays([
-        { weekday: 6, places: ["butcher", "market"] },
+        { weekday: 6, places: ["market"] },
         { weekday: 2, places: ["supermarket"] },
         { weekday: 4, places: [] },
       ]),
     ).toEqual([
       { weekday: 2, places: ["supermarket"] },
-      { weekday: 6, places: ["market", "butcher"] },
+      { weekday: 6, places: ["market"] },
+    ]);
+  });
+
+  it("leaves out days once stored for the butcher and the bakery: they have none", () => {
+    expect(
+      readShoppingDays([
+        { weekday: 1, places: ["supermarket"] },
+        { weekday: 3, places: ["bakery"] },
+        { weekday: 6, places: ["butcher", "market"] },
+      ]),
+    ).toEqual([
+      { weekday: 1, places: ["supermarket"] },
+      { weekday: 6, places: ["market"] },
     ]);
   });
 
@@ -81,17 +93,17 @@ describe("readShoppingDays", () => {
 
 describe("readDaysForm", () => {
   it("reads the boxes ticked per place", () => {
-    const ticked = { supermarket: ["1", "5"], market: ["6"], butcher: ["6"], bakery: ["3"] };
+    const ticked = { supermarket: ["1", "5"], market: ["3", "6"] };
     expect(readDaysForm((place) => ticked[place])).toEqual([
       { weekday: 1, places: ["supermarket"] },
-      { weekday: 3, places: ["bakery"] },
+      { weekday: 3, places: ["market"] },
       { weekday: 5, places: ["supermarket"] },
-      { weekday: 6, places: ["market", "butcher"] },
+      { weekday: 6, places: ["market"] },
     ]);
   });
 
   it("refuses a household that never goes to the supermarket", () => {
-    const ticked = { supermarket: [], market: ["6"], butcher: [], bakery: [] };
+    const ticked = { supermarket: [], market: ["6"] };
     expect(readDaysForm((place) => ticked[place])).toBeNull();
   });
 });
@@ -121,10 +133,21 @@ describe("assignTrip", () => {
     expect(assignTrip(need(TUESDAY, fresh), trips)).toEqual(market(SAT_BEFORE));
   });
 
-  it("buys meat at the butcher, on a note of its own", () => {
+  it("goes to the butcher for the meal that needs meat, on the day of that meal", () => {
+    const meat = { fresh: "butcher" as const, shelfLifeDays: 3 };
+    expect(assignTrip(need(WEDNESDAY, meat), trips)).toEqual(butcher(WEDNESDAY));
+    expect(assignTrip(need(MONDAY, meat), trips)).toEqual(butcher(MONDAY));
+    // Also on a day the household is at the supermarket anyway.
+    expect(assignTrip(need(FRIDAY, meat), trips)).toEqual(butcher(FRIDAY));
+  });
+
+  it("goes on the Saturday for a Sunday: the shops are closed then", () => {
     const meat = { fresh: "butcher" as const, shelfLifeDays: 3 };
     expect(assignTrip(need(SUNDAY, meat), trips)).toEqual(butcher(SATURDAY));
-    expect(assignTrip(need(MONDAY, meat), trips)).toEqual(butcher(SAT_BEFORE));
+    expect(onDemandDay({ date: SUNDAY })).toBe(SATURDAY);
+    // Planned on the Sunday itself, Saturday is over.
+    expect(onDemandDay({ date: SUNDAY, plannedOn: SUNDAY })).toBe(SUNDAY);
+    expect(onDemandDay({ date: SUNDAY, plannedOn: SATURDAY })).toBe(SATURDAY);
   });
 
   it("leaves the middle of the week to the supermarket", () => {
@@ -133,10 +156,9 @@ describe("assignTrip", () => {
     expect(assignTrip(need(FRIDAY, fresh), trips)).toEqual(shop(FRIDAY));
   });
 
-  it("does not buy at the butcher what would not keep until the meal", () => {
-    // Minced meat for Monday is not bought on Saturday.
+  it("buys minced meat on the day it is cooked", () => {
     const mince = { fresh: "butcher" as const, shelfLifeDays: 1 };
-    expect(assignTrip(need(MONDAY, mince), trips)).toEqual(shop(MONDAY));
+    expect(assignTrip(need(MONDAY, mince), trips)).toEqual(butcher(MONDAY));
     expect(assignTrip(need(SUNDAY, mince), trips)).toEqual(butcher(SATURDAY));
   });
 
@@ -162,33 +184,26 @@ describe("assignTrip", () => {
     expect(assignTrip(need(FRIDAY, late), trips)).toEqual(shop(FRIDAY));
   });
 
-  it("goes to a shop named on purpose on the day of the meal, when it has no day that reaches", () => {
-    // Bread and cold cuts for a supper on Thursday: the bakery has no day, the butcher's
-    // Saturday is too far away.
+  it("goes to a shop named on purpose on the day of the meal", () => {
+    // Bread and cold cuts for a supper on Thursday.
     expect(assignTrip(need(THURSDAY, { at: "bakery" }), trips)).toEqual({
       date: THURSDAY,
       place: "bakery",
       trip: "main",
     });
     expect(assignTrip(need(THURSDAY, { at: "butcher" }), trips)).toEqual(butcher(THURSDAY));
+    expect(assignTrip(need(MONDAY, { at: "butcher" }), trips)).toEqual(butcher(MONDAY));
   });
 
-  it("buys what was asked for from the butcher on his day, when that reaches the meal", () => {
-    expect(assignTrip(need(SUNDAY, { at: "butcher" }), trips)).toEqual(butcher(SATURDAY));
-    expect(assignTrip(need(MONDAY, { at: "butcher" }), trips)).toEqual(butcher(SAT_BEFORE));
+  it("uses the market's day for a market named on purpose, when that reaches the meal", () => {
+    expect(assignTrip(need(SUNDAY, { at: "market" }), trips)).toEqual(market(SATURDAY));
+    expect(assignTrip(need(THURSDAY, { at: "market" }), trips)).toEqual(market(THURSDAY));
   });
 
-  it("uses the bakery's day when the household gave it one", () => {
-    const days = [...DEFAULT_SHOPPING_DAYS, { weekday: 3, places: ["bakery" as const] }];
-    const withBakery = tripsBetween(days, "2026-10-05", "2026-10-25");
-    const bread = { at: "bakery" as const, shelfLifeDays: 2 };
-    expect(assignTrip(need(THURSDAY, bread), withBakery)).toEqual({
-      date: WEDNESDAY,
-      place: "bakery",
-      trip: "main",
-    });
-    // Until Saturday it would not keep: that day has an errand of its own.
-    expect(assignTrip(need(SATURDAY, bread), withBakery)?.date).toBe(SATURDAY);
+  it("puts everything on the one list of a household that buys in one go", () => {
+    const monday = singleTrip(MONDAY);
+    const meat = { fresh: "butcher" as const, shelfLifeDays: 3 };
+    expect(assignTrip(need(WEDNESDAY, meat), monday, [])).toEqual(shop(MONDAY));
   });
 
   it("works as before for a household with one shopping day", () => {
@@ -218,14 +233,15 @@ describe("nextTrip", () => {
     expect(nextTrip(DEFAULT_SHOPPING_DAYS, SATURDAY, null)?.date).toBe(NEXT_MONDAY);
   });
 
-  it("is the market or the butcher for what is sold fresh there", () => {
+  it("is the market for what is sold fresh there, and the supermarket for the rest", () => {
     expect(nextTrip(DEFAULT_SHOPPING_DAYS, SATURDAY, "market")).toEqual({
       date: SATURDAY,
       place: "market",
     });
+    // The butcher has no day to wait for.
     expect(nextTrip(DEFAULT_SHOPPING_DAYS, SATURDAY, "butcher")).toEqual({
-      date: SATURDAY,
-      place: "butcher",
+      date: NEXT_MONDAY,
+      place: "supermarket",
     });
     expect(nextTrip(DEFAULT_SHOPPING_DAYS, TUESDAY, "market")).toEqual({
       date: FRIDAY,
