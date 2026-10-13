@@ -62,7 +62,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
     loadHistory(db, week),
     loadExtras(db, week),
   ]);
-  const { recipes, categories, books } = library;
+  const { recipes, categories, books, tagGroups } = library;
   const recipeOf = new Map(recipes.map((recipe) => [recipe.id, recipe]));
   const categoryName = new Map(categories.map((category) => [category.key, category.name]));
   const nameOf = (recipe: RecipeSummary) =>
@@ -81,7 +81,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
     browsing && !extra && mode === "replace"
       ? suggest(
           recipes,
-          meal,
+          { date, meal },
           {
             balance: weekBalance(others, (id) => recipeOf.get(id), household.targets),
             planned,
@@ -194,7 +194,12 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
           filter={filter}
           categories={categories}
           books={books}
+          tagGroups={tagGroups}
           keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
+          plan={{
+            action: extra ? planExtra : planRecipe,
+            fields: extra ? { week } : { week, date, meal, mode },
+          }}
         />
       </section>
 

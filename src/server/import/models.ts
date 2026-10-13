@@ -4,6 +4,8 @@ import {
   createAnthropicReader,
   createAnthropicSuggester,
   createAnthropicSurveyor,
+  createAnthropicTagger,
+  createAnthropicTextReader,
   createAnthropicUprightFinder,
   createAnthropicVerifier,
 } from "./anthropic-reader";
@@ -22,8 +24,10 @@ export function importModels() {
     upright: createAnthropicUprightFinder(reading),
     frame: createAnthropicFramer(reading),
     read: createAnthropicReader(reading),
+    readText: createAnthropicTextReader(reading),
     verify: createAnthropicVerifier({ model: model("ANTHROPIC_VERIFY_MODEL") }),
     suggest: createAnthropicSuggester(reading),
+    tag: createAnthropicTagger(reading),
     readingModel: reading.model,
   };
 }

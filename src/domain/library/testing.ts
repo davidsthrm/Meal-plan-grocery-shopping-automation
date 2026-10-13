@@ -14,6 +14,8 @@ export function summary(id: string, patch: Partial<RecipeSummary> = {}): RecipeS
     sourcePage: null,
     servings: { min: 4, max: 4, unit: null },
     addedOn: "2026-01-05",
+    tags: [],
+    wanted: false,
     ...patch,
   };
 }

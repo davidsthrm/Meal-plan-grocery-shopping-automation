@@ -32,6 +32,7 @@ export default async function EditRecipePage(props: PageProps<"/rezepte/[id]/bea
         recipeId={id}
         recipe={recipe}
         categories={library.categories}
+        tagGroups={library.tagGroups}
         units={[...UNITS]}
         ingredientNames={catalog.map((ingredient) => ingredient.name)}
         knownNames={catalog.flatMap((ingredient) =>

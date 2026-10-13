@@ -4,7 +4,10 @@ import {
   dayAndMonth,
   daysBetween,
   isIsoDate,
+  isoWeek,
   mondayOf,
+  monthAndYear,
+  monthOfWeek,
   planningWeek,
   weekDates,
   weekRange,
@@ -65,6 +68,21 @@ describe("dates", () => {
     expect(weekRange("2026-10-12")).toBe("12.–18. Oktober");
     expect(weekRange("2026-09-28")).toBe("28. September – 4. Oktober");
     expect(weekRange("2026-12-28")).toBe("28. Dezember – 3. Januar");
+  });
+
+  it("numbers the weeks as the calendar on the wall does", () => {
+    expect(isoWeek("2026-10-12")).toBe(42);
+    expect(isoWeek("2026-10-18")).toBe(42);
+    // The first days of January can belong to the last week of the year before.
+    expect(isoWeek("2027-01-03")).toBe(53);
+    expect(isoWeek("2027-01-04")).toBe(1);
+    expect(isoWeek("2025-12-29")).toBe(1);
+  });
+
+  it("counts a week for the month most of its days are in", () => {
+    expect(monthOfWeek("2026-09-28")).toBe("2026-10");
+    expect(monthOfWeek("2026-10-26")).toBe("2026-10");
+    expect(monthAndYear("2026-10")).toBe("Oktober 2026");
   });
 
   it("tells a real date from anything else", () => {

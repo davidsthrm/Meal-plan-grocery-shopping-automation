@@ -6,7 +6,9 @@ import {
   searchWords,
   type SearchResult,
 } from "@/domain/library/search";
+import { ingredientKeys, type SearchIndex } from "@/domain/library/search-index";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
+import { groupTags, TAG_GROUPS, type Tag, type TagGroup } from "@/domain/library/tags";
 import { allRows, loadIngredientNames, must, type Db } from "./catalog";
 
 /**
@@ -20,6 +22,18 @@ export interface Library {
   /** The household's categories, in their order. */
   categories: Category[];
   books: string[];
+  /** What else recipes are described by, in groups: effort, kind of dish, cuisine and so on. */
+  tagGroups: TagGroup[];
+}
+
+/** The id of the row a tag is stored in, for the tags a recipe can be described by. */
+export async function loadTagIds(db: Db): Promise<Map<string, string>> {
+  const rows = must(await db.from("tag").select("id, key, group_name"), "load tags");
+  return new Map(
+    rows
+      .filter((row) => (TAG_GROUPS as readonly string[]).includes(row.group_name))
+      .map((row) => [row.key ?? row.id, row.id]),
+  );
 }
 
 export async function loadLibrary(db: Db): Promise<Library> {
@@ -29,36 +43,46 @@ export async function loadLibrary(db: Db): Promise<Library> {
         db
           .from("recipe")
           .select(
-            "id, title, kind, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, is_favorite, created_at",
+            "id, title, kind, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, is_favorite, wanted_at, created_at",
           )
           .eq("status", "approved")
           .order("id")
           .range(from, to),
       "load recipes",
     ),
-    db
-      .from("tag")
-      .select("id, key, name")
-      .eq("group_name", "Kategorie")
-      .not("key", "is", null)
-      .order("sort_order"),
+    db.from("tag").select("id, key, name, group_name").order("sort_order").order("name"),
   ]);
-  const categoryTags = must(tags, "load categories");
+  const allTags = must(tags, "load tags");
+  const categoryTags = allTags.filter((tag) => tag.group_name === "Kategorie" && tag.key !== null);
   const keyOf = new Map(categoryTags.map((tag) => [tag.id, tag.key as string]));
+  // A tag the household made has no key; the app then goes by its id.
+  const described: (Tag & { id: string })[] = allTags
+    .filter((tag) => (TAG_GROUPS as readonly string[]).includes(tag.group_name))
+    .map((tag) => ({ id: tag.id, ref: tag.key ?? tag.id, name: tag.name, group: tag.group_name }));
+  const refOf = new Map(described.map((tag) => [tag.id, tag.ref]));
+  const linked = [...keyOf.keys(), ...refOf.keys()];
   const links =
-    categoryTags.length === 0
+    linked.length === 0
       ? []
       : await allRows(
           (from, to) =>
             db
               .from("recipe_tag")
               .select("recipe_id, tag_id")
-              .in("tag_id", [...keyOf.keys()])
+              .in("tag_id", linked)
               .order("recipe_id")
+              .order("tag_id")
               .range(from, to),
-          "load recipe categories",
+          "load recipe tags",
         );
-  const categoryOf = new Map(links.map((link) => [link.recipe_id, keyOf.get(link.tag_id) ?? null]));
+  const categoryOf = new Map<string, string>();
+  const tagsOf = new Map<string, string[]>();
+  for (const link of links) {
+    const category = keyOf.get(link.tag_id);
+    if (category) categoryOf.set(link.recipe_id, category);
+    const ref = refOf.get(link.tag_id);
+    if (ref) tagsOf.set(link.recipe_id, [...(tagsOf.get(link.recipe_id) ?? []), ref]);
+  }
 
   const recipes = rows.map((row): RecipeSummary => ({
     id: row.id,
@@ -75,6 +99,8 @@ export async function loadLibrary(db: Db): Promise<Library> {
         ? { min: row.servings_min, max: row.servings_max, unit: row.servings_unit }
         : null,
     addedOn: row.created_at.slice(0, 10),
+    tags: tagsOf.get(row.id) ?? [],
+    wanted: row.wanted_at !== null,
   }));
   return {
     recipes,
@@ -82,6 +108,53 @@ export async function loadLibrary(db: Db): Promise<Library> {
     books: [...new Set(recipes.flatMap((recipe) => recipe.sourceBook ?? []))].sort((a, b) =>
       a.localeCompare(b, "de"),
     ),
+    tagGroups: groupTags(described.map(({ ref, name, group }) => ({ ref, name, group }))),
+  };
+}
+
+/**
+ * The library as the browser searches it while someone types: the recipes, and per recipe
+ * which ingredients it uses.
+ */
+export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
+  const [library, catalog, lines] = await Promise.all([
+    loadLibrary(db),
+    loadIngredientNames(db),
+    allRows(
+      (from, to) =>
+        db
+          .from("recipe_ingredient")
+          .select("recipe_id, ingredient_id, original_text")
+          .order("id")
+          .range(from, to),
+      "load ingredient lines",
+    ),
+  ]);
+  const at = new Map(catalog.map((ingredient, position) => [ingredient.id, position]));
+  const uses = new Map<string, Set<number>>();
+  const loose = new Map<string, string[]>();
+  for (const line of lines) {
+    const position = line.ingredient_id ? at.get(line.ingredient_id) : undefined;
+    if (position !== undefined) {
+      uses.set(line.recipe_id, (uses.get(line.recipe_id) ?? new Set()).add(position));
+    } else if (line.original_text) {
+      loose.set(line.recipe_id, [
+        ...(loose.get(line.recipe_id) ?? []),
+        searchKey(line.original_text),
+      ]);
+    }
+  }
+  return {
+    recipes: library.recipes,
+    categories: library.categories,
+    tags: library.tagGroups.flatMap((group) =>
+      group.tags.map((tag) => ({ ref: tag.ref, name: tag.name })),
+    ),
+    ingredients: catalog.map((ingredient) =>
+      ingredientKeys([ingredient.name, ...ingredient.synonyms]),
+    ),
+    uses: library.recipes.map((recipe) => [...(uses.get(recipe.id) ?? [])]),
+    loose: library.recipes.map((recipe) => (loose.get(recipe.id) ?? []).join(" ")),
   };
 }
 
@@ -157,8 +230,12 @@ export async function searchLibrary(
   filter: RecipeFilter,
 ): Promise<SearchResult> {
   const names = new Map(library.categories.map((category) => [category.key, category.name]));
+  const tagNames = new Map(
+    library.tagGroups.flatMap((group) => group.tags.map((tag) => [tag.ref, tag.name])),
+  );
   return searchRecipes(library.recipes, filter, {
     ingredientHits: filter.text.trim() === "" ? undefined : await ingredientHits(db, filter.text),
     categoryName: (key) => names.get(key),
+    tagName: (ref) => tagNames.get(ref),
   });
 }

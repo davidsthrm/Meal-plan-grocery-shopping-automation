@@ -701,11 +701,13 @@ export type Database = {
           servings_unit: string | null
           source_book: string | null
           source_page: number | null
+          source_text: string | null
           source_title: string | null
           status: Database["public"]["Enums"]["recipe_status"]
           steps: string | null
           title: string
           updated_at: string
+          wanted_at: string | null
         }
         Insert: {
           created_at?: string
@@ -720,11 +722,13 @@ export type Database = {
           servings_unit?: string | null
           source_book?: string | null
           source_page?: number | null
+          source_text?: string | null
           source_title?: string | null
           status?: Database["public"]["Enums"]["recipe_status"]
           steps?: string | null
           title: string
           updated_at?: string
+          wanted_at?: string | null
         }
         Update: {
           created_at?: string
@@ -739,11 +743,13 @@ export type Database = {
           servings_unit?: string | null
           source_book?: string | null
           source_page?: number | null
+          source_text?: string | null
           source_title?: string | null
           status?: Database["public"]["Enums"]["recipe_status"]
           steps?: string | null
           title?: string
           updated_at?: string
+          wanted_at?: string | null
         }
         Relationships: [
           {

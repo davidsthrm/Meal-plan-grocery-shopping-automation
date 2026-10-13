@@ -230,6 +230,8 @@ const LIBRARY: {
   makes?: { count: number; unit: string };
   /** Ingredient lines: catalog name, quantity and unit. */
   lines?: [string, number | null, Unit | null][];
+  /** Keys of the tags that describe it beyond its category. */
+  tags?: string[];
 }[] = [
   {
     title: "Gemüse-Lasagne",
@@ -238,6 +240,7 @@ const LIBRARY: {
     minutes: 60,
     book: "E2E Kochbuch",
     favorite: true,
+    tags: ["aufwendig", "auflauf", "italienisch"],
   },
   {
     title: "Käsespätzle",
@@ -245,6 +248,7 @@ const LIBRARY: {
     protein: "vegetarian",
     minutes: 45,
     book: "E2E Kochbuch",
+    tags: ["alltag", "pasta", "deutsch"],
   },
   {
     title: "Pilzrisotto",
@@ -252,6 +256,7 @@ const LIBRARY: {
     protein: "vegetarian",
     minutes: 35,
     book: "E2E Kochbuch",
+    tags: ["herbst", "reis", "italienisch"],
   },
   {
     title: "Kürbisgnocchi",
@@ -259,6 +264,7 @@ const LIBRARY: {
     protein: "vegetarian",
     minutes: 30,
     book: "E2E Kochbuch",
+    tags: ["herbst", "pasta"],
   },
   {
     title: "Ofengemüse mit Feta",
@@ -273,6 +279,7 @@ const LIBRARY: {
     protein: "vegan",
     minutes: 25,
     book: "Zweites Buch",
+    tags: ["asiatisch", "reis"],
   },
   {
     title: "Spinat-Cannelloni",
@@ -322,6 +329,7 @@ const LIBRARY: {
     protein: "poultry",
     minutes: 30,
     book: "E2E Kochbuch",
+    tags: ["ofen"],
   },
   {
     title: "Hähnchen-Wraps",
@@ -355,6 +363,7 @@ const LIBRARY: {
     protein: "red_meat",
     minutes: null,
     book: "Zweites Buch",
+    tags: ["aufwendig", "deutsch"],
   },
   {
     title: "Schweinemedaillons",
@@ -394,6 +403,13 @@ export async function resetLibrary(): Promise<void> {
   await clearRecipes(household);
   const goals = await db.from("household").update({ balance_targets: null }).eq("id", household);
   if (goals.error) throw new Error(`reset goals: ${goals.error.message}`);
+  // Tags a test made itself go again.
+  const own = await db
+    .from("tag")
+    .delete()
+    .eq("household_id", household)
+    .eq("group_name", "Eigene");
+  if (own.error) throw new Error(`clear own tags: ${own.error.message}`);
 
   const recipes = check(
     await db
@@ -429,6 +445,16 @@ export async function resetLibrary(): Promise<void> {
     })),
   );
   if (linked.error) throw new Error(`categorise library: ${linked.error.message}`);
+  const described = await db.from("recipe_tag").insert(
+    LIBRARY.flatMap((entry) =>
+      (entry.tags ?? []).map((key) => ({
+        household_id: household,
+        recipe_id: idOf.get(entry.title)!,
+        tag_id: tagOf.get(key)!,
+      })),
+    ),
+  );
+  if (described.error) throw new Error(`tag library: ${described.error.message}`);
 
   const catalog = check(
     await db.from("ingredient").select("id, name").eq("household_id", household),

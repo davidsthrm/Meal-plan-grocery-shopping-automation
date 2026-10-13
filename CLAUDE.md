@@ -33,12 +33,13 @@ is easier than pen and paper.
 | Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
 | The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
-| Browser test of a real upload with the models (about 1 ct)                | `npm run e2e:upload`                           |
+| Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                           |
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
+| Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
 | Regenerate the database types after a migration                           | `npm run db:types`                             |
 | Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
 
@@ -56,9 +57,17 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   then the goals of a week, coffee on Sundays, extras, foods for a cold supper, recipes
   typed in by hand and a search that forgives (done); 3c shopping list, print and PDF (done). The suggestions were planned as phase 5 and came forward:
   the household wants planning to start from them.
+- After the household's first week with the app (branch `phase-4-suggestions-favourites-history`):
+  suggestions only when asked, wishes, tags that describe a recipe, a page for favourites, a
+  search that answers while typing, recipes pasted as text, all weeks at a glance,
+  pictograms and a logo (done).
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
+- Run the browser tests through `npm run e2e`, never through `npx playwright test`: only
+  the script leaves out the paid upload test. A file is named with its path
+  (`npm run e2e -- e2e/list.spec.ts`); a bare word such as "plan" matches the name of the
+  project folder and with it every test.
 - There is no local Supabase (Docker does not start on this machine). Development and browser
   tests run against the hosted project, in a separate test household that row level security
   keeps apart from the real one. Never write test data into the real household.
@@ -107,11 +116,18 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
 - Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
-  its meals), `/woche/auswahl` (choosing a recipe for a meal or for the extras),
-  `/woche/lebensmittel` (what to buy for a meal without a recipe), `/woche/ziele` (the goals
-  of a week), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/[id]`,
-  `/rezepte/neu` and `/rezepte/[id]/bearbeiten` (a recipe typed or corrected by hand),
-  `/einkauf` (the shopping list of a week) with `/einkauf/pdf` (the same as a PDF), `/import`.
+  its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for), `/woche/auswahl`
+  (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
+  meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
+  month by month), `/rezepte` (browse and search, called "Entdecken"), `/favoriten`,
+  `/rezepte/[id]`, `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
+  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/einkauf` (the shopping list of a
+  week) with `/einkauf/pdf` (the same as a PDF), `/import`.
+- `/api/suche` hands the signed-in browser the library as a search index
+  (`SearchIndex`: recipes, and per recipe which catalog ingredients it uses). The search
+  field (`LiveSearch`) fetches it once per visit and searches it with the same pure
+  `searchRecipes` the server uses, so a list unfolds with the first letter and changes with
+  every further one. Sending the search still goes to the server and works without scripts.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request and cuts a longer answer off without saying
@@ -155,8 +171,18 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - One layout for all sizes: a single column on a phone, more columns from `sm` on. The week
   plan puts lunch and dinner side by side from tablet width. An iPad and an iPhone version
   with their own layouts are planned for later, so nothing may depend on hover or a mouse.
+- A recipe has a pictogram (`pictogramFor`: pasta, soup, fish, cake, 21 in all, drawn as
+  lines in `pictogram-paths.ts`). It stands large, pale and slightly out of focus behind a
+  card's text (`.watermark`) and small on its pastel in front of a name (`.badge`). The kind
+  of dish decides before what is in it: a salmon pasta is pasta. Never a photo.
+- The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
+  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar at the bottom
+  with a sign above each name.
+- What moves, moves a little: a card lifts under the finger (`.lift`), a page comes in
+  softly, and both are off for whoever asked for less motion. Nothing depends on it.
 - Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`
-  and so on). A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside use it.
+  and so on). Cakes and desserts have one too (`kind-sweet`), so a cake is not shown as a
+  vegetarian meal. A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside use it.
   The same colour marks the kind on a recipe card, next to a planned meal, in the week's
   count and in the goals. Keep the palette pastel: the household asked for that.
 - Tailwind runs as a PostCSS plugin (`postcss.config.mjs`), as the Next.js guide sets it up.
@@ -239,16 +265,34 @@ Week plan
 - A typed meal whose text is the title of a recipe is planned as that recipe. Any other typed
   meal stays text and offers "Rezept anlegen", which opens the recipe form with the title
   filled in and puts the saved recipe on that meal.
-- A suggestion has points and reasons (`scoreRecipe`): +3 when its group is still below the
-  least the week should have, -4 when its group is used up, +2 for a favourite, -3 when it
-  was on a plan in the last 4 weeks, +1 when it was last cooked 8 weeks ago or longer. Equal
-  recipes are ordered by a seed (week, draw, meal), so the order is stable between two looks
-  and "Andere Vorschläge" draws again.
-- Every open meal that is still to come shows one suggestion. They are chosen one after the
-  other as if the earlier ones were accepted (`suggestWeek`), so that accepting all of them
-  gives a week that meets the targets. Nothing is suggested twice in a week.
+- A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
+  when its group is still below the least the week should have, -4 when its group is used
+  up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
+  cooked 8 weeks ago or longer. Equal recipes are ordered by a seed (week, meal), so the
+  order is stable between two looks.
+- The plan does not fill itself. An open meal has "Planen" and "Hast du einen Vorschlag?".
+  Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Noch
+  ein Vorschlag" for the next best; after twelve they come round again. The household found
+  a plan that arrives full of suggestions too pushy.
+- Up to three open meals show an idea faintly, without being asked: the suggestions with
+  the most to say for them (a wish, a favourite, a gap in the week), spread over the week.
+  Tapping one asks about that meal.
+- "Plan vervollständigen" plans every open meal that is still to come at once. Those
+  suggestions are chosen one after the other as if the earlier ones were accepted
+  (`suggestWeek`), so that the completed week meets the targets. Nothing is suggested twice
+  in a week.
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
+- From Monday to Friday nobody cooks for hours (`suitsDay`): lunch is suggested from what
+  is quick or fits a normal day, the evening only from what is quick or cold. A recipe whose
+  effort is not known is kept for the weekend. The household had many warm main dishes
+  suggested for workday evenings that it could never cook then.
+- "Möchte ich kochen" marks a recipe someone wants to cook soon (`recipe.wanted_at`). It is
+  suggested before everything else, shown above the plan to be placed with one tap, and the
+  mark goes as soon as the recipe is on a plan (`fulfilWishes`), as a meal or as an extra.
+- "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
+  first, with its calendar week, its meals day by day and its count per kind. A week counts
+  for the month most of its days are in. The week being planned is always listed.
 - A recipe for persons is planned for the household's servings, a recipe with a servings
   unit as written.
 - "Letzte Woche übernehmen" copies last week's meals into the meals this week has not
@@ -256,7 +300,29 @@ Week plan
 
 Library
 
-- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`).
+- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`,
+  `tag` with one or more tags separated by commas; several tags mean all of them).
+- Beyond its category a recipe is described by tags in groups (`src/domain/library/tags.ts`):
+  "Aufwand" (Schnell, Alltagsküche, Braucht Zeit), "Gericht" (pasta, rice, potatoes,
+  casserole, pizza, pan, oven, burger), "Küche", "Saison", "Anlass", and "Eigene" for tags
+  the household makes itself. The app refers to a tag by its key, or by its id when it has
+  none. "Aufwand" and "Küche" hold one tag per recipe.
+- The tags are suggestions and the household's to change: "Ändern" on a recipe switches
+  them on and off and takes new ones ("Omas Rezept"). `tagRecipes` suggests them with the
+  reading model from title, category, printed time and ingredients, fifteen recipes per
+  request, for recipes that do not say yet how much work they are: at the end of a batch,
+  after a recipe was pasted as text, and for a whole library with
+  `npm run import:tag-recipes`. A printed time is a fact the suggestion cannot overrule
+  downwards (`settleEffort`): more than an hour is never quick. The batch page asks with
+  three requests side by side, so two can describe the same recipe at once and each leave
+  an effort or a cuisine; what is one too many is removed again (`surplusTags`: of two
+  efforts the longer one stays). The paid upload test found a recipe that was both
+  "Mediterran" and "Italienisch".
+- A recipe's effort is its tag, or without one its printed time: up to 30 minutes quick, up
+  to 60 everyday, more takes time (`effortOf`). With neither it is not known.
+- Described with `claude-haiku-5-5` (October 2026): 880 recipes for about 9 cents; 474
+  quick, 290 everyday, 115 that take time. 45 of them were looked at by eye and read
+  sensibly; nothing was measured against a list made by hand.
 - The search is meant to find, not to be exact (`searchRecipes`). Words are compared without
   umlauts. A word fits a recipe as a word of its title, the start of one, a part of one
   ("nudel" in "Pestonudeln"), an ingredient (catalog name, other names, or the printed line
@@ -276,9 +342,22 @@ Library
   are the ingredients above it. Opened, it shows the recipe's own part of the page where it
   shares the page with others, with a link to the whole page below.
 - A recipe without a printed time is never "quick".
-- Without a filter the page shows shelves: favourites, quick meals, long not cooked, then
-  by category, diet and cookbook. A shelf shows ten recipes, favourites first, the others in
-  an order that changes by the day.
+- Without a filter the page shows a few shelves that change with the day (`discover`):
+  what someone wants to cook, favourites, quick meals, what is tagged for the season, long
+  not cooked, new. A shelf shows ten recipes, favourites first, the others in an order that
+  changes by the day. Below them "Stöbern" is a directory (`directory`): every category,
+  tag, diet and cookbook as a tile with the number of recipes behind it. A library of up to
+  thirty recipes is also shown whole.
+- "Favoriten" has a page of its own: on top what someone wants to cook, then the favourites
+  sorted by category (`byCategory`). Its search and filters look through favourites only.
+- A recipe can be pasted as text (`/rezepte/neu?art=text`): the reading model reads it by
+  the rules for photos (`createAnthropicTextReader`), and what it read fills the form for a
+  typed recipe (`pastedRecipe`), where a person checks it before anything is saved. What
+  needs a look is listed above the form: no title, no servings, a line the model was unsure
+  about, an alternative that was left out. The pasted text is kept with the recipe
+  (`recipe.source_text`) and shown on its page, because the steps are nowhere else. Tried on
+  one made-up web page with navigation and a story around the recipe: all nine ingredients
+  right, about 0.2 cents.
 
 Shopping list
 
@@ -315,7 +394,9 @@ Shopping list
   (`shopping_line_state`). The table `shopping_line` is not written yet.
 - Besides the cooked meals the list holds the week's extras, scaled like a meal and bought on
   the main shopping day, and the foods of meals without a recipe, by name and without an
-  amount. A food bought somewhere else than the catalog says is its own line
+  amount. The exception is a food named as one piece of something bought by the piece:
+  "Gurke" for the catalog's "Gurken" is "1 Gurke" and adds up with what recipes need
+  (`namesOnePiece`). Named in the plural it stays a name. A food bought somewhere else than the catalog says is its own line
   (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.
 - The main shopping day is the household's weekday of the planned week (Monday).
 - Export: the page has a print layout (black on white, two columns, a box per line, no
@@ -443,6 +524,14 @@ Import
 - Grouping title and ingredient pages has only been tested with made-up page descriptions.
   The sample photos contain no recipe that spans two photos. Check it on the first real batch.
 - Not built yet in the import: retrying a failed page or recipe from the screen.
+- The tags of a batch are suggested at its end, while its page is open. A batch that was
+  left earlier keeps recipes without tags; `npm run import:tag-recipes` catches up. A recipe
+  typed in by hand gets no suggested tags, and its tags can only be set under "Ändern".
+- Which days count as workdays is fixed: Monday to Friday. A holiday is planned by hand.
+- A printed time often counts only the work at the stove. The tag suggestion knows that;
+  the rule for recipes without a tag (`effortOf`) does not.
+- The live search loads the whole library into the browser, about 880 recipes today. Watch
+  how long that takes as the library grows.
 - A recipe's own view of its page can miss the end of its steps where the text runs on in
   the next column: one of 24 views looked at. The whole page is linked below the view.
 - The cookbooks were framed with the first way of asking, and only their turned pages and

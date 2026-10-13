@@ -112,4 +112,34 @@ describe("the parts of the search", () => {
     expect(nearlyContains("pestonudeln", "nudln")).toBe(true);
     expect(nearlyContains("vanilleeis", "reis")).toBe(false);
   });
+
+  it("finds recipes by the name of one of their tags", () => {
+    const curry = summary("gemuesecurry", { title: "Gemüsecurry", tags: ["asiatisch"] });
+    const stew = summary("eintopf", { title: "Linseneintopf", tags: ["deutsch"] });
+    const names = new Map([
+      ["asiatisch", "Asiatisch"],
+      ["deutsch", "Deutsch & Schwäbisch"],
+    ]);
+    const found = searchRecipes(
+      [curry, stew],
+      { ...NO_FILTER, text: "asiatisch" },
+      {
+        tagName: (ref) => names.get(ref),
+      },
+    );
+    expect(found.matches.map((recipe) => recipe.id)).toEqual(["gemuesecurry"]);
+  });
+
+  it("reads one or two letters as the beginning of a title, not as a word", () => {
+    const french = summary("ciabatta", { title: "Ciabatta à la française" });
+    const salmon = summary("lachs", { title: "Lachs mit Currysahne" });
+    const lasagne = summary("lasagne", { title: "Gemüse-Lasagne" });
+    const found = (text: string) =>
+      searchRecipes([french, lasagne, salmon], { ...NO_FILTER, text }).matches.map((r) => r.id);
+    // The title that starts with it first, then titles with a word that does.
+    expect(found("la")).toEqual(["lachs", "ciabatta", "lasagne"]);
+    expect(found("l")[0]).toBe("lachs");
+    // A whole word still beats the beginning of one.
+    expect(found("lasagne")).toEqual(["lasagne"]);
+  });
 });

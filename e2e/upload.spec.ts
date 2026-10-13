@@ -31,5 +31,7 @@ test("a batch of iPhone photos is uploaded, read and sorted @api", async ({ page
   await page.getByRole("link", { name: /Linsen-Eintopf/ }).click();
   await expect(page.getByText("Upload-Test, S. 84")).toBeVisible();
   await expect(page.getByText("1,25 l")).toBeVisible();
-  await expect(page.getByRole("img", { name: "Seite 1 von Linsen-Eintopf" })).toBeVisible();
+  // The photographed page is folded away until asked for.
+  await page.getByText("Originalfoto").click();
+  await expect(page.getByAltText("Seite 1 von Linsen-Eintopf")).toBeVisible();
 });

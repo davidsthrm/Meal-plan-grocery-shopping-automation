@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discover } from "./discover";
+import { byCategory, directory, discover, seasonOf } from "./discover";
 import { filterRecipes } from "./filter";
 import { summary } from "./testing";
 
@@ -10,48 +10,39 @@ const categories = [
 ];
 const old = { addedOn: "2026-01-05" };
 const recipes = [
-  summary("lasagne", { ...old, prepMinutes: 60 }),
+  summary("lasagne", { ...old, prepMinutes: 60, tags: ["aufwendig", "herbst"] }),
   summary("lachs", { ...old, proteinType: "fish", prepMinutes: 20, isFavorite: true }),
   summary("steak", { ...old, proteinType: "red_meat", sourceBook: "Freude am Kochen" }),
   summary("kuchen", { ...old, category: "kuchen", prepMinutes: 15, sourceBook: null }),
-  summary("neu", { addedOn: "2026-10-10", proteinType: "poultry" }),
+  summary("neu", { addedOn: "2026-10-10", proteinType: "poultry", tags: ["schnell"] }),
 ];
-const options = { today: "2026-10-12", history: new Map(), categories };
-const shelves = (list = recipes, patch = {}) =>
-  discover(list, { ...options, ...patch }).flatMap((group) => group.shelves);
+const options = { today: "2026-10-12", history: new Map() };
 const shelf = (key: string, list = recipes, patch = {}) =>
-  shelves(list, patch).find((entry) => entry.key === key);
+  discover(list, { ...options, ...patch }).find((entry) => entry.key === key);
 
 describe("discover", () => {
-  it("groups the library by what it is for, kind, diet and cookbook", () => {
-    expect(discover(recipes, options).map((group) => group.title)).toEqual([
-      "Auswahl",
-      "Nach Art",
-      "Nach Ernährung",
-      "Nach Kochbuch",
-    ]);
-    expect(shelves().map((entry) => [entry.key, entry.total])).toEqual([
+  it("puts a few shelves on top that change with the day, and leaves out empty ones", () => {
+    expect(discover(recipes, options).map((entry) => [entry.key, entry.total])).toEqual([
       ["favoriten", 1],
       ["schnell", 1],
+      ["saison", 1],
       ["neu", 1],
-      ["kategorie-hauptgericht", 4],
-      ["kategorie-kuchen", 1],
-      ["kost-vegetarisch", 2],
-      ["kost-fisch", 1],
-      ["kost-gefluegel", 1],
-      ["kost-fleisch", 1],
-      ["buch-Freude am Kochen", 1],
-      ["buch-Speed Cooking", 3],
     ]);
   });
 
-  it("names a shelf as the household named the category, and leaves out empty ones", () => {
-    expect(shelf("kategorie-kuchen")?.title).toBe("Kuchen & Gebäck");
-    expect(shelf("kategorie-getraenk")).toBeUndefined();
+  it("leads with what someone wants to cook", () => {
+    const wished = recipes.map((recipe) => ({ ...recipe, wanted: recipe.id === "steak" }));
+    const [first] = discover(wished, options);
+    expect(first).toMatchObject({ key: "wunsch", title: "Möchte ich kochen", total: 1 });
   });
 
-  it("gives every shelf the filter that lists all of it", () => {
-    for (const entry of shelves()) {
+  it("shows what is tagged for the season of the day", () => {
+    expect(shelf("saison")).toMatchObject({ title: "Jetzt im Herbst", total: 1 });
+    expect(shelf("saison", recipes, { today: "2026-07-01" })).toBeUndefined();
+  });
+
+  it("gives a shelf the filter that lists all of it, where a filter can say it", () => {
+    for (const entry of discover(recipes, options)) {
       if (entry.filter === null) continue;
       expect(filterRecipes(recipes, entry.filter).length, entry.key).toBe(entry.total);
     }
@@ -62,13 +53,15 @@ describe("discover", () => {
   });
 
   it("shows a few recipes of a large shelf, favourites first, others changing by the day", () => {
-    const many = Array.from({ length: 40 }, (_, i) => summary(`r${i}`, old));
+    const many = Array.from({ length: 40 }, (_, i) =>
+      summary(`r${i}`, { ...old, tags: ["herbst"] }),
+    );
     many[17] = { ...many[17], isFavorite: true };
-    const monday = shelf("kategorie-hauptgericht", many, { size: 5 })!;
+    const monday = shelf("saison", many, { size: 5 })!;
     expect(monday.total).toBe(40);
     expect(monday.recipes).toHaveLength(5);
     expect(monday.recipes[0].id).toBe("r17");
-    const tuesday = shelf("kategorie-hauptgericht", many, { size: 5, today: "2026-10-13" })!;
+    const tuesday = shelf("saison", many, { size: 5, today: "2026-10-13" })!;
     expect(tuesday.recipes[0].id).toBe("r17");
     expect(tuesday.recipes.map((r) => r.id)).not.toEqual(monday.recipes.map((r) => r.id));
   });
@@ -89,5 +82,65 @@ describe("discover", () => {
   it("has no shelf of new recipes while most of the library is new", () => {
     const fresh = recipes.map((recipe) => ({ ...recipe, addedOn: "2026-10-11" }));
     expect(shelf("neu", fresh)).toBeUndefined();
+  });
+});
+
+describe("seasonOf", () => {
+  it("goes by the calendar", () => {
+    expect(seasonOf("2026-03-01")).toBe("fruehling");
+    expect(seasonOf("2026-08-31")).toBe("sommer");
+    expect(seasonOf("2026-10-12")).toBe("herbst");
+    expect(seasonOf("2026-12-24")).toBe("winter");
+    expect(seasonOf("2027-02-28")).toBe("winter");
+  });
+});
+
+describe("directory", () => {
+  const tagGroups = [
+    {
+      name: "Aufwand",
+      tags: [
+        { ref: "schnell", name: "Schnell", group: "Aufwand" },
+        { ref: "alltag", name: "Alltagsküche", group: "Aufwand" },
+        { ref: "aufwendig", name: "Braucht Zeit", group: "Aufwand" },
+      ],
+    },
+    { name: "Saison", tags: [{ ref: "herbst", name: "Herbst", group: "Saison" }] },
+    { name: "Anlass", tags: [{ ref: "grillen", name: "Grillen", group: "Anlass" }] },
+  ];
+  const books = ["Freude am Kochen", "Speed Cooking"];
+  const sections = directory(recipes, { categories, tagGroups, books });
+
+  it("lists every way to narrow the library down, with the number of recipes behind it", () => {
+    expect(
+      sections.map((section) => [
+        section.title,
+        section.entries.map((entry) => `${entry.label} ${entry.count}`),
+      ]),
+    ).toEqual([
+      ["Art", ["Hauptgericht 4", "Kuchen & Gebäck 1"]],
+      ["Aufwand", ["Schnell 1", "Braucht Zeit 1"]],
+      ["Saison", ["Herbst 1"]],
+      ["Ernährung", ["Vegetarisch 2", "Fisch 1", "Geflügel 1", "Fleisch 1"]],
+      ["Kochbuch", ["Freude am Kochen 1", "Speed Cooking 3"]],
+    ]);
+  });
+
+  it("gives every entry the filter that lists exactly its recipes", () => {
+    for (const entry of sections.flatMap((section) => section.entries)) {
+      expect(filterRecipes(recipes, entry.filter).length, entry.key).toBe(entry.count);
+    }
+  });
+});
+
+describe("byCategory", () => {
+  it("sorts recipes into their categories in the household's order, by title", () => {
+    const loose = summary("vesperbrett", { category: null });
+    const groups = byCategory([...recipes, loose], [...categories].reverse());
+    expect(groups.map((group) => [group.name, group.recipes.map((recipe) => recipe.id)])).toEqual([
+      ["Kuchen & Gebäck", ["kuchen"]],
+      ["Hauptgericht", ["lachs", "lasagne", "neu", "steak"]],
+      ["Ohne Art", ["vesperbrett"]],
+    ]);
   });
 });

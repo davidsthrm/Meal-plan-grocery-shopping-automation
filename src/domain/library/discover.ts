@@ -1,11 +1,13 @@
 import { daysBetween, type IsoDate } from "../dates";
 import { rank } from "../rank";
-import { matchesFilter, NO_FILTER, type RecipeFilter } from "./filter";
+import { DIETS, matchesFilter, NO_FILTER, type Diet, type RecipeFilter } from "./filter";
 import { isMeal, type Category, type History, type RecipeSummary } from "./summary";
+import type { TagGroup } from "./tags";
 
 /**
- * The library as shelves to browse: the same recipes grouped by different criteria. A shelf
- * shows a handful and says how many there are; "show all" is the shelf's filter.
+ * The library to browse. On top a few shelves that change with the day: what someone wants to
+ * cook, favourites, what is quick, what is in season. Below them a directory: every way the
+ * library can be narrowed down, with the number of recipes behind it.
  */
 
 export interface Shelf {
@@ -18,16 +20,9 @@ export interface Shelf {
   recipes: RecipeSummary[];
 }
 
-export interface ShelfGroup {
-  title: string;
-  shelves: Shelf[];
-}
-
 export interface DiscoverOptions {
   today: IsoDate;
   history: History;
-  /** The household's categories, in their order. */
-  categories: Category[];
   /** How many recipes a shelf shows. */
   size?: number;
 }
@@ -38,19 +33,27 @@ export const LONG_AGO_DAYS = 56;
 const NEW_DAYS = 14;
 const QUICK_MINUTES = 20;
 
-const DIET_SHELVES = [
-  { diet: "vegetarisch", title: "Vegetarisch" },
-  { diet: "vegan", title: "Vegan" },
-  { diet: "fisch", title: "Fisch" },
-  { diet: "gefluegel", title: "Geflügel" },
-  { diet: "fleisch", title: "Fleisch" },
-] as const;
+export const SEASONS = ["fruehling", "sommer", "herbst", "winter"] as const;
+export type Season = (typeof SEASONS)[number];
 
-export function discover(
-  recipes: readonly RecipeSummary[],
-  options: DiscoverOptions,
-): ShelfGroup[] {
-  const { today, history, categories } = options;
+/** The season a day belongs to, by the calendar: spring starts in March. */
+export function seasonOf(date: IsoDate): Season {
+  const month = Number(date.slice(5, 7));
+  if (month >= 3 && month <= 5) return "fruehling";
+  if (month >= 6 && month <= 8) return "sommer";
+  return month >= 9 && month <= 11 ? "herbst" : "winter";
+}
+
+const SEASON_SHELF: Record<Season, string> = {
+  fruehling: "Jetzt im Frühling",
+  sommer: "Jetzt im Sommer",
+  herbst: "Jetzt im Herbst",
+  winter: "Jetzt im Winter",
+};
+
+/** The shelves on top of the library, without the empty ones. */
+export function discover(recipes: readonly RecipeSummary[], options: DiscoverOptions): Shelf[] {
+  const { today, history } = options;
   const size = options.size ?? 10;
 
   // Favourites lead every shelf. The rest changes from day to day, so that browsing shows
@@ -84,8 +87,15 @@ export function discover(
     return last !== null && daysBetween(last, today) >= LONG_AGO_DAYS;
   });
   const fresh = recipes.filter((recipe) => daysBetween(recipe.addedOn, today) <= NEW_DAYS);
+  const season = seasonOf(today);
 
-  const picked: Shelf[] = [
+  const shelves: Shelf[] = [
+    shelf(
+      "wunsch",
+      "Möchte ich kochen",
+      recipes.filter((recipe) => recipe.wanted),
+      null,
+    ),
     filtered("favoriten", "Favoriten", { ...NO_FILTER, favorites: true }),
     shelf(
       "schnell",
@@ -96,6 +106,7 @@ export function discover(
       ),
       null,
     ),
+    filtered("saison", SEASON_SHELF[season], { ...NO_FILTER, tags: [season] }),
     // Longest ago first.
     shelf("lange-nicht", "Lange nicht gekocht", longAgo, null, (a, b) =>
       (lastCooked(a) as IsoDate).localeCompare(lastCooked(b) as IsoDate),
@@ -104,35 +115,111 @@ export function discover(
   // Right after a cookbook was photographed, everything is new, and a shelf saying so says
   // nothing. It appears once new recipes are the exception.
   if (fresh.length * 3 < recipes.length) {
-    picked.push(shelf("neu", "Neu", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)));
+    shelves.push(shelf("neu", "Neu", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)));
   }
+  return shelves.filter((entry) => entry.total > 0);
+}
 
-  const books = [...new Set(recipes.flatMap((recipe) => recipe.sourceBook ?? []))].sort((a, b) =>
-    a.localeCompare(b, "de"),
-  );
-  const groups: ShelfGroup[] = [
-    { title: "Auswahl", shelves: picked },
+/** One way to narrow the library down, and how many recipes it leaves. */
+export interface DirectoryEntry {
+  key: string;
+  label: string;
+  count: number;
+  filter: RecipeFilter;
+}
+
+export interface DirectorySection {
+  title: string;
+  entries: DirectoryEntry[];
+}
+
+export interface DirectoryOptions {
+  /** The household's categories, in their order. */
+  categories: readonly Category[];
+  tagGroups: readonly TagGroup[];
+  books: readonly string[];
+}
+
+const DIET_LABEL: Record<Diet, string> = {
+  vegetarisch: "Vegetarisch",
+  vegan: "Vegan",
+  fisch: "Fisch",
+  gefluegel: "Geflügel",
+  fleisch: "Fleisch",
+};
+
+/**
+ * The library as a directory: by category, by each group of tags, by diet and by cookbook.
+ * Entries nothing is behind are left out, and so are sections without an entry.
+ */
+export function directory(
+  recipes: readonly RecipeSummary[],
+  options: DirectoryOptions,
+): DirectorySection[] {
+  const entry = (key: string, label: string, filter: RecipeFilter): DirectoryEntry => ({
+    key,
+    label,
+    filter,
+    count: recipes.filter((recipe) => matchesFilter(recipe, filter)).length,
+  });
+  const sections: DirectorySection[] = [
     {
-      title: "Nach Art",
-      shelves: categories.map((category) =>
-        filtered(`kategorie-${category.key}`, category.name, {
-          ...NO_FILTER,
-          category: category.key,
-        }),
+      title: "Art",
+      entries: options.categories.map((category) =>
+        entry(`kategorie-${category.key}`, category.name, { ...NO_FILTER, category: category.key }),
       ),
     },
-    {
-      title: "Nach Ernährung",
-      shelves: DIET_SHELVES.map(({ diet, title }) =>
-        filtered(`kost-${diet}`, title, { ...NO_FILTER, diet }),
+    ...options.tagGroups.map((group) => ({
+      title: group.name,
+      entries: group.tags.map((tag) =>
+        entry(`tag-${tag.ref}`, tag.name, { ...NO_FILTER, tags: [tag.ref] }),
       ),
+    })),
+    {
+      title: "Ernährung",
+      entries: DIETS.map((diet) => entry(`kost-${diet}`, DIET_LABEL[diet], { ...NO_FILTER, diet })),
     },
     {
-      title: "Nach Kochbuch",
-      shelves: books.map((book) => filtered(`buch-${book}`, book, { ...NO_FILTER, book })),
+      title: "Kochbuch",
+      entries: options.books.map((book) => entry(`buch-${book}`, book, { ...NO_FILTER, book })),
     },
   ];
-  return groups
-    .map((group) => ({ ...group, shelves: group.shelves.filter((s) => s.total > 0) }))
-    .filter((group) => group.shelves.length > 0);
+  return sections
+    .map((section) => ({ ...section, entries: section.entries.filter((e) => e.count > 0) }))
+    .filter((section) => section.entries.length > 0);
+}
+
+export interface CategoryGroup {
+  /** Key of the category. Null for recipes without one. */
+  key: string | null;
+  name: string;
+  recipes: RecipeSummary[];
+}
+
+/**
+ * Recipes sorted into their categories, in the household's order, each group by title.
+ * Recipes without a category come last. Empty groups are left out.
+ */
+export function byCategory(
+  recipes: readonly RecipeSummary[],
+  categories: readonly Category[],
+): CategoryGroup[] {
+  const known = new Set(categories.map((category) => category.key));
+  const sorted = (members: RecipeSummary[]) =>
+    members.sort((a, b) => a.title.localeCompare(b.title, "de"));
+  const groups: CategoryGroup[] = [
+    ...categories.map((category) => ({
+      key: category.key,
+      name: category.name,
+      recipes: sorted(recipes.filter((recipe) => recipe.category === category.key)),
+    })),
+    {
+      key: null,
+      name: "Ohne Art",
+      recipes: sorted(
+        recipes.filter((recipe) => recipe.category === null || !known.has(recipe.category)),
+      ),
+    },
+  ];
+  return groups.filter((group) => group.recipes.length > 0);
 }

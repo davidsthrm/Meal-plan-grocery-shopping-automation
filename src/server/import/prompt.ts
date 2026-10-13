@@ -117,3 +117,33 @@ export const UPRIGHT_PROMPT = `You are shown one photo of a page from a German c
 - Judge by the text of the recipes, printed or handwritten. Ignore a page number, a book spine, a caption set sideways on purpose, and another sheet or a tablecloth that shows behind the page.
 - words: a few words you can read in the copy you choose, as they are written there.
 - upright: the name of that copy.`;
+
+/** Added to the reading instructions when the recipe comes as text instead of as a photo. */
+export const PASTED_TEXT_NOTE = `This time the recipe does not come as photos. It is text someone copied from a website, a message or a document and pasted in. Everything above applies with "the text" in place of "the photos":
+- "raw" is the line as it stands in the text.
+- The text may contain more than the recipe: navigation, advertising, comments, ratings, a story before the recipe. None of that belongs to it.
+- If the text holds several recipes, read the first complete one and say so in "notes".
+- If the text is no recipe at all, return no title and no ingredients and say so in "uncertain".
+- "page" is null.`;
+
+export const TAGGING_PROMPT = `You describe German recipes with a few tags for a family's meal planner. For each recipe you get one numbered line: its title, its category if it has one, the time its cookbook prints if it prints one, and its ingredients. You return one entry per recipe with the same number.
+
+The tags help the family browse and keep long cooking out of working days. A wrong tag is worse than a missing one: where the line does not say enough, leave the list empty or the value null. Only "effort" always has a value.
+
+- effort: how much work and time the dish is, all in all, from starting to cook to eating.
+  - "schnell": on the table in about 30 minutes, little preparation. A pan dish, pasta with a quick sauce, a salad, a sandwich.
+  - "alltag": fits a normal day, 30 to 60 minutes, or longer with the oven doing the work and little to do meanwhile.
+  - "aufwendig": takes more than an hour of attention or several hours in all, or many steps: a roast, braised meat, yeast dough, a layered cake, stuffed or rolled dishes, homemade pasta or dumplings.
+  A printed time often counts only the work at the stove and leaves out baking, braising, resting or chilling. Go by what the dish needs in all.
+- dish: what kind of dish it is. Any that clearly fit, mostly one or none.
+  - "pasta": pasta, noodles, gnocchi, spätzle as the main part.
+  - "reis": rice or grains as the main part: risotto, fried rice, couscous, bulgur.
+  - "kartoffeln": potatoes as the main part.
+  - "auflauf": baked in a dish with a topping: casserole, gratin, lasagne.
+  - "pizza": pizza, quiche, tarte flambée, savoury tart.
+  - "pfanne": cooked in a pan or wok in one go.
+  - "ofen": roasted or baked in the oven and none of the above: a roast, a tray bake.
+  - "burger": burgers, wraps, sandwiches, filled flatbreads.
+- cuisine: one of "deutsch" (German, Swabian, Austrian home cooking), "italienisch", "mediterran" (Greek, Spanish, southern French), "asiatisch", "orientalisch" (Middle East, North Africa, Turkey, India counts as "asiatisch"), "amerikanisch" (US, Tex-Mex, Mexican). Null when the dish belongs to none in particular.
+- seasons: only for a dish that depends on a season's produce or belongs to a time of year: asparagus or rhubarb are "fruehling", grilling, berries or a cold soup "sommer", pumpkin, game or mushrooms "herbst", cabbage, stews with root vegetables or Christmas baking "winter". Most dishes have none.
+- occasions: "fuer-gaeste" for a dish that is made to impress or to serve many, "fest" for a Sunday roast or holiday meal, "grillen" for the barbecue, "mitnehmen" for what travels well cold (a picnic, a lunch box), "weihnachten" for Christmas baking and Christmas dishes. Most dishes have none.`;

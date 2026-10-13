@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import type { z } from "zod";
 import { extractedRecipeSchema, type ExtractedRecipe } from "@/domain/import/extraction";
 import {
   pageFrameSchema,
@@ -15,11 +16,14 @@ import {
 import type { PreparedImage } from "./normalize-image";
 import { suggestionSchema, toProposals, type Suggestions } from "@/domain/import/proposal";
 import { pageSurveySchema, type PageSurvey } from "@/domain/import/survey";
+import { taggingLine, taggingSchema } from "@/domain/library/tagging";
 import {
   EXTRACTION_PROMPT,
   FRAME_PROMPT,
+  PASTED_TEXT_NOTE,
   SUGGESTION_PROMPT,
   SURVEY_PROMPT,
+  TAGGING_PROMPT,
   UPRIGHT_PROMPT,
   VERIFICATION_PROMPT,
 } from "./prompt";
@@ -30,7 +34,9 @@ import {
   type PageSurveyor,
   type ReadOptions,
   type RecipeReader,
+  type RecipeTagger,
   type RecipeVerifier,
+  type TextRecipeReader,
   type UprightFinder,
 } from "./read-recipe";
 
@@ -114,6 +120,37 @@ export function createAnthropicReader(options: AnthropicReaderOptions): RecipeRe
       zodOutputFormat(extractedRecipeSchema),
     );
     return { recipe: output, model, usage };
+  };
+}
+
+/** Reads a recipe from pasted text with a Claude model, by the same rules as from photos. */
+export function createAnthropicTextReader(options: AnthropicReaderOptions): TextRecipeReader {
+  return async (text) => {
+    const { output, model, usage } = await ask<ExtractedRecipe>(
+      options,
+      `${EXTRACTION_PROMPT}\n\n${PASTED_TEXT_NOTE}`,
+      [{ type: "text", text: `Read the recipe in this text.\n\n<text>\n${text}\n</text>` }],
+      zodOutputFormat(extractedRecipeSchema),
+    );
+    return { recipe: output, model, usage };
+  };
+}
+
+/** Suggests tags for recipes with a Claude model, from what is known about them as text. */
+export function createAnthropicTagger(options: AnthropicReaderOptions): RecipeTagger {
+  return async (recipes) => {
+    if (recipes.length === 0)
+      return { suggestions: [], usage: { inputTokens: 0, outputTokens: 0 } };
+    const { output, usage } = await ask<z.infer<typeof taggingSchema>>(
+      { effort: "low", ...options },
+      TAGGING_PROMPT,
+      [{ type: "text", text: recipes.map((recipe, i) => taggingLine(recipe, i + 1)).join("\n") }],
+      zodOutputFormat(taggingSchema),
+    );
+    return {
+      suggestions: recipes.map((_, i) => output.recipes.find((entry) => entry.n === i + 1) ?? null),
+      usage,
+    };
   };
 }
 

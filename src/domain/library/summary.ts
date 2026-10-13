@@ -19,6 +19,10 @@ export interface RecipeSummary {
   servings: Servings | null;
   /** The day it entered the library. */
   addedOn: IsoDate;
+  /** What else describes it: effort, kind of dish, cuisine, season, occasion. See `tags.ts`. */
+  tags: readonly string[];
+  /** Someone marked it as "want to cook this". */
+  wanted: boolean;
 }
 
 /** A category as the household named it. The key is what the app goes by. */

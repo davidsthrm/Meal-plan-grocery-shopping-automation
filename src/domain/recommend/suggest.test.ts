@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { summary } from "../library/testing";
 import type { RecipeSummary } from "../library/summary";
 import { groupOf, weekBalance, withMeal, type BalanceLine } from "./balance";
-import { scoreRecipe, suggest, suggestWeek, type SuggestContext } from "./suggest";
+import type { Meal } from "../plan";
+import { scoreRecipe, suggest, suggestWeek, suitsDay, type SuggestContext } from "./suggest";
 
 const emptyWeek = weekBalance([], () => undefined);
 const context = (patch: Partial<SuggestContext> = {}): SuggestContext => ({
@@ -15,6 +16,11 @@ const context = (patch: Partial<SuggestContext> = {}): SuggestContext => ({
 });
 const after = (...groups: Parameters<typeof withMeal>[1][]): BalanceLine[] =>
   groups.reduce<BalanceLine[]>((balance, group) => withMeal(balance, group), emptyWeek);
+
+/** A meal of the Saturday of the test week, when anything may be cooked. */
+const SATURDAY = "2026-10-17";
+const WEDNESDAY = "2026-10-14";
+const at = (meal: Meal, date = SATURDAY) => ({ date, meal });
 
 const lasagne = summary("lasagne");
 const salmon = summary("lachs", { proteinType: "fish" });
@@ -69,6 +75,18 @@ describe("scoreRecipe", () => {
     ).toEqual([]);
   });
 
+  it("puts what someone wants to cook before everything else", () => {
+    const wish = scoreRecipe({ ...steak, wanted: true }, context());
+    expect(wish.reasons).toEqual([{ kind: "wanted" }]);
+    const favourite = scoreRecipe({ ...salmon, isFavorite: true }, context());
+    expect(wish.score).toBeGreaterThan(favourite.score);
+    // Even when the week has enough meat already.
+    const full = context({ balance: after("red_meat", "red_meat") });
+    expect(scoreRecipe({ ...steak, wanted: true }, full).score).toBeGreaterThan(
+      scoreRecipe(salmon, full).score,
+    );
+  });
+
   it("adds everything up", () => {
     const history = new Map([["lachs", "2026-06-01"]]);
     const result = scoreRecipe({ ...salmon, isFavorite: true }, context({ history }));
@@ -81,6 +99,49 @@ describe("scoreRecipe", () => {
   });
 });
 
+describe("suitsDay", () => {
+  const quick = summary("omelett", { prepMinutes: 15 });
+  const normal = summary("auflauf", { prepMinutes: 50 });
+  const long = summary("braten", { prepMinutes: 150 });
+  const unknown = summary("ohne zeit", { prepMinutes: null });
+
+  it("keeps long cooking out of the days from Monday to Friday", () => {
+    expect(suitsDay(long, at("lunch", WEDNESDAY))).toBe(false);
+    expect(suitsDay(long, at("dinner", WEDNESDAY))).toBe(false);
+    expect(suitsDay(long, at("lunch"))).toBe(true);
+    expect(suitsDay(long, at("dinner", "2026-10-18"))).toBe(true);
+  });
+
+  it("takes what fits a normal day for lunch, and only what is quick in the evening", () => {
+    expect(suitsDay(normal, at("lunch", WEDNESDAY))).toBe(true);
+    expect(suitsDay(normal, at("dinner", WEDNESDAY))).toBe(false);
+    expect(suitsDay(quick, at("dinner", WEDNESDAY))).toBe(true);
+  });
+
+  it("goes by the tag where the household set one", () => {
+    const tagged = { ...quick, tags: ["aufwendig"] };
+    expect(suitsDay(tagged, at("dinner", WEDNESDAY))).toBe(false);
+    expect(suitsDay({ ...unknown, tags: ["schnell"] }, at("dinner", WEDNESDAY))).toBe(true);
+  });
+
+  it("keeps a recipe whose effort nobody knows for the weekend", () => {
+    expect(suitsDay(unknown, at("lunch", WEDNESDAY))).toBe(false);
+    expect(suitsDay(unknown, at("lunch"))).toBe(true);
+  });
+
+  it("lets a cold supper or a salad pass on any evening", () => {
+    const supper = summary("wurstsalat", { category: "vesper", prepMinutes: null });
+    expect(suitsDay(supper, at("dinner", WEDNESDAY))).toBe(true);
+    expect(suitsDay({ ...supper, tags: ["aufwendig"] }, at("dinner", WEDNESDAY))).toBe(false);
+  });
+
+  it("has nothing to say about coffee", () => {
+    expect(
+      suitsDay(summary("torte", { category: "kuchen", prepMinutes: 180 }), at("coffee", WEDNESDAY)),
+    ).toBe(true);
+  });
+});
+
 describe("suggest", () => {
   const cake = summary("kuchen", { category: "kuchen" });
   const supper = summary("wurstsalat", { category: "vesper", proteinType: "red_meat" });
@@ -90,17 +151,17 @@ describe("suggest", () => {
 
   it("puts the best first", () => {
     const balance = after("vegetarian", "vegetarian", "vegetarian");
-    expect(ids(suggest(all, "lunch", context({ balance }), 1))).toEqual(["lachs"]);
+    expect(ids(suggest(all, at("lunch"), context({ balance }), 1))).toEqual(["lachs"]);
   });
 
   it("suggests meals only, and a cold supper or a salad only in the evening", () => {
-    expect(ids(suggest(all, "lunch", context(), 10)).sort()).toEqual([
+    expect(ids(suggest(all, at("lunch"), context(), 10)).sort()).toEqual([
       "huhn",
       "lachs",
       "lasagne",
       "steak",
     ]);
-    expect(ids(suggest(all, "dinner", context(), 10)).sort()).toEqual([
+    expect(ids(suggest(all, at("dinner"), context(), 10)).sort()).toEqual([
       "huhn",
       "lachs",
       "lasagne",
@@ -112,24 +173,38 @@ describe("suggest", () => {
 
   it("suggests cakes and desserts for coffee, and for nothing else", () => {
     const dessert = summary("pudding", { category: "dessert" });
-    expect(ids(suggest([...all, dessert], "coffee", context(), 10)).sort()).toEqual([
+    expect(ids(suggest([...all, dessert], at("coffee"), context(), 10)).sort()).toEqual([
       "kuchen",
       "pudding",
     ]);
     // A cake is vegetarian, but it is no answer to a week without vegetarian meals.
-    expect(suggest(all, "coffee", context(), 1)[0].reasons).toEqual([]);
+    expect(suggest(all, at("coffee"), context(), 1)[0].reasons).toEqual([]);
+  });
+
+  it("suggests for a workday only what fits it", () => {
+    const roast = summary("braten", { prepMinutes: 150, isFavorite: true });
+    expect(ids(suggest([roast, lasagne], at("lunch", WEDNESDAY), context(), 5))).toEqual([
+      "lasagne",
+    ]);
+    expect(ids(suggest([roast, lasagne], at("lunch"), context(), 5))).toEqual([
+      "braten",
+      "lasagne",
+    ]);
   });
 
   it("never suggests what is on this week's plan already", () => {
     const planned = new Set(["lachs", "lasagne"]);
-    expect(ids(suggest(all, "lunch", context({ planned }), 10)).sort()).toEqual(["huhn", "steak"]);
+    expect(ids(suggest(all, at("lunch"), context({ planned }), 10)).sort()).toEqual([
+      "huhn",
+      "steak",
+    ]);
   });
 
   it("orders equally good recipes by the seed, the same way every time", () => {
     const many = Array.from({ length: 30 }, (_, i) => summary(`r${i}`, { proteinType: "poultry" }));
-    const first = ids(suggest(many, "lunch", context({ seed: "a" }), 5));
-    expect(ids(suggest(many, "lunch", context({ seed: "a" }), 5))).toEqual(first);
-    expect(ids(suggest(many, "lunch", context({ seed: "b" }), 5))).not.toEqual(first);
+    const first = ids(suggest(many, at("lunch"), context({ seed: "a" }), 5));
+    expect(ids(suggest(many, at("lunch"), context({ seed: "a" }), 5))).toEqual(first);
+    expect(ids(suggest(many, at("lunch"), context({ seed: "b" }), 5))).not.toEqual(first);
   });
 });
 
