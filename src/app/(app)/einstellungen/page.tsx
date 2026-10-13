@@ -82,9 +82,10 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
           Einkaufstage
         </h2>
         <p className="mt-1 mb-3 text-sm text-muted">
-          Jeder Einkauf bekommt seinen eigenen Zettel. Metzger und Bäcker haben keinen festen Tag:
-          was eine Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit,
-          für einen Sonntag auf dem vom Samstag.
+          Jeder Einkauf bekommt seinen eigenen Zettel. Metzger und Bäcker haben keinen festen Tag.
+          Zum Metzger geht es so selten, wie das Fleisch der Woche es zulässt, am liebsten an einem
+          Tag, an dem ohnehin eingekauft wird. Brot steht auf einem Zettel für den Tag, an dem es
+          gegessen wird.
         </p>
         {one(params.fehler) === "tage" && (
           <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
@@ -123,8 +124,8 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
           <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
           <p className="text-sm text-muted">
             Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens drei
-            Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger gehört, bekommt
-            einen Zettel für den Tag der Mahlzeit. Alles andere kommt aus dem Supermarkt.
+            Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger gehört, kommt auf
+            einen seiner Zettel in derselben Woche. Alles andere kommt aus dem Supermarkt.
           </p>
           <form action={saveFreshPlaces} className="mt-3">
             <ul className="divide-y divide-line">

@@ -526,31 +526,46 @@ describe("several errands", () => {
     expect(lines.find((entry) => entry.shoppingDate === FRIDAY)!.purchase).toBeNull();
   });
 
-  it("buys vegetables at the market on its day and meat at the butcher for each meal", () => {
+  it("buys vegetables at the market on its day and meat on a visit to the butcher", () => {
     const roast = recipe("braten", [
       line("karotten", 4, "Stück"),
-      line("leberkaese", 600, "g"),
+      line("steak", 4, "Stück"),
       line("sahne", 200, "ml"),
     ]);
     const lines = lists([roast], [slot(SUNDAY, "braten"), slot(MONDAY, "braten")]);
     expect(on(lines, `${SATURDAY}.market`)).toEqual(["karotten@main"]);
     expect(on(lines, `${SAT_BEFORE}.market`)).toEqual(["karotten@main"]);
-    // The butcher has no day of his own: Sunday's meat is bought on the Saturday, when the
-    // shops are open, and Monday's on the Monday.
-    expect(on(lines, `${SATURDAY}.butcher`)).toEqual(["leberkaese@main"]);
-    expect(on(lines, `${MONDAY}.butcher`)).toEqual(["leberkaese@main"]);
-    expect(on(lines, `${SAT_BEFORE}.butcher`)).toEqual([]);
+    // The steaks keep two days: Monday's are bought on Monday, Sunday's on the Saturday.
+    expect(on(lines, `${MONDAY}.butcher`)).toEqual(["steak@main"]);
+    expect(on(lines, `${SATURDAY}.butcher`)).toEqual(["steak@main"]);
     // What neither sells comes from the supermarket.
     expect(on(lines, `${FRIDAY}.supermarket`)).toEqual(["sahne@main"]);
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
   });
 
-  it("gives every meal with meat an errand to the butcher on its day", () => {
+  it("goes to the butcher twice in a week with meat on four days", () => {
+    // Steaks keep two days. Monday's visit also buys for Wednesday, Friday's for Sunday.
     const steaks = recipe("steaks", [line("steak", 4, "Stück")]);
-    const lines = lists([steaks], [slot(SUNDAY, "steaks"), slot(TUESDAY, "steaks")]);
-    expect(on(lines, `${SATURDAY}.butcher`)).toEqual(["steak@main"]);
-    expect(on(lines, `${TUESDAY}.butcher`)).toEqual(["steak@main"]);
+    const days = [MONDAY, "2026-10-14", FRIDAY, SUNDAY];
+    const lines = lists(
+      [steaks],
+      days.map((day) => slot(day, "steaks")),
+    );
+    const visits = lines.filter((entry) => entry.place === "butcher");
+    expect(visits.map((entry) => entry.shoppingDate).sort()).toEqual([MONDAY, FRIDAY]);
+    // One line per visit, with what both of its meals need.
+    expect(visits.map((entry) => entry.purchase)).toEqual([
+      { quantity: 8, unit: "Stück" },
+      { quantity: 8, unit: "Stück" },
+    ]);
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual([]);
+  });
+
+  it("goes on a day of its own when no shopping day is in time", () => {
+    const steaks = recipe("steaks", [line("steak", 4, "Stück")]);
+    const lines = lists([steaks], [slot(THURSDAY, "steaks")]);
+    // Monday is three days before, too long for steaks: Thursday itself.
+    expect(on(lines, `${THURSDAY}.butcher`)).toEqual(["steak@main"]);
   });
 
   it("leaves a market day that is over out of a meal planned after it", () => {
@@ -599,7 +614,7 @@ describe("several errands", () => {
     expect(lines.get("sahne")).toMatchObject({ trip: "later", neededBy: null });
   });
 
-  it("gives the bread and the cold cuts of a supper a note of their own on that day", () => {
+  it("gives the bread and the cold cuts of a supper notes of their own", () => {
     const supper: PlanSlot = {
       id: "v",
       date: THURSDAY,
@@ -613,9 +628,10 @@ describe("several errands", () => {
       ],
     };
     const lines = lists([], [supper]);
+    // Bread is bought on the day it is eaten.
     expect(on(lines, `${THURSDAY}.bakery`)).toEqual(["brot@main@baecker"]);
-    // The butcher's Saturday does not reach Thursday.
-    expect(on(lines, `${THURSDAY}.butcher`)).toEqual(["leberkaese@main@metzger"]);
+    // This Leberkäse keeps: the butcher is gone to on Monday, with the supermarket.
+    expect(on(lines, `${MONDAY}.butcher`)).toEqual(["leberkaese@main@metzger"]);
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["milch@main"]);
   });
 

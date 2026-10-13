@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   assignTrip,
+  buyWindow,
+  combineVisits,
   DEFAULT_SHOPPING_DAYS,
   nextTrip,
   noteId,
@@ -133,12 +135,16 @@ describe("assignTrip", () => {
     expect(assignTrip(need(TUESDAY, fresh), trips)).toEqual(market(SAT_BEFORE));
   });
 
-  it("goes to the butcher for the meal that needs meat, on the day of that meal", () => {
+  it("puts meat on the butcher's last visit that can buy it", () => {
     const meat = { fresh: "butcher" as const, shelfLifeDays: 3 };
+    const visits = [...trips, { date: MONDAY, place: "butcher" as const }].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+    expect(assignTrip(need(MONDAY, meat), visits)).toEqual(butcher(MONDAY));
+    expect(assignTrip(need(WEDNESDAY, meat), visits)).toEqual(butcher(MONDAY));
+    // Friday is out of Monday's reach: without a visit that is in time, the day of the meal.
+    expect(assignTrip(need(FRIDAY, meat), visits)).toEqual(butcher(FRIDAY));
     expect(assignTrip(need(WEDNESDAY, meat), trips)).toEqual(butcher(WEDNESDAY));
-    expect(assignTrip(need(MONDAY, meat), trips)).toEqual(butcher(MONDAY));
-    // Also on a day the household is at the supermarket anyway.
-    expect(assignTrip(need(FRIDAY, meat), trips)).toEqual(butcher(FRIDAY));
   });
 
   it("goes on the Saturday for a Sunday: the shops are closed then", () => {
@@ -217,6 +223,76 @@ describe("assignTrip", () => {
 
   it("has no answer without a shopping day", () => {
     expect(assignTrip(need(MONDAY), [])).toBeNull();
+  });
+});
+
+describe("buyWindow", () => {
+  it("reaches back as long as the meat keeps, within the week of the meal", () => {
+    expect(buyWindow({ date: THURSDAY, shelfLifeDays: 2 })).toEqual({
+      from: TUESDAY,
+      to: THURSDAY,
+    });
+    expect(buyWindow({ date: TUESDAY, shelfLifeDays: 3 })).toEqual({ from: MONDAY, to: TUESDAY });
+    // What keeps for weeks is still bought in the week it is eaten.
+    expect(buyWindow({ date: FRIDAY, shelfLifeDays: null })).toEqual({ from: MONDAY, to: FRIDAY });
+  });
+
+  it("ends on the Saturday for a Sunday, and starts on the day of planning", () => {
+    expect(buyWindow({ date: SUNDAY, shelfLifeDays: 3 })).toEqual({ from: THURSDAY, to: SATURDAY });
+    expect(buyWindow({ date: FRIDAY, shelfLifeDays: 3, plannedOn: THURSDAY })).toEqual({
+      from: THURSDAY,
+      to: FRIDAY,
+    });
+    expect(buyWindow({ date: FRIDAY, shelfLifeDays: 3, plannedOn: FRIDAY })).toEqual({
+      from: FRIDAY,
+      to: FRIDAY,
+    });
+  });
+});
+
+describe("combineVisits", () => {
+  const out = new Set(trips.map((trip) => trip.date));
+  const meat = (date: string, shelfLifeDays: number | null = 2) => ({ date, shelfLifeDays });
+
+  it("needs no visit in a week without meat", () => {
+    expect(combineVisits([], out)).toEqual([]);
+  });
+
+  it("buys for several meals on one visit, on a day the household is out anyway", () => {
+    // Monday and Wednesday on Monday's shopping day; the weekend on Saturday, with the market.
+    expect(
+      combineVisits([meat(MONDAY), meat(WEDNESDAY), meat(SATURDAY), meat(SUNDAY)], out),
+    ).toEqual([MONDAY, SATURDAY]);
+  });
+
+  it("takes the last day that will do when the household is not out on any", () => {
+    // Wednesday and Thursday: Tuesday to Wednesday would do, and Wednesday is freshest.
+    expect(combineVisits([meat(WEDNESDAY), meat(THURSDAY)], out)).toEqual([WEDNESDAY]);
+  });
+
+  it("goes again for what would not keep from the visit before", () => {
+    // Minced meat keeps a day: it cannot be bought with Monday's steaks.
+    expect(combineVisits([meat(MONDAY), meat(WEDNESDAY, 1)], out)).toEqual([MONDAY, WEDNESDAY]);
+    expect(combineVisits([meat(MONDAY), meat(TUESDAY, 1)], out)).toEqual([MONDAY]);
+  });
+
+  it("does with one visit for a week of things that keep", () => {
+    expect(combineVisits([meat(TUESDAY, 14), meat(FRIDAY, null), meat(SUNDAY, 7)], out)).toEqual([
+      MONDAY,
+    ]);
+  });
+
+  it("does not go on a day before the meal was planned", () => {
+    const late = { date: WEDNESDAY, shelfLifeDays: 3, plannedOn: TUESDAY };
+    expect(combineVisits([meat(MONDAY), late], out)).toEqual([MONDAY, WEDNESDAY]);
+  });
+
+  it("decides every week by itself", () => {
+    // Next Monday's meat is not bought on this Saturday, though it would keep.
+    expect(combineVisits([meat(SATURDAY, 3), meat(NEXT_MONDAY, 3)], out)).toEqual([
+      SATURDAY,
+      NEXT_MONDAY,
+    ]);
   });
 });
 

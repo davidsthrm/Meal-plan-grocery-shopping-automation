@@ -1,5 +1,5 @@
 import type { Place } from "../catalog";
-import { addDays, daysBetween, isoWeekday, type IsoDate } from "../dates";
+import { addDays, daysBetween, isoWeekday, mondayOf, type IsoDate } from "../dates";
 import type { Trip } from "./types";
 
 /**
@@ -149,9 +149,11 @@ const last = <T>(items: readonly T[]): T | undefined => items[items.length - 1];
  * day, and what was planned after it, is bought shortly before the meal and says so.
  *
  * What comes from the butcher or the bakery, by its kind of grocery or because that shop was
- * named for it, is an errand of its own on the day of its meal (`onDemandDay`): meat for
- * Wednesday's lunch is a note for the butcher on Wednesday. A market named on purpose is
- * gone to on its day when that reaches the meal, and otherwise on the day of the meal.
+ * named for it, is an errand of its own. Bread is bought on the day of its meal
+ * (`onDemandDay`). The butcher's visits of a week are decided beforehand from everything
+ * the week needs from him (`combineVisits`) and are among `trips`: the need goes on the last
+ * of them that can buy it. A market named on purpose is gone to on its day when that reaches
+ * the meal, and otherwise on the day of the meal.
  *
  * `trips` are in order. `onDemand` are the places gone to for a meal; a household that
  * buys everything in one go has none. Null only when the household has no shopping day at all.
@@ -171,7 +173,13 @@ export function assignTrip(
   const named = need.at && need.at !== "supermarket" ? need.at : null;
   const elsewhere = named ?? need.fresh;
   if (elsewhere && onDemand.includes(elsewhere)) {
-    return { date: onDemandDay(need), place: elsewhere, trip: "main" };
+    const window = buyWindow(need);
+    const visit = last(
+      trips.filter(
+        (trip) => trip.place === elsewhere && trip.date >= window.from && trip.date <= window.to,
+      ),
+    );
+    return { date: visit?.date ?? window.to, place: elsewhere, trip: "main" };
   }
   if (elsewhere) {
     const errand = last(
@@ -198,6 +206,74 @@ export function onDemandDay(need: Pick<Need, "date" | "plannedOn">): IsoDate {
   if (isoWeekday(need.date) !== 7) return need.date;
   const saturday = addDays(need.date, -1);
   return need.plannedOn && need.plannedOn > saturday ? need.date : saturday;
+}
+
+/**
+ * How long before its meal something may be bought at the butcher at the most, when it
+ * keeps longer or nobody knows: a visit never buys for more than the week it is in.
+ */
+const VISIT_REACH_DAYS = 6;
+
+/**
+ * The days on which a need can be bought at a place without weekdays: from the day it was
+ * planned, as long before the meal as it keeps, within the week of the meal, up to the day
+ * of the meal itself (the Saturday for a Sunday).
+ */
+export function buyWindow(need: Pick<Need, "date" | "plannedOn" | "shelfLifeDays">): {
+  from: IsoDate;
+  to: IsoDate;
+} {
+  const to = onDemandDay(need);
+  const keeps = Math.min(need.shelfLifeDays ?? VISIT_REACH_DAYS, VISIT_REACH_DAYS);
+  let from = addDays(need.date, -keeps);
+  const monday = mondayOf(need.date);
+  if (from < monday) from = monday;
+  if (need.plannedOn && need.plannedOn > from) from = need.plannedOn;
+  return { from: from > to ? to : from, to };
+}
+
+/**
+ * The fewest visits to the butcher that buy everything the plan needs from him: one visit
+ * buys for every meal it is in time for and whose meat keeps until then. A week is decided
+ * by itself, so a visit on its Wednesday and one on its Saturday do for most weeks, and
+ * what a week's visits are does not depend on the weeks around it.
+ *
+ * Where several days would do for a visit, a day the household is out shopping anyway is
+ * taken (`shoppingDates`), and otherwise the last one, when the meat is freshest.
+ */
+export function combineVisits(
+  needs: readonly Pick<Need, "date" | "plannedOn" | "shelfLifeDays">[],
+  shoppingDates: ReadonlySet<IsoDate>,
+): IsoDate[] {
+  const weeks = new Map<IsoDate, { from: IsoDate; to: IsoDate }[]>();
+  for (const need of needs) {
+    const week = mondayOf(need.date);
+    weeks.set(week, [...(weeks.get(week) ?? []), buyWindow(need)]);
+  }
+  const visits: IsoDate[] = [];
+  for (const windows of weeks.values()) {
+    let open = [...windows].sort((a, b) => a.to.localeCompare(b.to));
+    while (open.length > 0) {
+      // The need that has to be bought first decides: a visit by its last day buys it and
+      // everything else that can be bought by then.
+      const latest = open[0].to;
+      const together = open.filter((window) => window.from <= latest);
+      const earliest = together.reduce(
+        (day, window) => (window.from > day ? window.from : day),
+        "",
+      );
+      let visit = latest;
+      for (let day = latest; day >= earliest; day = addDays(day, -1)) {
+        if (shoppingDates.has(day) && isoWeekday(day) !== 7) {
+          visit = day;
+          break;
+        }
+      }
+      visits.push(visit);
+      open = open.filter((window) => window.from > latest);
+    }
+  }
+  return [...new Set(visits)].sort();
 }
 
 /**

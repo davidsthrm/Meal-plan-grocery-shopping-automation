@@ -130,3 +130,18 @@ export function aisleSortOrder(index: CatalogIndex, shopId: string, aisleGroupId
   if (override !== undefined) return override;
   return index.aisleGroupById.get(aisleGroupId)?.sortOrder ?? Number.MAX_SAFE_INTEGER;
 }
+
+/**
+ * The name for one piece, where the catalog knows it: "1x Zitrone" instead of "1x Zitronen".
+ * The catalog names things in the plural and lists the singular among the other names.
+ */
+export function nameForOne(ingredient: Pick<Ingredient, "name" | "synonyms">): string {
+  const plural = ingredient.name.toLowerCase();
+  const singular = ingredient.synonyms.find((name) => {
+    const short = name.toLowerCase();
+    return (
+      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
+    );
+  });
+  return singular ?? ingredient.name;
+}

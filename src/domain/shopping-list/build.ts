@@ -1,4 +1,4 @@
-import type { CatalogIndex, Ingredient, Place } from "../catalog";
+import { nameForOne, type CatalogIndex, type Ingredient, type Place } from "../catalog";
 import { normalizeName } from "../catalog";
 import type { IsoDate } from "../dates";
 import type { PlanExtra, PlanSlot } from "../plan";
@@ -14,7 +14,15 @@ import {
 } from "../units";
 import { parseFreeEntry } from "./free-entry";
 import { purchaseFor } from "./rounding";
-import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
+import {
+  assignTrip,
+  combineVisits,
+  noteId,
+  ON_DEMAND_PLACES,
+  type Assignment,
+  type Need,
+  type ShoppingTrip,
+} from "./trips";
 import type { Contribution, ContributionSource, ManualEntry, ShoppingLine, Trip } from "./types";
 
 export interface BuildInput {
@@ -60,21 +68,6 @@ export function toDefaultUnit(ingredient: Ingredient, amount: Amount): number | 
 
 /** Amounts too small to shop for when they cannot be added to the rest. */
 const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp"]);
-
-/**
- * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
- * The catalog names things in the plural and lists the singular among the other names.
- */
-function nameForOne(ingredient: Ingredient): string {
-  const plural = ingredient.name.toLowerCase();
-  const singular = ingredient.synonyms.find((name) => {
-    const short = name.toLowerCase();
-    return (
-      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
-    );
-  });
-  return singular ?? ingredient.name;
-}
 
 /**
  * Whether a food was named as one piece of something bought by the piece: "Gurke", where the
@@ -271,6 +264,58 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
   // Lines without a catalog ingredient: unmapped recipe lines and free text.
   const loose = new Map<string, ShoppingLine>();
 
+  /** What matters about an ingredient of a meal on `date` for when and where it is bought. */
+  const needOf = (
+    ingredient: Ingredient | undefined,
+    date: IsoDate,
+    plannedOn: IsoDate | null | undefined,
+    shopId?: string | null,
+  ): Need => ({
+    date,
+    plannedOn,
+    fresh: ingredient
+      ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
+      : null,
+    // A shop named on purpose says where: bread for a cold supper from the bakery.
+    at: shopId ? (index.shopById.get(shopId)?.kind ?? null) : null,
+    shelfLifeDays: ingredient?.shelfLifeDays ?? null,
+  });
+
+  // The butcher is gone to as seldom as the meat allows. His visits are decided first, from
+  // everything the plan needs from him, and then stand among the errands like the others.
+  const onDemand = input.onDemand ?? ON_DEMAND_PLACES;
+  const fromButcher: Need[] = [];
+  if (onDemand.includes("butcher")) {
+    const note = (need: Need) => {
+      const named = need.at && need.at !== "supermarket" ? need.at : null;
+      if ((named ?? need.fresh) === "butcher") fromButcher.push(need);
+    };
+    for (const slot of input.slots) {
+      if (slot.kind === "recipes") {
+        for (const item of slot.items) {
+          for (const line of recipeById.get(item.recipeId)?.ingredients ?? []) {
+            if (line.alternativeTo !== null || !line.ingredientId) continue;
+            const ingredient = index.ingredientById.get(line.ingredientId);
+            note(needOf(ingredient, slot.date, item.plannedOn));
+          }
+        }
+      }
+      if (slot.kind === "free_text") {
+        for (const food of slot.foods ?? []) {
+          const ingredient = food.ingredientId
+            ? index.ingredientById.get(food.ingredientId)
+            : undefined;
+          note(needOf(ingredient, slot.date, food.plannedOn, food.shopId));
+        }
+      }
+    }
+  }
+  const visits = combineVisits(fromButcher, new Set(trips.map((trip) => trip.date)));
+  const errands: ShoppingTrip[] = [
+    ...trips,
+    ...visits.map((date): ShoppingTrip => ({ date, place: "butcher" })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
+
   /** The errand that buys an ingredient for a meal on `date`. */
   const errandFor = (
     ingredient: Ingredient | undefined,
@@ -278,20 +323,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     plannedOn: IsoDate | null | undefined,
     shopId?: string | null,
   ): Assignment =>
-    assignTrip(
-      {
-        date,
-        plannedOn,
-        fresh: ingredient
-          ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
-          : null,
-        // A shop named on purpose says where: bread for a cold supper from the bakery.
-        at: shopId ? (index.shopById.get(shopId)?.kind ?? null) : null,
-        shelfLifeDays: ingredient?.shelfLifeDays ?? null,
-      },
-      trips,
-      input.onDemand,
-    ) as Assignment;
+    assignTrip(needOf(ingredient, date, plannedOn, shopId), errands, onDemand) as Assignment;
 
   /** Where a line ends up: on its own note, or on the one the household moved it to. */
   const settle = (on: Assignment, lineKey: string): Assignment => {
