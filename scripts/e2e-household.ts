@@ -54,6 +54,7 @@ async function setup() {
           short_label: shop.shortLabel,
           sort_order: shop.sortOrder,
           is_default: shop.id === seedCatalog.defaultShopId,
+          kind: shop.kind ?? "supermarket",
         })),
       )
     ).error,
@@ -68,6 +69,7 @@ async function setup() {
           name: aisle.name,
           sort_order: aisle.sortOrder,
           is_fallback: aisle.id === seedCatalog.fallbackAisleGroupId,
+          fresh_place: aisle.freshPlace ?? null,
         })),
       )
     ).error,

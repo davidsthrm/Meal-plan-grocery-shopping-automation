@@ -79,7 +79,7 @@ export function buildSeedSql(): string {
     ),
     insert(
       "shop",
-      ["id", "household_id", "name", "short_label", "sort_order", "is_default"],
+      ["id", "household_id", "name", "short_label", "sort_order", "is_default", "kind"],
       seedCatalog.shops.map((s) => [
         shopId(s.id),
         household,
@@ -87,18 +87,19 @@ export function buildSeedSql(): string {
         s.shortLabel,
         s.sortOrder,
         s.id === seedCatalog.defaultShopId,
+        s.kind ?? "supermarket",
       ]),
     ),
     insert(
       "aisle_group",
-      ["id", "household_id", "name", "sort_order", "is_fallback", "is_market"],
+      ["id", "household_id", "name", "sort_order", "is_fallback", "fresh_place"],
       seedCatalog.aisleGroups.map((a) => [
         aisleId(a.id),
         household,
         a.name,
         a.sortOrder,
         a.id === seedCatalog.fallbackAisleGroupId,
-        a.market ?? false,
+        a.freshPlace ?? null,
       ]),
     ),
     insert(
