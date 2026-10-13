@@ -259,17 +259,19 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
 
       {!showExtras && (
-        <ol className="card mt-5 divide-y divide-line overflow-hidden">
+        <ol className="sheet mt-6 divide-y divide-rule">
           {days.map((date) => (
             <li
               key={date}
               id={`tag-${date}`}
-              className={`grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] ${
-                date === now ? "bg-accent-soft/40" : ""
-              }`}
+              className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] sm:px-5"
             >
               <h2 className="flex items-baseline gap-2 sm:block">
-                <span className="text-lg font-bold tracking-tight">{weekdayLong(date)}</span>
+                <span
+                  className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
+                >
+                  {weekdayLong(date)}
+                </span>
                 <span className="text-sm text-muted sm:block">
                   {date === now ? "Heute" : dayAndMonth(date)}
                 </span>

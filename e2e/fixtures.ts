@@ -44,9 +44,13 @@ async function storeTestPhoto(path: string, width: number, height: number): Prom
   if (stored.error) throw new Error(`store test photo: ${stored.error.message}`);
 }
 
-/** Removes every recipe of the test household, and first the week plans that hold them. */
+/**
+ * Removes every recipe of the test household, and first the week plans that hold them. The
+ * shopping lists and the note for what ran out go too: they belong to no week.
+ */
 async function clearRecipes(household: string): Promise<void> {
-  for (const table of ["week_plan", "import_batch", "recipe"] as const) {
+  const tables = ["shopping_list", "restock_item", "week_plan", "import_batch", "recipe"] as const;
+  for (const table of tables) {
     const removed = await db.from(table).delete().eq("household_id", household);
     if (removed.error) throw new Error(`clear ${table}: ${removed.error.message}`);
   }

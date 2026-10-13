@@ -20,11 +20,15 @@ async function plan(page: Page, meal: string, recipe: string) {
   await expect(page.getByRole("region", { name: meal, exact: true })).toContainText(recipe);
 }
 
-const group = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
+/** The list of one shopping day, and one kind of grocery on it. */
+const sheet = (page: Page, day: string) => page.getByRole("region", { name: day, exact: true });
+const group = (page: Page, day: string, name: string) =>
+  sheet(page, day).getByRole("region", { name, exact: true });
 
-test("the week becomes a shopping list, grouped by kind of grocery, to work through", async ({
-  page,
-}) => {
+const MARKET = "Samstag, 27. Februar";
+const MONDAY = "Montag, 1. März";
+
+test("the week becomes a list for every shopping day, to work through", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Montag Mittag", "Pfeffersteak");
   await plan(page, "Dienstag Mittag", "Kartoffelsuppe");
@@ -44,48 +48,67 @@ test("the week becomes a shopping list, grouped by kind of grocery, to work thro
   await page.getByRole("link", { name: "Einkauf", exact: true }).click();
   await page.goto(`/einkauf?w=${WEEK}`);
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
-  await expect(page.getByText("Einkauf am Montag, 1. März")).toBeVisible();
+  // Supermarket on Monday and Friday, market on Saturday, and the market before the week,
+  // because it buys for Monday and Tuesday.
+  const days = page.getByRole("navigation", { name: "Einkaufstag" });
+  await expect(days.getByRole("link")).toHaveText([
+    "Alle Tage",
+    /^Sa 27\. Markt/,
+    /^Mo 1\./,
+    /^Fr 5\./,
+    /^Sa 6\. Markt/,
+    "Zum Wochenplan",
+    "Als PDF",
+  ]);
 
-  // One list by kind of grocery; which supermarket a thing comes from plays no part.
-  await expect(group(page, "Aldi")).toHaveCount(0);
-  await expect(group(page, "E-Center")).toHaveCount(0);
-  // Counted things show their number, packs only when more than one is needed.
-  await expect(group(page, "Fleisch & Wurst")).toContainText("4 Rindersteaks");
-  await expect(group(page, "Obst & Gemüse")).toContainText("2 Karotten");
-  await expect(group(page, "Obst & Gemüse")).toContainText("Kartoffeln");
+  // What is fresh comes from the market and the butcher: the steaks keep until Monday.
+  await expect(sheet(page, MARKET)).toContainText("Markt & Metzger · für Montag bis Dienstag");
+  await expect(group(page, MARKET, "Fleisch & Wurst")).toContainText("4 Rindersteaks");
+  await expect(group(page, MARKET, "Obst & Gemüse")).toContainText("2 Karotten");
+  await expect(group(page, MARKET, "Obst & Gemüse")).toContainText("Kartoffeln");
+  // "Gurke" was asked for: one of them.
+  await expect(group(page, MARKET, "Obst & Gemüse")).toContainText("1 Gurke");
+  // Everything else comes from the supermarket on Monday. Which one plays no part.
+  await expect(sheet(page, MONDAY)).toContainText("Supermarkt");
+  await expect(sheet(page, MONDAY).getByRole("region", { name: "Aldi" })).toHaveCount(0);
+  await expect(group(page, MONDAY, "Obst & Gemüse")).toHaveCount(0);
   // 200 ml and 100 ml of cream are two packs of 200 ml.
-  await expect(page.getByText("2x Sahne")).toBeVisible();
-  // "Gurke" was asked for: one of them. The supper's bread comes from the bakery.
-  await expect(group(page, "Obst & Gemüse")).toContainText("1 Gurke");
-  await expect(group(page, "Brot & Backwaren")).toContainText("Brot · Bäcker");
-  // Two cakes need 8 eggs, bought as a box of ten, and 500 g of butter.
-  await expect(page.getByText("10 Eier")).toBeVisible();
+  await expect(sheet(page, MONDAY).getByText("2x Sahne")).toBeVisible();
+  // The supper's bread comes from the bakery.
+  await expect(group(page, MONDAY, "Brot & Backwaren")).toContainText("Brot · Bäcker");
+  // Two cakes need 8 eggs, bought as a box of ten, on the week's first supermarket day.
+  await expect(sheet(page, MONDAY).getByText("10 Eier")).toBeVisible();
+  await expect(sheet(page, "Freitag, 5. März")).toContainText("Nichts zu kaufen.");
 
   // Where a line comes from is one tap away.
   await page.getByText("10 Eier").click();
   await expect(page.getByText("Genau: 8 Stück")).toBeVisible();
-  // The butter line says the same, but is not open.
   await expect(
     page.locator("li:visible", { hasText: /^Außerdem: Zitronen-Mohn-Kuchen$/ }),
   ).toHaveCount(1);
 
   // Salt is assumed to be at home, and can be put on the list after all.
-  await expect(group(page, "Gewürze, Öl & Essig")).toHaveCount(0);
-  await page.getByText(/Haben wir schon \(\d+\)/).click();
+  await expect(group(page, MONDAY, "Gewürze, Öl & Essig")).toHaveCount(0);
+  await sheet(page, MONDAY)
+    .getByText(/Haben wir schon \(\d+\)/)
+    .click();
   await page.getByRole("button", { name: "Salz doch kaufen" }).click();
-  await expect(group(page, "Gewürze, Öl & Essig")).toContainText("Salz");
+  await expect(group(page, MONDAY, "Gewürze, Öl & Essig")).toContainText("Salz");
 
-  // Lines written by hand: one the catalog knows, with its note, and one it does not.
-  await page.getByLabel("Etwas dazuschreiben").fill("Milch WS 1.29");
-  await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await expect(page.getByText("Milch WS 1.29", { exact: true })).toBeVisible();
-  await page.getByLabel("Etwas dazuschreiben").fill("Geschenkpapier");
-  await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await expect(page.getByText("Geschenkpapier", { exact: true })).toBeVisible();
+  // Lines written by hand onto one day's list: one the catalog knows, with its note, and
+  // one it does not.
+  const write = page.getByLabel(`Auf den Zettel für ${MONDAY} schreiben`);
+  await write.fill("Milch WS 1.29");
+  await write.press("Enter");
+  await expect(sheet(page, MONDAY).getByText("Milch WS 1.29", { exact: true })).toBeVisible();
+  await write.fill("Geschenkpapier");
+  await write.press("Enter");
+  await expect(sheet(page, MONDAY).getByText("Geschenkpapier", { exact: true })).toBeVisible();
+  await expect(sheet(page, MARKET)).not.toContainText("Geschenkpapier");
 
   // Ticking off, and the tick survives a change of the plan.
   await page.getByRole("button", { name: "4 Rindersteaks: erledigt" }).click();
-  await expect(page.getByText("1 erledigt")).toBeVisible();
+  await expect(sheet(page, MARKET)).toContainText("1 erledigt");
   await page.goto(`/woche?w=${WEEK}`);
   await page.getByRole("button", { name: "Dienstag Mittag leeren" }).click();
   // The meal is open again. The soup may still show there as a pale idea, so that is what
@@ -96,17 +119,58 @@ test("the week becomes a shopping list, grouped by kind of grocery, to work thro
   await expect(page.getByRole("button", { name: "4 Rindersteaks: wieder offen" })).toBeVisible();
   await expect(page.getByText("Milch WS 1.29", { exact: true })).toBeVisible();
 
-  // The same list as a PDF.
+  // One day alone, as it is taken to the shop.
+  await days.getByRole("link", { name: /^Montag, 1\. März/ }).click();
+  await expect(sheet(page, MONDAY)).toBeVisible();
+  await expect(sheet(page, MARKET)).toHaveCount(0);
+
+  // The same lists as a PDF.
   const pdf = await page.request.get(`/einkauf/pdf?w=${WEEK}`);
   expect(pdf.status()).toBe(200);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
   expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
 });
 
-test("a week with nothing planned has an empty list that says where it comes from", async ({
+test("a week with nothing planned has empty lists that say where they come from", async ({
   page,
 }) => {
   await page.goto(`/einkauf?w=${WEEK}`);
-  await expect(page.getByText("Für diese Woche steht noch nichts auf der Liste.")).toBeVisible();
+  await expect(
+    page.getByText("Für diese Woche steht noch nichts auf den Einkaufszetteln."),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Als PDF" })).toHaveCount(0);
+});
+
+test("what ran out at home is noted and put on the next shopping day's list", async ({ page }) => {
+  // The note is one tap away from every page.
+  await page.goto("/rezepte");
+  await page.getByRole("link", { name: /^Merkzettel/ }).click();
+  await expect(page.getByRole("heading", { name: "Merkzettel" })).toBeVisible();
+  await expect(page.getByText("Es steht nichts darauf.")).toBeVisible();
+
+  const write = page.getByLabel("Auf den Merkzettel schreiben");
+  for (const text of ["Mehl", "Spülmittel"]) {
+    await write.fill(text);
+    await write.press("Enter");
+    await expect(
+      page.getByRole("button", { name: `${text} auf den Einkaufszettel` }),
+    ).toBeVisible();
+  }
+  // Written a second time, it is still one entry.
+  await write.fill("mehl");
+  await write.press("Enter");
+  await expect(page.getByRole("link", { name: "Merkzettel, 2 Einträge" })).toBeVisible();
+
+  // One entry goes to the list of the next shopping day and leaves the note.
+  await page.getByRole("button", { name: "Mehl auf den Einkaufszettel" }).click();
+  const moved = page.getByRole("status");
+  await expect(moved).toContainText("Steht auf dem Einkaufszettel für");
+  await expect(page.getByRole("button", { name: "Mehl auf den Einkaufszettel" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Merkzettel, 1 Eintrag" })).toBeVisible();
+  await moved.getByRole("link").click();
+  await expect(page.getByText("Mehl", { exact: true })).toBeVisible();
+  // The rest of the note shows next to the lists, and can be struck there.
+  await page.getByRole("button", { name: "Spülmittel streichen" }).click();
+  await expect(page.getByRole("region", { name: "Merkzettel" })).toHaveCount(0);
+  await expect(page.getByText("Mehl", { exact: true })).toBeVisible();
 });

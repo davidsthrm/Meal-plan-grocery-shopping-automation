@@ -2,14 +2,16 @@ import "server-only";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 
 /**
- * The shopping list on one or more A4 pages: a heading per shop, a box to tick per line, two
- * columns. Plain black on white, like the list it replaces.
+ * The shopping lists on A4 pages: every shopping day starts a page of its own, with a
+ * heading per kind of grocery, a box to tick per line, two columns. Plain black on white,
+ * like the list it replaces.
  */
 
-export interface PdfSection {
-  heading: string;
-  lines: string[];
-}
+export type PdfSection =
+  /** The lines under one heading. */
+  | { heading: string; lines: string[] }
+  /** A shopping day: it starts a new page, and the sections after it belong to it. */
+  | { title: string; subtitle: string };
 
 const PAGE = { width: 595.28, height: 841.89 };
 const MARGIN = 42;
@@ -44,58 +46,69 @@ function wrap(text: string, font: PDFFont, size: number, width: number): string[
 }
 
 export async function shoppingListPdf(
-  title: string,
-  subtitle: string,
+  documentTitle: string,
   sections: PdfSection[],
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
-  pdf.setTitle(title);
+  pdf.setTitle(documentTitle);
   pdf.setLanguage("de-DE");
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  let page: PDFPage = pdf.addPage([PAGE.width, PAGE.height]);
+  let page: PDFPage | null = null;
   let column = 0;
   // Where the next thing is drawn, measured from the bottom of the page.
   let y = PAGE.height - MARGIN;
-  // Below the title on the first page, from the top on every other one.
+  // Below the title on the first page of a day, from the top on every other one.
   let top = y;
   const x = () => MARGIN + column * (COLUMN + GUTTER);
-
-  page.drawText(printable(title, bold), {
-    x: MARGIN,
-    y: y - SIZE.title,
-    size: SIZE.title,
-    font: bold,
-  });
-  y -= SIZE.title + 8;
-  if (subtitle !== "") {
-    page.drawText(printable(subtitle, regular), { x: MARGIN, y: y - 10, size: 10, font: regular });
-    y -= 18;
-  }
-  y -= 8;
-  top = y;
-
-  /** Makes room for `height`, in the next column or on the next page if this one is full. */
-  const need = (height: number) => {
-    if (y - height >= MARGIN) return;
-    if (column === 0) {
-      column = 1;
-      y = top;
-      return;
-    }
+  const newPage = (): PDFPage => {
     page = pdf.addPage([PAGE.width, PAGE.height]);
     column = 0;
     top = PAGE.height - MARGIN;
     y = top;
+    return page;
+  };
+
+  /** Makes room for `height`, in the next column or on the next page if this one is full. */
+  const need = (height: number): PDFPage => {
+    if (page && y - height >= MARGIN) return page;
+    if (page && column === 0) {
+      column = 1;
+      y = top;
+      return page;
+    }
+    return newPage();
   };
 
   for (const section of sections) {
+    if ("title" in section) {
+      const sheet = newPage();
+      sheet.drawText(printable(section.title, bold), {
+        x: MARGIN,
+        y: y - SIZE.title,
+        size: SIZE.title,
+        font: bold,
+      });
+      y -= SIZE.title + 8;
+      if (section.subtitle !== "") {
+        sheet.drawText(printable(section.subtitle, regular), {
+          x: MARGIN,
+          y: y - 10,
+          size: 10,
+          font: regular,
+        });
+        y -= 18;
+      }
+      y -= 8;
+      top = y;
+      continue;
+    }
     if (section.lines.length === 0) continue;
     // A heading does not stand alone at the bottom of a column.
-    need(SIZE.heading + 10 + LINE_HEIGHT);
+    let sheet = need(SIZE.heading + 10 + LINE_HEIGHT);
     if (y !== top) y -= 10;
-    page.drawText(printable(section.heading, bold), {
+    sheet.drawText(printable(section.heading, bold), {
       x: x(),
       y: y - SIZE.heading,
       size: SIZE.heading,
@@ -105,8 +118,8 @@ export async function shoppingListPdf(
 
     for (const line of section.lines) {
       const rows = wrap(printable(line, regular), regular, SIZE.line, COLUMN - BOX - 8);
-      need(rows.length * LINE_HEIGHT);
-      page.drawRectangle({
+      sheet = need(rows.length * LINE_HEIGHT);
+      sheet.drawRectangle({
         x: x(),
         y: y - LINE_HEIGHT + 4.5,
         width: BOX,
@@ -115,7 +128,7 @@ export async function shoppingListPdf(
         borderWidth: 0.8,
       });
       for (const row of rows) {
-        page.drawText(row, {
+        sheet.drawText(row, {
           x: x() + BOX + 8,
           y: y - LINE_HEIGHT + 5,
           size: SIZE.line,
@@ -125,5 +138,7 @@ export async function shoppingListPdf(
       }
     }
   }
+  // A week with nothing to buy is still a document that opens.
+  if (!page) newPage();
   return pdf.save();
 }

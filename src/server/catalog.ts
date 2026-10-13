@@ -64,7 +64,10 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
   const [shops, overrides, aisles, ingredients] = await Promise.all([
     db.from("shop").select("id, name, short_label, sort_order, is_default").order("sort_order"),
     db.from("shop_aisle_order").select("shop_id, aisle_group_id, sort_order"),
-    db.from("aisle_group").select("id, name, sort_order, is_fallback").order("sort_order"),
+    db
+      .from("aisle_group")
+      .select("id, name, sort_order, is_fallback, is_market")
+      .order("sort_order"),
     allRows(
       (from, to) =>
         db
@@ -99,6 +102,7 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
       id: aisle.id,
       name: aisle.name,
       sortOrder: aisle.sort_order,
+      market: aisle.is_market,
     })),
     ingredients: ingredients.map((row): Ingredient => ({
       id: row.id,

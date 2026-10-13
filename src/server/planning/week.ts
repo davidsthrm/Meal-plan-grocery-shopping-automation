@@ -13,6 +13,7 @@ import {
   type SlotItem,
 } from "@/domain/plan";
 import { findIngredient } from "@/domain/catalog";
+import { today } from "@/lib/today";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 
 /**
@@ -67,13 +68,18 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     "load meals",
   );
   const withRecipes = slots.filter((slot) => slot.kind === "recipes").map((slot) => slot.id);
-  const items: { plan_slot_id: string; recipe_id: string; servings: number }[] = [];
+  const items: {
+    plan_slot_id: string;
+    recipe_id: string;
+    servings: number;
+    planned_on: string | null;
+  }[] = [];
   for (let at = 0; at < withRecipes.length; at += SLOTS_PER_REQUEST) {
     items.push(
       ...must(
         await db
           .from("plan_slot_item")
-          .select("plan_slot_id, recipe_id, servings, position")
+          .select("plan_slot_id, recipe_id, servings, position, planned_on")
           .in("plan_slot_id", withRecipes.slice(at, at + SLOTS_PER_REQUEST))
           .order("position"),
         "load recipes of meals",
@@ -87,13 +93,14 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     label: string;
     ingredient_id: string | null;
     shop_id: string | null;
+    planned_on: string | null;
   }[] = [];
   for (let at = 0; at < noRecipe.length; at += SLOTS_PER_REQUEST) {
     foods.push(
       ...must(
         await db
           .from("plan_slot_food")
-          .select("plan_slot_id, label, ingredient_id, shop_id, position")
+          .select("plan_slot_id, label, ingredient_id, shop_id, position, planned_on")
           .in("plan_slot_id", noRecipe.slice(at, at + SLOTS_PER_REQUEST))
           .order("position"),
         "load foods of meals",
@@ -110,7 +117,11 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
           kind: "recipes",
           items: items
             .filter((item) => item.plan_slot_id === slot.id)
-            .map((item) => ({ recipeId: item.recipe_id, servings: item.servings })),
+            .map((item) => ({
+              recipeId: item.recipe_id,
+              servings: item.servings,
+              plannedOn: item.planned_on,
+            })),
         };
       case "free_text":
         return {
@@ -123,6 +134,7 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
               label: food.label,
               ingredientId: food.ingredient_id,
               shopId: food.shop_id,
+              plannedOn: food.planned_on,
             })),
         };
       case "away":
@@ -150,6 +162,7 @@ async function storeFoods(
       ingredient_id: food.ingredientId,
       shop_id: food.shopId,
       position,
+      planned_on: food.plannedOn ?? today(),
     })),
   );
   if (stored.error) throw new Error(`store foods of meal: ${stored.error.message}`);
@@ -184,7 +197,11 @@ async function fulfilWishes(db: Db, recipeIds: string[]): Promise<void> {
   if (cleared.error) throw new Error(`fulfil wishes: ${cleared.error.message}`);
 }
 
-/** Sets what one meal of a week is, replacing what was there. Null empties it. */
+/**
+ * Sets what one meal of a week is, replacing what was there. Null empties it. A recipe that
+ * comes without the day it was planned on is planned today; one that is written again, with
+ * other servings or next to a new side, keeps its day.
+ */
 export async function writeSlot(
   db: Db,
   householdId: string,
@@ -229,6 +246,7 @@ export async function writeSlot(
       recipe_id: item.recipeId,
       servings: item.servings,
       position,
+      planned_on: item.plannedOn ?? today(),
     })),
   );
   if (items.error) {
@@ -286,6 +304,7 @@ export async function planOpenSlots(
           recipe_id: item.recipeId,
           servings: item.servings,
           position,
+          planned_on: item.plannedOn ?? today(),
         }))
       : [],
   );
@@ -441,6 +460,7 @@ export async function addFood(
     ingredient_id: findIngredient(index, name)?.id ?? null,
     shop_id: shop?.id ?? null,
     position: slot.foods?.length ?? 0,
+    planned_on: today(),
   });
   if (stored.error) throw new Error(`add food: ${stored.error.message}`);
 }

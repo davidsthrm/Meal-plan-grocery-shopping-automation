@@ -3,28 +3,37 @@ import { addDays, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList } from "@/domain/shopping-list/build";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
+import { tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
 import type { CatalogIndex } from "@/domain/catalog";
 import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
-import { ensureWeek, loadExtras, loadWeek } from "../planning/week";
+import { loadExtras, loadWeeks } from "../planning/week";
 
 /**
- * The shopping list of a week. Its lines are worked out from the plan every time it is
- * shown, so it can never disagree with the plan. What the household adds or changes by hand
- * is stored: typed entries, and per line the check-off, the note and "we have that".
+ * The shopping lists of a week: one per shopping day. Their lines are worked out from the
+ * plan every time they are shown, so they can never disagree with the plan. What the
+ * household adds or changes by hand is stored per shopping day: typed entries, and per line
+ * the check-off, the note and "we have that".
  */
 
-export interface WeekList {
+/** The list of one shopping day. */
+export interface DayList {
+  trip: ShoppingTrip;
   /** The list as one walk through a shop: by kind of grocery, whichever shop a thing is from. */
   view: AisleView;
-  /** What the household typed onto the list. */
-  entries: ManualEntry[];
+  /** Lines still to buy, and lines ticked off. */
+  open: number;
+  done: number;
+}
+
+export interface WeekLists {
+  /**
+   * The shopping days of the week, in order. A day before the week is among them when it
+   * buys for the week: Saturday's market for Monday.
+   */
+  days: DayList[];
   index: CatalogIndex;
-  /** Day of the main shopping trip. */
-  shoppingDate: IsoDate;
-  /** False for a week with nothing planned and nothing typed. */
-  hasContent: boolean;
 }
 
 /** The recipes of a week with their ingredient lines, as the list builder needs them. */
@@ -84,17 +93,28 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
   }));
 }
 
-export async function loadShoppingList(
+export async function loadShoppingLists(
   db: Db,
-  household: Pick<Household, "shoppingWeekday">,
+  household: Pick<Household, "shoppingDays">,
   weekStart: IsoDate,
-): Promise<WeekList> {
-  const [slots, extras, index, plan] = await Promise.all([
-    loadWeek(db, weekStart),
+): Promise<WeekLists> {
+  const weekEnd = addDays(weekStart, 6);
+  const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
+  // A shopping day can buy for two weeks, so the weeks around this one are read with it.
+  const [weeks, extras, index, listRows] = await Promise.all([
+    loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
     loadExtras(db, weekStart),
     loadCatalogIndex(db),
-    db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle(),
+    db
+      .from("shopping_list")
+      .select("id, shopping_date")
+      .gte("shopping_date", addDays(weekStart, -7))
+      .lte("shopping_date", weekEnd),
   ]);
+  const slots = weeks.flatMap((week) => week.slots);
+  const lists = must(listRows, "load shopping lists");
+  const listIds = lists.map((list) => list.id);
+  const dateOf = new Map(lists.map((list) => [list.id, list.shopping_date]));
   const recipeIds = [
     ...new Set([
       ...slots.flatMap((slot) =>
@@ -103,79 +123,95 @@ export async function loadShoppingList(
       ...extras.map((extra) => extra.recipeId),
     ]),
   ];
-  const list = plan.data
-    ? (await db.from("shopping_list").select("id").eq("week_plan_id", plan.data.id).maybeSingle())
-        .data
-    : null;
   const [recipes, entryRows, stateRows] = await Promise.all([
     loadRecipes(db, recipeIds),
-    list
+    listIds.length > 0
       ? db
           .from("shopping_manual_entry")
-          .select("id, text, shop_id, aisle_group_id")
-          .eq("shopping_list_id", list.id)
+          .select("id, shopping_list_id, text, shop_id, aisle_group_id")
+          .in("shopping_list_id", listIds)
           .order("created_at")
       : null,
-    list
+    listIds.length > 0
       ? db
           .from("shopping_line_state")
-          .select("line_key, at_home, shop_id, note, checked_at")
-          .eq("shopping_list_id", list.id)
+          .select("shopping_list_id, line_key, at_home, shop_id, note, checked_at")
+          .in("shopping_list_id", listIds)
       : null,
   ]);
   const entries = (entryRows ? must(entryRows, "load typed entries") : []).map(
     (row): ManualEntry => ({
       id: row.id,
       text: row.text,
+      shoppingDate: dateOf.get(row.shopping_list_id),
       shopId: row.shop_id,
       aisleGroupId: row.aisle_group_id,
     }),
   );
-  const states: Record<string, LineState> = {};
+  // What the household changed on a line, per shopping day.
+  const states = new Map<IsoDate, Record<string, LineState>>();
   for (const row of stateRows ? must(stateRows, "load line states") : []) {
-    states[row.line_key] = {
+    const date = dateOf.get(row.shopping_list_id) as IsoDate;
+    const ofDay = states.get(date) ?? {};
+    ofDay[row.line_key] = {
       ...(row.at_home !== null ? { atHome: row.at_home } : {}),
       ...(row.note !== null ? { note: row.note === "" ? null : row.note } : {}),
       ...(row.shop_id !== null ? { shopId: row.shop_id } : {}),
       checked: row.checked_at !== null,
     };
+    states.set(date, ofDay);
   }
 
-  const shoppingDate = addDays(weekStart, household.shoppingWeekday - 1);
+  // Far enough back that the first meal read has a shopping day before it.
+  const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
+  const ofWeek = trips.filter((trip) => inWeek(trip.date));
   const lines = buildShoppingList({
     index,
     recipes,
     slots,
     extras,
-    shoppingDate,
+    trips,
+    // The week's first trip to the supermarket.
+    extrasDate: (ofWeek.find((trip) => trip.kind === "all") ?? ofWeek[0])?.date,
     manualEntries: entries,
   });
-  return {
-    view: presentByAisle(lines, states, index),
-    entries,
-    index,
-    shoppingDate,
-    hasContent: lines.length > 0,
-  };
+  const buysForWeek = (date: IsoDate) =>
+    lines.some(
+      (line) =>
+        line.shoppingDate === date &&
+        line.contributions.some(
+          ({ source }) =>
+            (source.type === "recipe" || source.type === "food") && inWeek(source.date),
+        ),
+    );
+  const days = trips
+    .filter((trip) => inWeek(trip.date) || (trip.date < weekStart && buysForWeek(trip.date)))
+    .map((trip): DayList => {
+      const view = presentByAisle(
+        lines.filter((line) => line.shoppingDate === trip.date),
+        states.get(trip.date) ?? {},
+        index,
+      );
+      const toBuy = [...view.groups.flatMap((group) => group.lines), ...view.later];
+      const done = toBuy.filter((line) => line.checked).length;
+      return { trip, view, open: toBuy.length - done, done };
+    });
+  return { days, index };
 }
 
-/** The id of a week's list. It comes into being with the first thing stored on it. */
-async function ensureList(
-  db: Db,
-  household: Pick<Household, "id" | "shoppingWeekday">,
-  weekStart: IsoDate,
-): Promise<string> {
-  const planId = await ensureWeek(db, household.id, weekStart);
+/** Whether the household shops on a day. Nothing is stored for a day it does not. */
+export function isShoppingDay(household: Pick<Household, "shoppingDays">, date: IsoDate): boolean {
+  return tripsBetween(household.shoppingDays, date, date).length > 0;
+}
+
+/** The id of a shopping day's list. It comes into being with the first thing stored on it. */
+async function ensureList(db: Db, householdId: string, date: IsoDate): Promise<string> {
   const list = must(
     await db
       .from("shopping_list")
       .upsert(
-        {
-          household_id: household.id,
-          week_plan_id: planId,
-          shopping_date: addDays(weekStart, household.shoppingWeekday - 1),
-        },
-        { onConflict: "week_plan_id" },
+        { household_id: householdId, shopping_date: date },
+        { onConflict: "household_id,shopping_date" },
       )
       .select("id")
       .single(),
@@ -187,11 +223,11 @@ async function ensureList(
 /** Adds a line as the household writes it: "Milch WS 1.29", "Geschenkpapier". */
 export async function addEntry(
   db: Db,
-  household: Pick<Household, "id" | "shoppingWeekday" | "userId">,
-  weekStart: IsoDate,
+  household: Pick<Household, "id" | "userId">,
+  date: IsoDate,
   text: string,
 ): Promise<void> {
-  const listId = await ensureList(db, household, weekStart);
+  const listId = await ensureList(db, household.id, date);
   const stored = await db.from("shopping_manual_entry").insert({
     household_id: household.id,
     shopping_list_id: listId,
@@ -207,17 +243,17 @@ export async function removeEntry(db: Db, entryId: string): Promise<void> {
 }
 
 /**
- * Stores what the household changed on one line. The line is known by its key, which stays
- * the same when the plan changes, so the change stays with the line.
+ * Stores what the household changed on one line of a shopping day's list. The line is known
+ * by its key, which stays the same when the plan changes, so the change stays with the line.
  */
 export async function changeLine(
   db: Db,
-  household: Pick<Household, "id" | "shoppingWeekday" | "userId">,
-  weekStart: IsoDate,
+  household: Pick<Household, "id" | "userId">,
+  date: IsoDate,
   lineKey: string,
   change: { checked: boolean } | { atHome: boolean } | { note: string },
 ): Promise<void> {
-  const listId = await ensureList(db, household, weekStart);
+  const listId = await ensureList(db, household.id, date);
   const values =
     "checked" in change
       ? {
@@ -245,6 +281,6 @@ export async function changeLine(
  * The shop a line names on purpose, such as the bakery for the bread of a cold supper. Null
  * for everything that is simply bought where it always is: the list does not sort by shop.
  */
-export function chosenShop(list: WeekList, view: ViewLine): string | null {
-  return view.line.shopByChoice ? (list.index.shopById.get(view.shopId)?.name ?? null) : null;
+export function chosenShop(index: CatalogIndex, view: ViewLine): string | null {
+  return view.line.shopByChoice ? (index.shopById.get(view.shopId)?.name ?? null) : null;
 }

@@ -37,6 +37,27 @@ test("screens @look", async ({ page }, info) => {
   await page.goto("/woche/verlauf");
   await page.waitForLoadState("networkidle");
   await shot("2-wochen");
+  // A planned week has a list for every shopping day, and the note has something on it.
+  await page.goto("/woche?w=2027-03-01");
+  const complete = page.getByRole("button", { name: "Plan vervollständigen" });
+  if (await complete.count()) {
+    await complete.click();
+    await page.getByRole("link", { name: "Montag Mittag ändern" }).waitFor();
+    await shot("2-woche-geplant");
+  }
+  await page.goto("/merkzettel");
+  for (const text of ["Mehl", "Spülmittel", "Karotten"]) {
+    await page.getByLabel("Auf den Merkzettel schreiben").fill(text);
+    await page.getByRole("button", { name: "Notieren" }).click();
+    await page.getByRole("button", { name: `${text} auf den Einkaufszettel` }).waitFor();
+  }
+  await shot("2-merkzettel");
+  await page.goto("/einkauf?w=2027-03-01&tag=alle");
+  await page.waitForLoadState("networkidle");
+  await shot("2-einkauf");
+  await page.goto("/einkauf?w=2027-03-01&tag=2027-03-01");
+  await page.waitForLoadState("networkidle");
+  await shot("2-einkauf-tag");
   await page.goto("/favoriten");
   await page.waitForLoadState("networkidle");
   await shot("2-favoriten");

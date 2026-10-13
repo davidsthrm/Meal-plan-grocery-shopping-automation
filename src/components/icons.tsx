@@ -98,3 +98,23 @@ export function CameraIcon() {
     </svg>
   );
 }
+
+/** The note for what ran out at home: a sheet with a corner folded over. */
+export function NoteIcon() {
+  return (
+    <svg {...base}>
+      <path d="M5 4h14v10l-5.500 6H5Z" />
+      <path d="M19 14h-5.500v6" />
+      <path d="M8.500 8.500h7M8.500 12h4" />
+    </svg>
+  );
+}
+
+/** A tick as a pen makes it, a little over the edge of its box. */
+export function TickIcon() {
+  return (
+    <svg {...base} width={24} height={24} strokeWidth={2.6}>
+      <path d="M4.500 12.500 9.500 18 20 4.500" />
+    </svg>
+  );
+}
