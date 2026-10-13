@@ -6,9 +6,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
 import type { NewSlot, SlotContent } from "@/domain/plan";
-import { slotKey } from "@/domain/plan";
+import { namedMeal, slotKey } from "@/domain/plan";
 import { plannedServings } from "@/domain/recipe";
 import { BALANCE_GROUPS, readTargets } from "@/domain/recommend/balance";
+import { readDaysForm } from "@/domain/shopping-list/trips";
 import { TARGETS_SEEN } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
 import { must, type Db } from "@/server/catalog";
@@ -22,8 +23,11 @@ import {
   copyPreviousWeek,
   loadWeek,
   planOpenSlots,
+  resetWeek,
+  savePlan,
   writeSlot,
 } from "@/server/planning/week";
+import { storeShoppingDays } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
 
 /**
@@ -160,12 +164,16 @@ export async function markSlot(form: FormData): Promise<void> {
     form,
   );
   let content: SlotContent;
-  if (input.kind === "free_text" || input.kind === "away") {
+  // "oma heidrun" typed in is the meal of that name, not a dish that lacks a recipe.
+  const named = input.kind === "free_text" && input.label ? namedMeal(input.label) : undefined;
+  const kind = named?.kind ?? input.kind;
+  const label = named?.label ?? input.label;
+  if (kind === "free_text" || kind === "away") {
     // Nothing typed is nothing planned.
-    if (!input.label) backToWeek(input.week, input.date);
-    content = { kind: input.kind, label: input.label };
+    if (!label) backToWeek(input.week, input.date);
+    content = { kind, label };
   } else {
-    content = { kind: input.kind };
+    content = { kind };
   }
   const household = await requireHousehold();
   const db = await createSessionClient();
@@ -190,6 +198,43 @@ export async function markSlot(form: FormData): Promise<void> {
   }
   await writeSlot(db, household.id, input.week, input.date, input.meal, content);
   backToWeek(input.week, input.date);
+}
+
+/**
+ * Says that a typed meal needs no recipe: a visit, a meal that is ordered. It becomes a
+ * meal away from the kitchen and keeps its name, and nobody is asked to upload a page for it.
+ */
+export async function needsNoRecipe(form: FormData): Promise<void> {
+  const input = read(place, form);
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const slot = (await loadWeek(db, input.week)).find(
+    (entry) => entry.date === input.date && entry.meal === input.meal,
+  );
+  if (slot?.kind === "free_text") {
+    await writeSlot(db, household.id, input.week, input.date, input.meal, {
+      kind: "away",
+      label: slot.label,
+    });
+  }
+  backToWeek(input.week, input.date);
+}
+
+/** Saves the plan of a week: the household is done planning it. Or takes the pen again. */
+export async function saveWeekPlan(form: FormData): Promise<void> {
+  const input = read(z.object({ week: weekStart, saved: z.enum(["0", "1"]) }), form);
+  const household = await requireHousehold();
+  await savePlan(await createSessionClient(), household.id, input.week, input.saved === "1");
+  backToWeek(input.week);
+}
+
+/** Rubs out the whole week: every meal, and what it needs besides. */
+export async function resetWeekPlan(form: FormData): Promise<void> {
+  const input = read(z.object({ week: weekStart }), form);
+  const household = await requireHousehold();
+  await resetWeek(await createSessionClient(), household.id, input.week);
+  revalidatePath("/einkauf");
+  backToWeek(input.week);
 }
 
 export async function clearSlot(form: FormData): Promise<void> {
@@ -329,6 +374,12 @@ export async function saveTargets(form: FormData): Promise<void> {
   );
   // What makes no sense is sent back to the form, which says so.
   if (!targets) redirect("/woche/ziele?fehler=1");
+  // The first visit also asks when the household shops.
+  const first = form.has("mit-einkaufstagen");
+  const days = first
+    ? readDaysForm((place) => form.getAll(`tage-${place}`).map(String))
+    : undefined;
+  if (days === null) redirect("/woche/ziele?start=1&fehler=tage");
   const household = await requireHousehold();
   const db = await createSessionClient();
   const stored = await db
@@ -336,6 +387,7 @@ export async function saveTargets(form: FormData): Promise<void> {
     .update({ balance_targets: targets })
     .eq("id", household.id);
   if (stored.error) throw new Error(`store targets: ${stored.error.message}`);
+  if (days) await storeShoppingDays(db, household.id, days);
   await markTargetsSeen();
   revalidatePath("/woche");
   redirect("/woche");

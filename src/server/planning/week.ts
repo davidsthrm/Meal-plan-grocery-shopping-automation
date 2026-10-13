@@ -28,6 +28,48 @@ export async function loadWeek(db: Db, weekStart: IsoDate): Promise<PlanSlot[]> 
   return loadSlots(db, [plan.data.id]);
 }
 
+/**
+ * Whether the household is done planning a week. A saved plan is shown to read; the
+ * controls for planning are put away until someone takes the pen.
+ */
+export async function isSaved(db: Db, weekStart: IsoDate): Promise<boolean> {
+  const plan = await db
+    .from("week_plan")
+    .select("saved_at")
+    .eq("week_start", weekStart)
+    .maybeSingle();
+  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
+  return Boolean(plan.data?.saved_at);
+}
+
+/** Saves a week's plan, or opens it for planning again. */
+export async function savePlan(
+  db: Db,
+  householdId: string,
+  weekStart: IsoDate,
+  saved: boolean,
+): Promise<void> {
+  const planId = await ensureWeek(db, householdId, weekStart);
+  const stored = await db
+    .from("week_plan")
+    .update({ saved_at: saved ? new Date().toISOString() : null })
+    .eq("id", planId);
+  if (stored.error) throw new Error(`save plan: ${stored.error.message}`);
+}
+
+/**
+ * Empties a week: every meal and everything it needs besides. The week is open for planning
+ * again. Shopping notes keep what was typed onto them.
+ */
+export async function resetWeek(db: Db, householdId: string, weekStart: IsoDate): Promise<void> {
+  const planId = await ensureWeek(db, householdId, weekStart);
+  for (const table of ["plan_slot", "plan_extra"] as const) {
+    const removed = await db.from(table).delete().eq("week_plan_id", planId);
+    if (removed.error) throw new Error(`empty week: ${removed.error.message}`);
+  }
+  await savePlan(db, householdId, weekStart, false);
+}
+
 /** The weeks with a plan that start between two Mondays, both included. */
 export async function loadWeeks(db: Db, from: IsoDate, to: IsoDate): Promise<PlannedWeek[]> {
   const plans = must(

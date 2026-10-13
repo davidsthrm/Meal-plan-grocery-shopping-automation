@@ -6,6 +6,7 @@ import { createBrowserSupabase } from "@/lib/supabase-browser";
 
 /** What the household changes together: the plan, the lists, the note, the goals. */
 const SHARED = [
+  "week_plan",
   "plan_slot",
   "plan_slot_food",
   "plan_extra",

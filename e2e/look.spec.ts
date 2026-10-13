@@ -58,19 +58,44 @@ test("screens @look", async ({ page }, info) => {
     await page.getByRole("link", { name: "Montag Mittag ändern" }).waitFor();
   }
   await shot("2-woche-geplant");
-  await page.goto("/merkzettel");
+  // The note is pulled down over the page that is open.
+  await page.getByRole("link", { name: /^Merkzettel/ }).click();
+  const note = page.getByRole("dialog", { name: "Merkzettel" });
   for (const text of ["Mehl", "Spülmittel", "Karotten"]) {
-    await page.getByLabel("Auf den Merkzettel schreiben").fill(text);
-    await page.getByRole("button", { name: "Notieren" }).click();
-    await page.getByRole("button", { name: `${text} auf den Einkaufszettel` }).waitFor();
+    if (await note.getByRole("button", { name: `${text} streichen` }).count()) continue;
+    await note.getByLabel("Auf den Merkzettel schreiben").fill(text);
+    await note.getByRole("button", { name: "Notieren" }).click();
+    await note.getByRole("button", { name: `${text} auf den Einkaufszettel` }).waitFor();
   }
-  await shot("2-merkzettel");
-  await page.goto("/einkauf?w=2027-03-01&tag=alle");
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `test-results/look/${info.project.name}-2-merkzettel.png` });
+  await note.getByRole("button", { name: "Zurückstecken" }).click();
+  // The notes of the week next to each other, and one picked up.
+  await page.goto("/einkauf?w=2027-03-01");
   await page.waitForLoadState("networkidle");
   await shot("2-einkauf");
-  await page.goto("/einkauf?w=2027-03-01&tag=2027-03-01");
+  const first = page
+    .getByRole("list", { name: "Zettel" })
+    .getByRole("link", { name: /^Supermarkt, Montag/ });
+  if (await first.count()) {
+    await first.click();
+    await page.getByRole("link", { name: "← Alle Zettel" }).waitFor();
+    await page.waitForTimeout(500);
+    await shot("2-einkauf-zettel");
+  }
+  // A saved plan, as the family reads it during the week.
+  await page.goto("/woche?w=2027-03-01");
+  const save = page.getByRole("button", { name: "Plan speichern" });
+  if (await save.count()) {
+    await save.click();
+    await page.getByText("Gespeichert.").waitFor();
+  }
+  await shot("2-woche-gespeichert");
+  const edit = page.getByRole("button", { name: "Plan bearbeiten" });
+  if (await edit.count()) await edit.click();
+  await page.goto("/einstellungen");
   await page.waitForLoadState("networkidle");
-  await shot("2-einkauf-tag");
+  await shot("2-einstellungen");
   await page.goto("/favoriten");
   await page.waitForLoadState("networkidle");
   await shot("2-favoriten");

@@ -240,6 +240,131 @@ body {
     border-bottom: 1px solid var(--color-note-line);
   }
 
+  /*
+   * The note pulled down over a page. It hangs from the top of the screen on a string and
+   * comes down with a little swing; a tap beside it sends it back up.
+   */
+  .note-drawer {
+    inset: 0 0 auto;
+    width: min(34rem, 100vw - 1.5rem);
+    max-width: none;
+    max-height: 100dvh;
+    margin: 0 auto;
+    padding: 2.2rem 0.4rem 1.5rem;
+    overflow: visible auto;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    transform-origin: 50% 0;
+  }
+  .note-drawer::backdrop {
+    background: rgb(35 33 29 / 0.38);
+  }
+  .note-drawer[open] {
+    animation: note-down 0.42s cubic-bezier(0.2, 0.9, 0.25, 1.12) both;
+  }
+  .note-drawer[open]::backdrop {
+    animation: fade-in 0.25s ease-out both;
+  }
+  .note-drawer.going {
+    animation: note-up 0.18s ease-in both;
+  }
+  .note-drawer-string {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 1.7rem;
+    background: var(--color-note-line);
+  }
+  .note-drawer-close {
+    display: block;
+    min-height: 2.75rem;
+    margin: 0.4rem auto 0;
+    padding: 0 1rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  /* A shopping note picked up from among the others comes closer. */
+  .zoom-in {
+    transform-origin: 50% 0;
+    animation: zoom-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Notes lying next to each other do not lie straight. Picked up, one does. */
+  .tiles > li:nth-child(3n + 1) > * {
+    rotate: -0.7deg;
+  }
+  .tiles > li:nth-child(3n + 2) > * {
+    rotate: 0.5deg;
+  }
+  .tiles > li:nth-child(3n) > * {
+    rotate: -0.3deg;
+  }
+  .tiles > li > *:hover,
+  .tiles > li > *:focus-visible {
+    rotate: 0deg;
+  }
+
+  /*
+   * A rubber goes over the plan before a week is emptied: the meals fade from the top, and
+   * the rubber crosses the sheet from side to side on its way down.
+   */
+  .erasing > * {
+    animation: rub-out 0.35s ease-in forwards;
+  }
+  .erasing > *:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  .erasing > *:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+  .erasing > *:nth-child(4) {
+    animation-delay: 0.3s;
+  }
+  .erasing > *:nth-child(5) {
+    animation-delay: 0.4s;
+  }
+  .erasing > *:nth-child(6) {
+    animation-delay: 0.5s;
+  }
+  .erasing > *:nth-child(7) {
+    animation-delay: 0.6s;
+  }
+  .erasing::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    width: 3.6rem;
+    height: 1.7rem;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 0.35rem;
+    background: linear-gradient(90deg, var(--color-meat) 0 64%, var(--color-surface) 64%);
+    box-shadow: 0 6px 10px -6px rgb(35 33 29 / 0.5);
+    animation: rubber 1.1s ease-in-out forwards;
+  }
+
+  /* An errand that is done: its note pales, and a stamp says so and who did it. */
+  .done-note {
+    opacity: 0.45;
+    filter: grayscale(1);
+  }
+  .stamp {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    rotate: -9deg;
+    padding: 0.35rem 0.9rem;
+    border: 2.5px solid var(--color-accent);
+    border-radius: 0.5rem;
+    background: rgb(255 253 249 / 0.85);
+    color: var(--color-accent);
+    text-align: center;
+    white-space: nowrap;
+  }
+
   /* A word marked with a highlighter: today on the plan. One stroke over the whole word. */
   .marked {
     margin-inline: -0.3em;
@@ -330,6 +455,7 @@ body {
   .lift {
     transition:
       transform 0.16s ease,
+      rotate 0.16s ease,
       box-shadow 0.16s ease,
       border-color 0.16s ease;
   }
@@ -433,11 +559,75 @@ body {
     transform: translateY(6px);
   }
 }
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes note-down {
+  from {
+    transform: translateY(-105%) rotate(-3deg);
+  }
+}
+@keyframes note-up {
+  to {
+    transform: translateY(-105%) rotate(2deg);
+  }
+}
+@keyframes rub-out {
+  to {
+    opacity: 0;
+    filter: blur(1.5px);
+  }
+}
+@keyframes rubber {
+  0% {
+    top: 2%;
+    left: 4%;
+    rotate: -16deg;
+  }
+  20% {
+    top: 14%;
+    left: 78%;
+    rotate: -24deg;
+  }
+  40% {
+    top: 32%;
+    left: 8%;
+    rotate: -12deg;
+  }
+  60% {
+    top: 52%;
+    left: 76%;
+    rotate: -24deg;
+  }
+  80% {
+    top: 74%;
+    left: 10%;
+    rotate: -12deg;
+  }
+  100% {
+    top: 94%;
+    left: 80%;
+    rotate: -20deg;
+    opacity: 0;
+  }
+}
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
 main > * {
   animation: page-in 0.22s ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
-  main > * {
+  main > *,
+  .zoom-in,
+  .note-drawer[open],
+  .note-drawer[open]::backdrop,
+  .note-drawer.going {
     animation: none;
   }
   .lift {

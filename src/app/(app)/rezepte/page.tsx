@@ -139,7 +139,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
                   <li key={entry.key}>
                     <Link
                       href={`/rezepte?${new URLSearchParams(filterParams(entry.filter))}`}
-                      className={`card lift flex min-h-14 items-center gap-2.5 px-3 py-2 ${filterTone(entry.filter)}`}
+                      className={`card lift flex h-full min-h-14 items-center gap-2.5 px-3 py-2 ${filterTone(entry.filter)}`}
                     >
                       <span className="badge h-9 w-9">
                         <PictogramIcon
@@ -147,7 +147,11 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
                           className="h-[68%] w-[68%]"
                         />
                       </span>
-                      <span className="min-w-0 flex-1 leading-tight font-semibold">
+                      {/* A long name breaks at a syllable and takes two lines at most. */}
+                      <span
+                        className="line-clamp-2 min-w-0 flex-1 leading-tight font-semibold hyphens-auto"
+                        title={entry.label}
+                      >
                         {entry.label}
                       </span>
                       <span className="text-sm text-muted tabular-nums">{entry.count}</span>

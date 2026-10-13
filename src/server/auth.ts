@@ -1,14 +1,18 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { DEFAULT_TARGETS, readTargets, type BalanceTargets } from "@/domain/recommend/balance";
-import { DEFAULT_SHOPPING_DAYS, type ShoppingDay } from "@/domain/shopping-list/trips";
+import {
+  DEFAULT_SHOPPING_DAYS,
+  readShoppingDays,
+  type ShoppingDay,
+} from "@/domain/shopping-list/trips";
 import { createSessionClient } from "./supabase/server";
 
 export interface Household {
   id: string;
   name: string;
   defaultServings: number;
-  /** The weekdays the household shops on, and where. The same every week for now. */
+  /** The weekdays the household shops on, and where. The app's own until it has chosen. */
   shoppingDays: readonly ShoppingDay[];
   /** What a week should contain. The app's own defaults until the household has chosen. */
   targets: BalanceTargets;
@@ -28,7 +32,7 @@ export async function requireHousehold(): Promise<Household> {
 
   const { data, error } = await supabase
     .from("household")
-    .select("id, name, default_servings, balance_targets")
+    .select("id, name, default_servings, balance_targets, shopping_days")
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`could not load the household: ${error.message}`);
@@ -37,7 +41,7 @@ export async function requireHousehold(): Promise<Household> {
     id: data.id,
     name: data.name,
     defaultServings: data.default_servings,
-    shoppingDays: DEFAULT_SHOPPING_DAYS,
+    shoppingDays: readShoppingDays(data.shopping_days) ?? DEFAULT_SHOPPING_DAYS,
     targets: readTargets(data.balance_targets) ?? DEFAULT_TARGETS,
     userId,
   };

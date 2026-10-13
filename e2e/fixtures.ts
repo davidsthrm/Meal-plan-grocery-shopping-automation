@@ -504,6 +504,29 @@ export async function resetLibrary(): Promise<void> {
 }
 
 /**
+ * Puts the test household back to how a household starts: the app's own shopping days, no
+ * invitations, and nobody in it but the test user. Accounts that joined in a test are
+ * removed altogether.
+ */
+export async function resetHousehold(): Promise<void> {
+  const household = await testHousehold();
+  const cleared = await db.from("household").update({ shopping_days: null }).eq("id", household);
+  if (cleared.error) throw new Error(`reset shopping days: ${cleared.error.message}`);
+  await db.from("household_invite").delete().eq("household_id", household);
+  const members = check(
+    await db.from("household_member").select("user_id").eq("household_id", household),
+    "load members",
+  );
+  for (const member of members) {
+    const { data } = await db.auth.admin.getUserById(member.user_id);
+    if (!data.user || data.user.email === process.env.E2E_EMAIL) continue;
+    // Only ever accounts a test made: their address says so.
+    if (!data.user.email?.startsWith("e2e-gast-")) continue;
+    await db.auth.admin.deleteUser(member.user_id);
+  }
+}
+
+/**
  * Marks a batch as uploaded for a meal of the week plan, as the upload form does when it was
  * opened from that meal. The photos themselves are read by a model, which the tests leave out.
  */

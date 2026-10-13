@@ -56,6 +56,24 @@ export interface PlanExtra {
   note: string | null;
 }
 
+/**
+ * Meals without a recipe that are one tap away. "Oma Heidrun" is where the household eats
+ * regularly: a visit like any meal away from home, with a name of its own.
+ */
+export const MEALS_WITHOUT_RECIPE = [
+  { label: "Vesper", kind: "free_text" },
+  { label: "Reste", kind: "leftovers" },
+  { label: "Auswärts", kind: "away" },
+  { label: "Oma Heidrun", kind: "away" },
+  { label: "Fällt aus", kind: "skipped" },
+] as const;
+
+/** The meal without a recipe a typed text names, however it is capitalised. */
+export function namedMeal(text: string): (typeof MEALS_WITHOUT_RECIPE)[number] | undefined {
+  const typed = text.trim().toLowerCase();
+  return MEALS_WITHOUT_RECIPE.find((entry) => entry.label.toLowerCase() === typed);
+}
+
 /** The meals every day has. */
 export const MEALS: readonly Meal[] = ["lunch", "dinner"];
 

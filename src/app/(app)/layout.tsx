@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { AppNav } from "@/components/app-nav";
-import { NoteIcon } from "@/components/icons";
+import { SettingsIcon } from "@/components/icons";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
+import { NoteDrawer } from "@/components/note-drawer";
+import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
-import { countRestock } from "@/server/shopping/restock";
+import { loadRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 import { signOut } from "../login/actions";
 
@@ -14,7 +16,7 @@ import { signOut } from "../login/actions";
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const household = await requireHousehold();
-  const noted = await countRestock(await createSessionClient());
+  const noted = await loadRestock(await createSessionClient(), household, today());
   return (
     <div className="min-h-dvh px-4 pb-24 sm:pb-10 print:p-0">
       {/* Paper gets the content only: no header, no navigation. */}
@@ -26,18 +28,17 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <AppNav />
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/merkzettel"
-            className="btn min-h-10 gap-1.5 border-note-line bg-note px-3 text-sm"
-            aria-label={`Merkzettel, ${noted === 1 ? "1 Eintrag" : `${noted} Einträge`}`}
-          >
-            <NoteIcon />
-            Merkzettel
-            {noted > 0 && <span className="tabular-nums">{noted}</span>}
-          </Link>
+          <NoteDrawer items={noted} />
           {/* On a phone the header has no room for it: signing out is at the foot of the page. */}
-          <form action={signOut} className="hidden items-center gap-3 sm:flex">
-            <span className="hidden text-sm text-muted lg:inline">{household.name}</span>
+          <Link
+            href="/einstellungen"
+            className="btn hidden min-h-10 px-2.5 sm:inline-flex"
+            aria-label="Einstellungen"
+            title={household.name}
+          >
+            <SettingsIcon />
+          </Link>
+          <form action={signOut} className="hidden sm:block">
             <button className="btn min-h-10 px-3 text-sm">Abmelden</button>
           </form>
         </div>
@@ -48,7 +49,10 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         action={signOut}
         className="mx-auto mt-12 flex max-w-5xl items-center justify-between gap-3 border-t border-line pt-4 sm:hidden print:hidden"
       >
-        <span className="text-sm text-muted">{household.name}</span>
+        <Link href="/einstellungen" className="link inline-flex min-h-10 items-center gap-1.5">
+          <SettingsIcon />
+          Einstellungen
+        </Link>
         <button className="btn min-h-10 px-3 text-sm">Abmelden</button>
       </form>
       <div className="sm:hidden print:hidden">

@@ -118,3 +118,33 @@ export function TickIcon() {
     </svg>
   );
 }
+
+/** The pen that opens a saved plan for a change. */
+export function PenIcon() {
+  return (
+    <svg {...base} width={18} height={18}>
+      <path d="M4 20l1-4.500L16.500 4a2.100 2.100 0 0 1 3 3L8 18.500 4 20Z" />
+      <path d="M14.500 6l3.500 3.500" />
+    </svg>
+  );
+}
+
+/** The rubber that empties a week. */
+export function EraserIcon() {
+  return (
+    <svg {...base} width={18} height={18}>
+      <path d="M9.500 19 4 13.500a1.500 1.500 0 0 1 0-2.100l7.400-7.400a1.500 1.500 0 0 1 2.100 0l6 6a1.500 1.500 0 0 1 0 2.100L13.500 19Z" />
+      <path d="M8 8l8 8M9.500 19H20" />
+    </svg>
+  );
+}
+
+/** A cogwheel: where the household sets what stays the same every week. */
+export function SettingsIcon() {
+  return (
+    <svg {...base}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v2.500M12 18.500V21M3 12h2.500M18.500 12H21M5.600 5.600l1.800 1.800M16.600 16.600l1.800 1.800M5.600 18.400l1.800-1.800M16.600 7.400l1.800-1.800" />
+    </svg>
+  );
+}
