@@ -53,8 +53,8 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
 
   return (
     <div className="mx-auto max-w-xl">
-      <p className="eyebrow">{household.name}</p>
-      <h1 className="title mt-1">Einstellungen</h1>
+      <h1 className="title">Einstellungen</h1>
+      <p className="mt-1 text-muted">Haushalt „{household.name}“</p>
 
       <section className="card mt-6 p-4" aria-labelledby="ziele">
         <div className="flex items-baseline justify-between gap-3">
@@ -82,8 +82,9 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
           Einkaufstage
         </h2>
         <p className="mt-1 mb-3 text-sm text-muted">
-          Jeder Einkauf bekommt seinen eigenen Zettel. Metzger und Bäcker brauchen keinen festen
-          Tag: was eine Mahlzeit von dort braucht, steht sonst auf einem Zettel für ihren Tag.
+          Jeder Einkauf bekommt seinen eigenen Zettel. Metzger und Bäcker haben keinen festen Tag:
+          was eine Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit,
+          für einen Sonntag auf dem vom Samstag.
         </p>
         {one(params.fehler) === "tage" && (
           <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
@@ -121,9 +122,9 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
         <details className="mt-2" open={said === "frisch"}>
           <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
           <p className="text-sm text-muted">
-            Was hier dem Markt oder dem Metzger gehört, kommt auf deren Zettel, wenn ihr Tag
-            höchstens drei Tage vor der Mahlzeit liegt und es sich so lange hält. Alles andere kommt
-            aus dem Supermarkt.
+            Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens drei
+            Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger gehört, bekommt
+            einen Zettel für den Tag der Mahlzeit. Alles andere kommt aus dem Supermarkt.
           </p>
           <form action={saveFreshPlaces} className="mt-3">
             <ul className="divide-y divide-line">
