@@ -219,8 +219,8 @@ export function RecipeEditForm({
         </div>
       </div>
 
-      <fieldset className="card space-y-3 p-4">
-        <legend className="px-1 text-xl font-bold tracking-tight">Stichworte</legend>
+      <section aria-label="Stichworte" className="card space-y-3 p-4">
+        <h2 className="text-xl font-bold tracking-tight">Stichworte</h2>
         <p className="text-sm text-muted">
           Danach lässt sich das Kochbuch durchstöbern, und der Wochenplan schlägt unter der Woche
           nichts vor, das Zeit braucht.
@@ -259,7 +259,7 @@ export function RecipeEditForm({
             placeholder="z. B. Omas Rezept, Kindergeburtstag"
           />
         </div>
-      </fieldset>
+      </section>
       {problem("sourcePage")}
 
       <h2 className="pt-2 text-xl font-bold tracking-tight">Zutaten</h2>

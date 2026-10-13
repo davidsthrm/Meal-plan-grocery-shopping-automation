@@ -6,6 +6,8 @@ test("screens @look", async ({ page }, info) => {
   const shot = async (name: string) =>
     page.screenshot({ path: `test-results/look/${info.project.name}-${name}.png`, fullPage: true });
 
+  // Pages come in with a short fade. A picture taken in the middle of it would be pale.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   // Not a first visit: the page about the goals of a week would stand in front of the plan.
   await page.context().addCookies([
     {
