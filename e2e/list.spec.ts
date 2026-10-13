@@ -174,3 +174,34 @@ test("what ran out at home is noted and put on the next shopping day's list", as
   await expect(page.getByRole("region", { name: "Merkzettel" })).toHaveCount(0);
   await expect(page.getByText("Mehl", { exact: true })).toBeVisible();
 });
+
+test("what one device changes shows on another without reloading", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  // A second device of the same household, signed in by itself.
+  const context = await browser.newContext({ baseURL });
+  const other = await context.newPage();
+  await signIn(other);
+  await other.goto("/merkzettel");
+  await expect(other.getByText("Es steht nichts darauf.")).toBeVisible();
+  // Give the second device the moment it needs to start listening.
+  await other.waitForTimeout(2000);
+
+  await page.goto("/merkzettel");
+  const write = page.getByLabel("Auf den Merkzettel schreiben");
+  await write.fill("Hefe");
+  await write.press("Enter");
+  await expect(page.getByRole("button", { name: "Hefe streichen" })).toBeVisible();
+
+  // The other device shows it without anyone touching it, in the note and in the header.
+  await expect(other.getByRole("button", { name: "Hefe streichen" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(other.getByRole("link", { name: "Merkzettel, 1 Eintrag" })).toBeVisible();
+
+  await other.getByRole("button", { name: "Hefe streichen" }).click();
+  await expect(page.getByText("Es steht nichts darauf.")).toBeVisible({ timeout: 15_000 });
+  await context.close();
+});

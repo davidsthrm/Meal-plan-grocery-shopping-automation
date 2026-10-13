@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppNav } from "@/components/app-nav";
 import { NoteIcon } from "@/components/icons";
+import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
 import { requireHousehold } from "@/server/auth";
 import { countRestock } from "@/server/shopping/restock";
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         </div>
       </header>
       <main>{children}</main>
+      <LiveRefresh />
       <form
         action={signOut}
         className="mx-auto mt-12 flex max-w-5xl items-center justify-between gap-3 border-t border-line pt-4 sm:hidden print:hidden"
