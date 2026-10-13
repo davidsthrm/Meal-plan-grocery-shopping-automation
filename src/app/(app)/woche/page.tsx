@@ -536,6 +536,31 @@ function MealCell({
       {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
         <p className="text-sm text-muted">{slot.foods?.map((food) => food.label).join(", ")}</p>
       )}
+      {/*
+        A typed meal the cookbook has no recipe for: the page can be photographed right now,
+        while the week is planned, and the recipe takes the place of the text.
+      */}
+      {slot?.kind === "free_text" && slot.label !== "Vesper" && !placing && (
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-note px-3 py-1.5 text-sm">
+          <span className="text-note-ink">Noch kein Rezept dazu</span>
+          <span className="flex items-center gap-3">
+            <Link
+              href={`/import?${new URLSearchParams({ d: date, m: meal })}`}
+              className="btn btn-small min-h-9 border-note-line bg-white/60"
+              aria-label={`${what}: Rezept hochladen`}
+            >
+              Hochladen
+            </Link>
+            <Link
+              href={`/rezepte/neu?${new URLSearchParams({ titel: slot.label, w: week, d: date, m: meal })}`}
+              className="font-semibold text-note-ink underline underline-offset-4"
+              aria-label={`${what}: Rezept anlegen`}
+            >
+              Eintippen
+            </Link>
+          </span>
+        </p>
+      )}
 
       {!slot && proposal && !placing && (
         <div className="mt-1 rounded-lg border border-accent/40 bg-surface px-3 py-2.5">
@@ -609,16 +634,6 @@ function MealCell({
                 aria-label={`${what}: Lebensmittel`}
               >
                 Lebensmittel
-              </Link>
-            )}
-            {/* A typed meal the library has no recipe for can become one. */}
-            {slot.kind === "free_text" && slot.label !== "Vesper" && (
-              <Link
-                href={`/rezepte/neu?${new URLSearchParams({ titel: slot.label, w: week, d: date, m: meal })}`}
-                className="link text-sm"
-                aria-label={`${what}: Rezept anlegen`}
-              >
-                Rezept anlegen
               </Link>
             )}
             <form action={clearSlot}>

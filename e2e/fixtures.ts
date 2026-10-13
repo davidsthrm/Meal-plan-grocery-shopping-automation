@@ -504,6 +504,23 @@ export async function resetLibrary(): Promise<void> {
 }
 
 /**
+ * Marks a batch as uploaded for a meal of the week plan, as the upload form does when it was
+ * opened from that meal. The photos themselves are read by a model, which the tests leave out.
+ */
+export async function uploadIsFor(
+  batchId: string,
+  date: string,
+  meal: "lunch" | "dinner",
+): Promise<void> {
+  const marked = await db
+    .from("import_batch")
+    .update({ for_date: date, for_meal: meal })
+    .eq("id", batchId)
+    .eq("household_id", await testHousehold());
+  if (marked.error) throw new Error(`mark batch: ${marked.error.message}`);
+}
+
+/**
  * Signs the test user in. A device that opens the plan for the first time is asked about the
  * goals of a week; the tests are no first visit unless they say so.
  */
