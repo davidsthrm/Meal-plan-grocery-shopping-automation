@@ -121,9 +121,10 @@ test("a meal at grandma's or one that is ordered asks for no recipe", async ({ p
 test("the household sets its shopping days, and the notes follow", async ({ page }) => {
   await page.goto("/einstellungen");
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
-  // Thursday instead of Friday.
-  await page.getByLabel("Supermarkt am Freitag").uncheck({ force: true });
-  await page.getByLabel("Supermarkt am Donnerstag").check({ force: true });
+  // Thursday instead of Friday. The boxes themselves are hidden behind their chips, so they
+  // are toggled directly: a forced click at their place once landed on the bar below.
+  await page.getByLabel("Supermarkt am Freitag").dispatchEvent("click");
+  await page.getByLabel("Supermarkt am Donnerstag").dispatchEvent("click");
   await page
     .getByRole("region", { name: "Einkaufstage" })
     .getByRole("button", { name: "Speichern" })
@@ -139,8 +140,8 @@ test("the household sets its shopping days, and the notes follow", async ({ page
 
   // Without a day at the supermarket there is nowhere to buy the rest.
   await page.goto("/einstellungen");
-  await page.getByLabel("Supermarkt am Montag").uncheck({ force: true });
-  await page.getByLabel("Supermarkt am Donnerstag").uncheck({ force: true });
+  await page.getByLabel("Supermarkt am Montag").dispatchEvent("click");
+  await page.getByLabel("Supermarkt am Donnerstag").dispatchEvent("click");
   await page
     .getByRole("region", { name: "Einkaufstage" })
     .getByRole("button", { name: "Speichern" })

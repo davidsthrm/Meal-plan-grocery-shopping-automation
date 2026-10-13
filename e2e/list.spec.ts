@@ -63,9 +63,9 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(6);
   // What is fresh comes from the market, the meat from the butcher on the day it is cooked.
   // A note shows its first lines while it lies among the others.
-  await expect(tile(page, MARKET)).toContainText("2 Karotten");
-  await expect(tile(page, MARKET)).toContainText("1 Gurke");
-  await expect(tile(page, BUTCHER)).toContainText("4 Rindersteaks");
+  await expect(tile(page, MARKET)).toContainText("2x Karotten");
+  await expect(tile(page, MARKET)).toContainText("1x Gurke");
+  await expect(tile(page, BUTCHER)).toContainText("4x Rindersteaks");
   await expect(tile(page, BUTCHER)).not.toContainText("Erledigt");
   await expect(tile(page, FRIDAY)).toContainText("Nichts zu kaufen");
   // The supper's bread has a note of its own, for the bakery on that day.
@@ -82,7 +82,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
     "Di 2. geht nicht: Gurke wird schon am Montag gebraucht.",
   );
   await page.getByRole("button", { name: "Einkauf verlegen auf Freitag, 26. Februar" }).click();
-  await expect(sheet(page, MARKET_ON_FRIDAY)).toContainText("2 Karotten");
+  await expect(sheet(page, MARKET_ON_FRIDAY)).toContainText("2x Karotten");
   // Done there: one tap ticks everything, and the note says so.
   await page.getByRole("button", { name: "Einkauf erledigt" }).click();
   await expect(sheet(page, MARKET_ON_FRIDAY).getByRole("status")).toContainText("Erledigt");
@@ -104,7 +104,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(group(page, MONDAY, "Gewürze, Öl & Essig")).toContainText("Salz");
   // Two cakes need 8 eggs, bought as a box of ten, on the week's first supermarket day.
   // Where a line comes from is one tap away.
-  await page.getByText("10 Eier").click();
+  await page.getByText("10x Eier").click();
   await expect(page.getByText("Genau: 8 Stück")).toBeVisible();
   await expect(
     page.locator("li:visible", { hasText: /^Außerdem: Zitronen-Mohn-Kuchen$/ }),
@@ -139,7 +139,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   // Ticking off, and the tick survives a change of the plan.
   await tile(page, BUTCHER).click();
   // The last tick on a note finishes its errand, just like the button.
-  await page.getByRole("button", { name: "4 Rindersteaks: erledigt" }).click();
+  await page.getByRole("button", { name: "4x Rindersteaks: erledigt" }).click();
   await expect(sheet(page, BUTCHER)).toContainText("1 erledigt");
   await expect(sheet(page, BUTCHER).getByRole("status")).toContainText("Erledigt");
   await page.goto(`/woche?w=${WEEK}`);
@@ -148,7 +148,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   // is looked for, not the absence of its name.
   await expect(page.getByRole("link", { name: "Dienstag Mittag planen" })).toBeVisible();
   await page.goto(`/einkauf?w=${WEEK}`);
-  await expect(tile(page, MARKET_ON_FRIDAY)).not.toContainText("2 Karotten");
+  await expect(tile(page, MARKET_ON_FRIDAY)).not.toContainText("2x Karotten");
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
   await expect(tile(page, BUTCHER)).toContainText("0 offen, 1 erledigt");
 
