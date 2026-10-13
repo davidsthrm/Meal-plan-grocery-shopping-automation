@@ -5,7 +5,8 @@ import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
 import { directory, discover } from "@/domain/library/discover";
 import { byFavoriteThenTitle, filterParams, isNoFilter, readFilter } from "@/domain/library/filter";
-import { pictogramFor } from "@/domain/library/pictogram";
+import { pictogramForFilter } from "@/domain/library/pictogram";
+import { filterTone } from "@/lib/plan-text";
 import { today } from "@/lib/today";
 import { loadLibrary, searchLibrary } from "@/server/library";
 import { loadHistory } from "@/server/planning/week";
@@ -134,33 +135,29 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
             <section key={section.title} className="mt-5" aria-label={section.title}>
               <h3 className="eyebrow">{section.title}</h3>
               <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {section.entries.map((entry) => {
-                  // A category and a kind of dish have a picture; a season or a cookbook has none.
-                  const picture = pictogramFor({
-                    title: "",
-                    category: entry.filter.category,
-                    proteinType: null,
-                    tags: entry.filter.tags,
-                  });
-                  return (
-                    <li key={entry.key}>
-                      <Link
-                        href={`/rezepte?${new URLSearchParams(filterParams(entry.filter))}`}
-                        className="card lift flex min-h-14 items-center gap-2.5 px-3 py-2"
+                {section.entries.map((entry) => (
+                  <li key={entry.key}>
+                    <Link
+                      href={`/rezepte?${new URLSearchParams(filterParams(entry.filter))}`}
+                      className={`card lift flex h-full min-h-14 items-center gap-2.5 px-3 py-2 ${filterTone(entry.filter)}`}
+                    >
+                      <span className="badge h-9 w-9">
+                        <PictogramIcon
+                          name={pictogramForFilter(entry.filter)}
+                          className="h-[68%] w-[68%]"
+                        />
+                      </span>
+                      {/* A long name breaks at a syllable and takes two lines at most. */}
+                      <span
+                        className="line-clamp-2 min-w-0 flex-1 leading-tight font-semibold hyphens-auto"
+                        title={entry.label}
                       >
-                        {(picture !== "teller" || section.title === "Art") && (
-                          <span className="badge h-9 w-9">
-                            <PictogramIcon name={picture} className="h-[68%] w-[68%]" />
-                          </span>
-                        )}
-                        <span className="min-w-0 flex-1 leading-tight font-semibold">
-                          {entry.label}
-                        </span>
-                        <span className="text-sm text-muted tabular-nums">{entry.count}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
+                        {entry.label}
+                      </span>
+                      <span className="text-sm text-muted tabular-nums">{entry.count}</span>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </section>
           ))}

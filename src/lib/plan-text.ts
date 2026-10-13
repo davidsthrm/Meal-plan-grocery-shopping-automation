@@ -74,6 +74,23 @@ export function recipeTone(recipe: {
   return kindMark(recipe.proteinType);
 }
 
+const DIET_KIND: Record<Diet, string> = {
+  vegetarisch: "kind-vegetarian",
+  vegan: "kind-vegetarian",
+  fisch: "kind-fish",
+  gefluegel: "kind-poultry",
+  fleisch: "kind-red_meat",
+};
+
+/**
+ * The class that colours one way to narrow the library down, where it has a colour of its
+ * own: a diet has that of its kind of meal, cakes and desserts are sweet.
+ */
+export function filterTone(filter: { diet: Diet | null; category: string | null }): string {
+  if (filter.diet) return DIET_KIND[filter.diet];
+  return filter.category !== null && SWEET.has(filter.category) ? "kind-sweet" : "";
+}
+
 export const DIET_NAME: Record<Diet, string> = {
   vegetarisch: "Vegetarisch",
   vegan: "Vegan",

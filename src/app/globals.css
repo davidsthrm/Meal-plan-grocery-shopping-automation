@@ -4,6 +4,10 @@
  * Calm and practical: warm paper, dark ink, one green accent. Sized for reading at the
  * kitchen table and for thumbs. What moves, moves a little: a card lifts under the finger,
  * a page comes in softly. Nothing depends on it.
+ *
+ * A few things are borrowed from the notes this app replaces: the plan and the lists are
+ * sheets of a pad, a list has ruled lines and a margin, and what ran out at home is
+ * written on a yellow note. Everything else stays plain.
  */
 @theme {
   --color-paper: #f7f4ee;
@@ -18,6 +22,13 @@
   --color-warn-soft: #f6ead0;
   --color-danger: #a3352a;
   --color-danger-soft: #f6e1dd;
+
+  /* Paper: the ruled lines of a sheet, its margin, and the yellow of a note. */
+  --color-rule: #e7e1d4;
+  --color-margin: #efcfc9;
+  --color-note: #fbf1c2;
+  --color-note-line: #ecdf9c;
+  --color-note-ink: #6b5a1c;
 
   /*
    * One pastel per kind of meal. The same colour marks the kind wherever it shows: on a
@@ -125,6 +136,243 @@ body {
     background: var(--color-surface);
   }
 
+  /*
+   * A sheet of a pad: the week plan, a shopping list. Barely rounded, with the holes of the
+   * binding along its top and two more sheets showing underneath.
+   */
+  .sheet {
+    position: relative;
+    border: 1px solid var(--color-line);
+    border-radius: 0.3rem;
+    background: var(--color-surface);
+    box-shadow:
+      0 5px 0 -2px var(--color-surface),
+      0 5px 0 -1px var(--color-line),
+      0 10px 0 -4px var(--color-surface),
+      0 10px 0 -3px var(--color-line),
+      0 24px 28px -24px rgb(35 33 29 / 0.4);
+  }
+  .sheet::before {
+    content: "";
+    display: block;
+    height: 1.5rem;
+    border-bottom: 1px solid var(--color-rule);
+    background: radial-gradient(
+        circle at 50% 55%,
+        var(--color-paper) 0 0.27rem,
+        var(--color-line) 0.27rem 0.33rem,
+        transparent 0.35rem
+      )
+      0.2rem 0 / 1.7rem 100% repeat-x;
+  }
+
+  /* The lines of a list on ruled paper, with the margin the boxes to tick stand in. */
+  .ruled {
+    background: linear-gradient(var(--color-margin), var(--color-margin)) 2.5rem 0 / 1px 100%
+      no-repeat;
+  }
+  .ruled > li {
+    border-bottom: 1px solid var(--color-rule);
+  }
+
+  /* The box in front of a line, and the tick someone made in it with a pen. */
+  .tickbox {
+    position: relative;
+    display: flex;
+    width: 2rem;
+    height: 2.5rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .tickbox::before {
+    content: "";
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1.5px solid var(--color-muted);
+    border-radius: 0.2rem;
+    background: var(--color-surface);
+  }
+  .tickbox > svg {
+    position: absolute;
+    left: 0.3rem;
+    top: 0.35rem;
+    width: 1.7rem;
+    height: 1.7rem;
+    color: var(--color-accent);
+    opacity: 0;
+  }
+  .tickbox[data-on="true"] > svg {
+    opacity: 1;
+  }
+  .tickbox:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  /* A yellow note, stuck on a little askew with a strip of tape. */
+  .note {
+    position: relative;
+    border-radius: 0.15rem;
+    background: var(--color-note);
+    box-shadow:
+      0 1px 1px rgb(35 33 29 / 0.1),
+      0 18px 20px -18px rgb(35 33 29 / 0.5);
+    transform: rotate(-0.5deg);
+  }
+  .note::before {
+    content: "";
+    position: absolute;
+    top: -0.6rem;
+    left: 50%;
+    width: 5.5rem;
+    height: 1.3rem;
+    transform: translateX(-50%) rotate(-1.5deg);
+    border-inline: 1px dashed rgb(35 33 29 / 0.1);
+    background: rgb(255 255 255 / 0.55);
+    box-shadow: 0 1px 2px rgb(35 33 29 / 0.14);
+  }
+  .note .eyebrow,
+  .note .muted {
+    color: var(--color-note-ink);
+  }
+  .note-lines > li {
+    border-bottom: 1px solid var(--color-note-line);
+  }
+
+  /*
+   * The note pulled down over a page. It hangs from the top of the screen on a string and
+   * comes down with a little swing; a tap beside it sends it back up.
+   */
+  .note-drawer {
+    inset: 0 0 auto;
+    width: min(34rem, 100vw - 1.5rem);
+    max-width: none;
+    max-height: 100dvh;
+    margin: 0 auto;
+    padding: 2.2rem 0.4rem 1.5rem;
+    overflow: visible auto;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    transform-origin: 50% 0;
+  }
+  .note-drawer::backdrop {
+    background: rgb(35 33 29 / 0.38);
+  }
+  .note-drawer[open] {
+    animation: note-down 0.42s cubic-bezier(0.2, 0.9, 0.25, 1.12) both;
+  }
+  .note-drawer[open]::backdrop {
+    animation: fade-in 0.25s ease-out both;
+  }
+  .note-drawer.going {
+    animation: note-up 0.18s ease-in both;
+  }
+  .note-drawer-string {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 1.7rem;
+    background: var(--color-note-line);
+  }
+  .note-drawer-close {
+    display: block;
+    min-height: 2.75rem;
+    margin: 0.4rem auto 0;
+    padding: 0 1rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  /* A shopping note picked up from among the others comes closer. */
+  .zoom-in {
+    transform-origin: 50% 0;
+    animation: zoom-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Notes lying next to each other do not lie straight. Picked up, one does. */
+  .tiles > li:nth-child(3n + 1) > * {
+    rotate: -0.7deg;
+  }
+  .tiles > li:nth-child(3n + 2) > * {
+    rotate: 0.5deg;
+  }
+  .tiles > li:nth-child(3n) > * {
+    rotate: -0.3deg;
+  }
+  .tiles > li > *:hover,
+  .tiles > li > *:focus-visible {
+    rotate: 0deg;
+  }
+
+  /*
+   * A rubber goes over the plan before a week is emptied: the meals fade from the top, and
+   * the rubber crosses the sheet from side to side on its way down.
+   */
+  .erasing > * {
+    animation: rub-out 0.35s ease-in forwards;
+  }
+  .erasing > *:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+  .erasing > *:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+  .erasing > *:nth-child(4) {
+    animation-delay: 0.3s;
+  }
+  .erasing > *:nth-child(5) {
+    animation-delay: 0.4s;
+  }
+  .erasing > *:nth-child(6) {
+    animation-delay: 0.5s;
+  }
+  .erasing > *:nth-child(7) {
+    animation-delay: 0.6s;
+  }
+  .erasing::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    width: 3.6rem;
+    height: 1.7rem;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 0.35rem;
+    background: linear-gradient(90deg, var(--color-meat) 0 64%, var(--color-surface) 64%);
+    box-shadow: 0 6px 10px -6px rgb(35 33 29 / 0.5);
+    animation: rubber 1.1s ease-in-out forwards;
+  }
+
+  /* An errand that is done: its note pales, and a stamp says so and who did it. */
+  .done-note {
+    opacity: 0.45;
+    filter: grayscale(1);
+  }
+  .stamp {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    rotate: -9deg;
+    padding: 0.35rem 0.9rem;
+    border: 2.5px solid var(--color-accent);
+    border-radius: 0.5rem;
+    background: rgb(255 253 249 / 0.85);
+    color: var(--color-accent);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* A word marked with a highlighter: today on the plan. One stroke over the whole word. */
+  .marked {
+    margin-inline: -0.3em;
+    padding: 0.05em 0.3em;
+    border-radius: 0.3em 0.12em 0.34em 0.14em;
+    background: color-mix(in srgb, var(--color-accent) 17%, transparent);
+  }
+
   /* The title of a page and of a recipe. */
   .title {
     font-size: 1.9rem;
@@ -133,12 +381,14 @@ body {
     letter-spacing: -0.02em;
   }
 
-  /* A small label above something: "Mittag", "Vorschlag", a category. */
+  /*
+   * A small label above something: "Mittag", "Vorschlag", a category. Written as it is
+   * spelled: the household found headings in capitals to look machine-made.
+   */
   .eyebrow {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.3;
     color: var(--color-muted);
   }
 
@@ -169,6 +419,15 @@ body {
     background: var(--color-accent-soft);
     color: var(--color-accent);
   }
+  /* The pictogram in front of a chip's name. */
+  .chip-picture {
+    width: 1.3rem;
+    height: 1.3rem;
+    flex: none;
+    margin-left: -0.15rem;
+    stroke-width: 2.6;
+    color: var(--color-accent);
+  }
 
   /* The kind of a meal sets the colours that a tag or a dot inside it uses. */
   .kind-vegetarian {
@@ -196,6 +455,7 @@ body {
   .lift {
     transition:
       transform 0.16s ease,
+      rotate 0.16s ease,
       box-shadow 0.16s ease,
       border-color 0.16s ease;
   }
@@ -209,7 +469,7 @@ body {
     transform: translateY(0);
   }
 
-  /* The pictogram behind a card's text: large, pale and a little out of focus. */
+  /* The pictogram behind a card's text: large and pale, with sharp lines. */
   .watermark {
     pointer-events: none;
     position: absolute;
@@ -219,8 +479,8 @@ body {
     height: 7.5rem;
     transform: rotate(-8deg);
     color: var(--kind-ink, var(--color-muted));
-    opacity: 0.16;
-    filter: blur(0.7px);
+    opacity: 0.18;
+    stroke-width: 1.5;
   }
 
   /* A pictogram on its pastel, in front of a name. */
@@ -232,6 +492,10 @@ body {
     border-radius: 0.6rem;
     background: var(--kind, var(--color-accent-soft));
     color: var(--kind-ink, var(--color-accent));
+  }
+  /* Drawn small, the lines of a pictogram would be a hair thin. They get more weight here. */
+  .badge > svg {
+    stroke-width: 2.6;
   }
 
   /* A small coloured label: "Vegetarisch", "Fisch". */
@@ -295,11 +559,75 @@ body {
     transform: translateY(6px);
   }
 }
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes note-down {
+  from {
+    transform: translateY(-105%) rotate(-3deg);
+  }
+}
+@keyframes note-up {
+  to {
+    transform: translateY(-105%) rotate(2deg);
+  }
+}
+@keyframes rub-out {
+  to {
+    opacity: 0;
+    filter: blur(1.5px);
+  }
+}
+@keyframes rubber {
+  0% {
+    top: 2%;
+    left: 4%;
+    rotate: -16deg;
+  }
+  20% {
+    top: 14%;
+    left: 78%;
+    rotate: -24deg;
+  }
+  40% {
+    top: 32%;
+    left: 8%;
+    rotate: -12deg;
+  }
+  60% {
+    top: 52%;
+    left: 76%;
+    rotate: -24deg;
+  }
+  80% {
+    top: 74%;
+    left: 10%;
+    rotate: -12deg;
+  }
+  100% {
+    top: 94%;
+    left: 80%;
+    rotate: -20deg;
+    opacity: 0;
+  }
+}
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
 main > * {
   animation: page-in 0.22s ease-out both;
 }
 @media (prefers-reduced-motion: reduce) {
-  main > * {
+  main > *,
+  .zoom-in,
+  .note-drawer[open],
+  .note-drawer[open]::backdrop,
+  .note-drawer.going {
     animation: none;
   }
   .lift {
@@ -323,6 +651,21 @@ details > summary::-webkit-details-marker {
   body {
     background: #fff;
     color: #000;
+  }
+  /* Real paper needs no picture of paper. */
+  .sheet {
+    border: 0;
+    box-shadow: none;
+    background: none;
+  }
+  .sheet::before {
+    display: none;
+  }
+  .ruled {
+    background: none;
+  }
+  .ruled > li {
+    border: 0;
   }
   details > summary {
     cursor: auto;

@@ -1,8 +1,10 @@
 import "server-only";
 import sharp from "sharp";
+import type { IsoDate } from "@/domain/dates";
 import type { RecipeDraft } from "@/domain/import/draft";
 import { groupPages } from "@/domain/import/group-pages";
 import type { PageSurvey } from "@/domain/import/survey";
+import type { Meal } from "@/domain/plan";
 import { loadCatalogIndex, must, type Db } from "../catalog";
 import type { Json } from "../supabase/database.types";
 import { frameNextPage } from "./frame-stored";
@@ -41,16 +43,27 @@ const ABANDONED_AFTER_MS = 5 * 60 * 1000;
 const now = () => new Date().toISOString();
 const json = (value: unknown) => value as Json;
 
+/**
+ * Starts a batch. `forMeal` is the meal of the week plan the upload was started from: the
+ * recipe read from it is planned there, see `placeForMeal`.
+ */
 export async function createBatch(
   db: Db,
   householdId: string,
   userId: string,
   sourceBook: string | null,
+  forMeal: { date: IsoDate; meal: Meal } | null = null,
 ): Promise<string> {
   const batch = must(
     await db
       .from("import_batch")
-      .insert({ household_id: householdId, created_by: userId, source_book: sourceBook })
+      .insert({
+        household_id: householdId,
+        created_by: userId,
+        source_book: sourceBook,
+        for_date: forMeal?.date ?? null,
+        for_meal: forMeal?.meal ?? null,
+      })
       .select("id")
       .single(),
     "create batch",

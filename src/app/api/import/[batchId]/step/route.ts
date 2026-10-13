@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { batchProgress, processNext } from "@/server/import/batch";
+import { placeForMeal } from "@/server/import/for-meal";
 import { createSessionClient } from "@/server/supabase/server";
 
 // One step can be a model reading a recipe twice. Leave it room.
@@ -16,14 +17,16 @@ export async function POST(_request: Request, context: RouteContext<"/api/import
   // Row level security: a batch of another household does not exist for this user.
   const { data: batch } = await db
     .from("import_batch")
-    .select("id, household_id")
+    .select("id, household_id, for_date")
     .eq("id", batchId)
     .maybeSingle();
   if (!batch) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   try {
     const result = await processNext(db, batch.household_id, batchId);
-    return NextResponse.json({ result, progress: await batchProgress(db, batchId) });
+    // Uploaded for a meal of the week plan: the recipe goes there as soon as it is read.
+    const placed = batch.for_date ? await placeForMeal(db, batch.household_id, batchId) : null;
+    return NextResponse.json({ result, progress: await batchProgress(db, batchId), placed });
   } catch (error) {
     // The model service asks for a pause, or is overloaded. The step was put back; the page
     // waits a little and carries on by itself.

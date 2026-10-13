@@ -31,12 +31,71 @@ test("screens @look", async ({ page }, info) => {
   const ask = page.getByRole("link", { name: /Hast du einen Vorschlag/ }).first();
   if (await ask.count()) {
     await ask.click();
-    await page.getByText("Vorschlag", { exact: true }).waitFor();
-    await shot("2-woche-vorschlag");
+    // A library with nothing left to suggest answers with nothing: then there is no picture.
+    const answer = page.getByText("Vorschlag", { exact: true });
+    const answered = await answer.waitFor({ timeout: 5000 }).then(
+      () => true,
+      () => false,
+    );
+    if (answered) await shot("2-woche-vorschlag");
   }
   await page.goto("/woche/verlauf");
   await page.waitForLoadState("networkidle");
   await shot("2-wochen");
+  // A planned week has a list for every shopping day, and the note has something on it.
+  // One meal is typed in and has no recipe yet.
+  await page.goto("/woche?w=2027-03-01");
+  const typed = page.getByRole("link", { name: "Donnerstag Abend planen" });
+  if (await typed.count()) {
+    await typed.click();
+    await page.getByLabel("Eigener Eintrag").fill("Lasagne nach Oma");
+    await page.getByRole("button", { name: "Eintragen" }).click();
+    await page.getByText("Noch kein Rezept dazu").first().waitFor();
+  }
+  const complete = page.getByRole("button", { name: "Plan vervollständigen" });
+  if (await complete.count()) {
+    await complete.click();
+    await page.getByRole("link", { name: "Montag Mittag ändern" }).waitFor();
+  }
+  await shot("2-woche-geplant");
+  // The note is pulled down over the page that is open.
+  await page.getByRole("link", { name: /^Merkzettel/ }).click();
+  const note = page.getByRole("dialog", { name: "Merkzettel" });
+  for (const text of ["Mehl", "Spülmittel", "Karotten"]) {
+    if (await note.getByRole("button", { name: `${text} streichen` }).count()) continue;
+    await note.getByLabel("Auf den Merkzettel schreiben").fill(text);
+    await note.getByRole("button", { name: "Notieren" }).click();
+    await note.getByRole("button", { name: `${text} auf den Einkaufszettel` }).waitFor();
+  }
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `test-results/look/${info.project.name}-2-merkzettel.png` });
+  await note.getByRole("button", { name: "Zurückstecken" }).click();
+  // The notes of the week next to each other, and one picked up.
+  await page.goto("/einkauf?w=2027-03-01");
+  await page.waitForLoadState("networkidle");
+  await shot("2-einkauf");
+  const first = page
+    .getByRole("list", { name: "Zettel" })
+    .getByRole("link", { name: /^Supermarkt, Montag/ });
+  if (await first.count()) {
+    await first.click();
+    await page.getByRole("link", { name: "← Alle Zettel" }).waitFor();
+    await page.waitForTimeout(500);
+    await shot("2-einkauf-zettel");
+  }
+  // A saved plan, as the family reads it during the week.
+  await page.goto("/woche?w=2027-03-01");
+  const save = page.getByRole("button", { name: "Plan speichern" });
+  if (await save.count()) {
+    await save.click();
+    await page.getByText("Gespeichert.").waitFor();
+  }
+  await shot("2-woche-gespeichert");
+  const edit = page.getByRole("button", { name: "Plan bearbeiten" });
+  if (await edit.count()) await edit.click();
+  await page.goto("/einstellungen");
+  await page.waitForLoadState("networkidle");
+  await shot("2-einstellungen");
   await page.goto("/favoriten");
   await page.waitForLoadState("networkidle");
   await shot("2-favoriten");

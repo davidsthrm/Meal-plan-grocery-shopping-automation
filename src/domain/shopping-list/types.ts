@@ -1,8 +1,12 @@
+import type { Place } from "../catalog";
 import type { IsoDate } from "../dates";
 import type { Meal } from "../plan";
 import type { Amount, Unit } from "../units";
 
-/** "main" is bought on the shopping day, "later" shortly before it is needed. */
+/**
+ * "main" is bought on the shopping day whose list the line is on, "later" shortly before it
+ * is needed: because it would not keep, or because the meal was planned after that day.
+ */
 export type Trip = "main" | "later";
 
 export type ContributionSource =
@@ -28,24 +32,38 @@ export interface Contribution {
   /** The recipe line or free entry as written. */
   originalText: string;
   optional: boolean;
+  /**
+   * The note this would be on by itself: a place on a day. Where it differs from the note
+   * of its line, the household moved it there.
+   */
+  origin?: { date: IsoDate; place: Place };
 }
 
 /** A line the household typed in by hand, e.g. "Milch WS 1.29" or "Geschenkpapier". */
 export interface ManualEntry {
   id: string;
   text: string;
+  /** The note it was written on: a place on a day. Without one, the first. */
+  shoppingDate?: IsoDate;
+  place?: Place;
   /** Only used when the text matches no catalog ingredient. */
   shopId?: string | null;
   aisleGroupId?: string | null;
 }
 
 export interface ShoppingLine {
-  /** Stable across regeneration. Notes, overrides and check-offs are stored against it. */
+  /**
+   * Stable across regeneration, and unique on the list of one shopping day. Notes, overrides
+   * and check-offs are stored against it.
+   */
   key: string;
   ingredientId: string | null;
   label: string;
+  /** The note the line is on: a place on a day. */
+  shoppingDate: IsoDate;
+  place: Place;
   trip: Trip;
-  /** For "later" lines: the first day the ingredient is needed. */
+  /** For "later" lines: the first day it is needed. The line says so: "für Do. 15. Oktober". */
   neededBy: IsoDate | null;
   shopId: string;
   /** True when the shop was named on purpose: bread for a cold supper from the bakery. */

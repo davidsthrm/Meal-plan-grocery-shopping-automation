@@ -44,9 +44,13 @@ async function storeTestPhoto(path: string, width: number, height: number): Prom
   if (stored.error) throw new Error(`store test photo: ${stored.error.message}`);
 }
 
-/** Removes every recipe of the test household, and first the week plans that hold them. */
+/**
+ * Removes every recipe of the test household, and first the week plans that hold them. The
+ * shopping lists and the note for what ran out go too: they belong to no week.
+ */
 async function clearRecipes(household: string): Promise<void> {
-  for (const table of ["week_plan", "import_batch", "recipe"] as const) {
+  const tables = ["shopping_list", "restock_item", "week_plan", "import_batch", "recipe"] as const;
+  for (const table of tables) {
     const removed = await db.from(table).delete().eq("household_id", household);
     if (removed.error) throw new Error(`clear ${table}: ${removed.error.message}`);
   }
@@ -497,6 +501,46 @@ export async function resetLibrary(): Promise<void> {
     },
   ]);
   if (photos.error) throw new Error(`create photos: ${photos.error.message}`);
+}
+
+/**
+ * Puts the test household back to how a household starts: the app's own shopping days, no
+ * invitations, and nobody in it but the test user. Accounts that joined in a test are
+ * removed altogether.
+ */
+export async function resetHousehold(): Promise<void> {
+  const household = await testHousehold();
+  const cleared = await db.from("household").update({ shopping_days: null }).eq("id", household);
+  if (cleared.error) throw new Error(`reset shopping days: ${cleared.error.message}`);
+  await db.from("household_invite").delete().eq("household_id", household);
+  const members = check(
+    await db.from("household_member").select("user_id").eq("household_id", household),
+    "load members",
+  );
+  for (const member of members) {
+    const { data } = await db.auth.admin.getUserById(member.user_id);
+    if (!data.user || data.user.email === process.env.E2E_EMAIL) continue;
+    // Only ever accounts a test made: their address says so.
+    if (!data.user.email?.startsWith("e2e-gast-")) continue;
+    await db.auth.admin.deleteUser(member.user_id);
+  }
+}
+
+/**
+ * Marks a batch as uploaded for a meal of the week plan, as the upload form does when it was
+ * opened from that meal. The photos themselves are read by a model, which the tests leave out.
+ */
+export async function uploadIsFor(
+  batchId: string,
+  date: string,
+  meal: "lunch" | "dinner",
+): Promise<void> {
+  const marked = await db
+    .from("import_batch")
+    .update({ for_date: date, for_meal: meal })
+    .eq("id", batchId)
+    .eq("household_id", await testHousehold());
+  if (marked.error) throw new Error(`mark batch: ${marked.error.message}`);
 }
 
 /**

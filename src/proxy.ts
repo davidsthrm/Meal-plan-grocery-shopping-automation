@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Runs before every page: keeps the login session fresh and sends anyone who is not signed
- * in to the login page. Nothing in this app is public except that page.
+ * in to the login page. Nothing in this app is public except that page and the page an
+ * invitation link leads to, which shows nothing without the secret in its address.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -33,8 +34,9 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims);
   const onLoginPage = request.nextUrl.pathname === "/login";
+  const onInvitation = request.nextUrl.pathname.startsWith("/einladung/");
 
-  if (!signedIn && !onLoginPage) {
+  if (!signedIn && !onLoginPage && !onInvitation) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

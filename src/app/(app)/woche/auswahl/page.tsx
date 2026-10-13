@@ -8,7 +8,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayAndMonth, isIsoDate, mondayOf, weekdayLong, weekRange } from "@/domain/dates";
 import { filterRecipes, isNoFilter, NO_FILTER, readFilter } from "@/domain/library/filter";
 import type { RecipeSummary } from "@/domain/library/summary";
-import type { Meal } from "@/domain/plan";
+import { MEALS_WITHOUT_RECIPE, type Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
 import { suggest } from "@/domain/recommend/suggest";
 import { MEAL_ADD, MEAL_PLAN, whyText } from "@/lib/plan-text";
@@ -25,14 +25,6 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 /** How many suggestions and how many results the page lists. */
 const SUGGESTIONS = 8;
 const RESULTS = 60;
-
-/** Meals without a recipe that are one tap away. */
-const WITHOUT_RECIPE = [
-  { label: "Vesper", kind: "free_text" },
-  { label: "Reste", kind: "leftovers" },
-  { label: "Auswärts", kind: "away" },
-  { label: "Fällt aus", kind: "skipped" },
-] as const;
 
 /**
  * Choosing a recipe for the week: for one of its meals, next to what a meal already has, or
@@ -148,7 +140,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
           <h2 className="eyebrow">Ohne Rezept</h2>
           {meal !== "coffee" && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {WITHOUT_RECIPE.map((option) => (
+              {MEALS_WITHOUT_RECIPE.map((option) => (
                 <form key={option.label} action={markSlot}>
                   {where}
                   <input type="hidden" name="kind" value={option.kind} />

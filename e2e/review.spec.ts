@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { resetImportData, signIn } from "./fixtures";
+import { resetImportData, signIn, uploadIsFor } from "./fixtures";
+
+let waiting: { jobId: string; batchId: string };
 
 test.beforeEach(async ({ page }) => {
-  await resetImportData();
+  waiting = await resetImportData();
   await signIn(page);
 });
 
@@ -88,4 +90,36 @@ test("a batch can be deleted together with what was read from it", async ({ page
   await expect(page.getByRole("heading", { name: "Rezepte einlesen" })).toBeVisible();
   await expect(page.getByRole("link", { name: /E2E Kochbuch/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Rezept prüfen/ })).toHaveCount(0);
+});
+
+test("a meal planned as text gets its recipe from an upload started there", async ({ page }) => {
+  const lunch = page.getByRole("region", { name: "Mittwoch Mittag", exact: true });
+  await page.goto("/woche?w=2027-03-01");
+  await page.getByRole("link", { name: "Mittwoch Mittag planen" }).click();
+  await page.getByLabel("Eigener Eintrag").fill("Topinambursuppe");
+  await page.getByRole("button", { name: "Eintragen" }).click();
+
+  // The cookbook has no such recipe: the meal says so and offers to upload the page.
+  await expect(lunch).toContainText("Noch kein Rezept dazu");
+  await page.getByRole("link", { name: "Mittwoch Mittag: Rezept hochladen" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Rezept für Mittwoch Mittag: Topinambursuppe" }),
+  ).toBeVisible();
+
+  // The photo was uploaded from there and read; its recipe waits for a title.
+  await uploadIsFor(waiting.batchId, "2027-03-03", "lunch");
+  await page.goto(`/import/${waiting.batchId}`);
+  await expect(page.getByText("Für Mittwoch Mittag: Topinambursuppe")).toBeVisible();
+  await page.goto(`/import/pruefen/${waiting.jobId}`);
+  await page.getByLabel("Titel").fill("Topinambursuppe");
+  await page.getByRole("button", { name: "Stimmt so, übernehmen" }).click();
+
+  // Approved, the recipe stands on the meal instead of the text.
+  await page.waitForURL("**/woche?w=2027-03-01**");
+  await expect(lunch.getByRole("link", { name: "Topinambursuppe" })).toBeVisible();
+  await expect(lunch).not.toContainText("Noch kein Rezept dazu");
+  // The batch has done what it was uploaded for.
+  await page.goto(`/import/${waiting.batchId}`);
+  await expect(page.getByText("übernommen", { exact: true })).toBeVisible();
+  await expect(page.getByText("Für Mittwoch Mittag")).toHaveCount(0);
 });

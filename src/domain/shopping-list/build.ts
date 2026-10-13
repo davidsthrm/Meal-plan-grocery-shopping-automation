@@ -1,6 +1,6 @@
-import type { CatalogIndex, Ingredient } from "../catalog";
+import type { CatalogIndex, Ingredient, Place } from "../catalog";
 import { normalizeName } from "../catalog";
-import { daysBetween, type IsoDate } from "../dates";
+import type { IsoDate } from "../dates";
 import type { PlanExtra, PlanSlot } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
 import {
@@ -14,6 +14,7 @@ import {
 } from "../units";
 import { parseFreeEntry } from "./free-entry";
 import { purchaseFor } from "./rounding";
+import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
 import type { Contribution, ContributionSource, ManualEntry, ShoppingLine, Trip } from "./types";
 
 export interface BuildInput {
@@ -22,22 +23,22 @@ export interface BuildInput {
   slots: PlanSlot[];
   /** Recipes the week needs outside its meals. */
   extras?: PlanExtra[];
-  /** Day of the main shopping trip. */
-  shoppingDate: IsoDate;
+  /** The household's errands around the planned meals, in order. At least one. */
+  trips: readonly ShoppingTrip[];
+  /** The supermarket day the extras are bought on. Without one, the first. */
+  extrasDate?: IsoDate;
   manualEntries?: ManualEntry[];
+  /**
+   * Lines the household decided to buy on another errand: the note a line would be on by
+   * itself and its key (see `moveKey`), to the note it was moved to.
+   */
+  moves?: ReadonlyMap<string, ShoppingTrip>;
 }
 
-/**
- * Whether something needed on `neededOn` can be bought on the main shopping day.
- * It can when it keeps at least as long as the days in between.
- */
-export function tripFor(
-  neededOn: IsoDate,
-  shoppingDate: IsoDate,
-  shelfLifeDays: number | null,
-): Trip {
-  if (shelfLifeDays === null) return "main";
-  return daysBetween(shoppingDate, neededOn) > shelfLifeDays ? "later" : "main";
+/** How a moved line is looked up: by the note it would be on by itself, and its key. */
+export function moveKey(origin: ShoppingTrip, lineKey: string): string {
+  // Amounts that could not be merged are lines of their own, but move together.
+  return `${noteId(origin)}|${lineKey.replace(/#\w+$/, "")}`;
 }
 
 /**
@@ -86,6 +87,9 @@ function namesOnePiece(ingredient: Ingredient, label: string): boolean {
 
 interface Bucket {
   ingredient: Ingredient;
+  /** The note the line is on: a place on a day. */
+  shoppingDate: IsoDate;
+  place: Place;
   trip: Trip;
   /** Where it is bought when that is not where the catalog says. */
   shopId: string | null;
@@ -155,6 +159,8 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   const common = {
     ingredientId: ingredient.id,
     label: ingredient.name,
+    shoppingDate: bucket.shoppingDate,
+    place: bucket.place,
     trip,
     shopId: bucket.shopId ?? ingredient.preferredShopId,
     shopByChoice: bucket.shopId !== null,
@@ -234,48 +240,101 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
 }
 
 /**
- * Builds the shopping list for a set of planned meals: scale each recipe, map every line to
- * its catalog ingredient, sum per ingredient, round for purchase, and decide what is bought
- * on the shopping day and what later.
+ * Builds the shopping lists for a set of planned meals: scale each recipe, map every line to
+ * its catalog ingredient, decide which errand buys it, sum per ingredient and errand, and
+ * round for purchase.
  *
- * The result holds every line, including pantry staples. What the household has at home and
- * has checked off is applied afterwards, see `present.ts`.
+ * The result holds the lines of every note, each naming its day and place, including pantry
+ * staples. What the household has at home and has checked off is applied afterwards, see
+ * `present.ts`.
  */
 export function buildShoppingList(input: BuildInput): ShoppingLine[] {
-  const { index, shoppingDate } = input;
+  const { index, trips } = input;
   const { catalog } = index;
+  if (trips.length === 0) throw new Error("a shopping list needs a shopping day");
+  const first = trips.find((trip) => trip.place === "supermarket") ?? trips[0];
+  const extrasOn: Assignment = {
+    date: input.extrasDate ?? first.date,
+    place: input.extrasDate ? "supermarket" : first.place,
+    trip: "main",
+  };
   const recipeById = new Map(input.recipes.map((r) => [r.id, r]));
   const buckets = new Map<string, Bucket>();
   // Lines without a catalog ingredient: unmapped recipe lines and free text.
   const loose = new Map<string, ShoppingLine>();
 
+  /** The errand that buys an ingredient for a meal on `date`. */
+  const errandFor = (
+    ingredient: Ingredient | undefined,
+    date: IsoDate,
+    plannedOn: IsoDate | null | undefined,
+    shopId?: string | null,
+  ): Assignment =>
+    assignTrip(
+      {
+        date,
+        plannedOn,
+        fresh: ingredient
+          ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
+          : null,
+        // A shop named on purpose says where: bread for a cold supper from the bakery.
+        at: shopId ? (index.shopById.get(shopId)?.kind ?? null) : null,
+        shelfLifeDays: ingredient?.shelfLifeDays ?? null,
+      },
+      trips,
+    ) as Assignment;
+
+  /** Where a line ends up: on its own note, or on the one the household moved it to. */
+  const settle = (on: Assignment, lineKey: string): Assignment => {
+    const target = input.moves?.get(moveKey(on, lineKey));
+    return target ? { ...target, trip: on.trip } : on;
+  };
+
   const add = (
     ingredient: Ingredient,
-    trip: Trip,
+    origin: Assignment,
     contribution: Contribution,
     note?: string,
     shop?: string | null,
   ) => {
     // A shop that is the catalog's own is no exception.
     const shopId = shop && shop !== ingredient.preferredShopId ? shop : null;
-    const key = bucketKey(ingredient, trip, shopId);
-    const bucket = buckets.get(key) ?? { ingredient, trip, shopId, contributions: [], notes: [] };
-    bucket.contributions.push(contribution);
+    const lineKey = bucketKey(ingredient, origin.trip, shopId);
+    const on = settle(origin, lineKey);
+    const key = `${noteId(on)}|${lineKey}`;
+    const bucket = buckets.get(key) ?? {
+      ingredient,
+      shoppingDate: on.date,
+      place: on.place,
+      trip: on.trip,
+      shopId,
+      contributions: [],
+      notes: [],
+    };
+    bucket.contributions.push({
+      ...contribution,
+      origin: { date: origin.date, place: origin.place },
+    });
     if (note) bucket.notes.push(note);
     buckets.set(key, bucket);
   };
 
   const addLoose = (
-    key: string,
+    lineKey: string,
     label: string,
+    origin: Assignment,
     contribution: Contribution,
     entry?: { shopId?: string | null; aisleGroupId?: string | null },
   ) => {
+    const on = settle(origin, lineKey);
+    const key = `${noteId(on)}|${lineKey}`;
     const line = loose.get(key) ?? {
-      key,
+      key: lineKey,
       ingredientId: null,
       label,
-      trip: "main" as const,
+      shoppingDate: on.date,
+      place: on.place,
+      trip: on.trip,
       neededBy: null,
       shopId: entry?.shopId ?? catalog.defaultShopId,
       shopByChoice: Boolean(entry?.shopId),
@@ -288,16 +347,24 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       defaultAtHome: false,
       optional: false,
     };
-    line.contributions.push(contribution);
+    line.contributions.push({
+      ...contribution,
+      origin: { date: origin.date, place: origin.place },
+    });
+    if (line.trip === "later") line.neededBy = neededBy(line.contributions);
     loose.set(key, line);
   };
 
-  /** Adds every line of a recipe, scaled, as needed on `date` (null: no particular day). */
+  /**
+   * Adds every line of a recipe, scaled, as needed on `date`. Without a date it is bought
+   * with the extras.
+   */
   const addRecipe = (
     recipe: Recipe,
     servings: number,
     source: ContributionSource,
     date: IsoDate | null,
+    plannedOn?: IsoDate | null,
   ) => {
     const factor = scaleFactor(recipe.servings, servings);
     for (const line of recipe.ingredients) {
@@ -305,6 +372,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       const ingredient = line.ingredientId
         ? index.ingredientById.get(line.ingredientId)
         : undefined;
+      const on = date ? errandFor(ingredient, date, plannedOn) : extrasOn;
       if (!ingredient) {
         const contribution = {
           source,
@@ -312,12 +380,16 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           originalText: line.originalText,
           optional: line.optional,
         };
-        addLoose(`unmapped:${normalizeName(line.originalText)}`, line.originalText, contribution);
+        addLoose(
+          `unmapped:${normalizeName(line.originalText)}`,
+          line.originalText,
+          on,
+          contribution,
+        );
         continue;
       }
       const base = shoppingAmount(line, ingredient.defaultUnit, ingredient.gramsPer);
-      const trip = date ? tripFor(date, shoppingDate, ingredient.shelfLifeDays) : "main";
-      add(ingredient, trip, {
+      add(ingredient, on, {
         source,
         amount: base && { quantity: tidy(base.quantity * factor), unit: base.unit },
         originalText: line.originalText,
@@ -339,7 +411,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           recipeId: recipe.id,
           recipeTitle: recipe.title,
         };
-        addRecipe(recipe, item.servings, source, slot.date);
+        addRecipe(recipe, item.servings, source, slot.date, item.plannedOn);
       }
     }
     // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".
@@ -363,17 +435,16 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           originalText: food.label,
           optional: false,
         };
+        const on = errandFor(ingredient, slot.date, food.plannedOn, food.shopId);
         if (ingredient) {
-          const trip = tripFor(slot.date, shoppingDate, ingredient.shelfLifeDays);
-          add(ingredient, trip, contribution, undefined, food.shopId);
+          add(ingredient, on, contribution, undefined, food.shopId);
         } else {
           addLoose(
             `food:${normalizeName(food.label)}@${food.shopId ?? ""}`,
             food.label,
+            on,
             contribution,
-            {
-              shopId: food.shopId,
-            },
+            { shopId: food.shopId },
           );
         }
       }
@@ -400,10 +471,16 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       originalText: entry.text,
       optional: false,
     };
+    // A typed line stays on the note it was written on.
+    const on: Assignment = {
+      date: entry.shoppingDate ?? first.date,
+      place: entry.place ?? (entry.shoppingDate ? "supermarket" : first.place),
+      trip: "main",
+    };
     if (parsed.ingredient) {
-      add(parsed.ingredient, "main", contribution, parsed.note ?? undefined);
+      add(parsed.ingredient, on, contribution, parsed.note ?? undefined);
     } else {
-      addLoose(`manual:${entry.id}`, parsed.label, contribution, entry);
+      addLoose(`manual:${entry.id}`, parsed.label, on, contribution, entry);
     }
   }
 

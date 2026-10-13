@@ -20,20 +20,36 @@ export const shops: Shop[] = [
     // On the sample list, bread comes after the meat counter and before the eggs.
     aisleSortOverrides: { brot: 95 },
   },
-  { id: "metzger", name: "Metzger", shortLabel: "Metzger", sortOrder: 3, aisleSortOverrides: {} },
-  { id: "baecker", name: "Bäcker", shortLabel: "Bäcker", sortOrder: 4, aisleSortOverrides: {} },
+  {
+    id: "metzger",
+    name: "Metzger",
+    shortLabel: "Metzger",
+    sortOrder: 3,
+    aisleSortOverrides: {},
+    kind: "butcher",
+  },
+  {
+    id: "baecker",
+    name: "Bäcker",
+    shortLabel: "Bäcker",
+    sortOrder: 4,
+    aisleSortOverrides: {},
+    kind: "bakery",
+  },
 ];
 
 export const aisleGroups: AisleGroup[] = [
-  { id: "obst", name: "Obst & Gemüse", sortOrder: 10 },
+  // What the market and the butcher sell fresh is marked: it is bought there when a
+  // shopping day goes there.
+  { id: "obst", name: "Obst & Gemüse", sortOrder: 10, freshPlace: "market" },
   { id: "konserven", name: "Konserven & Gläser", sortOrder: 20 },
   { id: "backzutaten", name: "Backzutaten", sortOrder: 30 },
   { id: "trockenwaren", name: "Nudeln, Reis & Hülsenfrüchte", sortOrder: 40 },
   { id: "gewuerze", name: "Gewürze, Öl & Essig", sortOrder: 50 },
   { id: "brot", name: "Brot & Backwaren", sortOrder: 60 },
   { id: "molkerei", name: "Molkerei & Kühlregal", sortOrder: 70 },
-  { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80 },
-  { id: "fisch", name: "Fisch & Meeresfrüchte", sortOrder: 90 },
+  { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80, freshPlace: "butcher" },
+  { id: "fisch", name: "Fisch & Meeresfrüchte", sortOrder: 90, freshPlace: "market" },
   { id: "eier", name: "Eier", sortOrder: 100 },
   { id: "tk", name: "Tiefkühl", sortOrder: 110 },
   { id: "getraenke", name: "Getränke", sortOrder: 120 },

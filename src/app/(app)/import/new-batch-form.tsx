@@ -20,7 +20,14 @@ function contentType(file: File): string {
   return /\.hei[cf]$/i.test(file.name) ? "image/heic" : "image/jpeg";
 }
 
-export function NewBatchForm({ knownBooks }: { knownBooks: string[] }) {
+export function NewBatchForm({
+  knownBooks,
+  forMeal = null,
+}: {
+  knownBooks: string[];
+  /** The meal of the week plan the upload is for: the recipe read from it is planned there. */
+  forMeal?: { date: string; meal: string } | null;
+}) {
   const router = useRouter();
   const [book, setBook] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -44,6 +51,7 @@ export function NewBatchForm({ knownBooks }: { knownBooks: string[] }) {
       const started = await startBatch(
         book,
         files.map((file) => file.name),
+        forMeal,
       );
       if ("error" in started) throw new Error(started.error);
       const bucket = createBrowserSupabase().storage.from("recipe-photos");

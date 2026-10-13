@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ShoppingDaysFields } from "@/components/shopping-days-fields";
 import { SubmitButton } from "@/components/submit-button";
 import { BALANCE_GROUPS, MEALS_PER_WEEK } from "@/domain/recommend/balance";
 import { GROUP_HINT, GROUP_NAME } from "@/lib/plan-text";
@@ -35,6 +36,11 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
       {one(params.fehler) === "1" && (
         <p role="alert" className="mt-4 rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn">
           Das passt nicht zusammen: „mindestens“ darf nicht größer sein als „höchstens“.
+        </p>
+      )}
+      {one(params.fehler) === "tage" && (
+        <p role="alert" className="mt-4 rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn">
+          Es braucht mindestens einen Einkaufstag im Supermarkt.
         </p>
       )}
 
@@ -79,6 +85,21 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
           ))}
         </div>
         <p className="mt-2 text-sm text-muted">Mahlzeiten pro Woche, von 14.</p>
+
+        {/* A household that opens the app for the first time also says when it shops. */}
+        {first && (
+          <section className="mt-8" aria-labelledby="einkaufstage">
+            <h2 id="einkaufstage" className="text-xl font-bold tracking-tight">
+              Einkaufstage
+            </h2>
+            <p className="mt-1 mb-3 text-muted">
+              Wann kauft ihr wo ein? Jeder Einkauf bekommt seinen eigenen Zettel. Das lässt sich
+              später in den Einstellungen ändern.
+            </p>
+            <input type="hidden" name="mit-einkaufstagen" value="1" />
+            <ShoppingDaysFields days={household.shoppingDays} />
+          </section>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
           {first && (

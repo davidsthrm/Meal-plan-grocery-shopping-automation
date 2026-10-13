@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ImportIssue } from "@/domain/import/checks";
+import { mondayOf, weekdayLong } from "@/domain/dates";
 import type { PageSurvey } from "@/domain/import/survey";
 import { issueText } from "@/lib/issue-text";
+import { MEAL_NAME } from "@/lib/plan-text";
 import { must } from "@/server/catalog";
 import { batchProgress } from "@/server/import/batch";
+import { mealOfBatch } from "@/server/import/for-meal";
 import { viewUrls } from "@/server/import/storage";
 import { createSessionClient } from "@/server/supabase/server";
 import { readIgnoredPage } from "../actions";
@@ -33,8 +36,9 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
     .maybeSingle();
   if (!batch) notFound();
 
-  const [progress, jobs, pages, proposals] = await Promise.all([
+  const [progress, forMeal, jobs, pages, proposals] = await Promise.all([
     batchProgress(db, batchId),
+    mealOfBatch(db, batchId),
     db
       .from("import_job")
       .select("id, position, status, recipe_id, issues, page_ids")
@@ -76,6 +80,18 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
           ` · ${count.approved} übernommen · ${count.needsReview} zu prüfen` +
             (count.failed > 0 ? ` · ${count.failed} nicht lesbar` : "")}
       </p>
+
+      {/* Uploaded for a meal of the week plan, and the recipe is not there yet. */}
+      {forMeal?.label && (
+        <p className="mt-4 rounded-xl bg-accent-soft px-4 py-3">
+          Für {weekdayLong(forMeal.date)} {MEAL_NAME[forMeal.meal]}:{" "}
+          <span className="font-semibold">{forMeal.label}</span>. Das Rezept kommt in den
+          Wochenplan, sobald es gelesen und, wenn nötig, geprüft ist.{" "}
+          <Link href={`/woche?w=${mondayOf(forMeal.date)}#tag-${forMeal.date}`} className="link">
+            Zum Wochenplan
+          </Link>
+        </p>
+      )}
 
       <BatchRunner batchId={batchId} initial={progress} />
 
