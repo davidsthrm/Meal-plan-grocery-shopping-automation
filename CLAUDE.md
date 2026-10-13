@@ -257,9 +257,20 @@ Household
   on Monday and Friday, market on Saturday). At least one day must be at a supermarket, where
   everything else is bought. `household.shopping_weekday` is no longer read.
 - The butcher and the bakery have no weekdays (`ON_DEMAND_PLACES`): the household did not
-  want standing days for them. They are gone to for the meal that needs something from
-  there, on the day of that meal, and on the Saturday for a Sunday (`onDemandDay`). Days once
-  stored for them are ignored.
+  want standing days for them. Days once stored for them are ignored. Bread is bought on
+  the day of its meal, on the Saturday for a Sunday (`onDemandDay`).
+- The butcher is gone to as seldom as the meat allows (`combineVisits`). A need can be
+  bought from the day it was planned, as long before its meal as it keeps, within the week
+  of the meal (`buyWindow`). The fewest visits that buy everything are chosen week by week:
+  the need that must be bought first decides, and a visit by its last day also buys
+  everything else that can be bought by then. Where several days would do, a day the
+  household is out shopping anyway is taken, otherwise the last one. Meat on Monday,
+  Wednesday, Friday and Sunday that keeps two days is two visits: Monday and Friday. The
+  household wanted one visit midweek and one at the weekend for most weeks; a note per meat
+  dish was too many errands.
+- A week's visits are decided from that week's meals alone, so they are the same from
+  whichever week the notes are looked at. Monday's meat is therefore not bought on the
+  Saturday before.
 - A family shares one household, everyone with an account of their own
   (`household_member`, with the name the household calls them by). A member makes an
   invitation on `/einstellungen` (`household_invite`): a link that works once and for seven
@@ -461,9 +472,15 @@ Shopping list
   `weight` a weight, `pack` a multiplier only when more than one pack is needed ("2x Garnelen").
 - Line text follows the handwritten list: quantity, name, note ("600 g Leberkäse",
   "Milch WS 1.29"). The exact sum and the meals it comes from stay available per line.
+- Everything that is counted is written one way, on the list and in a recipe
+  (`formatPurchase`): "3x Paprika", "1x Gurke", "2x Sahne" for packs. Never "3 Stück
+  Paprika", and not a bare "3 Paprika" next to "3x" elsewhere: the household wanted the
+  "3x" form throughout. Part of a piece has no "x" ("½ Zitrone"). An amount by itself keeps
+  its unit ("Genau: 8 Stück"). Halves and quarters of spoons, bunches and tins are written
+  as a recipe prints them ("½ Bund", "1½ EL"); weights and volumes keep decimals.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
-  names: "1 Zitrone".
+  names (`nameForOne`): "1x Zitrone", on the list and on the recipe's page.
 - Shop is a household setting per ingredient and can be overridden per line for one week.
   The list by shop (`presentList`: by shop, then by aisle group, a shop can override the
   aisle order) is what the acceptance test compares with the handwritten list.
@@ -478,8 +495,8 @@ Shopping list
   vegetables and fish at the market, meat at the butcher; the household's to change on
   `/einstellungen`) goes on that place's note. For the market that is when its day is at
   most three days before the meal and it keeps until then: the weekend and the start of the
-  week, also though Monday is a supermarket day. Meat is a note for the butcher on the day
-  it is cooked. A household that buys everything in one go, like the one of the handwritten
+  week, also though Monday is a supermarket day. Meat goes on the butcher's last visit that
+  can buy it. A household that buys everything in one go, like the one of the handwritten
   list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
@@ -492,8 +509,8 @@ Shopping list
   holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
   The page of a week shows the errands in it, and one before it when that buys for the
   week. `loadShoppingNotes` therefore reads the plans of the weeks around it.
-- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher and
-  the bakery on the day of the meal, the market on its day when that reaches the meal and
+- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher on
+  one of his visits, the bakery on the day of the meal, the market on its day when that reaches the meal and
   otherwise on the day of the meal too, which then has an errand of its own. Bread and cold
   cuts for a "Vesper" on Monday are a note for the bakery and one for the butcher on Monday,
   next to the supermarket's. So a week shows the household's shopping days and every other day
