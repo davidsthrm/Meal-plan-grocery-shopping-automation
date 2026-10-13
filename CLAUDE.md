@@ -61,6 +61,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   suggestions only when asked, wishes, tags that describe a recipe, a page for favourites, a
   search that answers while typing, recipes pasted as text, all weeks at a glance,
   pictograms and a logo (done).
+- After that (branch `phase-5-notes-shopping-days`): a list per shopping day, the note for
+  what ran out at home, the look of paper notes, a pictogram for every filter, the upload
+  started from a planned meal, and pages that follow each other across devices (done).
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -86,6 +89,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   server only.
 - Hosting on Vercel. Login with email and password, accounts by invite only, sign-up disabled.
 - The shopping list must work offline in the shop: cached list, queued check-offs.
+- Supabase Realtime tells an open page that the household changed something
+  (`LiveRefresh`). A table that should do so is added to the publication `supabase_realtime`
+  in a migration, guarded, because the embedded Postgres of the tests has no such publication.
 - Vitest for unit tests, Playwright for a few end-to-end flows.
 - Recipe import uses the Anthropic API, server side only. Model IDs come from
   `ANTHROPIC_EXTRACT_MODEL` and `ANTHROPIC_VERIFY_MODEL`. Never hard-code a model ID.
@@ -121,8 +127,17 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
   month by month), `/rezepte` (browse and search, called "Entdecken"), `/favoriten`,
   `/rezepte/[id]`, `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
-  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/einkauf` (the shopping list of a
-  week) with `/einkauf/pdf` (the same as a PDF), `/import`.
+  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/einkauf` (the shopping lists of
+  a week, one per shopping day; `?tag=<date>` shows one day, `?tag=alle` all, and without it
+  today's when today is a shopping day) with `/einkauf/pdf` (the same as a PDF),
+  `/merkzettel` (what ran out at home), `/import` (`?d=<date>&m=<meal>` when it was opened
+  from a meal planned as text).
+- `LiveRefresh` in the layout listens for changes to the plan, the lists, the note, the goals
+  and to recipes, and calls `router.refresh()`: the page is read again from the server, under
+  the same rules as on a reload. It also does so when a page comes back into view. The pages
+  under `/import` are left out. A message about a deleted row carries only its key and
+  reaches every signed-in browser, whichever household: nothing but "something changed" is
+  taken from it.
 - `/api/suche` hands the signed-in browser the library as a search index
   (`SearchIndex`: recipes, and per recipe which catalog ingredients it uses). The search
   field (`LiveSearch`) fetches it once per visit and searches it with the same pure
@@ -164,6 +179,14 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Calm and structured: warm paper, dark ink, one green accent, generous spacing, no pictures
   needed. One sans-serif family for everything. No serif typeface: the household does not
   want the look of an AI product.
+- No headings in capitals with wide letter spacing: the household reads them as machine-made.
+  A small label (`.eyebrow`) is written as it is spelled.
+- A few things are borrowed from the handwritten notes the app replaces, and only these: the
+  week plan and every shopping list are a sheet of a pad (`.sheet`: holes along the top, two
+  more sheets underneath), a list has ruled lines and a margin (`.ruled`) with a tick made by
+  a pen (`.tickbox`), what ran out at home is written on a yellow note stuck on with tape
+  (`.note`), a meal without a recipe carries a small yellow slip, and today is marked with a
+  highlighter (`.marked`). No handwriting typeface. On real paper none of it is printed.
 - Words on the screen say something concrete or are left out. No filler such as "for
   variety" or "just for you"; a suggestion without a reason shows none.
 - The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the
@@ -172,9 +195,16 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   plan puts lunch and dinner side by side from tablet width. An iPad and an iPhone version
   with their own layouts are planned for later, so nothing may depend on hover or a mouse.
 - A recipe has a pictogram (`pictogramFor`: pasta, soup, fish, cake, 21 in all, drawn as
-  lines in `pictogram-paths.ts`). It stands large, pale and slightly out of focus behind a
-  card's text (`.watermark`) and small on its pastel in front of a name (`.badge`). The kind
-  of dish decides before what is in it: a salmon pasta is pasta. Never a photo.
+  lines in `pictogram-paths.ts`). It stands large and pale behind a card's text
+  (`.watermark`) and small on its pastel in front of a name (`.badge`). It is drawn sharp:
+  the household did not want it out of focus. The kind of dish decides before what is in it:
+  a salmon pasta is pasta. Never a photo.
+- Every way to narrow the library down has a pictogram too (`pictogramForFilter`, 24 more):
+  each category, effort, kind of dish, cuisine, season, occasion, diet, and a book for a
+  cookbook. A tag the household made itself is a label. They show on the tiles under
+  "Stöbern" and on the filter chips. A new tag with a key needs an entry in `TAG_PICTURE`,
+  or it is shown as a label. To look at a new drawing, render the paths with sharp: at the
+  size of a badge a line is about a pixel wide.
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
   green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar at the bottom
   with a sign above each name.
@@ -195,7 +225,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 
 The generated list is accepted when, per shop, it has the same lines as the handwritten one,
 with the same quantity where the paper shows one and none where it shows none, the same note,
-and an aisle order the handwritten order does not contradict.
+and an aisle order the handwritten order does not contradict. The handwritten week had one
+shopping day, so the test builds its list for Monday alone (`singleTrip`).
 
 Lines that come from a recipe the household has not added yet are listed under `pendingLines`
 in `inputs.json`. When such a recipe is added to `supabase/seed/recipes.ts`, give the plan slot
@@ -205,7 +236,10 @@ its `sampleRecipe`, remove the lines from `pendingLines`, and the test must stil
 
 Household
 
-- Default servings: 4. The main shopping day is Monday, the first day of the planned week.
+- Default servings: 4.
+- The household shops at the supermarket on Monday and Friday and at the market and the
+  butcher on Saturday (`DEFAULT_SHOPPING_DAYS`, `Household.shoppingDays`). The same every
+  week; there is no setting yet. `household.shopping_weekday` is no longer read.
 
 Units and conversion
 
@@ -263,8 +297,18 @@ Week plan
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
   the catalog says for cooking. Foods are copied with the meal to the next week.
 - A typed meal whose text is the title of a recipe is planned as that recipe. Any other typed
-  meal stays text and offers "Rezept anlegen", which opens the recipe form with the title
-  filled in and puts the saved recipe on that meal.
+  meal stays text and says "Noch kein Rezept dazu". "Hochladen" opens the upload for that
+  meal: the batch remembers it (`import_batch.for_date`, `for_meal`), and once every photo is
+  read and the recipe approved, by itself or after review, the recipe stands on the meal
+  instead of the text (`placeForMeal`). One recipe read is the one; of several on a page it
+  is the one named like the meal (`recipeForMeal`), and if that does not decide it, nothing
+  is planned. A meal that was emptied or planned otherwise meanwhile is left alone.
+  "Eintippen" opens the recipe form with the title filled in and puts the saved recipe on
+  that meal. The household plans with the cookbook next to it.
+- Every recipe and food on a meal remembers the day it was planned (`planned_on`,
+  `SlotItem.plannedOn`). A meal written again with other servings or another side keeps the
+  day of what was there; a week copied from the last one is planned today. Null for what was
+  planned before this was recorded.
 - A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
   when its group is still below the least the week should have, -4 when its group is used
   up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
@@ -320,6 +364,10 @@ Library
   "Mediterran" and "Italienisch".
 - A recipe's effort is its tag, or without one its printed time: up to 30 minutes quick, up
   to 60 everyday, more takes time (`effortOf`). With neither it is not known.
+- A card shows the printed minutes, and where the cookbook prints none the effort instead
+  (`timeText`). Of the household's 880 recipes all have an effort and 452 a printed time
+  (October 2026). Nobody has to fill in times after cooking; the effort is changed under
+  "Ändern" where it is wrong.
 - Described with `claude-haiku-5-5` (October 2026): 880 recipes for about 9 cents; 474
   quick, 290 everyday, 115 that take time. 45 of them were looked at by eye and read
   sensibly; nothing was measured against a list made by hand.
@@ -374,34 +422,59 @@ Shopping list
   The list by shop (`presentList`: by shop, then by aisle group, a shop can override the
   aisle order) is what the acceptance test compares with the handwritten list.
 - The household does not plan by supermarket for now. What it sees, prints and exports is
-  the list by kind of grocery (`presentByAisle`): one walk through a shop, Obst & Gemüse to
-  Sonstiges. A line shows its shop only where one was named on purpose (`shopByChoice`):
+  each day's list by kind of grocery (`presentByAisle`): one walk through a shop, Obst &
+  Gemüse to Sonstiges. A line shows its shop only where one was named on purpose (`shopByChoice`):
   "Brot · Bäcker" for a cold supper.
-- Freshness: an ingredient with a shelf life shorter than the days between the shopping day
-  and the meal goes to a "buy later" section with the day it is needed. Everything else is
-  bought on the main shopping day.
+- Every shopping day has a list of its own. A need goes to the last shopping day on or
+  before its meal that sells it (`assignTrip`): Monday buys for Monday to Thursday, Friday
+  for Friday to Sunday. What the market and the butcher sell fresh (`aisle_group.is_market`:
+  fruit and vegetables, meat, fish) comes from Saturday when the meal is at most three days
+  later and it keeps until then: the weekend and the start of the week, also though Monday
+  is a supermarket day. Minced meat for Monday keeps one day and is bought on Monday.
+- A shopping day does not buy for what was planned after it. A week planned on Sunday gets
+  nothing from Saturday's market; its vegetables for Monday are on Monday's list.
+- "Kurz vorher besorgen" (`trip` "later") lists, with the day it is needed, what would not
+  keep from its shopping day and what was planned after the last shopping day before its
+  meal. Everything else is bought on the day itself ("main").
+- A list is the same real errand from whichever week it is looked at: Saturday's market list
+  holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
+  The page of a week shows the shopping days in it, and a day before it when that buys for
+  the week. `loadShoppingLists` therefore reads the plans of the weeks around it.
+- Bread for breakfast and a cold supper is bought when it is needed. The household does not
+  want that tracked: there is no bakery day.
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked.
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
   the rest as a note. Text that matches nothing stays a free line.
 - When the plan changes, lines are recomputed and matched by a stable line key
-  (`<ingredient>@<trip>`). Notes, shop overrides, at-home marks and check-offs belong to the key
-  and survive. A change is reported only when the quantity shown on the list changes.
-- The list is worked out from the plan every time it is shown (`loadShoppingList`), so it
-  cannot disagree with the plan. Stored are only what the household does by hand: typed
-  entries (`shopping_manual_entry`) and, per line key, tick, note and "we have that"
-  (`shopping_line_state`). The table `shopping_line` is not written yet.
-- Besides the cooked meals the list holds the week's extras, scaled like a meal and bought on
-  the main shopping day, and the foods of meals without a recipe, by name and without an
-  amount. The exception is a food named as one piece of something bought by the piece:
+  (`<ingredient>@<trip>`), which is unique on the list of one shopping day. Notes, shop
+  overrides, at-home marks and check-offs belong to the day and the key and survive. A meal
+  moved to another shopping day is a new line there: a tick on Monday's list does not say it
+  was bought for Friday. A change is reported only when the quantity shown changes.
+- The lists are worked out from the plan every time they are shown (`loadShoppingLists`), so
+  they cannot disagree with the plan. Stored are only what the household does by hand, per
+  shopping day (`shopping_list` has one row per household and date): typed entries
+  (`shopping_manual_entry`) and, per line key, tick, note and "we have that"
+  (`shopping_line_state`). The table `shopping_line` is not written yet. Lists made before
+  there were several shopping days keep their week (`week_plan_id`); new ones have none.
+- A line typed onto a list stays on that day's list.
+- The Merkzettel (`restock_item`, `/merkzettel`, in the header of every page with the number
+  of its entries) holds what ran out at home. It is not a shopping list: "Auf den
+  Einkaufszettel" moves an entry to the list of the next shopping day from today on that
+  sells it (`restockTrip`), where it is a typed line, and takes it off the note. Flour noted
+  on a Saturday waits for Monday; carrots are bought at the market that day. The note also
+  shows above the shopping lists while it has entries.
+- Besides the cooked meals the lists hold the week's extras, scaled like a meal and bought on
+  the week's first supermarket day, and the foods of meals without a recipe, by name and
+  without an amount. The exception is a food named as one piece of something bought by the piece:
   "Gurke" for the catalog's "Gurken" is "1 Gurke" and adds up with what recipes need
   (`namesOnePiece`). Named in the plural it stays a name. A food bought somewhere else than the catalog says is its own line
   (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.
-- The main shopping day is the household's weekday of the planned week (Monday).
 - Export: the page has a print layout (black on white, two columns, a box per line, no
-  controls), and `/einkauf/pdf` writes the same list with `pdf-lib`. Both show what is still
-  to buy, without what is ticked off or at home.
+  controls), and `/einkauf/pdf` writes the same lists with `pdf-lib`. Every shopping day
+  starts a page of its own. Both show what is still to buy, without what is ticked off or at
+  home, for the day shown or for all days of the week.
 
 Import
 
@@ -541,7 +614,18 @@ Import
   is deleted.
 - The shopping list does not show yet what changed since it was last looked at, the shop of
   a line cannot be changed for one week, and ticking off needs a connection. The "Haben wir
-  schon?" step is a plain section of the list for now.
+  schon?" step is a plain section of each list for now.
+- The shopping days are the same every week and written in the code. A week with a holiday
+  on a shopping day is not handled: its lines stay on that day's list.
+- Cheese and antipasti come from the market in this household, but the catalog keeps cheese
+  with the dairy and antipasti with the jars, so they are on the supermarket lists. Marking
+  single ingredients as bought at the market needs a place to edit the catalog.
+- A meal planned on a shopping day after the shopping was done is still put on that day's
+  list, where it shows as open: only the day of planning is known, not the hour.
+- What one device changes shows on the others while they are online. A phone without a
+  connection in the shop sees nothing new and cannot tick.
+- An upload started from a meal plans nothing when its page holds several recipes and none
+  is named like the meal. The recipes are in the library and are planned by hand then.
 - A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose
   recipes are planned therefore fails with an error instead of an explanation.
 - The week's balance does not count legumes, although the brief asks for it: the import does

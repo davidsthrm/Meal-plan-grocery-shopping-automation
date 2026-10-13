@@ -17,6 +17,12 @@ const SHARED = [
 
 /** Several changes in a row, as one action often makes them, are answered once. */
 const SETTLE_MS = 500;
+/**
+ * How long after a tap on this device a change is taken for its own. The page that comes
+ * back from the tap is already up to date, and reading it once more right away would only
+ * make the next tap wait. So it is read again once the taps have stopped for this long.
+ */
+const OWN_MS = 3000;
 
 /**
  * Keeps the page in step with the other devices of the household: when someone plans a
@@ -33,12 +39,25 @@ export function LiveRefresh() {
   useEffect(() => {
     const supabase = createBrowserSupabase();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastOwn = 0;
     // An import stores recipes by the hundred. Its own pages follow it by themselves.
     const quiet = () => window.location.pathname.startsWith("/import");
+    const schedule = () => {
+      clearTimeout(timer);
+      const wait = Math.max(SETTLE_MS, lastOwn + OWN_MS - Date.now());
+      timer = setTimeout(() => {
+        timer = undefined;
+        router.refresh();
+      }, wait);
+    };
     const changed = () => {
       if (quiet() || document.visibilityState !== "visible") return;
-      clearTimeout(timer);
-      timer = setTimeout(() => router.refresh(), SETTLE_MS);
+      schedule();
+    };
+    // Every button of the app is a form. A tap moves a waiting read behind itself.
+    const acted = () => {
+      lastOwn = Date.now();
+      if (timer !== undefined) schedule();
     };
     const channel = supabase.channel("household");
     for (const table of SHARED) {
@@ -52,9 +71,11 @@ export function LiveRefresh() {
       if (document.visibilityState === "visible" && !quiet()) router.refresh();
     };
     document.addEventListener("visibilitychange", seen);
+    document.addEventListener("submit", acted, true);
     return () => {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", seen);
+      document.removeEventListener("submit", acted, true);
       void supabase.removeChannel(channel);
     };
   }, [router]);

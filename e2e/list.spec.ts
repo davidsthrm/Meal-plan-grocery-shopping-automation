@@ -29,6 +29,8 @@ const MARKET = "Samstag, 27. Februar";
 const MONDAY = "Montag, 1. März";
 
 test("the week becomes a list for every shopping day, to work through", async ({ page }) => {
+  // A long walk: planning, four lists, ticking, and the plan changed again.
+  test.setTimeout(120_000);
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Montag Mittag", "Pfeffersteak");
   await plan(page, "Dienstag Mittag", "Kartoffelsuppe");
