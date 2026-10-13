@@ -133,12 +133,14 @@ body {
     letter-spacing: -0.02em;
   }
 
-  /* A small label above something: "Mittag", "Vorschlag", a category. */
+  /*
+   * A small label above something: "Mittag", "Vorschlag", a category. Written as it is
+   * spelled: the household found headings in capitals to look machine-made.
+   */
   .eyebrow {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.3;
     color: var(--color-muted);
   }
 
@@ -167,6 +169,15 @@ body {
   .chip-on {
     border-color: var(--color-accent);
     background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  /* The pictogram in front of a chip's name. */
+  .chip-picture {
+    width: 1.3rem;
+    height: 1.3rem;
+    flex: none;
+    margin-left: -0.15rem;
+    stroke-width: 2.6;
     color: var(--color-accent);
   }
 
@@ -209,7 +220,7 @@ body {
     transform: translateY(0);
   }
 
-  /* The pictogram behind a card's text: large, pale and a little out of focus. */
+  /* The pictogram behind a card's text: large and pale, with sharp lines. */
   .watermark {
     pointer-events: none;
     position: absolute;
@@ -219,8 +230,8 @@ body {
     height: 7.5rem;
     transform: rotate(-8deg);
     color: var(--kind-ink, var(--color-muted));
-    opacity: 0.16;
-    filter: blur(0.7px);
+    opacity: 0.18;
+    stroke-width: 1.5;
   }
 
   /* A pictogram on its pastel, in front of a name. */
@@ -232,6 +243,10 @@ body {
     border-radius: 0.6rem;
     background: var(--kind, var(--color-accent-soft));
     color: var(--kind-ink, var(--color-accent));
+  }
+  /* Drawn small, the lines of a pictogram would be a hair thin. They get more weight here. */
+  .badge > svg {
+    stroke-width: 2.6;
   }
 
   /* A small coloured label: "Vegetarisch", "Fisch". */
