@@ -34,19 +34,42 @@ function humanScale(amount: Amount): Amount {
   return amount;
 }
 
-/** A full amount for the detail view: "150 ml", "2 Stück", "1,25 l", "2 Dosen". */
+const METRIC: ReadonlySet<Unit> = new Set(["g", "kg", "ml", "l"]);
+const FRACTIONS: Record<string, string> = { "0.25": "¼", "0.5": "½", "0.75": "¾" };
+
+/**
+ * A number of spoons, bunches or pieces the way a recipe prints it: "½", "1½", "2". Weights
+ * and volumes keep their decimals: nobody weighs out "1¼ kg".
+ */
+function kitchenNumber(value: number): string {
+  const whole = Math.floor(value);
+  const fraction = FRACTIONS[String(Math.round((value - whole) * 100) / 100)];
+  if (!fraction) return formatNumber(value);
+  return whole === 0 ? fraction : `${whole}${fraction}`;
+}
+
+/** A full amount by itself: "150 ml", "2 Stück", "1,25 l", "2 Dosen", "½ Bund". */
 export function formatAmount(amount: Amount): string {
   const { quantity, unit } = humanScale(amount);
-  return `${formatNumber(quantity)} ${unitWord(unit, quantity)}`;
+  const number = METRIC.has(unit) ? formatNumber(quantity) : kitchenNumber(quantity);
+  return `${number} ${unitWord(unit, quantity)}`;
 }
 
 /**
- * The quantity as it stands in front of the name on the list, the way the handwritten list
- * does it: pieces as a bare number ("2 Karotten"), packs as a multiplier ("2x Garnelen").
+ * A count of pieces in front of a name: "3x" as in "3x Paprika". Never "3 Stück Paprika",
+ * and the same for packs and pieces, so that the list reads one way. Part of a piece has no
+ * "x": "½ Zitrone".
+ */
+export function formatPieces(quantity: number): string {
+  return Number.isInteger(quantity) ? `${quantity}x` : kitchenNumber(quantity);
+}
+
+/**
+ * An amount as it stands in front of an ingredient's name, on the list and in a recipe:
+ * "3x" for pieces and packs, the unit for everything else ("600 g", "2 Dosen", "½ Bund").
  */
 export function formatPurchase(amount: Amount): string {
-  if (amount.unit === "Stück") return formatNumber(amount.quantity);
-  if (amount.unit === "Packung") return `${formatNumber(amount.quantity)}x`;
+  if (amount.unit === "Stück" || amount.unit === "Packung") return formatPieces(amount.quantity);
   return formatAmount(amount);
 }
 

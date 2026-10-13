@@ -9,6 +9,7 @@ import { TAG_GROUPS } from "@/domain/library/tags";
 import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
+import { nameForOne } from "@/domain/catalog";
 import { readOrigin } from "@/lib/origin";
 import { createSessionClient } from "@/server/supabase/server";
 import { setFavorite, setWanted } from "../actions";
@@ -58,6 +59,22 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   ).map((tag) => ({ ref: tag.key ?? tag.id, name: tag.name }));
   const wanted = recipe.wanted_at !== null;
   const names = new Map(ingredients.map((i) => [i.id, i.name]));
+  // One piece is named in the singular where the catalog knows it: "1x Gurke".
+  const single = new Map(ingredients.map((i) => [i.id, nameForOne(i)]));
+  const nameOf = (line: {
+    ingredient_id: string | null;
+    quantity: number | null;
+    quantity_max: number | null;
+    unit: string | null;
+  }) => {
+    if (!line.ingredient_id) return null;
+    const one =
+      line.unit === "Stück" &&
+      line.quantity !== null &&
+      line.quantity <= 1 &&
+      line.quantity_max === null;
+    return (one ? single : names).get(line.ingredient_id);
+  };
   const photoRows = must(photos, "load photos");
   const urls = await viewUrls(
     photoRows.flatMap((photo) => [
@@ -144,7 +161,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               {amountText(line.quantity, line.quantity_max, line.unit)}
             </span>
             <span>
-              {line.ingredient_id ? names.get(line.ingredient_id) : line.original_text}
+              {nameOf(line) ?? line.original_text}
               {line.note && <span className="text-muted">, {line.note}</span>}
               {line.alternative_to && <span className="text-muted"> (Alternative)</span>}
               {line.is_optional && <span className="text-muted"> (nach Belieben)</span>}

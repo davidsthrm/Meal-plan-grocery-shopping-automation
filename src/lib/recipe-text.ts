@@ -1,6 +1,6 @@
 import type { RecipeSummary } from "@/domain/library/summary";
 import { effortOf, type Effort } from "@/domain/library/tags";
-import { formatAmount } from "@/domain/shopping-list/format";
+import { formatNumber, formatPurchase } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
 
 const EFFORT_NAME: Record<Effort, string> = {
@@ -36,14 +36,17 @@ export function sourceText(book: string | null, page: number | null): string {
   return "";
 }
 
-/** The amount of a recipe line: "250 g", "2–3 Stück", or nothing. */
+/**
+ * The amount of a recipe line as it stands in front of the ingredient: "250 g", "3x",
+ * "2–3x", "½ Bund", or nothing. Pieces are counted with an "x", never as "3 Stück".
+ */
 export function amountText(
   quantity: number | null,
   quantityMax: number | null,
   unit: Unit | null,
 ): string {
   if (quantity === null || unit === null) return "";
-  if (quantityMax === null) return formatAmount({ quantity, unit });
-  const upper = formatAmount({ quantity: quantityMax, unit });
-  return `${String(quantity).replace(".", ",")}–${upper}`;
+  if (quantityMax === null) return formatPurchase({ quantity, unit });
+  const upper = formatPurchase({ quantity: quantityMax, unit });
+  return `${formatNumber(quantity)}–${upper}`;
 }

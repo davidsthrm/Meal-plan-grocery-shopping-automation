@@ -38,7 +38,7 @@ const lines = buildShoppingList({
     { id: "m1", text: "Milch WS 1.29" },
     { id: "m2", text: "Brot" },
     { id: "m3", text: "600 g Leberkäse" },
-    { id: "m4", text: "20 Eier" },
+    { id: "m4", text: "20x Eier" },
   ],
 });
 
@@ -58,11 +58,11 @@ describe("presentList", () => {
   it("groups by shop, then aisle, and leaves out what is at home", () => {
     expect(texts()).toEqual({
       shops: [
-        ["Aldi", [["Ingwer", "2 Karotten"], ["Sahne"]]],
+        ["Aldi", [["Ingwer", "2x Karotten"], ["Sahne"]]],
         // Dairy, then the meat counter, then the bakery: this shop's own order.
-        ["EC", [["20 Eier", "Milch WS 1.29"], ["600 g Leberkäse"], ["Brot"]]],
+        ["EC", [["20x Eier", "Milch WS 1.29"], ["600 g Leberkäse"], ["Brot"]]],
       ],
-      later: ["4 Rindersteaks"],
+      later: ["4x Rindersteaks"],
       atHome: ["Salz"],
     });
   });
@@ -75,8 +75,8 @@ describe("presentList", () => {
       "milch@main": { note: null },
     });
     expect(result.shops).toEqual([
-      ["Aldi", [["2 Karotten"], ["Salz"]]],
-      ["EC", [["20 Eier", "Milch", "Sahne die gute"], ["600 g Leberkäse"], ["Brot"]]],
+      ["Aldi", [["2x Karotten"], ["Salz"]]],
+      ["EC", [["20x Eier", "Milch", "Sahne die gute"], ["600 g Leberkäse"], ["Brot"]]],
     ]);
     expect(result.atHome).toEqual(["Ingwer"]);
   });
@@ -114,13 +114,13 @@ describe("presentByAisle", () => {
   it("groups by kind of grocery only, whichever shop a thing comes from", () => {
     expect(groups()).toEqual({
       groups: [
-        ["Obst & Gemüse", ["Ingwer", "2 Karotten"]],
+        ["Obst & Gemüse", ["Ingwer", "2x Karotten"]],
         ["Brot & Backwaren", ["Brot"]],
         // Cream from one shop and eggs and milk from the other stand together.
-        ["Molkerei & Kühlregal", ["20 Eier", "Milch WS 1.29", "Sahne"]],
+        ["Molkerei & Kühlregal", ["20x Eier", "Milch WS 1.29", "Sahne"]],
         // The steaks would not keep until Sunday. They stand with the rest of the meat, and
         // the line says for which day they are bought.
-        ["Fleisch & Wurst", ["600 g Leberkäse", "4 Rindersteaks"]],
+        ["Fleisch & Wurst", ["600 g Leberkäse", "4x Rindersteaks"]],
       ],
       atHome: ["Salz"],
     });
@@ -132,7 +132,7 @@ describe("presentByAisle", () => {
 
   it("applies what the household changed, like the list by shop", () => {
     const view = groups({ "salz@main": { atHome: false }, "ingwer@main": { atHome: true } });
-    expect(view.groups[0]).toEqual(["Obst & Gemüse", ["2 Karotten"]]);
+    expect(view.groups[0]).toEqual(["Obst & Gemüse", ["2x Karotten"]]);
     expect(view.groups.map((group) => group[0])).toContain("Gewürze, Öl & Essig");
     expect(view.atHome).toEqual(["Ingwer"]);
   });
