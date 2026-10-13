@@ -167,7 +167,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Server actions of one browser tab run one after the other. Work that should run side by side
   (the import steps) goes through a route handler instead: `src/app/api/import/`.
 - `e2e/`: Playwright tests. `e2e/fixtures.ts` puts the test household into a known state
-  without calling a model.
+  without calling a model: a made-up cookbook of twenty recipes ("E2E Kochbuch", "Zweites
+  Buch"). It exists only while tests run: `e2e/teardown.ts` empties the test household after
+  every run. The real household's recipes are never used for tests.
 - `supabase/migrations/`: schema. `supabase/seed/*.ts` is the single source for the catalog
   and seed recipes; `supabase/seed.sql` is generated from it.
 - `supabase/tests/`: applies migrations and seed to an embedded Postgres and tests schema
@@ -249,11 +251,15 @@ its `sampleRecipe`, remove the lines from `pendingLines`, and the test must stil
 Household
 
 - Default servings: 4.
-- A household says on which weekdays it goes where (`household.shopping_days`, read with
-  `readShoppingDays`, set on `/einstellungen` and asked on the first visit): supermarket,
-  market, butcher, bakery. Butcher and bakery need no day of their own. Until it has, the app's own hold (`DEFAULT_SHOPPING_DAYS`: supermarket on
-  Monday and Friday, market and butcher on Saturday). At least one day must be at a
-  supermarket, where everything else is bought. `household.shopping_weekday` is no longer read.
+- A household says on which weekdays it goes to the supermarket and to the market
+  (`household.shopping_days`, read with `readShoppingDays`, set on `/einstellungen` and asked
+  on the first visit). Until it has, the app's own hold (`DEFAULT_SHOPPING_DAYS`: supermarket
+  on Monday and Friday, market on Saturday). At least one day must be at a supermarket, where
+  everything else is bought. `household.shopping_weekday` is no longer read.
+- The butcher and the bakery have no weekdays (`ON_DEMAND_PLACES`): the household did not
+  want standing days for them. They are gone to for the meal that needs something from
+  there, on the day of that meal, and on the Saturday for a Sunday (`onDemandDay`). Days once
+  stored for them are ignored.
 - A family shares one household, everyone with an account of their own
   (`household_member`, with the name the household calls them by). A member makes an
   invitation on `/einstellungen` (`household_invite`): a link that works once and for seven
@@ -339,6 +345,12 @@ Week plan
 - Above the plan of the running week stands what there is to eat today and what the weekend
   holds (`Today`), also while the page already shows the coming week.
 - "Woche leeren" empties a week after asking: every meal and the extras (`resetWeek`).
+  The rubber makes the sheet invisible with a class that `ResetWeek` takes off again as
+  soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an
+  element with opacity 0 visible, so the test asks for the opacity.
+- A recipe opened from the week plan or from the favourites leads back there
+  (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`); from
+  anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
   `SlotItem.plannedOn`). A meal written again with other servings or another side keeps the
   day of what was there; a week copied from the last one is planned today. Null for what was
@@ -464,23 +476,27 @@ Shopping list
   (`assignTrip`): Monday buys for Monday to Thursday, Friday for Friday to Sunday. What a
   kind of grocery says is bought fresh elsewhere (`aisle_group.fresh_place`: fruit,
   vegetables and fish at the market, meat at the butcher; the household's to change on
-  `/einstellungen`) goes on that place's note when its day is at most three days before the
-  meal and it keeps until then: the weekend and the start of the week, also though Monday is
-  a supermarket day. Minced meat for Monday keeps one day and is bought on Monday.
+  `/einstellungen`) goes on that place's note. For the market that is when its day is at
+  most three days before the meal and it keeps until then: the weekend and the start of the
+  week, also though Monday is a supermarket day. Meat is a note for the butcher on the day
+  it is cooked. A household that buys everything in one go, like the one of the handwritten
+  list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
 - What would not keep from its shopping day, and what was planned after the last shopping
   day before its meal, is bought shortly before (`trip` "later"). It is no section of its
-  own: the line stands with its kind of grocery and says "für Do. 15. Oktober".
+  own: the line stands with its kind of grocery. Only what goes bad says for which day it
+  is bought ("für Do. 15. Oktober", `neededBy`): tomatoes and yoghurt, not flour. The
+  household found a date on every line too much.
 - A note is the same real errand from whichever week it is looked at: Saturday's market note
   holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
   The page of a week shows the errands in it, and one before it when that buys for the
   week. `loadShoppingNotes` therefore reads the plans of the weeks around it.
-- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): on its day when
-  that reaches the meal and what is bought keeps until then, and otherwise on the day of the
-  meal itself, which then has an errand of its own. Bread and cold cuts for a "Vesper" on
-  Monday are a note for the bakery and one for the butcher on Monday, next to the
-  supermarket's. So a week shows the household's shopping days and every other day
+- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher and
+  the bakery on the day of the meal, the market on its day when that reaches the meal and
+  otherwise on the day of the meal too, which then has an errand of its own. Bread and cold
+  cuts for a "Vesper" on Monday are a note for the bakery and one for the butcher on Monday,
+  next to the supermarket's. So a week shows the household's shopping days and every other day
   something is bought on.
 - An errand can be done on another day ("An einem anderen Tag einkaufen" on its note,
   `changeNoteDay`). The note offers the three days before and after and says for each
