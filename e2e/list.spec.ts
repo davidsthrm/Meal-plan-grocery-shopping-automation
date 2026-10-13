@@ -88,9 +88,9 @@ test("the week becomes a shopping list, grouped by kind of grocery, to work thro
   await expect(page.getByText("1 erledigt")).toBeVisible();
   await page.goto(`/woche?w=${WEEK}`);
   await page.getByRole("button", { name: "Dienstag Mittag leeren" }).click();
-  await expect(page.getByRole("region", { name: "Dienstag Mittag" })).not.toContainText(
-    "Kartoffelsuppe",
-  );
+  // The meal is open again. The soup may still show there as a pale idea, so that is what
+  // is looked for, not the absence of its name.
+  await expect(page.getByRole("link", { name: "Dienstag Mittag planen" })).toBeVisible();
   await page.goto(`/einkauf?w=${WEEK}`);
   await expect(page.getByText("2 Karotten")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "4 Rindersteaks: wieder offen" })).toBeVisible();
