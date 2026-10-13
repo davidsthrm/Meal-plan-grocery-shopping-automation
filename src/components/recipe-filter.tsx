@@ -7,11 +7,13 @@ import {
   TIME_LIMITS,
   type RecipeFilter,
 } from "@/domain/library/filter";
+import { pictogramForFilter } from "@/domain/library/pictogram";
 import type { Category } from "@/domain/library/summary";
 import type { TagGroup } from "@/domain/library/tags";
 import { DIET_NAME } from "@/lib/plan-text";
-import { HeartIcon } from "./icons";
+import { ClockIcon, HeartIcon } from "./icons";
 import { LiveSearch } from "./live-search";
+import { PictogramIcon } from "./pictogram";
 
 interface Props {
   /** The page the filter belongs to. */
@@ -51,6 +53,10 @@ export function RecipeFilterBar({
   const narrowed = filter.category !== null || filter.book !== null || filter.tags.length > 0;
   const toggled = (ref: string) =>
     filter.tags.includes(ref) ? filter.tags.filter((tag) => tag !== ref) : [...filter.tags, ref];
+  // Every chip starts with the picture of what it narrows down to.
+  const picture = (patch: Partial<RecipeFilter>) => (
+    <PictogramIcon name={pictogramForFilter({ ...NO_FILTER, ...patch })} className="chip-picture" />
+  );
 
   return (
     <div className="space-y-3">
@@ -81,6 +87,7 @@ export function RecipeFilterBar({
             className={chip(filter.maxMinutes === minutes)}
             aria-pressed={filter.maxMinutes === minutes}
           >
+            <ClockIcon />
             bis {minutes} Min.
           </Link>
         ))}
@@ -91,6 +98,7 @@ export function RecipeFilterBar({
             className={chip(filter.diet === diet)}
             aria-pressed={filter.diet === diet}
           >
+            {picture({ diet })}
             {DIET_NAME[diet]}
           </Link>
         ))}
@@ -110,6 +118,7 @@ export function RecipeFilterBar({
                 className={chip(filter.category === category.key)}
                 aria-pressed={filter.category === category.key}
               >
+                {picture({ category: category.key })}
                 {category.name}
               </Link>
             ))}
@@ -123,6 +132,7 @@ export function RecipeFilterBar({
                   className={chip(filter.tags.includes(tag.ref))}
                   aria-pressed={filter.tags.includes(tag.ref)}
                 >
+                  {picture({ tags: [tag.ref] })}
                   {tag.name}
                 </Link>
               ))}
@@ -136,6 +146,7 @@ export function RecipeFilterBar({
                 className={chip(filter.book === book)}
                 aria-pressed={filter.book === book}
               >
+                {picture({ book })}
                 {book}
               </Link>
             ))}

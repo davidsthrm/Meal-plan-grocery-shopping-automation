@@ -1,9 +1,11 @@
-import { searchKey } from "./filter";
+import { searchKey, type RecipeFilter } from "./filter";
 import type { RecipeSummary } from "./summary";
 
 /**
  * The little picture a recipe is shown with, so that cards can be told apart at a glance: a
  * bowl of pasta, a fish, a cake. Chosen from what is known about the recipe; never a photo.
+ * The second half of the list is for the ways the library is narrowed down: how much work,
+ * which cuisine, which season.
  */
 export const PICTOGRAMS = [
   "pasta",
@@ -27,6 +29,30 @@ export const PICTOGRAMS = [
   "dip",
   "snack",
   "teller",
+  "beilage",
+  "blitz",
+  "topf",
+  "sanduhr",
+  "pfanne",
+  "ofen",
+  "brezel",
+  "tomate",
+  "olive",
+  "box",
+  "tajine",
+  "taco",
+  "tulpe",
+  "sonne",
+  "pilz",
+  "schneeflocke",
+  "glas",
+  "glocke",
+  "grill",
+  "korb",
+  "tanne",
+  "spross",
+  "buch",
+  "etikett",
 ] as const;
 export type Pictogram = (typeof PICTOGRAMS)[number];
 
@@ -92,4 +118,62 @@ export function pictogramFor(
   const byWord = BY_WORD.find(([words]) => words.test(title));
   if (byWord) return byWord[1];
   return (recipe.proteinType && BY_PROTEIN[recipe.proteinType]) || "teller";
+}
+
+/** Every category has a picture where the library is browsed by it. */
+const CATEGORY_PICTURE: Record<string, Pictogram> = {
+  ...BY_CATEGORY,
+  hauptgericht: "teller",
+  beilage: "beilage",
+};
+
+/** The tags the app knows by key, each with its picture. */
+const TAG_PICTURE: Record<string, Pictogram> = {
+  schnell: "blitz",
+  alltag: "topf",
+  aufwendig: "sanduhr",
+  pasta: "pasta",
+  reis: "reis",
+  kartoffeln: "kartoffel",
+  auflauf: "auflauf",
+  pizza: "pizza",
+  pfanne: "pfanne",
+  ofen: "ofen",
+  burger: "burger",
+  deutsch: "brezel",
+  italienisch: "tomate",
+  mediterran: "olive",
+  asiatisch: "box",
+  orientalisch: "tajine",
+  amerikanisch: "taco",
+  fruehling: "tulpe",
+  sommer: "sonne",
+  herbst: "pilz",
+  winter: "schneeflocke",
+  "fuer-gaeste": "glas",
+  fest: "glocke",
+  grillen: "grill",
+  mitnehmen: "korb",
+  weihnachten: "tanne",
+};
+
+const DIET_PICTURE: Record<NonNullable<RecipeFilter["diet"]>, Pictogram> = {
+  vegetarisch: "gemuese",
+  vegan: "spross",
+  fisch: "fisch",
+  gefluegel: "gefluegel",
+  fleisch: "fleisch",
+};
+
+/**
+ * The picture of one way to narrow the library down: a category, a tag, a diet or a
+ * cookbook. A tag the household made itself is shown as a label.
+ */
+export function pictogramForFilter(
+  filter: Pick<RecipeFilter, "category" | "tags" | "diet" | "book">,
+): Pictogram {
+  if (filter.category) return CATEGORY_PICTURE[filter.category] ?? "teller";
+  if (filter.tags.length > 0) return TAG_PICTURE[filter.tags[0]] ?? "etikett";
+  if (filter.diet) return DIET_PICTURE[filter.diet];
+  return filter.book ? "buch" : "teller";
 }
