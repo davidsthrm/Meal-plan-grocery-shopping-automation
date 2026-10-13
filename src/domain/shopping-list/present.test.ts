@@ -7,7 +7,9 @@ import type { LineState } from "./types";
 
 const lines = buildShoppingList({
   index: testIndex,
+  // One shopping day and one list for it: the meat is on it too.
   trips: singleTrip("2026-10-12"),
+  onDemand: [],
   recipes: [
     {
       id: "r",

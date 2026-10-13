@@ -1,15 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EraserIcon } from "./icons";
 
 /** How long the rubber takes over the sheet, as the stylesheet has it. */
 const RUB_MS = 1100;
+/** How long to wait for the empty week before showing the sheet again in any case. */
+const GIVE_UP_MS = 8000;
 
 /**
  * Empties a whole week, after asking. A rubber goes over the plan before it is empty: the
  * sheet named by `sheet` gets the class "erasing" for that long, and then the form is sent.
  * Whoever asked for less motion gets none, and without scripts the form is simply sent.
+ *
+ * The class makes everything on the sheet invisible and stays there until it is taken off:
+ * the sheet is the same element before and after. So it comes off as soon as the empty week
+ * is drawn on it. Left on, the rubber ended on a blank page instead of the plan to fill in.
  */
 export function ResetWeek({
   action,
@@ -25,6 +31,26 @@ export function ResetWeek({
   const [rubbing, setRubbing] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const done = useRef(false);
+  const restore = useRef<() => void>(() => {});
+  // Whatever happens to this button, the sheet must not stay rubbed out.
+  useEffect(() => () => restore.current(), []);
+
+  /** Shows the sheet again once its content has been drawn anew, or after a while. */
+  function showAgainWhenRedrawn(paper: HTMLElement) {
+    let timer = 0;
+    const redrawn = new MutationObserver(() => restore.current());
+    restore.current = () => {
+      redrawn.disconnect();
+      window.clearTimeout(timer);
+      paper.classList.remove("erasing");
+      restore.current = () => {};
+      done.current = false;
+      setRubbing(false);
+      setAsking(false);
+    };
+    redrawn.observe(paper, { childList: true, subtree: true, characterData: true });
+    timer = window.setTimeout(() => restore.current(), GIVE_UP_MS);
+  }
 
   return (
     <form
@@ -42,6 +68,7 @@ export function ResetWeek({
         paper.classList.add("erasing");
         setTimeout(() => {
           done.current = true;
+          showAgainWhenRedrawn(paper);
           form.current?.requestSubmit();
         }, RUB_MS);
       }}

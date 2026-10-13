@@ -31,6 +31,7 @@ import {
   TARGETS_SEEN,
   whyText,
 } from "@/lib/plan-text";
+import { fromPlan } from "@/lib/origin";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
@@ -186,7 +187,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       </div>
 
       {runningSlots && !placing && !showExtras && (
-        <Today now={now} slots={runningSlots} recipeOf={recipeOf} />
+        <Today now={now} week={week} slots={runningSlots} recipeOf={recipeOf} />
       )}
 
       <Balance lines={balance} />
@@ -350,10 +351,13 @@ export default async function WeekPage(props: PageProps<"/woche">) {
  */
 function Today({
   now,
+  week,
   slots,
   recipeOf,
 }: {
   now: IsoDate;
+  /** The week the page shows, which the recipes named here lead back to. */
+  week: IsoDate;
   slots: PlanSlot[];
   recipeOf: ReadonlyMap<string, RecipeSummary>;
 }) {
@@ -389,7 +393,11 @@ function Today({
                 <ul className="mt-0.5 space-y-1">
                   {slot.items.map((item) => (
                     <li key={item.recipeId}>
-                      <KindTitle recipe={recipeOf.get(item.recipeId)} id={item.recipeId} />
+                      <KindTitle
+                        recipe={recipeOf.get(item.recipeId)}
+                        id={item.recipeId}
+                        week={week}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -425,12 +433,21 @@ function Today({
 }
 
 /** A recipe's title as a link to it, with its pictogram on the colour of its kind in front. */
-function KindTitle({ recipe, id }: { recipe: RecipeSummary | undefined; id: string }) {
+function KindTitle({
+  recipe,
+  id,
+  week,
+}: {
+  recipe: RecipeSummary | undefined;
+  id: string;
+  /** The week of the plan the title stands on: the recipe's page leads back to it. */
+  week: IsoDate;
+}) {
   return (
     <span className="flex items-center gap-2.5">
       {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
       <Link
-        href={`/rezepte/${id}`}
+        href={`/rezepte/${id}${fromPlan(week)}`}
         className="min-w-0 font-semibold decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
@@ -501,7 +518,7 @@ function Extras({
             return (
               <li key={extra.recipeId} className="space-y-2 px-4 py-3">
                 <Link
-                  href={`/rezepte/${extra.recipeId}`}
+                  href={`/rezepte/${extra.recipeId}${fromPlan(week)}`}
                   className="font-semibold decoration-line underline-offset-4 hover:underline"
                 >
                   {title}
@@ -654,7 +671,7 @@ function MealCell({
               const recipe = recipeOf.get(item.recipeId);
               return (
                 <li key={item.recipeId}>
-                  <KindTitle recipe={recipe} id={item.recipeId} />
+                  <KindTitle recipe={recipe} id={item.recipeId} week={week} />
                   <p className="mt-0.5 text-sm text-muted">
                     {plannedText(item.servings, recipe?.servings?.unit ?? null)}
                   </p>
@@ -693,7 +710,7 @@ function MealCell({
             const recipe = recipeOf.get(item.recipeId);
             return (
               <li key={item.recipeId}>
-                <KindTitle recipe={recipe} id={item.recipeId} />
+                <KindTitle recipe={recipe} id={item.recipeId} week={week} />
                 <Amount
                   action={changeServings}
                   fields={{ week, date, meal, recipe: item.recipeId }}
@@ -754,7 +771,7 @@ function MealCell({
         <div className="mt-1 rounded-lg border border-accent/40 bg-surface px-3 py-2.5">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
           <div className="mt-1">
-            <KindTitle recipe={proposal.recipe} id={proposal.recipe.id} />
+            <KindTitle recipe={proposal.recipe} id={proposal.recipe.id} week={week} />
           </div>
           {proposal.reasons.length > 0 && (
             <p className="mt-1 text-sm text-muted">{whyText(proposal.reasons)}</p>

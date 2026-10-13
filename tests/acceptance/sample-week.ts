@@ -101,8 +101,9 @@ export function buildSampleWeek(): SampleWeek {
     index,
     recipes: seedRecipes,
     slots,
-    // The handwritten week had one shopping day.
+    // The handwritten week had one shopping day, and one list for it: the meat is on it too.
     trips: singleTrip(inputs.shoppingDate),
+    onDemand: [],
     manualEntries: inputs.freeEntries.lines.map((text, i) => ({ id: `free-${i}`, text })),
   });
 

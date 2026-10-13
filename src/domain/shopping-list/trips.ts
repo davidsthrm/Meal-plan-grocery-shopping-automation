@@ -4,8 +4,9 @@ import type { Trip } from "./types";
 
 /**
  * When the household shops and where, and which of those errands buys what a meal needs.
- * The household goes to the supermarket on fixed weekdays and to the market and the butcher
- * on another. Every need is put on the note of one errand: a place on a day.
+ * The household goes to the supermarket and to the market on fixed weekdays. The butcher and
+ * the bakery have no days: they are gone to for the meal that needs something from there.
+ * Every need is put on the note of one errand: a place on a day.
  */
 
 /** Where something is bought fresh instead of at the supermarket. */
@@ -23,24 +24,26 @@ export interface ShoppingTrip {
   place: Place;
 }
 
-/** Supermarket on Monday and Friday, market and butcher on Saturday. */
+/** Supermarket on Monday and Friday, market on Saturday. */
 export const DEFAULT_SHOPPING_DAYS: readonly ShoppingDay[] = [
   { weekday: 1, places: ["supermarket"] },
   { weekday: 5, places: ["supermarket"] },
-  { weekday: 6, places: ["market", "butcher"] },
+  { weekday: 6, places: ["market"] },
 ];
 
-/**
- * The places a household can give days to, in the order their notes lie. None of them needs
- * one but the supermarket: a butcher or a bakery without a day is gone to when a meal asks
- * for something from there.
- */
-export const DAY_PLACES = ["supermarket", "market", "butcher", "bakery"] as const;
+/** The places a household gives weekdays to, in the order their notes lie. */
+export const DAY_PLACES = ["supermarket", "market"] as const;
 export type DayPlace = (typeof DAY_PLACES)[number];
 
 /**
- * How far the market, the butcher and the bakery reach: they buy for their day and the
- * three days after, which from a Saturday is the weekend and the start of the week.
+ * The places without weekdays: the household goes there when the plan has a meal that needs
+ * something from there, on the day of that meal. It did not want standing days for them.
+ */
+export const ON_DEMAND_PLACES: readonly Place[] = ["butcher", "bakery"];
+
+/**
+ * How far the market reaches: it buys for its day and the three days after, which from a
+ * Saturday is the weekend and the start of the week.
  */
 export const FRESH_REACH_DAYS = 3;
 
@@ -58,7 +61,7 @@ export function readNoteId(id: string): ShoppingTrip | null {
 /**
  * The shopping days a household stored, or null for anything that is none: every day at
  * most once, known places, and at least one day at a supermarket, where everything else
- * is bought.
+ * is bought. Days once stored for the butcher or the bakery are left out: they have none.
  */
 export function readShoppingDays(value: unknown): ShoppingDay[] | null {
   if (!Array.isArray(value)) return null;
@@ -69,8 +72,11 @@ export function readShoppingDays(value: unknown): ShoppingDay[] | null {
       return null;
     }
     if (!Array.isArray(entry.places) || days.some((day) => day.weekday === weekday)) return null;
-    const places = DAY_PLACES.filter((place) => (entry.places as unknown[]).includes(place));
-    if (places.length !== entry.places.length) return null;
+    const stored = entry.places as unknown[];
+    if (!stored.every((place) => [...DAY_PLACES, ...ON_DEMAND_PLACES].includes(place as Place))) {
+      return null;
+    }
+    const places = DAY_PLACES.filter((place) => stored.includes(place));
     if (places.length > 0) days.push({ weekday, places });
   }
   if (!days.some((day) => day.places.includes("supermarket"))) return null;
@@ -138,19 +144,23 @@ const last = <T>(items: readonly T[]): T | undefined => items[items.length - 1];
 
 /**
  * The errand that buys a need: the supermarket's last shopping day before it is needed.
- * Something fresh comes from the market or the butcher when their day reaches the meal and
- * it keeps until then, also when a supermarket day lies in between. What would not keep
- * from the shopping day, and what was planned after it, is bought shortly before the meal
- * and says so.
+ * Something fresh comes from the market when its day reaches the meal and it keeps until
+ * then, also when a supermarket day lies in between. What would not keep from the shopping
+ * day, and what was planned after it, is bought shortly before the meal and says so.
  *
- * A shop named on purpose is gone to in any case: on its day when that reaches the meal, and
- * otherwise on the day of the meal itself, which then has an errand of its own. Bread and
- * cold cuts for a supper on Monday are a note for the bakery and one for the butcher on
- * Monday, next to the supermarket's.
+ * What comes from the butcher or the bakery, by its kind of grocery or because that shop was
+ * named for it, is an errand of its own on the day of its meal (`onDemandDay`): meat for
+ * Wednesday's lunch is a note for the butcher on Wednesday. A market named on purpose is
+ * gone to on its day when that reaches the meal, and otherwise on the day of the meal.
  *
- * `trips` are in order. Null only when the household has no shopping day at all.
+ * `trips` are in order. `onDemand` are the places gone to for a meal; a household that
+ * buys everything in one go has none. Null only when the household has no shopping day at all.
  */
-export function assignTrip(need: Need, trips: readonly ShoppingTrip[]): Assignment | null {
+export function assignTrip(
+  need: Need,
+  trips: readonly ShoppingTrip[],
+  onDemand: readonly Place[] = ON_DEMAND_PLACES,
+): Assignment | null {
   const keeps = (trip: ShoppingTrip) =>
     need.shelfLifeDays === null || daysBetween(trip.date, need.date) <= need.shelfLifeDays;
   const before = (place: Place) =>
@@ -160,6 +170,9 @@ export function assignTrip(need: Need, trips: readonly ShoppingTrip[]): Assignme
 
   const named = need.at && need.at !== "supermarket" ? need.at : null;
   const elsewhere = named ?? need.fresh;
+  if (elsewhere && onDemand.includes(elsewhere)) {
+    return { date: onDemandDay(need), place: elsewhere, trip: "main" };
+  }
   if (elsewhere) {
     const errand = last(
       inTime(before(elsewhere)).filter(
@@ -175,6 +188,16 @@ export function assignTrip(need: Need, trips: readonly ShoppingTrip[]): Assignme
   const missed =
     last(before("supermarket")) ?? trips.find((trip) => trip.place === "supermarket") ?? trips[0];
   return missed ? { ...missed, trip: "later" } : null;
+}
+
+/**
+ * The day the butcher or the bakery is gone to for a meal: the day of the meal. Shops are
+ * closed on a Sunday, so that is bought on the Saturday, unless the meal was planned later.
+ */
+export function onDemandDay(need: Pick<Need, "date" | "plannedOn">): IsoDate {
+  if (isoWeekday(need.date) !== 7) return need.date;
+  const saturday = addDays(need.date, -1);
+  return need.plannedOn && need.plannedOn > saturday ? need.date : saturday;
 }
 
 /**

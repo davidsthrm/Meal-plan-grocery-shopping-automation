@@ -1,4 +1,5 @@
 import { test } from "@playwright/test";
+import { resetLibrary } from "./fixtures";
 
 // Not a test of behaviour: walks through the screens and saves pictures of them, to look at
 // what was built. Run with `npm run e2e:look`.
@@ -6,6 +7,8 @@ test("screens @look", async ({ page }, info) => {
   const shot = async (name: string) =>
     page.screenshot({ path: `test-results/look/${info.project.name}-${name}.png`, fullPage: true });
 
+  // Something to look at: the made-up cookbook of the tests. It is removed after the run.
+  await resetLibrary();
   // Pages come in with a short fade. A picture taken in the middle of it would be pale.
   await page.emulateMedia({ reducedMotion: "reduce" });
   // Not a first visit: the page about the goals of a week would stand in front of the plan.

@@ -9,6 +9,8 @@ const PORT = Number(process.env.E2E_PORT ?? 3100);
 
 export default defineConfig({
   testDir: "./e2e",
+  // The made-up cookbook of the tests is removed from the test household after every run.
+  globalTeardown: "./e2e/teardown.ts",
   // The tests share one test household, so they must not run side by side.
   workers: 1,
   fullyParallel: false,
