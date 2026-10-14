@@ -40,6 +40,7 @@ export const PLACE_NAME: Record<Place, string> = {
   market: "Markt",
   butcher: "Metzger",
   bakery: "Bäcker",
+  drugstore: "dm",
 };
 
 /** How a place looks wherever its note shows: its pictogram and the pastel it stands on. */
@@ -48,6 +49,7 @@ export const PLACE_LOOK: Record<Place, { pictogram: Pictogram; tone: string }> =
   market: { pictogram: "korb", tone: "kind-vegetarian" },
   butcher: { pictogram: "fleisch", tone: "kind-red_meat" },
   bakery: { pictogram: "brot", tone: "kind-poultry" },
+  drugstore: { pictogram: "flasche", tone: "kind-fish" },
 };
 
 /** A day as the heading of a note: "Montag, 12. Oktober". */

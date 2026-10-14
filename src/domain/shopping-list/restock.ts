@@ -1,7 +1,14 @@
 import type { CatalogIndex } from "../catalog";
-import type { IsoDate } from "../dates";
+import { addDays, type IsoDate } from "../dates";
+import { isDrugstoreItem, nextDrugstoreTrip } from "./drugstore";
 import { parseFreeEntry } from "./free-entry";
-import { nextTrip, type FreshPlace, type ShoppingDay, type ShoppingTrip } from "./trips";
+import {
+  nextTrip,
+  tripsBetween,
+  type FreshPlace,
+  type ShoppingDay,
+  type ShoppingTrip,
+} from "./trips";
 
 /**
  * The note for what ran out at home. Anyone writes on it when they notice: flour, dishwasher
@@ -37,13 +44,18 @@ export function freshPlaceOf(text: string, index: CatalogIndex): FreshPlace | nu
 }
 
 /**
- * The errand an entry goes to: the next one from `today` on that sells it. Something not
- * sold fresh elsewhere waits for the supermarket.
+ * The errand an entry goes to: the next one from `today` on that sells it. What the
+ * drugstore sells goes to its note ("Zahnpasta", "Duschgel"), also where the food catalog
+ * knows it too. Something not sold fresh elsewhere waits for the supermarket.
  */
 export function restockTrip(
-  item: Pick<RestockItem, "freshPlace">,
+  item: Pick<RestockItem, "freshPlace" | "text">,
   days: readonly ShoppingDay[],
   today: IsoDate,
 ): ShoppingTrip | null {
+  if (isDrugstoreItem(item.text)) {
+    const drugstore = nextDrugstoreTrip(tripsBetween(days, today, addDays(today, 13)), today);
+    if (drugstore) return drugstore;
+  }
   return nextTrip(days, today, item.freshPlace);
 }

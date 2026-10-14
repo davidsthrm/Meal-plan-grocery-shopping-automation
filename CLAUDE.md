@@ -192,7 +192,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   more sheets underneath), a list has ruled lines and a margin (`.ruled`) with a tick made by
   a pen (`.tickbox`), what ran out at home is written on a yellow note stuck on with tape
   (`.note`), a meal without a recipe carries a small yellow slip, and today is marked with a
-  highlighter (`.marked`). No handwriting typeface. On real paper none of it is printed.
+  highlighter (`.marked`). No handwriting typeface. On real paper only a note's binding
+  holes and ruled lines are printed, faint, as in its PDF.
 - The shopping notes of a week lie next to each other as small notes, a little askew
   (`.tiles`), each with the pictogram of its place on that place's pastel (`PLACE_LOOK`).
   One is picked up to work through it and comes closer (`.zoom-in`). The household found
@@ -264,6 +265,10 @@ Household
   want standing days for them. They are gone to for the meal that needs something from
   there, on the day of that meal, and on the Saturday for a Sunday (`onDemandDay`). Days once
   stored for them are ignored.
+- The drugstore (dm, place `drugstore`) has one weekday, Saturday until the household picks
+  another on `/einstellungen` (`household.drugstore_weekday`, merged into the shopping days
+  by `withDrugstore`). It is kept apart from `shopping_days`, which older versions read
+  strictly. Its note lies among the others every week, empty until someone writes on it.
 - A family shares one household, everyone with an account of their own
   (`household_member`, with the name the household calls them by). A member makes an
   invitation on `/einstellungen` (`household_invite`): a link that works once and for seven
@@ -520,9 +525,10 @@ Shopping list
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
 - What would not keep from its shopping day, and what was planned after the last shopping
   day before its meal, is bought shortly before (`trip` "later"). It is no section of its
-  own: the line stands with its kind of grocery. Only what goes bad says for which day it
-  is bought ("für Do. 15. Oktober", `neededBy`): tomatoes and yoghurt, not flour. The
-  household found a date on every line too much.
+  own: the line stands with its kind of grocery. Only what goes bad knows for which day it
+  is bought ("für Do. 15. Oktober", `neededBy`): tomatoes and yoghurt, not flour. The day is
+  shown when the line is opened with a tap, not on the line, and not on paper or in the PDF:
+  the household found a date on every line too much.
 - A note is the same real errand from whichever week it is looked at: Saturday's market note
   holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
   The page of a week shows the errands in it, and one before it when that buys for the
@@ -571,11 +577,26 @@ Shopping list
   made before there were several shopping days keep their week (`week_plan_id`); new ones
   have none.
 - A line typed onto a note stays on that note, unless it is moved.
+- The drugstore's note is written by hand only, never from the plan: what, how many and,
+  if it is for someone in particular, for whom (`shopping_manual_entry.quantity`,
+  `for_whom`; "2x Duschgel für Lena", one of something is just its name). Typing suggests typical drugstore items
+  (`DRUGSTORE_ITEMS`), "Für wen" the names of the household's members. Each line is sorted
+  into a section of the shop, Körperpflege to Haushalt (`drugstoreSection`: the longest
+  known word in what was written wins, anything else is "Sonstiges"). Its lines are not
+  moved to a food note, have no "Haben wir schon", and the note is not moved to another day.
+  What is still open on a dm note whose day is over comes along to the next one from today
+  on (`carriedOver`, `nextDrugstoreTrip`, eight weeks back at most), until it is ticked or
+  removed. A tick on the note it came along to is stored there; an entry ticked on any
+  earlier note stays behind.
 - The Merkzettel (`restock_item`, in the header of every page with the number of its
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
   moves an entry to the note of the next errand from today on that sells it (`restockTrip`),
   where it is a typed line, and takes it off. Flour noted on a Saturday waits for Monday;
-  carrots are bought at the market that day. Where an entry is bought fresh is looked up in
+  carrots are bought at the market that day. What the drugstore sells (`isDrugstoreItem`,
+  "Zahnpasta", also "Spülmittel" that the food catalog knows) goes to the next dm note, a
+  number in front, in digits or words, as its quantity (`drugstoreEntryFromText`: "2
+  Duschgel", "zwei Zahnpasta"), and is sorted
+  into its section there. Where an entry is bought fresh is looked up in
   the catalog once, when it is written (`restock_item.fresh_place`), so that the header of
   every page can say where each entry goes without reading the catalog. While it has
   entries, the Merkzettel also lies among the shopping notes.
@@ -585,10 +606,14 @@ Shopping list
   "Gurke" for the catalog's "Gurken" is "1 Gurke" and adds up with what recipes need
   (`namesOnePiece`). Named in the plural it stays a name. A food bought somewhere else than the catalog says is its own line
   (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.
-- Export: the page has a print layout (black on white, two columns, a box per line, no
-  controls) for the note that is picked up, and `/einkauf/pdf` writes notes with `pdf-lib`:
+- Export: the page has a print layout (black on white, a box per line, no controls, on the
+  paper of the PDF: `printRules` sets page size, columns and size of the writing from
+  `NOTE_PAPER`) for the note that is picked up, and `/einkauf/pdf` writes notes with `pdf-lib`:
   each note as a file of its own, or all of them in one file, every note on its own page.
-  Both show what is still to buy, without what is ticked off or at home.
+  Both show what is still to buy, without what is ticked off or at home. The PDF is a small
+  notepad sheet to take along instead of a phone: A6, one column, black on white, binding
+  holes along the top and faint ruled lines. The size is one constant for both (`NOTE_PAPER`
+  in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out).
 
 Import
 

@@ -1,5 +1,6 @@
 import "server-only";
 import type { IsoDate } from "@/domain/dates";
+import { drugstoreEntryFromText } from "@/domain/shopping-list/drugstore";
 import {
   freshPlaceOf,
   readRestock,
@@ -81,7 +82,16 @@ export async function moveToList(
   const went: ShoppingTrip[] = [];
   for (const item of items) {
     if (!item.trip) continue;
-    await addEntry(db, household, item.trip, item.text);
+    if (item.trip.place === "drugstore") {
+      // On the drugstore's note a number in front is how many: "2 Zahnpasta".
+      const entry = drugstoreEntryFromText(item.text);
+      await addEntry(db, household, item.trip, entry.text, {
+        quantity: entry.quantity,
+        forWhom: null,
+      });
+    } else {
+      await addEntry(db, household, item.trip, item.text);
+    }
     await removeRestock(db, item.id);
     const { date, place } = item.trip;
     if (!went.some((trip) => trip.date === date && trip.place === place)) went.push(item.trip);

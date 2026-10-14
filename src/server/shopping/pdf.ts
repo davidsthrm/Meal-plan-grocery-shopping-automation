@@ -1,10 +1,12 @@
 import "server-only";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
+import { NOTE_PAPER, PAPERS, type Paper } from "@/lib/note-paper";
 
 /**
- * The shopping lists on A4 pages: every shopping day starts a page of its own, with a
- * heading per kind of grocery, a box to tick per line, two columns. Plain black on white,
- * like the list it replaces.
+ * The shopping notes as sheets of a small notepad, for whoever would rather take paper than
+ * a phone: every errand starts a sheet of its own, with a heading per kind of grocery and a
+ * box to tick per line. Black on white, like the note it replaces, with the binding holes
+ * along the top and faint ruled lines as the only decoration.
  */
 
 export type PdfSection =
@@ -13,14 +15,12 @@ export type PdfSection =
   /** A shopping day: it starts a new page, and the sections after it belong to it. */
   | { title: string; subtitle: string };
 
-const PAGE = { width: 595.28, height: 841.89 };
-const MARGIN = 42;
 const GUTTER = 24;
-const COLUMN = (PAGE.width - 2 * MARGIN - GUTTER) / 2;
-const SIZE = { title: 18, heading: 12.5, line: 11 };
-const LINE_HEIGHT = 16;
-const BOX = 8;
 const BLACK = rgb(0, 0, 0);
+/** The ruled lines and the edge of the holes: faint, so they use little ink. */
+const RULE = rgb(0.78, 0.78, 0.78);
+/** The strip at the top of a sheet that holds the binding holes. */
+const HOLES = { strip: 18, radius: 3.2, gap: 14 };
 
 /** The standard fonts know Western European letters only. Anything else becomes "?". */
 function printable(text: string, font: PDFFont): string {
@@ -48,33 +48,56 @@ function wrap(text: string, font: PDFFont, size: number, width: number): string[
 export async function shoppingListPdf(
   documentTitle: string,
   sections: PdfSection[],
+  paper: Paper = PAPERS[NOTE_PAPER],
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(documentTitle);
   pdf.setLanguage("de-DE");
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const { width, height, margin, columns, size, lineHeight } = paper;
+  const column = (width - 2 * margin - (columns - 1) * GUTTER) / columns;
+  const box = Math.round(size.line * 0.75);
 
   let page: PDFPage | null = null;
-  let column = 0;
+  let at = 0;
   // Where the next thing is drawn, measured from the bottom of the page.
-  let y = PAGE.height - MARGIN;
+  let y = 0;
   // Below the title on the first page of a day, from the top on every other one.
-  let top = y;
-  const x = () => MARGIN + column * (COLUMN + GUTTER);
+  let top = 0;
+  const x = () => margin + at * (column + GUTTER);
   const newPage = (): PDFPage => {
-    page = pdf.addPage([PAGE.width, PAGE.height]);
-    column = 0;
-    top = PAGE.height - MARGIN;
+    const sheet = pdf.addPage([width, height]);
+    // The binding: a row of holes along the top, and the edge the sheet was torn off at.
+    const count = Math.floor((width - 2 * HOLES.gap) / (2 * HOLES.radius + HOLES.gap)) + 1;
+    const span = (count - 1) * (2 * HOLES.radius + HOLES.gap);
+    for (let hole = 0; hole < count; hole++) {
+      sheet.drawCircle({
+        x: (width - span) / 2 + hole * (2 * HOLES.radius + HOLES.gap),
+        y: height - HOLES.strip / 2,
+        size: HOLES.radius,
+        borderColor: RULE,
+        borderWidth: 0.6,
+      });
+    }
+    sheet.drawLine({
+      start: { x: 0, y: height - HOLES.strip },
+      end: { x: width, y: height - HOLES.strip },
+      color: RULE,
+      thickness: 0.5,
+    });
+    page = sheet;
+    at = 0;
+    top = height - HOLES.strip - margin / 2;
     y = top;
-    return page;
+    return sheet;
   };
 
-  /** Makes room for `height`, in the next column or on the next page if this one is full. */
-  const need = (height: number): PDFPage => {
-    if (page && y - height >= MARGIN) return page;
-    if (page && column === 0) {
-      column = 1;
+  /** Makes room for `needed`, in the next column or on the next page if this one is full. */
+  const need = (needed: number): PDFPage => {
+    if (page && y - needed >= margin) return page;
+    if (page && at < columns - 1) {
+      at += 1;
       y = top;
       return page;
     }
@@ -84,58 +107,67 @@ export async function shoppingListPdf(
   for (const section of sections) {
     if ("title" in section) {
       const sheet = newPage();
-      sheet.drawText(printable(section.title, bold), {
-        x: MARGIN,
-        y: y - SIZE.title,
-        size: SIZE.title,
-        font: bold,
-      });
-      y -= SIZE.title + 8;
+      for (const row of wrap(
+        printable(section.title, bold),
+        bold,
+        size.title,
+        width - 2 * margin,
+      )) {
+        sheet.drawText(row, { x: margin, y: y - size.title, size: size.title, font: bold });
+        y -= size.title + 4;
+      }
       if (section.subtitle !== "") {
         sheet.drawText(printable(section.subtitle, regular), {
-          x: MARGIN,
-          y: y - 10,
-          size: 10,
+          x: margin,
+          y: y - size.subtitle,
+          size: size.subtitle,
           font: regular,
         });
-        y -= 18;
+        y -= size.subtitle + 6;
       }
-      y -= 8;
+      y -= 6;
       top = y;
       continue;
     }
     if (section.lines.length === 0) continue;
     // A heading does not stand alone at the bottom of a column.
-    let sheet = need(SIZE.heading + 10 + LINE_HEIGHT);
-    if (y !== top) y -= 10;
+    let sheet = need(size.heading + 10 + lineHeight);
+    if (y !== top) y -= 8;
     sheet.drawText(printable(section.heading, bold), {
       x: x(),
-      y: y - SIZE.heading,
-      size: SIZE.heading,
+      y: y - size.heading,
+      size: size.heading,
       font: bold,
     });
-    y -= SIZE.heading + 6;
+    y -= size.heading + 4;
 
     for (const line of section.lines) {
-      const rows = wrap(printable(line, regular), regular, SIZE.line, COLUMN - BOX - 8);
-      sheet = need(rows.length * LINE_HEIGHT);
+      const rows = wrap(printable(line, regular), regular, size.line, column - box - 6);
+      sheet = need(rows.length * lineHeight);
       sheet.drawRectangle({
         x: x(),
-        y: y - LINE_HEIGHT + 4.5,
-        width: BOX,
-        height: BOX,
+        y: y - lineHeight + (lineHeight - box) / 2,
+        width: box,
+        height: box,
         borderColor: BLACK,
-        borderWidth: 0.8,
+        borderWidth: 0.7,
       });
       for (const row of rows) {
         sheet.drawText(row, {
-          x: x() + BOX + 8,
-          y: y - LINE_HEIGHT + 5,
-          size: SIZE.line,
+          x: x() + box + 6,
+          y: y - lineHeight + (lineHeight - size.line) / 2 + 1.5,
+          size: size.line,
           font: regular,
         });
-        y -= LINE_HEIGHT;
+        y -= lineHeight;
       }
+      // The ruled line under it, as on a pad.
+      sheet.drawLine({
+        start: { x: x(), y },
+        end: { x: x() + column, y },
+        color: RULE,
+        thickness: 0.4,
+      });
     }
   }
   // A week with nothing to buy is still a document that opens.

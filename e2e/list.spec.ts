@@ -36,6 +36,7 @@ const MONDAY = "Supermarkt, Montag, 1. März";
 const FRIDAY = "Supermarkt, Freitag, 5. März";
 const BAKERY = "Bäcker, Montag, 1. März";
 const MARKET_ON_FRIDAY = "Markt, Freitag, 26. Februar";
+const DRUGSTORE = "dm, Samstag, 6. März";
 
 test("the week becomes a note for every errand, to pick up and work through", async ({ page }) => {
   // A long walk: planning, seven notes, ticking, moving, and the plan changed again.
@@ -60,8 +61,10 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
   // Every errand is a note: the market before the week, because it buys for Monday and
   // Tuesday, the supermarket twice, the market again, and the butcher and the bakery on the
-  // day of the meal that needs something from them. Neither has a day of its own.
-  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(6);
+  // day of the meal that needs something from them. Neither has a day of its own. And dm on
+  // Saturday, which the plan never fills.
+  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(7);
+  await expect(tile(page, DRUGSTORE)).toContainText("Noch nichts notiert");
   // What is fresh comes from the market, the meat from the butcher on the day it is cooked.
   // A note shows its first lines while it lies among the others.
   await expect(tile(page, MARKET)).toContainText("2 Karotten");
@@ -165,6 +168,61 @@ test("the week becomes a note for every errand, to pick up and work through", as
     expect(pdf.headers()["content-type"]).toBe("application/pdf");
     expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
   }
+});
+
+test("the drugstore's note is written by hand: what, how many, for whom", async ({ page }) => {
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await tile(page, DRUGSTORE).click();
+  const dm = sheet(page, DRUGSTORE);
+  await expect(dm).toContainText("Noch nichts notiert.");
+
+  await page.getByLabel("Was").fill("Duschgel");
+  await page.getByLabel("Menge").fill("2");
+  await page.getByLabel("Für wen").fill("Lena");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(group(page, DRUGSTORE, "Körperpflege")).toContainText("2x Duschgel für Lena");
+
+  await page.getByLabel("Was").fill("Klopapier");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(group(page, DRUGSTORE, "Haushalt")).toContainText("Klopapier");
+
+  // Ticked like any line; moving it to a food note is not offered.
+  await page.getByRole("button", { name: "2x Duschgel für Lena: erledigt" }).click();
+  await expect(dm).toContainText("1 offen, 1 erledigt");
+  await dm.getByText("Klopapier", { exact: true }).click();
+  await expect(dm.getByText("Lieber woanders kaufen:")).toHaveCount(0);
+  await dm.getByRole("button", { name: "Klopapier entfernen" }).click();
+  await expect(dm).not.toContainText("Klopapier");
+});
+
+/** A day as the app writes it, `days` from today in the household's time zone. */
+function fromToday(days: (weekday: number) => number): { date: string; monday: string } {
+  const now = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+  const today = new Date(`${now}T00:00:00Z`);
+  const day = new Date(today.getTime() + days(today.getUTCDay()) * 86_400_000);
+  const monday = new Date(day.getTime() - ((day.getUTCDay() || 7) - 1) * 86_400_000);
+  return { date: day.toISOString().slice(0, 10), monday: monday.toISOString().slice(0, 10) };
+}
+
+test("what was not bought at the drugstore comes along to its next note", async ({ page }) => {
+  // dm is on Saturdays: the last one is over, the next one is today or later.
+  const last = fromToday((weekday) => -((weekday - 6 + 7) % 7 || 7));
+  const next = fromToday((weekday) => (6 - weekday + 7) % 7);
+  await page.goto(`/einkauf?w=${last.monday}&zettel=${last.date}.drugstore`);
+  await page.getByLabel("Was").fill("Deo");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await page.getByLabel("Was").fill("Shampoo");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await page.getByRole("button", { name: "Shampoo: erledigt" }).click();
+  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 erledigt");
+
+  // Not bought that day, the deodorant is on the next dm note; the shampoo was bought.
+  await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
+  const dm = page.getByRole("region", { name: /^dm, / });
+  await expect(dm).toContainText("Deo");
+  await expect(dm).not.toContainText("Shampoo");
+  await page.getByRole("button", { name: "Deo: erledigt" }).click();
+  await expect(dm).toContainText("0 offen, 1 erledigt");
 });
 
 test("a week with nothing planned has empty notes that say where they come from", async ({

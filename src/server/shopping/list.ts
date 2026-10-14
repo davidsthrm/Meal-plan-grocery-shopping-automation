@@ -3,9 +3,17 @@ import { PLACES, type CatalogIndex, type Place } from "@/domain/catalog";
 import { addDays, isIsoDate, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList, moveKey } from "@/domain/shopping-list/build";
+import {
+  carriedOver,
+  drugstoreLines,
+  nextDrugstoreTrip,
+  presentDrugstore,
+  type DrugstoreEntry,
+} from "@/domain/shopping-list/drugstore";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
+import { today } from "@/lib/today";
 import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 import { loadExtras, loadWeeks } from "../planning/week";
@@ -44,6 +52,8 @@ export interface WeekNotes {
   /** What is needed and at home, over all notes. */
   atHome: { trip: ShoppingTrip; line: ViewLine }[];
   index: CatalogIndex;
+  /** The names the members of the household are called by: whom a line can be for. */
+  members: string[];
 }
 
 /** The recipes of a week with their ingredient lines, as the list builder needs them. */
@@ -103,6 +113,52 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
   }));
 }
 
+/** How far back open entries of drugstore notes are still looked for. */
+const CARRY_DAYS = 56;
+
+/**
+ * The entries of the drugstore notes whose day is over, from the last weeks, with whether
+ * each was ticked there.
+ */
+async function earlierDrugstoreEntries(
+  db: Db,
+  now: IsoDate,
+): Promise<(DrugstoreEntry & { from: ShoppingTrip; done: boolean })[]> {
+  const lists = must(
+    await db
+      .from("shopping_list")
+      .select("id, shopping_date")
+      .eq("place", "drugstore")
+      .gte("shopping_date", addDays(now, -CARRY_DAYS))
+      .lt("shopping_date", now),
+    "load earlier drugstore notes",
+  );
+  if (lists.length === 0) return [];
+  const ids = lists.map((list) => list.id);
+  const [entryRows, stateRows] = await Promise.all([
+    db
+      .from("shopping_manual_entry")
+      .select("id, shopping_list_id, text, quantity, for_whom")
+      .in("shopping_list_id", ids)
+      .order("created_at"),
+    db
+      .from("shopping_line_state")
+      .select("line_key")
+      .in("shopping_list_id", ids)
+      .not("checked_at", "is", null),
+  ]);
+  const ticked = new Set(must(stateRows, "load earlier ticks").map((row) => row.line_key));
+  const dateOf = new Map(lists.map((list) => [list.id, list.shopping_date]));
+  return must(entryRows, "load earlier drugstore entries").map((row) => ({
+    id: row.id,
+    text: row.text,
+    quantity: row.quantity,
+    forWhom: row.for_whom,
+    from: { date: dateOf.get(row.shopping_list_id) as IsoDate, place: "drugstore" },
+    done: ticked.has(`manual:${row.id}`),
+  }));
+}
+
 export async function loadShoppingNotes(
   db: Db,
   household: Pick<Household, "shoppingDays">,
@@ -146,7 +202,7 @@ export async function loadShoppingNotes(
     listIds.length > 0
       ? db
           .from("shopping_manual_entry")
-          .select("id, shopping_list_id, text, shop_id, aisle_group_id")
+          .select("id, shopping_list_id, text, shop_id, aisle_group_id, quantity, for_whom")
           .in("shopping_list_id", listIds)
           .order("created_at")
       : null,
@@ -159,16 +215,32 @@ export async function loadShoppingNotes(
           .in("shopping_list_id", listIds)
       : null,
   ]);
-  const entries = (entryRows ? must(entryRows, "load typed entries") : []).map(
-    (row): ManualEntry => ({
+  const typed = entryRows ? must(entryRows, "load typed entries") : [];
+  // The drugstore's note is written by hand only, and read apart from the plan.
+  const onDrugstore = (row: { shopping_list_id: string }) =>
+    tripOf.get(row.shopping_list_id)?.place === "drugstore";
+  const drugstore = new Map<string, { trip: ShoppingTrip; entries: DrugstoreEntry[] }>();
+  for (const row of typed.filter(onDrugstore)) {
+    const trip = tripOf.get(row.shopping_list_id) as ShoppingTrip;
+    const note = drugstore.get(noteId(trip)) ?? { trip, entries: [] };
+    note.entries.push({
+      id: row.id,
+      text: row.text,
+      quantity: row.quantity,
+      forWhom: row.for_whom,
+    });
+    drugstore.set(noteId(trip), note);
+  }
+  const entries = typed
+    .filter((row) => !onDrugstore(row))
+    .map((row): ManualEntry => ({
       id: row.id,
       text: row.text,
       shoppingDate: tripOf.get(row.shopping_list_id)?.date,
       place: tripOf.get(row.shopping_list_id)?.place,
       shopId: row.shop_id,
       aisleGroupId: row.aisle_group_id,
-    }),
-  );
+    }));
   // What the household changed on a line, per note, and the lines it moved to another one.
   const states = new Map<string, Record<string, LineState>>();
   const moves = new Map<string, ShoppingTrip>();
@@ -197,17 +269,33 @@ export async function loadShoppingNotes(
 
   // Far enough back that the first meal read has a shopping day before it.
   const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
-  const lines = buildShoppingList({
-    index,
-    recipes,
-    slots,
-    extras,
-    trips,
-    // The week's first trip to the supermarket.
-    extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
-    manualEntries: entries,
-    moves,
-  });
+  // What is still open on drugstore notes whose day is over comes along to the next one.
+  const now = today();
+  const target = nextDrugstoreTrip(trips, now);
+  if (target && inWeek(target.date)) {
+    const carried = carriedOver(await earlierDrugstoreEntries(db, now), now);
+    if (carried.length > 0) {
+      const note = drugstore.get(noteId(target)) ?? { trip: target, entries: [] };
+      note.entries.unshift(...carried);
+      drugstore.set(noteId(target), note);
+    }
+  }
+  const lines = [
+    ...buildShoppingList({
+      index,
+      recipes,
+      slots,
+      extras,
+      trips,
+      // The week's first trip to the supermarket.
+      extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
+      manualEntries: entries,
+      moves,
+    }),
+    ...[...drugstore.values()].flatMap((note) =>
+      drugstoreLines(note.entries, note.trip, index.catalog.defaultShopId),
+    ),
+  ];
   const linesOf = (trip: ShoppingTrip) =>
     lines.filter((line) => line.shoppingDate === trip.date && line.place === trip.place);
   const buysForWeek = (trip: ShoppingTrip) =>
@@ -237,7 +325,10 @@ export async function loadShoppingNotes(
   const atHome: WeekNotes["atHome"] = [];
   const notes = inOrder.map((trip): NoteList => {
     const id = noteId(trip);
-    const view = presentByAisle(linesOf(trip), states.get(id) ?? {}, index);
+    const view =
+      trip.place === "drugstore"
+        ? presentDrugstore(linesOf(trip), states.get(id) ?? {})
+        : presentByAisle(linesOf(trip), states.get(id) ?? {}, index);
     atHome.push(...view.atHome.map((line) => ({ trip, line })));
     const toBuy = view.groups.flatMap((group) => group.lines);
     const done = toBuy.filter((line) => line.checked).length;
@@ -257,7 +348,8 @@ export async function loadShoppingNotes(
     };
   });
   atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));
-  return { notes, atHome, index };
+  const members = [...nameOf.values()].filter((name): name is string => Boolean(name));
+  return { notes, atHome, index, members };
 }
 
 /**
@@ -285,18 +377,24 @@ async function ensureList(db: Db, householdId: string, trip: ShoppingTrip): Prom
   return list.id;
 }
 
-/** Adds a line as the household writes it: "Milch WS 1.29", "Geschenkpapier". */
+/**
+ * Adds a line as the household writes it: "Milch WS 1.29", "Geschenkpapier". On the
+ * drugstore's note it may say how many and for whom.
+ */
 export async function addEntry(
   db: Db,
   household: Pick<Household, "id" | "userId">,
   trip: ShoppingTrip,
   text: string,
+  extra: { quantity: number | null; forWhom: string | null } = { quantity: null, forWhom: null },
 ): Promise<void> {
   const listId = await ensureList(db, household.id, trip);
   const stored = await db.from("shopping_manual_entry").insert({
     household_id: household.id,
     shopping_list_id: listId,
     text,
+    quantity: extra.quantity,
+    for_whom: extra.forWhom,
     created_by: household.userId,
   });
   if (stored.error) throw new Error(`add entry: ${stored.error.message}`);

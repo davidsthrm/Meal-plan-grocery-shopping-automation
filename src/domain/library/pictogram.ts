@@ -54,6 +54,7 @@ export const PICTOGRAMS = [
   "buch",
   "etikett",
   "wagen",
+  "flasche",
 ] as const;
 export type Pictogram = (typeof PICTOGRAMS)[number];
 

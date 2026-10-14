@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
 import { dayProblems } from "@/domain/shopping-list/change-day";
+import { readDrugstoreEntry } from "@/domain/shopping-list/drugstore";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
@@ -59,6 +60,33 @@ export async function addListEntry(form: FormData): Promise<void> {
   const household = await requireHousehold();
   const trip = noteOf(input.note);
   if (input.text !== "") await addEntry(await createSessionClient(), household, trip, input.text);
+  backToList(input);
+}
+
+/** Writes onto the drugstore's note: what, how many, and for whom. Nothing written adds nothing. */
+export async function addDrugstoreEntry(form: FormData): Promise<void> {
+  const input = read(
+    place.extend({
+      item: z.string().max(200),
+      quantity: z.string().max(10).optional(),
+      forWhom: z.string().max(200).optional(),
+    }),
+    form,
+  );
+  const household = await requireHousehold();
+  const trip = noteOf(input.note);
+  if (trip.place !== "drugstore") throw new Error(`${input.note} is not the drugstore's note.`);
+  const entry = readDrugstoreEntry({
+    item: input.item,
+    quantity: input.quantity ?? "",
+    forWhom: input.forWhom ?? "",
+  });
+  if (entry) {
+    await addEntry(await createSessionClient(), household, trip, entry.text, {
+      quantity: entry.quantity,
+      forWhom: entry.forWhom,
+    });
+  }
   backToList(input);
 }
 
