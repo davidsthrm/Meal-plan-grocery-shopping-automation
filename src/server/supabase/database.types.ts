@@ -1278,6 +1278,8 @@ export type Database = {
       }
       shopping_line_state: {
         Row: {
+          amount: number | null
+          amount_instead: number | null
           at_home: boolean | null
           checked_at: string | null
           checked_by: string | null
@@ -1293,6 +1295,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          amount?: number | null
+          amount_instead?: number | null
           at_home?: boolean | null
           checked_at?: string | null
           checked_by?: string | null
@@ -1308,6 +1312,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amount?: number | null
+          amount_instead?: number | null
           at_home?: boolean | null
           checked_at?: string | null
           checked_by?: string | null
