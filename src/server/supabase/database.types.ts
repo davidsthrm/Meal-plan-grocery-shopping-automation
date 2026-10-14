@@ -597,6 +597,7 @@ export type Database = {
       }
       plan_slot: {
         Row: {
+          extra_servings: number
           date: string
           household_id: string
           id: string
@@ -607,6 +608,7 @@ export type Database = {
           week_plan_id: string
         }
         Insert: {
+          extra_servings?: number
           date: string
           household_id: string
           id?: string
@@ -617,6 +619,7 @@ export type Database = {
           week_plan_id: string
         }
         Update: {
+          extra_servings?: number
           date?: string
           household_id?: string
           id?: string

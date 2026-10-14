@@ -1,7 +1,7 @@
 import type { CatalogIndex, Ingredient, Place } from "../catalog";
 import { nameForOne, normalizeName } from "../catalog";
 import type { IsoDate } from "../dates";
-import type { PlanExtra, PlanSlot } from "../plan";
+import { cookedServings, type PlanExtra, type PlanSlot } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
 import {
   baseUnitOf,
@@ -410,7 +410,9 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           recipeId: recipe.id,
           recipeTitle: recipe.title,
         };
-        addRecipe(recipe, item.servings, source, slot.date, item.plannedOn);
+        // Extra portions for leftovers are bought with the meal ("Mehr kochen").
+        const servings = cookedServings(item.servings, slot.extra, recipe.servings.unit === null);
+        addRecipe(recipe, servings, source, slot.date, item.plannedOn);
       }
     }
     // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".

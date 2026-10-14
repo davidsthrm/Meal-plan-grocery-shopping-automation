@@ -261,6 +261,41 @@ describe("schema", () => {
     await db.query("delete from public.shopping_list where id = $1", [list.rows[0].id]);
   });
 
+  it("keeps a household's postal code as five digits, empty until one is entered", async () => {
+    const row = await db.query<{ postal_code: string | null }>(
+      "select postal_code from public.household where id = $1",
+      [OTHER_HOUSEHOLD],
+    );
+    expect(row.rows[0].postal_code).toBeNull();
+    const store = (code: string) =>
+      db.query("update public.household set postal_code = $2 where id = $1", [
+        OTHER_HOUSEHOLD,
+        code,
+      ]);
+    await expect(store("88471")).resolves.toBeDefined();
+    await expect(store("Laupheim")).rejects.toThrow(/postal_code_check/);
+    await db.query("update public.household set postal_code = null where id = $1", [
+      OTHER_HOUSEHOLD,
+    ]);
+  });
+
+  it("cooks a meal with up to twenty extra portions for leftovers, none unless asked", async () => {
+    const plan = await db.query<{ id: string }>(
+      "insert into public.week_plan (household_id, week_start) values ($1, '2026-11-02') returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const meal = (extra: string) =>
+      db.query<{ extra_servings: number }>(
+        `insert into public.plan_slot (household_id, week_plan_id, date, meal, kind${extra === "" ? "" : ", extra_servings"})
+         values ($1, $2, '2026-11-02', 'lunch', 'recipes'${extra === "" ? "" : `, ${extra}`}) returning extra_servings`,
+        [SEED_HOUSEHOLD_ID, plan.rows[0].id],
+      );
+    expect((await meal("")).rows[0].extra_servings).toBe(0);
+    await db.query("delete from public.plan_slot where week_plan_id = $1", [plan.rows[0].id]);
+    await expect(meal("21")).rejects.toThrow(/extra_servings_check/);
+    await db.query("delete from public.week_plan where id = $1", [plan.rows[0].id]);
+  });
+
   it("ranks only supermarkets among the household's supermarkets", async () => {
     const rank = (kind: string) =>
       db.query(

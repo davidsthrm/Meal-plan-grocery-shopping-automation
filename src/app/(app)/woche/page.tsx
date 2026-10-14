@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowIcon, PenIcon, WishIcon } from "@/components/icons";
+import { ArrowIcon, PenIcon, PlusIcon, TrashIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -52,7 +52,7 @@ import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { CookMore } from "./cook-more";
+import { CookMore, ExtraPortions } from "./cook-more";
 import {
   acceptSuggestions,
   changeExtraServings,
@@ -124,6 +124,13 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const taken = new Set([...slots, ...nextSlots].map((slot) => slotKey(slot.date, slot.meal)));
   const laterMeals = (date: IsoDate, meal: Meal) =>
     openMealsAfter({ date, meal }, taken, addDays(date, LEFTOVER_DAYS));
+  // A meal cooked for leftovers says on which meal they are eaten.
+  const leftoversOn = (slot: PlanSlot | undefined) => {
+    const on = [...slots, ...nextSlots].find(
+      (other) => other.kind === "leftovers" && slot && other.ofSlotId === slot.id,
+    );
+    return on ? { date: on.date, meal: on.meal } : null;
+  };
   // Leftovers say which meal they are from, where it is in this week.
   const leftoversOf = (slot: PlanSlot | undefined) => {
     const from =
@@ -405,6 +412,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                     later={laterMeals(date, meal)}
                     servings={household.defaultServings}
                     leftoversOf={leftoversOf(slotAt(date, meal))}
+                    leftoversOn={leftoversOn(slotAt(date, meal))}
                   />
                 ))}
               </li>
@@ -780,6 +788,10 @@ function Balance({ lines }: { lines: BalanceLine[] }) {
   );
 }
 
+/** A meal's action shown as a sign: round, large enough for a finger. */
+const ICON_ACTION =
+  "-mx-1 flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent";
+
 interface CellProps {
   week: IsoDate;
   date: IsoDate;
@@ -806,6 +818,8 @@ interface CellProps {
   servings: number;
   /** For leftovers: the meal they are from, "von Mo Mittag", where it is known. */
   leftoversOf: string | undefined;
+  /** For a meal cooked for leftovers: the meal they are eaten at, where one is planned. */
+  leftoversOn: { date: IsoDate; meal: Meal } | null;
 }
 
 function MealCell({
@@ -824,6 +838,7 @@ function MealCell({
   later,
   servings,
   leftoversOf,
+  leftoversOn,
 }: CellProps) {
   // The suggestion the meal shows: the one asked for, or else an idea offered unasked.
   const shown = proposal ?? hint;
@@ -874,6 +889,11 @@ function MealCell({
                 </li>
               );
             })}
+            {(slot.extra ?? 0) > 0 && (
+              <li className="text-sm font-semibold text-accent">
+                + {slot.extra === 1 ? "1 Extra-Portion" : `${slot.extra} Extra-Portionen`} für Reste
+              </li>
+            )}
           </ul>
         )}
         {slot && slot.kind !== "recipes" && (
@@ -919,6 +939,16 @@ function MealCell({
             );
           })}
         </ul>
+      )}
+      {slot?.kind === "recipes" && (slot.extra ?? 0) > 0 && (
+        <ExtraPortions
+          week={week}
+          date={date}
+          meal={meal}
+          extra={slot.extra ?? 0}
+          leftoversOn={leftoversOn}
+          what={what}
+        />
       )}
 
       {slot && slot.kind !== "recipes" && (
@@ -1010,16 +1040,24 @@ function MealCell({
           </form>
         ) : slot ? (
           <>
-            <Link href={choose("replace")} className="link text-sm" aria-label={`${what} ändern`}>
-              Ändern
+            {/* Signs instead of words, so that the row stays one line: what each does is in
+                its label, and in its title for a mouse. */}
+            <Link
+              href={choose("replace")}
+              className={ICON_ACTION}
+              aria-label={`${what} ändern`}
+              title="Ändern"
+            >
+              <PenIcon />
             </Link>
             {slot.kind === "recipes" && (
               <Link
                 href={choose("add")}
-                className="link text-sm"
+                className={ICON_ACTION}
                 aria-label={`${what}: etwas dazu`}
+                title="Etwas dazu"
               >
-                Etwas dazu
+                <PlusIcon />
               </Link>
             )}
             {slot.kind === "free_text" && (
@@ -1033,13 +1071,25 @@ function MealCell({
             )}
             <form action={clearSlot}>
               {where}
-              <SubmitButton
-                className="min-h-10 text-sm font-semibold text-muted hover:text-danger"
-                label={`${what} leeren`}
-              >
-                Leeren
+              <SubmitButton className={`${ICON_ACTION} hover:text-danger`} label={`${what} leeren`}>
+                <TrashIcon />
               </SubmitButton>
             </form>
+            {/* Cooked for more than the household: leftovers for a later meal. Once cooked
+                more, the extra portions stand under the recipes instead. A cake for one tin
+                is not cooked "more". */}
+            {slot.kind === "recipes" &&
+              !(slot.extra ?? 0) &&
+              slot.items.some((item) => !recipeOf.get(item.recipeId)?.servings?.unit) && (
+                <CookMore
+                  week={week}
+                  date={date}
+                  meal={meal}
+                  servings={servings}
+                  later={later}
+                  what={what}
+                />
+              )}
           </>
         ) : (
           <>
@@ -1063,20 +1113,6 @@ function MealCell({
           </>
         )}
       </div>
-      {/* Cooked for more persons than the household: leftovers for a later meal. A cake for
-          one tin is not cooked "more". */}
-      {slot?.kind === "recipes" &&
-        !placing &&
-        slot.items.some((item) => !recipeOf.get(item.recipeId)?.servings?.unit) && (
-          <CookMore
-            week={week}
-            date={date}
-            meal={meal}
-            servings={servings}
-            later={later}
-            what={what}
-          />
-        )}
     </section>
   );
 }

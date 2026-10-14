@@ -19,7 +19,7 @@ import {
   addToSlot,
   changeExtra,
   changeItem,
-  cookMoreForLeftovers,
+  setExtraPortions,
   removeFood,
   loadWeek,
   planOpenSlots,
@@ -282,7 +282,7 @@ export async function changeServings(form: FormData): Promise<void> {
 }
 
 /**
- * "Mehr kochen": more portions of a meal for leftovers, and "Reste" on the later meal that
+ * "Mehr kochen": extra portions of a meal for leftovers, and "Reste" on the later meal that
  * was picked for them (`reste`: "<date>.<meal>", or empty for none).
  */
 export async function cookMoreOfMeal(form: FormData): Promise<void> {
@@ -302,7 +302,7 @@ export async function cookMoreOfMeal(form: FormData): Promise<void> {
     isIsoDate(day) && (meal === "lunch" || meal === "dinner") ? { date: day, meal } : null;
   // Leftovers come after the meal they were cooked with.
   const later = picked && byDayAndMeal(picked, input) > 0 ? picked : null;
-  await cookMoreForLeftovers(
+  await setExtraPortions(
     await createSessionClient(),
     household.id,
     input.week,
@@ -310,6 +310,27 @@ export async function cookMoreOfMeal(form: FormData): Promise<void> {
     input.meal,
     input.extra,
     later,
+  );
+  backToWeek(input.week, input.date);
+}
+
+/**
+ * Changes how many extra portions a meal is cooked with: a third person at the leftovers
+ * next day. Zero cooks the meal as planned again.
+ */
+export async function changeExtraPortions(form: FormData): Promise<void> {
+  const input = read(
+    z.intersection(place, z.object({ extra: z.coerce.number().int().min(0).max(20) })),
+    form,
+  );
+  const household = await requireHousehold();
+  await setExtraPortions(
+    await createSessionClient(),
+    household.id,
+    input.week,
+    input.date,
+    input.meal,
+    input.extra,
   );
   backToWeek(input.week, input.date);
 }

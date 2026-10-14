@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   byDayAndMeal,
-  cookMore,
+  cookedServings,
   mealsOf,
   namedMeal,
   nextOpenMeal,
@@ -101,31 +101,13 @@ describe("openMealsAfter", () => {
   });
 });
 
-describe("cookMore", () => {
-  const items = [
-    { recipeId: "lasagne", servings: 4, plannedOn: "2026-10-10" },
-    { recipeId: "kuchen", servings: 1 },
-  ];
-  const forPersons = (id: string) => id === "lasagne";
-
-  it("adds the portions to what is cooked for persons and keeps its day", () => {
-    expect(cookMore(items, 4, forPersons)).toEqual([
-      { recipeId: "lasagne", servings: 8, plannedOn: "2026-10-10" },
-      // One cake tin stays one cake.
-      { recipeId: "kuchen", servings: 1 },
-    ]);
+describe("cookedServings", () => {
+  it("adds the extra portions to what is cooked for persons", () => {
+    expect(cookedServings(4, 2, true)).toBe(6);
+    expect(cookedServings(4, undefined, true)).toBe(4);
   });
 
-  it("adds to a main dish and its side alike", () => {
-    const meal = [
-      { recipeId: "gulasch", servings: 4 },
-      { recipeId: "spaetzle", servings: 4 },
-    ];
-    expect(cookMore(meal, 2, () => true)?.map((item) => item.servings)).toEqual([6, 6]);
-  });
-
-  it("changes nothing for a meal with nothing cooked for persons, or for no portions", () => {
-    expect(cookMore([{ recipeId: "kuchen", servings: 1 }], 4, forPersons)).toBeNull();
-    expect(cookMore(items, 0, forPersons)).toBeNull();
+  it("leaves a recipe that makes something else as it is: one cake tin stays one", () => {
+    expect(cookedServings(1, 2, false)).toBe(1);
   });
 });

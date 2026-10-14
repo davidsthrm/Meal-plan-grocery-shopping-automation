@@ -25,7 +25,15 @@ export interface SlotItem {
  * A slot that is not planned yet simply does not exist.
  */
 export type PlanSlot =
-  | (SlotBase & { kind: "recipes"; items: SlotItem[] })
+  | (SlotBase & {
+      kind: "recipes";
+      items: SlotItem[];
+      /**
+       * "Mehr kochen": portions cooked beyond the persons, for leftovers on a later meal.
+       * Added to every recipe of the meal that is cooked for persons. Zero or left out: none.
+       */
+      extra?: number;
+    })
   /** A meal without a recipe, e.g. "Vesper". It can still need things from the shops. */
   | (SlotBase & { kind: "free_text"; label: string; foods?: SlotFood[] })
   /** Leftovers. The source meal is optional and may lie in an earlier week. */
@@ -136,24 +144,20 @@ export function nextOpenMeal(
 export const LEFTOVER_DAYS = 3;
 
 /**
- * "Mehr kochen": the recipes of a meal with `extra` more portions, for leftovers. Only what
- * is cooked for persons gets more; a cake for one tin stays one cake. Null when nothing of
- * the meal is cooked for persons.
+ * How much of a recipe is cooked on a meal: its planned servings, and for a recipe cooked for
+ * persons the meal's extra portions too ("Mehr kochen"). A cake for one tin stays one cake.
  */
-export function cookMore(
-  items: readonly SlotItem[],
-  extra: number,
-  forPersons: (recipeId: string) => boolean,
-): SlotItem[] | null {
-  if (extra <= 0 || !items.some((item) => forPersons(item.recipeId))) return null;
-  return items.map((item) =>
-    forPersons(item.recipeId) ? { ...item, servings: item.servings + extra } : item,
-  );
+export function cookedServings(
+  servings: number,
+  extra: number | undefined,
+  forPersons: boolean,
+): number {
+  return forPersons ? servings + (extra ?? 0) : servings;
 }
 
 /** A slot's content without its place in the calendar, as it is entered or copied. */
 export type SlotContent =
-  | { kind: "recipes"; items: SlotItem[] }
+  | { kind: "recipes"; items: SlotItem[]; extra?: number }
   | { kind: "free_text"; label: string; foods?: SlotFood[] }
   /** Leftovers, of the meal they were cooked with where that is known. */
   | { kind: "leftovers"; ofSlotId?: string | null }

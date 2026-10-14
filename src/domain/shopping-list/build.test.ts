@@ -229,6 +229,25 @@ describe("buildShoppingList", () => {
     expect([...lines.keys()]).toEqual(["ingwer@main#Stück"]);
   });
 
+  it("buys the extra portions of a meal cooked for leftovers with it", () => {
+    const stew = recipe("eintopf", [line("karotten", 2, "Stück")]);
+    const cooked = { ...slot(MONDAY, "eintopf", 4), extra: 2 } as PlanSlot;
+    // Two extra portions for four persons: half as much again.
+    expect(build([stew], [cooked]).get("karotten@main")!.purchase?.quantity).toBe(3);
+  });
+
+  it("does not bake more cakes for leftovers", () => {
+    const cake = recipe("kuchen", [line("eier", 4, "Stück")], {
+      min: 1,
+      max: 1,
+      unit: "Springform",
+    });
+    const baked = { ...slot(MONDAY, "kuchen", 1), extra: 4 } as PlanSlot;
+    expect(build([cake], [baked]).get("eier@main")!.amounts).toEqual([
+      { quantity: 4, unit: "Stück" },
+    ]);
+  });
+
   it("uses the upper bound of a quantity range", () => {
     const lines = build(
       [recipe("a", [line("tomaten", 2, "Stück", { quantityMax: 3 })])],

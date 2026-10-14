@@ -157,3 +157,19 @@ export function LockIcon() {
     </svg>
   );
 }
+
+export function PlusIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function TrashIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />
+    </svg>
+  );
+}

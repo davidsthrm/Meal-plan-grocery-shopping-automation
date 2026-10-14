@@ -92,7 +92,7 @@ export function SupermarketsCard({
               eintragen.
             </p>
           ) : (
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label="Supermärkte">
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Supermärkte">
               {tiles.map((shop) => (
                 <SupermarketTile
                   key={shop.id}
