@@ -1,7 +1,8 @@
 import "server-only";
-import { addDays, type IsoDate } from "@/domain/dates";
+import { addDays, mondayOf, type IsoDate } from "@/domain/dates";
 import type { PlannedWeek } from "@/domain/plan-history";
 import {
+  cookMore,
   slotKey,
   type Meal,
   type NewSlot,
@@ -242,7 +243,8 @@ async function fulfilWishes(db: Db, recipeIds: string[]): Promise<void> {
 /**
  * Sets what one meal of a week is, replacing what was there. Null empties it. A recipe that
  * comes without the day it was planned on is planned today; one that is written again, with
- * other servings or next to a new side, keeps its day.
+ * other servings or next to a new side, keeps its day. Returns the meal's new id, or null
+ * when nothing is planned on it now.
  */
 export async function writeSlot(
   db: Db,
@@ -251,7 +253,7 @@ export async function writeSlot(
   date: IsoDate,
   meal: Meal,
   content: SlotContent | null,
-): Promise<void> {
+): Promise<string | null> {
   const planId = await ensureWeek(db, householdId, weekStart);
   const removed = await db
     .from("plan_slot")
@@ -260,9 +262,9 @@ export async function writeSlot(
     .eq("date", date)
     .eq("meal", meal);
   if (removed.error) throw new Error(`clear meal: ${removed.error.message}`);
-  if (content === null) return;
+  if (content === null) return null;
   // A meal without a recipe is no "recipes" meal.
-  if (content.kind === "recipes" && content.items.length === 0) return;
+  if (content.kind === "recipes" && content.items.length === 0) return null;
 
   const slot = must(
     await db
@@ -274,13 +276,14 @@ export async function writeSlot(
         meal,
         kind: content.kind,
         label: content.kind === "free_text" || content.kind === "away" ? content.label : null,
+        leftovers_of_slot_id: content.kind === "leftovers" ? (content.ofSlotId ?? null) : null,
       })
       .select("id")
       .single(),
     "plan meal",
   );
   if (content.kind === "free_text") await storeFoods(db, householdId, slot.id, content.foods ?? []);
-  if (content.kind !== "recipes") return;
+  if (content.kind !== "recipes") return slot.id;
   const items = await db.from("plan_slot_item").insert(
     content.items.map((item, position) => ({
       household_id: householdId,
@@ -300,6 +303,7 @@ export async function writeSlot(
     db,
     content.items.map((item) => item.recipeId),
   );
+  return slot.id;
 }
 
 /**
@@ -386,6 +390,54 @@ export async function addToSlot(
   await writeSlot(db, householdId, weekStart, date, meal, {
     kind: "recipes",
     items: [...items, item],
+  });
+}
+
+/**
+ * "Mehr kochen": cooks `extra` more portions of a meal's recipes and plans their leftovers
+ * for a later meal that is still open. A meal planned meanwhile is left as it is.
+ */
+export async function cookMoreForLeftovers(
+  db: Db,
+  householdId: string,
+  weekStart: IsoDate,
+  date: IsoDate,
+  meal: Meal,
+  extra: number,
+  leftoversOn: { date: IsoDate; meal: Meal } | null,
+): Promise<void> {
+  const existing = (await loadWeek(db, weekStart)).find(
+    (slot) => slot.date === date && slot.meal === meal,
+  );
+  if (existing?.kind !== "recipes") return;
+  const units = must(
+    await db
+      .from("recipe")
+      .select("id, servings_unit")
+      .in(
+        "id",
+        existing.items.map((item) => item.recipeId),
+      ),
+    "load recipes to cook more of",
+  );
+  const forPersons = new Set(
+    units.filter((row) => row.servings_unit === null).map((row) => row.id),
+  );
+  const items = cookMore(existing.items, extra, (id) => forPersons.has(id));
+  if (!items) return;
+  const cooked = await writeSlot(db, householdId, weekStart, date, meal, {
+    kind: "recipes",
+    items,
+  });
+  if (!leftoversOn) return;
+  const later = mondayOf(leftoversOn.date);
+  const taken = (await loadWeek(db, later)).some(
+    (slot) => slot.date === leftoversOn.date && slot.meal === leftoversOn.meal,
+  );
+  if (taken) return;
+  await writeSlot(db, householdId, later, leftoversOn.date, leftoversOn.meal, {
+    kind: "leftovers",
+    ofSlotId: cooked,
   });
 }
 

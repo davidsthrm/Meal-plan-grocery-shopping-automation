@@ -100,30 +100,63 @@ export function byDayAndMeal(
 }
 
 /**
- * The next lunch or dinner after `after` that has nothing planned yet (`taken` holds the
- * `slotKey` of every planned meal), up to and including `lastDay`. Coffee on Sunday is
- * optional and never the next meal to plan. Null when every meal until then is planned.
+ * The lunches and dinners after `after` that have nothing planned yet (`taken` holds the
+ * `slotKey` of every planned meal), up to and including `lastDay`, in order. Coffee on
+ * Sunday is optional and never among them.
+ */
+export function openMealsAfter(
+  after: { date: IsoDate; meal: Meal },
+  taken: ReadonlySet<string>,
+  lastDay: IsoDate,
+): { date: IsoDate; meal: Meal }[] {
+  const open: { date: IsoDate; meal: Meal }[] = [];
+  for (let date = after.date; date <= lastDay; date = addDays(date, 1)) {
+    for (const meal of MEALS) {
+      const candidate = { date, meal };
+      if (byDayAndMeal(candidate, after) <= 0) continue;
+      if (!taken.has(slotKey(date, meal))) open.push(candidate);
+    }
+  }
+  return open;
+}
+
+/**
+ * The next lunch or dinner after `after` that has nothing planned yet, up to and including
+ * `lastDay`. Null when every meal until then is planned.
  */
 export function nextOpenMeal(
   after: { date: IsoDate; meal: Meal },
   taken: ReadonlySet<string>,
   lastDay: IsoDate,
 ): { date: IsoDate; meal: Meal } | null {
-  for (let date = after.date; date <= lastDay; date = addDays(date, 1)) {
-    for (const meal of MEALS) {
-      const candidate = { date, meal };
-      if (byDayAndMeal(candidate, after) <= 0) continue;
-      if (!taken.has(slotKey(date, meal))) return candidate;
-    }
-  }
-  return null;
+  return openMealsAfter(after, taken, lastDay)[0] ?? null;
+}
+
+/** How many days after a meal its leftovers can be eaten. */
+export const LEFTOVER_DAYS = 3;
+
+/**
+ * "Mehr kochen": the recipes of a meal with `extra` more portions, for leftovers. Only what
+ * is cooked for persons gets more; a cake for one tin stays one cake. Null when nothing of
+ * the meal is cooked for persons.
+ */
+export function cookMore(
+  items: readonly SlotItem[],
+  extra: number,
+  forPersons: (recipeId: string) => boolean,
+): SlotItem[] | null {
+  if (extra <= 0 || !items.some((item) => forPersons(item.recipeId))) return null;
+  return items.map((item) =>
+    forPersons(item.recipeId) ? { ...item, servings: item.servings + extra } : item,
+  );
 }
 
 /** A slot's content without its place in the calendar, as it is entered or copied. */
 export type SlotContent =
   | { kind: "recipes"; items: SlotItem[] }
   | { kind: "free_text"; label: string; foods?: SlotFood[] }
-  | { kind: "leftovers" }
+  /** Leftovers, of the meal they were cooked with where that is known. */
+  | { kind: "leftovers"; ofSlotId?: string | null }
   | { kind: "away"; label: string }
   | { kind: "skipped" };
 

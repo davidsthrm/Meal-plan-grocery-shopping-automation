@@ -5,8 +5,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
-import type { NewSlot, SlotContent } from "@/domain/plan";
-import { namedMeal, slotKey } from "@/domain/plan";
+import type { Meal, NewSlot, SlotContent } from "@/domain/plan";
+import { byDayAndMeal, namedMeal, slotKey } from "@/domain/plan";
 import { plannedServings } from "@/domain/recipe";
 import { BALANCE_GROUPS, readTargets } from "@/domain/recommend/balance";
 import { readDaysForm } from "@/domain/shopping-list/trips";
@@ -19,6 +19,7 @@ import {
   addToSlot,
   changeExtra,
   changeItem,
+  cookMoreForLeftovers,
   removeFood,
   loadWeek,
   planOpenSlots,
@@ -276,6 +277,39 @@ export async function changeServings(form: FormData): Promise<void> {
     input.meal,
     input.recipe,
     input.servings === 0 ? null : input.servings,
+  );
+  backToWeek(input.week, input.date);
+}
+
+/**
+ * "Mehr kochen": more portions of a meal for leftovers, and "Reste" on the later meal that
+ * was picked for them (`reste`: "<date>.<meal>", or empty for none).
+ */
+export async function cookMoreOfMeal(form: FormData): Promise<void> {
+  const input = read(
+    z.intersection(
+      place,
+      z.object({
+        extra: z.coerce.number().int().min(1).max(20),
+        reste: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}\.(lunch|dinner)$/)]),
+      }),
+    ),
+    form,
+  );
+  const household = await requireHousehold();
+  const [day, meal] = input.reste.split(".");
+  const picked: { date: string; meal: Meal } | null =
+    isIsoDate(day) && (meal === "lunch" || meal === "dinner") ? { date: day, meal } : null;
+  // Leftovers come after the meal they were cooked with.
+  const later = picked && byDayAndMeal(picked, input) > 0 ? picked : null;
+  await cookMoreForLeftovers(
+    await createSessionClient(),
+    household.id,
+    input.week,
+    input.date,
+    input.meal,
+    input.extra,
+    later,
   );
   backToWeek(input.week, input.date);
 }

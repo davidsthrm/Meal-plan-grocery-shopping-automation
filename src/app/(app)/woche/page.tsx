@@ -14,6 +14,7 @@ import {
   mondayOf,
   weekDates,
   weekdayLong,
+  weekdayShort,
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
@@ -21,7 +22,17 @@ import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
 import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { openingWeek } from "@/domain/planned";
-import { mealsOf, MEALS, namedMeal, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
+import {
+  LEFTOVER_DAYS,
+  mealsOf,
+  MEALS,
+  namedMeal,
+  openMealsAfter,
+  slotKey,
+  type Meal,
+  type PlanExtra,
+  type PlanSlot,
+} from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
 import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
 import { rank } from "@/domain/rank";
@@ -41,6 +52,7 @@ import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
+import { CookMore } from "./cook-more";
 import {
   acceptSuggestions,
   changeExtraServings,
@@ -86,9 +98,11 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // The one meal of a saved plan someone took the pen to.
   const pen = one(params.stift) ?? "";
 
-  const [library, slots, history, extras, saved, self] = await Promise.all([
+  const [library, slots, nextSlots, history, extras, saved, self] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
+    // Leftovers of Sunday's dinner can be eaten in the next week.
+    loadWeek(db, addDays(week, 7)),
     loadHistory(db, week),
     loadExtras(db, week),
     isSaved(db, week),
@@ -106,6 +120,18 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const showExtras = one(params.t) === "extra" && !placing;
   const slotAt = (date: IsoDate, meal: Meal) =>
     slots.find((slot) => slot.date === date && slot.meal === meal);
+  // The open meals in the days after a meal: where its leftovers can go.
+  const taken = new Set([...slots, ...nextSlots].map((slot) => slotKey(slot.date, slot.meal)));
+  const laterMeals = (date: IsoDate, meal: Meal) =>
+    openMealsAfter({ date, meal }, taken, addDays(date, LEFTOVER_DAYS));
+  // Leftovers say which meal they are from, where it is in this week.
+  const leftoversOf = (slot: PlanSlot | undefined) => {
+    const from =
+      slot?.kind === "leftovers" && slot.ofSlotId
+        ? slots.find((other) => other.id === slot.ofSlotId)
+        : undefined;
+    return from ? `von ${weekdayShort(from.date)} ${MEAL_NAME[from.meal]}` : undefined;
+  };
 
   const balance = weekBalance(slots, (id) => recipeOf.get(id), household.targets);
   const days = weekDates(week);
@@ -376,6 +402,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                     placing={placing}
                     locked={saved && !placing && pen !== `${date}.${meal}`}
                     withPen={saved && pen === `${date}.${meal}`}
+                    later={laterMeals(date, meal)}
+                    servings={household.defaultServings}
+                    leftoversOf={leftoversOf(slotAt(date, meal))}
                   />
                 ))}
               </li>
@@ -771,6 +800,12 @@ interface CellProps {
   locked: boolean;
   /** The plan is saved and someone took the pen to this meal. */
   withPen: boolean;
+  /** The open meals after this one where leftovers can go. */
+  later: { date: IsoDate; meal: Meal }[];
+  /** How many persons the household cooks for. */
+  servings: number;
+  /** For leftovers: the meal they are from, "von Mo Mittag", where it is known. */
+  leftoversOf: string | undefined;
 }
 
 function MealCell({
@@ -786,6 +821,9 @@ function MealCell({
   placing,
   locked,
   withPen,
+  later,
+  servings,
+  leftoversOf,
 }: CellProps) {
   // The suggestion the meal shows: the one asked for, or else an idea offered unasked.
   const shown = proposal ?? hint;
@@ -841,6 +879,7 @@ function MealCell({
         {slot && slot.kind !== "recipes" && (
           <p className={`font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
             {slotText(slot)}
+            {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
           </p>
         )}
         {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
@@ -885,6 +924,7 @@ function MealCell({
       {slot && slot.kind !== "recipes" && (
         <p className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
           {slotText(slot)}
+          {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
         </p>
       )}
       {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
@@ -1023,6 +1063,20 @@ function MealCell({
           </>
         )}
       </div>
+      {/* Cooked for more persons than the household: leftovers for a later meal. A cake for
+          one tin is not cooked "more". */}
+      {slot?.kind === "recipes" &&
+        !placing &&
+        slot.items.some((item) => !recipeOf.get(item.recipeId)?.servings?.unit) && (
+          <CookMore
+            week={week}
+            date={date}
+            meal={meal}
+            servings={servings}
+            later={later}
+            what={what}
+          />
+        )}
     </section>
   );
 }
