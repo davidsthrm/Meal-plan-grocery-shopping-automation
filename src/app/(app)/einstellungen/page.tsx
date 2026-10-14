@@ -8,8 +8,9 @@ import { INVITE_DAYS } from "@/domain/family";
 import { BALANCE_GROUPS } from "@/domain/recommend/balance";
 import { PLACE_NAME } from "@/lib/list-text";
 import { GROUP_NAME, targetText } from "@/lib/plan-text";
+import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import { requireHousehold } from "@/server/auth";
-import { must } from "@/server/catalog";
+import { loadCatalogIndex, must } from "@/server/catalog";
 import { loadInvites, loadMembers } from "@/server/family";
 import { createSessionClient } from "@/server/supabase/server";
 import {
@@ -20,6 +21,7 @@ import {
   saveShoppingDays,
   withdrawInvitation,
 } from "./actions";
+import { PantryCard, SupermarketsCard } from "./shop-settings";
 
 export const metadata: Metadata = { title: "Einstellungen" };
 
@@ -28,18 +30,21 @@ const until = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long" }
 
 /**
  * What a household sets once and that then holds for every week: what a week should
- * contain, when it shops and where, and who belongs to it. Nothing else.
+ * contain, when it shops and where, what is usually at home, and who belongs to it.
  */
 export default async function SettingsPage(props: PageProps<"/einstellungen">) {
   const params = await props.searchParams;
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const [groups, members, invites, address] = await Promise.all([
+  const [groups, members, invites, address, index] = await Promise.all([
     db.from("aisle_group").select("id, name, fresh_place").order("sort_order"),
     loadMembers(db, household),
     loadInvites(db),
     headers(),
+    loadCatalogIndex(db),
   ]);
+  const supermarkets = favouriteSupermarkets(index.catalog.shops);
+  const { ingredients } = index.catalog;
   const aisles = must(groups, "load aisle groups");
   const said = one(params.ok);
   const token = one(params.einladung);
@@ -113,6 +118,15 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </div>
             </form>
           </section>
+
+          <SupermarketsCard
+            supermarkets={supermarkets}
+            others={index.catalog.shops.filter(
+              (shop) =>
+                (shop.kind ?? "supermarket") === "supermarket" && !supermarkets.includes(shop),
+            )}
+            failed={one(params.fehler) === "supermarkt"}
+          />
         </div>
 
         <div className="grid gap-4">
@@ -238,6 +252,14 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </form>
             </details>
           </section>
+
+          <PantryCard
+            staples={ingredients
+              .filter((ingredient) => ingredient.isPantryStaple)
+              .sort((a, b) => a.name.localeCompare(b.name, "de"))}
+            ingredients={ingredients}
+            unknown={one(params.fehler) === "vorrat" ? (one(params.name) ?? null) : null}
+          />
         </div>
       </div>
     </div>

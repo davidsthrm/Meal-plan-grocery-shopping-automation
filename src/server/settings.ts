@@ -1,7 +1,7 @@
 import "server-only";
 import type { ShoppingDay } from "@/domain/shopping-list/trips";
 import type { Json } from "./supabase/database.types";
-import type { Db } from "./catalog";
+import { must, type Db } from "./catalog";
 
 /** What a household sets once and that then holds for every week. */
 
@@ -50,4 +50,71 @@ export async function storeFreshPlaces(
     const stored = await db.from("aisle_group").update({ fresh_place: place }).in("id", ids);
     if (stored.error) throw new Error(`store fresh places: ${stored.error.message}`);
   }
+}
+
+/**
+ * Says whether an ingredient is usually at home: salt, oil, flour. What is is put under
+ * "Haben wir schon" instead of on a note. Row level security keeps this to the household's
+ * own catalog.
+ */
+export async function storePantryStaple(
+  db: Db,
+  ingredientId: string,
+  staple: boolean,
+): Promise<void> {
+  const stored = await db
+    .from("ingredient")
+    .update({ is_pantry_staple: staple })
+    .eq("id", ingredientId);
+  if (stored.error) throw new Error(`store pantry staple: ${stored.error.message}`);
+}
+
+/**
+ * Stores the order of the household's supermarkets, the main one first. Shops that are left
+ * out are none of them any more.
+ */
+export async function storeSupermarkets(
+  db: Db,
+  ranked: readonly string[],
+  removed: readonly string[] = [],
+): Promise<void> {
+  for (const [at, id] of ranked.entries()) {
+    const stored = await db
+      .from("shop")
+      .update({ supermarket_rank: at + 1 })
+      .eq("id", id);
+    if (stored.error) throw new Error(`store supermarkets: ${stored.error.message}`);
+  }
+  if (removed.length === 0) return;
+  const cleared = await db.from("shop").update({ supermarket_rank: null }).in("id", removed);
+  if (cleared.error) throw new Error(`store supermarkets: ${cleared.error.message}`);
+}
+
+/**
+ * The id of the supermarket of that name, made for the household if it has none yet: "Rewe".
+ * Null when the name belongs to a place that is no supermarket, such as the butcher.
+ */
+export async function supermarketNamed(
+  db: Db,
+  householdId: string,
+  name: string,
+): Promise<string | null> {
+  const shops = must(await db.from("shop").select("id, name, kind, sort_order"), "load shops");
+  const known = shops.find((shop) => shop.name.toLowerCase() === name.toLowerCase());
+  if (known) return known.kind === "supermarket" ? known.id : null;
+  const created = must(
+    await db
+      .from("shop")
+      .insert({
+        household_id: householdId,
+        name,
+        short_label: name,
+        sort_order: Math.max(0, ...shops.map((shop) => shop.sort_order)) + 1,
+        kind: "supermarket",
+      })
+      .select("id")
+      .single(),
+    "add supermarket",
+  );
+  return created.id;
 }
