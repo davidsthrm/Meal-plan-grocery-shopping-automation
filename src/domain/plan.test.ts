@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { byDayAndMeal, copyOfWeek, mealsOf, slotKey, type PlanSlot, type SlotFood } from "./plan";
+import {
+  byDayAndMeal,
+  copyOfWeek,
+  mealsOf,
+  namedMeal,
+  slotKey,
+  type PlanSlot,
+  type SlotFood,
+} from "./plan";
 
 const bread: SlotFood = { label: "Brot", ingredientId: "brot", shopId: "baecker" };
 
@@ -59,6 +67,18 @@ describe("copyOfWeek", () => {
       "2026-10-13:lunch",
       "2026-10-18:dinner",
     ]);
+  });
+});
+
+describe("namedMeal", () => {
+  it("knows a meal nobody is home for, however it is typed", () => {
+    expect(namedMeal("keiner daheim")).toEqual({ label: "Keiner daheim", kind: "skipped" });
+    expect(namedMeal("Oma Heidrun ")?.kind).toBe("away");
+  });
+
+  it("takes any other text for a meal of its own", () => {
+    expect(namedMeal("Pizza bestellen")).toBeUndefined();
+    expect(namedMeal("Fällt aus")).toBeUndefined();
   });
 });
 

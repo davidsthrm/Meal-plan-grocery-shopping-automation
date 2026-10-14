@@ -336,7 +336,7 @@ Week plan
   "Eintippen" opens the recipe form with the title filled in and puts the saved recipe on
   that meal. The household plans with the cookbook next to it.
 - Some meals never have a recipe and are one tap away (`MEALS_WITHOUT_RECIPE`): Vesper,
-  Reste, Auswärts, Oma Heidrun, Fällt aus. Typed in, such a name is that meal (`namedMeal`),
+  Reste, Auswärts, Oma Heidrun, Keiner daheim. Typed in, such a name is that meal (`namedMeal`),
   and no upload is offered for it. "Braucht keins" on any other typed meal makes it a meal
   away from the kitchen that keeps its name ("Pizza bestellen").
 - A plan the household is done with is saved (`week_plan.saved_at`, "Plan speichern"). A

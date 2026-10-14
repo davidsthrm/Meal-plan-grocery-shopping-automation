@@ -65,6 +65,15 @@ describe("weekBalance", () => {
     expect(counts(slots)).toEqual({ vegetarian: 2, fish: 1, poultry: 0, red_meat: 1 });
   });
 
+  it("does not count a meal nobody is home for, or one eaten away", () => {
+    const slots: PlanSlot[] = [
+      cooked("lachs"),
+      { id: "k", date: "2026-10-14", meal: "lunch", kind: "skipped" },
+      { id: "a", date: "2026-10-14", meal: "dinner", kind: "away", label: "Oma Heidrun" },
+    ];
+    expect(counts(slots)).toEqual({ vegetarian: 0, fish: 1, poultry: 0, red_meat: 0 });
+  });
+
   it("carries what the household aims for", () => {
     const [vegetarian, fish, poultry, redMeat] = weekBalance([], recipeOf);
     expect(vegetarian).toEqual({ group: "vegetarian", count: 0, min: 3, max: null });

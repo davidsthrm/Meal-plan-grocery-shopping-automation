@@ -149,6 +149,6 @@ export function slotText(slot: Exclude<PlanSlot, { kind: "recipes" }>): string {
     case "leftovers":
       return "Reste";
     case "skipped":
-      return "Fällt aus";
+      return "Keiner daheim";
   }
 }

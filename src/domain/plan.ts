@@ -65,7 +65,7 @@ export const MEALS_WITHOUT_RECIPE = [
   { label: "Reste", kind: "leftovers" },
   { label: "Auswärts", kind: "away" },
   { label: "Oma Heidrun", kind: "away" },
-  { label: "Fällt aus", kind: "skipped" },
+  { label: "Keiner daheim", kind: "skipped" },
 ] as const;
 
 /** The meal without a recipe a typed text names, however it is capitalised. */
