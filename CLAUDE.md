@@ -275,6 +275,12 @@ Household
   days, of which only a hash is stored. Whoever opens it gives a name, an e-mail and a
   password, gets an account and belongs to the household (`acceptInvite`). An account
   belongs to one household; someone who has one cannot use an invitation.
+- The household's name (`household.name`, "Stührmann", set in the family card of
+  `/einstellungen`) is spoken of as the family in two places, read from the data: the empty
+  shopping notes ("Bei den Stührmanns …") and the invitation ("Die Stührmanns laden dich
+  ein"), through `familyName`, which says nothing for a name that is no single family name
+  ("Zuhause"). The week plan greets whoever opens it by the first word of their own name
+  ("Hallo David", `firstName`), and not at all without one. Nowhere else.
 - A new household for another family is not made in the app: it needs its own catalog,
   tags and categories, as `npm run e2e:setup` makes them for the test household.
 

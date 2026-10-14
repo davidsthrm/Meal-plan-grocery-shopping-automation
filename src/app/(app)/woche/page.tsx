@@ -19,6 +19,7 @@ import {
   type IsoDate,
 } from "@/domain/dates";
 import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
+import { firstName } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { mealsOf, MEALS, namedMeal, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
@@ -82,14 +83,21 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const pen = one(params.stift) ?? "";
 
   const db = await createSessionClient();
-  const [library, slots, history, previous, extras, saved] = await Promise.all([
+  const [library, slots, history, previous, extras, saved, self] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
     loadHistory(db, week),
     loadWeek(db, addDays(week, -7)),
     loadExtras(db, week),
     isSaved(db, week),
+    db
+      .from("household_member")
+      .select("display_name")
+      .eq("user_id", household.userId)
+      .maybeSingle(),
   ]);
+  // Whoever opens the plan is greeted by the name they gave themselves, if they gave one.
+  const greeting = firstName(self.data?.display_name);
   const recipeOf = new Map(library.recipes.map((recipe) => [recipe.id, recipe]));
   const placing = placingId ? (recipeOf.get(placingId) ?? null) : null;
   // The second view of a week: what it needs outside its meals.
@@ -160,6 +168,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
+          {greeting && <p className="mb-1 text-lg">Hallo {greeting}</p>}
           <p className="eyebrow">Wochenplan</p>
           <h1 className="title mt-1">{weekRange(week)}</h1>
         </div>

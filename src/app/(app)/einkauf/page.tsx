@@ -14,6 +14,7 @@ import {
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
+import { familyName } from "@/domain/family";
 import { groupAtHome, noteToBuyOn, type AtHomeGroup } from "@/domain/shopping-list/at-home";
 import { dayProblems } from "@/domain/shopping-list/change-day";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
@@ -115,6 +116,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
 
   const open = notes.reduce((sum, note) => sum + note.open, 0);
   const atHomeGroups = groupAtHome(atHome, index);
+  // "Bei den Stührmanns": the household's name where it is a family name.
+  const family = familyName(household.name);
   const done = notes.reduce((sum, note) => sum + note.done, 0);
   const nothing = open + done + atHome.length === 0;
 
@@ -150,7 +153,10 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
 
       {nothing && (
         <p className="mt-6 text-muted">
-          Für diese Woche steht noch nichts auf den Einkaufszetteln. Sie füllen sich aus dem{" "}
+          {family
+            ? `Bei den ${family} steht für diese Woche noch nichts auf den Einkaufszetteln.`
+            : "Für diese Woche steht noch nichts auf den Einkaufszetteln."}{" "}
+          Sie füllen sich aus dem{" "}
           <Link href={`/woche?w=${week}`} className="link underline">
             Wochenplan
           </Link>

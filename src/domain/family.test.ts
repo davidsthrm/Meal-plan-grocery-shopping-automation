@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inviteIsOpen, readJoin, readName } from "./family";
+import { familyName, firstName, inviteIsOpen, readJoin, readName } from "./family";
 
 describe("readName", () => {
   it("tidies a name", () => {
@@ -44,5 +44,35 @@ describe("inviteIsOpen", () => {
     expect(
       inviteIsOpen({ usedAt: "2026-10-12T08:00:00Z", expiresAt: "2026-10-20T12:00:00Z" }, now),
     ).toBe(false);
+  });
+});
+
+describe("familyName", () => {
+  it("speaks of a household by its family name", () => {
+    expect(familyName("Stührmann")).toBe("Stührmanns");
+    expect(familyName(" Müller ")).toBe("Müllers");
+    expect(familyName("Meier-Schmidt")).toBe("Meier-Schmidts");
+  });
+
+  it("leaves a name that ends in an s sound as it is", () => {
+    expect(familyName("Fuchs")).toBe("Fuchs");
+    expect(familyName("Schulz")).toBe("Schulz");
+  });
+
+  it("has nothing to say for a name that is no family name", () => {
+    expect(familyName("Zuhause")).toBeNull();
+    expect(familyName("E2E-Test (automatisch)")).toBeNull();
+    expect(familyName("stührmann")).toBeNull();
+    expect(familyName("Familie Stührmann")).toBeNull();
+    expect(familyName("")).toBeNull();
+  });
+});
+
+describe("firstName", () => {
+  it("greets a member by the first word of their name", () => {
+    expect(firstName("David Stührmann")).toBe("David");
+    expect(firstName("  Lena ")).toBe("Lena");
+    expect(firstName(null)).toBeNull();
+    expect(firstName("   ")).toBeNull();
   });
 });

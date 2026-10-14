@@ -11,10 +11,10 @@ import { frameNextPage } from "@/server/import/frame-stored";
  * turns pages upright that lie on their side, and stores a cut-out view for every recipe
  * that shares its page with others. Calls the model once or twice per page, about 0.1 ct.
  *
- *   npm run import:frame-photos -- "Zuhause"              every page not framed yet
- *   npm run import:frame-photos -- "Zuhause" --limit 10   a few, to look at the result first
- *   npm run import:frame-photos -- "Zuhause" --path <storage path>   one page, or one batch
- *   npm run import:frame-photos -- "Zuhause" --path <storage path> --again   frame them anew
+ *   npm run import:frame-photos -- "Stührmann"              every page not framed yet
+ *   npm run import:frame-photos -- "Stührmann" --limit 10   a few, to look at the result first
+ *   npm run import:frame-photos -- "Stührmann" --path <storage path>   one page, or one batch
+ *   npm run import:frame-photos -- "Stührmann" --path <storage path> --again   frame them anew
  */
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
