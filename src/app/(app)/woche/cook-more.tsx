@@ -37,13 +37,13 @@ export function CookMore({
       </summary>
       <form
         action={cookMoreOfMeal}
-        className="mt-1 flex flex-wrap items-end gap-2 rounded-lg bg-accent-soft/50 p-3 text-sm"
+        className="mt-1 grid grid-cols-[3.5rem_minmax(0,1fr)] items-end gap-2 rounded-lg bg-accent-soft/50 p-3 text-sm"
       >
         <input type="hidden" name="week" value={week} />
         <input type="hidden" name="date" value={date} />
         <input type="hidden" name="meal" value={meal} />
         <label>
-          <span className="label">Portionen mehr</span>
+          <span className="label">Mehr</span>
           <input
             name="extra"
             type="number"
@@ -51,21 +51,25 @@ export function CookMore({
             min={1}
             max={20}
             defaultValue={servings}
-            className="field w-20"
+            className="field"
+            aria-label="Portionen mehr"
           />
         </label>
-        <label className="min-w-0 flex-1">
-          <span className="label">Reste essen am</span>
+        <label className="min-w-0">
+          <span className="label">Reste am</span>
           <select name="reste" defaultValue={later[0] ? slotValue(later[0]) : ""} className="field">
             {later.map((option) => (
               <option key={slotValue(option)} value={slotValue(option)}>
-                {weekdayShort(option.date)} {Number(option.date.slice(8))}. {MEAL_NAME[option.meal]}
+                {/* Within three days the weekday says which one. */}
+                {weekdayShort(option.date)} {MEAL_NAME[option.meal]}
               </option>
             ))}
             <option value="">Später entscheiden</option>
           </select>
         </label>
-        <SubmitButton className="btn btn-primary btn-small">Mehr kochen</SubmitButton>
+        <span className="col-span-2">
+          <SubmitButton className="btn btn-primary btn-small">Mehr kochen</SubmitButton>
+        </span>
       </form>
     </details>
   );

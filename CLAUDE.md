@@ -246,8 +246,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 ## Acceptance test
 
 The generated list is accepted when, per shop, it has the same lines as the handwritten one,
-with the same quantity where the paper shows one and none where it shows none, the same note,
-and an aisle order the handwritten order does not contradict. The handwritten week had one
+buying the same quantity where the paper shows one (as many packs of what comes in packs:
+"2x Garnelen" is 450 g), the same note, and an aisle order the handwritten order does not
+contradict. Where the paper shows no quantity, the line may show the amount the recipes
+need: the household asked for it in front of every line (October 2026). The handwritten week had one
 shopping day, so the test builds its list for Monday alone (`singleTrip`).
 
 Lines that come from a recipe the household has not added yet are listed under `pendingLines`
@@ -426,6 +428,12 @@ Week plan
   There can be dozens, so they are grouped by kind in the kind's pastel (`groupRecipes`
   with `BY_KIND`), eight per kind until "weitere" shows all (`?wuensche=alle`). A grouping
   by a group of tags (`byTag`) is ready for when the wishes should be sorted that way.
+- "Mehr kochen" on a planned meal cooks more portions for leftovers (`cookMore`): the number
+  is added to what the meal cooks for persons, so the list buys for it, and the later meal
+  picked for the leftovers, an open lunch or dinner of the next three days
+  (`openMealsAfter`, `LEFTOVER_DAYS`), becomes "Reste" with the meal it is from
+  (`plan_slot.leftovers_of_slot_id`). A meal planned meanwhile is left alone. The link is lost
+  when the cooked meal is written again (other servings), and "Reste" then stands alone.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
   for the month most of its days are in. The week being planned is always listed.
@@ -517,10 +525,29 @@ Shopping list
 
 - Lines are built per canonical ingredient: scale, convert to the ingredient's default unit,
   sum, then round for purchase.
-- Buying mode decides what is shown: `none` shows the name only, `count` a number of pieces,
-  `weight` a weight, `pack` a multiplier only when more than one pack is needed ("2x Garnelen").
-- Line text follows the handwritten list: quantity, name, note ("600 g Leberkäse",
-  "Milch WS 1.29"). The exact sum and the meals it comes from stay available per line.
+- Every line shows the amount needed in the ingredient's own unit, whatever its buying mode
+  (`purchaseFor`): "200 g Crème fraîche", "400 g Champignons", "1 Bund Petersilie", pieces as
+  "1x Schalotte", as on the dm note. `count` and `weight` round to the catalog's step,
+  everything else to whole pieces or just enough to read well (`naturalStep`: 137,5 g is
+  140 g). The household found "Champignons" one week and "4x Champignons" the next, and had
+  to open "Crème fraîche" to learn it was 200 g. What comes in packs says how many packs
+  with the exact amount, on tap (`packsFor`). Only a line without any amount ("Petersilie")
+  and one asked for by the spoonful only ("Salz") show the name alone.
+- Line text: quantity, name, note ("600 g Leberkäse", "Milch WS 1.29"). The exact sum and
+  the meals it comes from stay available per line.
+- The amount of a line can be changed on its note ("Menge ändern", `LineState.amount`,
+  `shopping_line_state.quantity` and `unit`). The line then says what the plan has, and
+  "Wie geplant" takes the change back. The change stays when the plan changes.
+- The same thing on another open note of the week (small tomatoes on Monday's supermarket
+  note and Saturday's market note) is said under the line ("Auch auf: Sa 17. Markt",
+  `alsoOn`). "Dort mitkaufen" moves the line there where that is not too late and it keeps
+  (`dayProblems`); otherwise it is only said.
+- The household names its supermarkets on `/einstellungen` (`shop.supermarket_rank`, 1 the
+  main one; `favouriteSupermarkets`). A supermarket note buys everything at the main one. A
+  line can be bought at another one for the week ("Kaufe ich bei: Rewe",
+  `shopping_line_state.shop_id`): that supermarket then has a section of its own on the
+  note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
+  the catalog buys a thing (`preferredShopId`) does not decide the section.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
   names: "1 Zitrone".
@@ -584,7 +611,8 @@ Shopping list
   (`noteToBuyOn`), where it is not at home either.
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
-  is never pre-ticked.
+  is never pre-ticked. The staples are the household's to change under "Vorrat" on
+  `/einstellungen` (`ingredient.is_pantry_staple`).
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
   the rest as a note. Text that matches nothing stays a free line.
 - When the plan changes, lines are recomputed and matched by a stable line key
@@ -774,8 +802,8 @@ Import
   again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The cut-out view of a recipe that is deleted by itself stays in storage until its batch
   is deleted.
-- The shopping list does not show yet what changed since it was last looked at, the shop of
-  a line cannot be changed for one week, and ticking off needs a connection. The "Haben wir
+- The shopping list does not show yet what changed since it was last looked at, and ticking
+  off needs a connection. Only a supermarket line can be bought at another shop for a week. The "Haben wir
   schon?" step is a plain section of each list for now.
 - The shopping days are the same every week. For a holiday on a shopping day the errand is
   moved to another day by hand ("An einem anderen Tag einkaufen").
