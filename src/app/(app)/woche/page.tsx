@@ -18,6 +18,7 @@ import {
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
+import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { mealsOf, MEALS, namedMeal, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
@@ -25,6 +26,7 @@ import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/sugges
 import { rank } from "@/domain/rank";
 import {
   GROUP_NAME,
+  kindGroupName,
   MEAL_NAME,
   plannedText,
   slotText,
@@ -230,27 +232,6 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
       {showExtras && <Extras week={week} extras={extras} recipeOf={recipeOf} />}
 
-      {!placing && !showExtras && !saved && wishes.length > 0 && (
-        <section aria-label="Möchte ich kochen" className="mt-4">
-          <p className="eyebrow flex items-center gap-1.5">
-            <WishIcon filled />
-            Möchte ich kochen
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {wishes.map((recipe) => (
-              <Link
-                key={recipe.id}
-                href={`/woche?w=${week}&rezept=${recipe.id}`}
-                className="chip"
-                aria-label={`${recipe.title} einplanen`}
-              >
-                {recipe.title}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {!placing && !showExtras && (picks.length > 0 || slots.length === 0) && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {picks.length > 0 && (
@@ -345,7 +326,80 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           </ol>
         </div>
       )}
+
+      {!placing && !showExtras && !saved && wishes.length > 0 && (
+        <Wishes week={week} wishes={wishes} all={one(params.wuensche) === "alle"} />
+      )}
     </div>
+  );
+}
+
+/** How many wishes a kind shows before the rest is folded into "weitere". */
+const WISHES_SHOWN = 8;
+
+/**
+ * What someone wants to cook soon, below the plan, sorted by kind so that dozens of them stay
+ * a few rows. A tap puts one on a meal.
+ */
+function Wishes({
+  week,
+  wishes,
+  all,
+}: {
+  week: IsoDate;
+  wishes: RecipeSummary[];
+  /** Every wish is shown, not only the first of each kind. */
+  all: boolean;
+}) {
+  const groups = groupRecipes(wishes, BY_KIND);
+  return (
+    <section id="wuensche" aria-label="Möchte ich kochen" className="mt-8 scroll-mt-4">
+      <h2 className="eyebrow flex items-center gap-1.5">
+        <WishIcon filled />
+        Möchte ich kochen
+        <span className="font-normal">· {wishes.length}</span>
+      </h2>
+      <ul className="mt-2 space-y-2.5">
+        {groups.map((group) => {
+          const shown = all ? group.recipes : group.recipes.slice(0, WISHES_SHOWN);
+          const more = group.recipes.length - shown.length;
+          const name = kindGroupName(group.key);
+          return (
+            <li
+              key={group.key ?? "rest"}
+              aria-label={name}
+              className={`${group.key ? `kind-${group.key}` : ""} flex flex-wrap items-center gap-1.5 sm:grid sm:grid-cols-[8.5rem_1fr] sm:items-start sm:gap-3`}
+            >
+              <span className="flex min-h-9 items-center gap-1.5 pr-1 text-sm font-semibold text-muted">
+                <span className="dot" />
+                {name}
+              </span>
+              <span className="contents sm:flex sm:min-w-0 sm:flex-wrap sm:gap-1.5">
+                {shown.map((recipe) => (
+                  <Link
+                    key={recipe.id}
+                    href={`/woche?w=${week}&rezept=${recipe.id}`}
+                    className="chip min-h-9 max-w-full border-transparent bg-[var(--kind,var(--color-surface))] px-3 text-sm"
+                    aria-label={`${recipe.title} einplanen`}
+                  >
+                    <span className="truncate">{recipe.title}</span>
+                  </Link>
+                ))}
+                {more > 0 && (
+                  <Link
+                    href={`/woche?w=${week}&wuensche=alle#wuensche`}
+                    scroll={false}
+                    className="chip min-h-9 px-3 text-sm text-muted"
+                  >
+                    {more} weitere
+                  </Link>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

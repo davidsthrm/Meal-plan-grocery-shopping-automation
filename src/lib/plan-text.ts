@@ -1,4 +1,5 @@
 import type { Diet } from "@/domain/library/filter";
+import type { RecipeKindGroup } from "@/domain/library/grouping";
 import type { Meal, PlanSlot } from "@/domain/plan";
 import type { ProteinType } from "@/domain/library/summary";
 import { groupOf, type BalanceGroup, type BalanceLine } from "@/domain/recommend/balance";
@@ -33,6 +34,12 @@ export const GROUP_NAME: Record<BalanceGroup, string> = {
   poultry: "Geflügel",
   red_meat: "Fleisch",
 };
+
+/** The name of a group of recipes sorted by kind (`BY_KIND`); null for all the rest. */
+export function kindGroupName(key: RecipeKindGroup | null): string {
+  if (key === null) return "Sonstiges";
+  return key === "sweet" ? "Kuchen & Süßes" : GROUP_NAME[key];
+}
 
 /** What counts as which kind of meal, for whoever sets the goals. */
 export const GROUP_HINT: Record<BalanceGroup, string> = {
