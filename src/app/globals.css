@@ -304,7 +304,16 @@ body {
     transform-origin: 50% 0;
     animation: zoom-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
-  /* Notes lying next to each other do not lie straight. Picked up, one does. */
+  /*
+   * Notes lying next to each other do not lie straight. Picked up, one does.
+   *
+   * Each note is turned as one picture, at rest as under the finger. Painted turned straight
+   * onto the page, the holes of a sheet did not lie parallel to its edge in the household's
+   * browser, and jumped into line when a lift gave the note a layer of its own.
+   */
+  .tiles > li > * {
+    will-change: transform;
+  }
   .tiles > li:nth-child(3n + 1) > * {
     rotate: -0.7deg;
   }
