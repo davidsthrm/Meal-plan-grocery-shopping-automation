@@ -166,7 +166,7 @@ test("a recipe can be corrected by hand, its ingredients included", async ({ pag
   await signIn(page);
   await page.goto("/rezepte?q=mohn");
   await page.getByRole("link", { name: /Zitronen-Mohn-Kuchen/ }).click();
-  await page.getByRole("link", { name: "Ändern" }).click();
+  await page.getByRole("link", { name: "Rezept ändern" }).click();
   await expect(page.getByRole("heading", { name: "Rezept ändern" })).toBeVisible();
 
   await page.getByLabel("Reicht für").fill("2");

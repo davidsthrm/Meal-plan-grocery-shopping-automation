@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HeartIcon, TickIcon, WishIcon } from "@/components/icons";
+import { FavoriteHeart } from "@/components/favorite-heart";
+import { PenIcon, TickIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
 import type { ProteinType } from "@/domain/library/summary";
 import { weekdayLong } from "@/domain/dates";
 import { TAG_GROUPS } from "@/domain/library/tags";
-import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
+import { amountText, lastCookedText, servingsText, sourceText } from "@/lib/recipe-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { readOrigin } from "@/lib/origin";
 import { MEAL_NAME } from "@/lib/plan-text";
 import { today } from "@/lib/today";
-import { loadPlannedAt } from "@/server/planning/week";
+import { loadLastCooked, loadPlannedAt } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { setFavorite, setWanted } from "../actions";
 
@@ -36,7 +37,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     .maybeSingle();
   if (!recipe) notFound();
 
-  const [lines, photos, ingredients, tagLinks, categories, planned] = await Promise.all([
+  const now = today();
+  const [lines, photos, ingredients, tagLinks, categories, planned, cooked] = await Promise.all([
     db
       .from("recipe_ingredient")
       .select(
@@ -52,7 +54,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     loadIngredientNames(db),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
     db.from("tag").select("id, key, name, group_name").order("sort_order"),
-    loadPlannedAt(db, id, today()),
+    loadPlannedAt(db, id, now),
+    loadLastCooked(db, id, now),
   ]);
   const ownIds = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
   const ownTags = must(categories, "load tags").filter((tag) => ownIds.has(tag.id));
@@ -87,10 +90,18 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           }}
           className="mt-1 h-14 w-14 rounded-xl"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           {category && <p className="eyebrow">{category.name}</p>}
           <h1 className="title mt-1">{recipe.title}</h1>
         </div>
+        {recipe.status === "approved" && (
+          // The same heart as in the corner of a recipe card.
+          <form action={setFavorite} className="-mr-2 shrink-0">
+            <input type="hidden" name="recipe" value={recipe.id} />
+            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
+            <FavoriteHeart favorite={recipe.is_favorite} title={recipe.title} />
+          </form>
+        )}
       </div>
       <p className="mt-3 text-muted">
         {[
@@ -101,6 +112,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           .filter(Boolean)
           .join(" · ")}
       </p>
+      <p className="mt-1 text-sm text-muted">{lastCookedText(cooked, now)}</p>
 
       {described.length > 0 && (
         <ul aria-label="Stichworte" className="mt-3 flex flex-wrap gap-1.5">
@@ -139,14 +151,6 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               Einplanen
             </Link>
           )}
-          <form action={setFavorite}>
-            <input type="hidden" name="recipe" value={recipe.id} />
-            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
-            <SubmitButton className={`btn ${recipe.is_favorite ? "text-accent" : ""}`}>
-              <HeartIcon filled={recipe.is_favorite} />
-              {recipe.is_favorite ? "Favorit" : "Als Favorit merken"}
-            </SubmitButton>
-          </form>
           <form action={setWanted}>
             <input type="hidden" name="recipe" value={recipe.id} />
             <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
@@ -155,13 +159,23 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               {wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
             </SubmitButton>
           </form>
-          <Link href={`/rezepte/${recipe.id}/bearbeiten`} className="btn">
-            Ändern
-          </Link>
         </div>
       )}
 
-      <h2 className="mt-6 mb-2 text-xl font-bold tracking-tight">Zutaten</h2>
+      <div className="mt-6 mb-2 flex items-center gap-1">
+        <h2 className="text-xl font-bold tracking-tight">Zutaten</h2>
+        {recipe.status === "approved" && (
+          // Changing the recipe means above all its ingredients: the pen stands next to them.
+          <Link
+            href={`/rezepte/${recipe.id}/bearbeiten`}
+            className="-my-1.5 flex size-11 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent"
+            aria-label="Rezept ändern"
+            title="Rezept ändern"
+          >
+            <PenIcon />
+          </Link>
+        )}
+      </div>
       <ul className="card divide-y divide-line">
         {must(lines, "load lines").map((line) => (
           <li key={line.id} className="flex gap-3 px-4 py-2">

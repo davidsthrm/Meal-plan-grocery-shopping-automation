@@ -43,3 +43,13 @@ export function plannedAt(recipeId: string, weeks: readonly WeekOnPlan[]): Plann
   }
   return null;
 }
+
+/**
+ * The day a recipe was last cooked: the latest of the days it was on a meal, before today.
+ * A meal of today or later is planned, not cooked. Null when it never was.
+ */
+export function lastCooked(days: readonly IsoDate[], today: IsoDate): IsoDate | null {
+  let last: IsoDate | null = null;
+  for (const day of days) if (day < today && (last === null || day > last)) last = day;
+  return last;
+}
