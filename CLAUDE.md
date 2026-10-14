@@ -324,7 +324,12 @@ Week plan
   (a main dish and its side), or something without a recipe: free text such as "Vesper",
   leftovers, away, or skipped. A meal that is not planned has no row.
 - The planner opens on the running week, and from Saturday on the coming one: the household
-  plans on the weekend.
+  plans on the weekend. From Thursday on it opens on the coming week already when nothing is
+  planned for the rest of the running one (`openingWeek`); earlier an empty week is still the
+  one to plan.
+- Above the sheet stands one row: the views "Mahlzeiten" and "Außerdem" on the left, what is
+  done with the whole plan on the right ("Plan vervollständigen", "Woche leeren", "Plan
+  speichern" last). On a phone the actions wrap below the views.
 - A week is counted by the heaviest protein of each cooked meal: red meat, poultry, fish,
   vegetarian (vegan counts as vegetarian). Only recipes that are a meal by themselves count
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
@@ -491,7 +496,7 @@ Library
   the whole plan history), or "Noch nie gekocht". Its ingredients stand in the order the
   cookbook prints them: `recipe_ingredient.position`, written in reading order by every way a
   recipe is saved. A recipe on the plan of the week the household is in (`currentWeeks`: the running
-  week, from Saturday on also the coming one), as a meal or as an extra, says "Eingeplant"
+  week, from Thursday on also the coming one), as a meal or as an extra, says "Eingeplant"
   instead, grey with green writing, and leads to where it stands (`plannedAt`).
 - "Favoriten" has a page of its own: on top what someone wants to cook, then the favourites
   sorted by category (`byCategory`). Its search and filters look through favourites only.

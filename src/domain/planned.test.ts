@@ -1,16 +1,45 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "./plan";
-import { currentWeeks, lastCooked, plannedAt, type WeekOnPlan } from "./planned";
+import { currentWeeks, lastCooked, openingWeek, plannedAt, type WeekOnPlan } from "./planned";
 
 describe("currentWeeks", () => {
-  it("is the running week from Monday to Friday", () => {
+  it("is the running week from Monday to Wednesday", () => {
     expect(currentWeeks("2026-10-12")).toEqual(["2026-10-12"]);
-    expect(currentWeeks("2026-10-16")).toEqual(["2026-10-12"]);
+    expect(currentWeeks("2026-10-14")).toEqual(["2026-10-12"]);
   });
 
-  it("takes in the coming week from Saturday on, when the planner shows it", () => {
-    expect(currentWeeks("2026-10-17")).toEqual(["2026-10-12", "2026-10-19"]);
+  it("takes in the coming week from Thursday on, when the planner may show it", () => {
+    expect(currentWeeks("2026-10-15")).toEqual(["2026-10-12", "2026-10-19"]);
     expect(currentWeeks("2026-10-18")).toEqual(["2026-10-12", "2026-10-19"]);
+  });
+});
+
+describe("openingWeek", () => {
+  const meal = (date: string): PlanSlot => ({
+    id: date,
+    date,
+    meal: "lunch",
+    kind: "free_text",
+    label: "Vesper",
+  });
+
+  it("opens on the running week while it has something planned from today on", () => {
+    expect(openingWeek("2026-10-15", [meal("2026-10-16")])).toBe("2026-10-12");
+    expect(openingWeek("2026-10-15", [meal("2026-10-15")])).toBe("2026-10-12");
+  });
+
+  it("opens on the coming week from Thursday on when the rest of the week is empty", () => {
+    expect(openingWeek("2026-10-15", [meal("2026-10-14")])).toBe("2026-10-19");
+    expect(openingWeek("2026-10-16", [])).toBe("2026-10-19");
+  });
+
+  it("keeps an empty week to plan until Wednesday", () => {
+    expect(openingWeek("2026-10-12", [])).toBe("2026-10-12");
+    expect(openingWeek("2026-10-14", [])).toBe("2026-10-12");
+  });
+
+  it("opens on the coming week from Saturday on in any case", () => {
+    expect(openingWeek("2026-10-17", [meal("2026-10-18")])).toBe("2026-10-19");
   });
 });
 

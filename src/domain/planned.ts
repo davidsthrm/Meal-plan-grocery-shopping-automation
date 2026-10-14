@@ -1,4 +1,4 @@
-import { mondayOf, planningWeek, type IsoDate } from "./dates";
+import { addDays, isoWeekday, mondayOf, planningWeek, type IsoDate } from "./dates";
 import { byDayAndMeal, type Meal, type PlanExtra, type PlanSlot } from "./plan";
 
 /**
@@ -6,14 +6,28 @@ import { byDayAndMeal, type Meal, type PlanExtra, type PlanSlot } from "./plan";
  * "Eingeplant" instead of offering to plan it once more.
  */
 
+/** From this weekday on (Thursday) the household may already be planning the coming week. */
+const PLAN_AHEAD_FROM = 4;
+
 /**
- * The weeks that count as now: the running week, and from Saturday on also the coming one,
- * which the planner already shows then.
+ * The week the planner opens on: the running week, and the coming one from Saturday on
+ * (`planningWeek`). From Thursday on it is the coming one already when nothing is planned for
+ * the rest of the running week: those few days were lived without a plan, and whoever opens
+ * the planner then plans ahead. Earlier in the week an empty week is still the one to plan.
+ */
+export function openingWeek(today: IsoDate, running: readonly PlanSlot[]): IsoDate {
+  const planning = planningWeek(today);
+  if (planning !== mondayOf(today) || isoWeekday(today) < PLAN_AHEAD_FROM) return planning;
+  return running.some((slot) => slot.date >= today) ? planning : addDays(planning, 7);
+}
+
+/**
+ * The weeks that count as now: the running week, and from Thursday on also the coming one,
+ * which the planner may already show then.
  */
 export function currentWeeks(today: IsoDate): IsoDate[] {
   const running = mondayOf(today);
-  const planning = planningWeek(today);
-  return planning === running ? [running] : [running, planning];
+  return isoWeekday(today) >= PLAN_AHEAD_FROM ? [running, addDays(running, 7)] : [running];
 }
 
 /** A week's plan as far as it matters here: its meals and what it needs besides them. */
