@@ -4,13 +4,16 @@ import { addDays, isIsoDate, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList, moveKey } from "@/domain/shopping-list/build";
 import {
+  carriedOver,
   drugstoreLines,
+  nextDrugstoreTrip,
   presentDrugstore,
   type DrugstoreEntry,
 } from "@/domain/shopping-list/drugstore";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
+import { today } from "@/lib/today";
 import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 import { loadExtras, loadWeeks } from "../planning/week";
@@ -107,6 +110,52 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
         originalText: line.original_text,
         note: line.note,
       })),
+  }));
+}
+
+/** How far back open entries of drugstore notes are still looked for. */
+const CARRY_DAYS = 56;
+
+/**
+ * The entries of the drugstore notes whose day is over, from the last weeks, with whether
+ * each was ticked there.
+ */
+async function earlierDrugstoreEntries(
+  db: Db,
+  now: IsoDate,
+): Promise<(DrugstoreEntry & { from: ShoppingTrip; done: boolean })[]> {
+  const lists = must(
+    await db
+      .from("shopping_list")
+      .select("id, shopping_date")
+      .eq("place", "drugstore")
+      .gte("shopping_date", addDays(now, -CARRY_DAYS))
+      .lt("shopping_date", now),
+    "load earlier drugstore notes",
+  );
+  if (lists.length === 0) return [];
+  const ids = lists.map((list) => list.id);
+  const [entryRows, stateRows] = await Promise.all([
+    db
+      .from("shopping_manual_entry")
+      .select("id, shopping_list_id, text, quantity, for_whom")
+      .in("shopping_list_id", ids)
+      .order("created_at"),
+    db
+      .from("shopping_line_state")
+      .select("line_key")
+      .in("shopping_list_id", ids)
+      .not("checked_at", "is", null),
+  ]);
+  const ticked = new Set(must(stateRows, "load earlier ticks").map((row) => row.line_key));
+  const dateOf = new Map(lists.map((list) => [list.id, list.shopping_date]));
+  return must(entryRows, "load earlier drugstore entries").map((row) => ({
+    id: row.id,
+    text: row.text,
+    quantity: row.quantity,
+    forWhom: row.for_whom,
+    from: { date: dateOf.get(row.shopping_list_id) as IsoDate, place: "drugstore" },
+    done: ticked.has(`manual:${row.id}`),
   }));
 }
 
@@ -220,6 +269,17 @@ export async function loadShoppingNotes(
 
   // Far enough back that the first meal read has a shopping day before it.
   const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
+  // What is still open on drugstore notes whose day is over comes along to the next one.
+  const now = today();
+  const target = nextDrugstoreTrip(trips, now);
+  if (target && inWeek(target.date)) {
+    const carried = carriedOver(await earlierDrugstoreEntries(db, now), now);
+    if (carried.length > 0) {
+      const note = drugstore.get(noteId(target)) ?? { trip: target, entries: [] };
+      note.entries.unshift(...carried);
+      drugstore.set(noteId(target), note);
+    }
+  }
   const lines = [
     ...buildShoppingList({
       index,

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  carriedOver,
   drugstoreEntryFromText,
   DRUGSTORE_ITEMS,
   isDrugstoreItem,
+  nextDrugstoreTrip,
   drugstoreLines,
   drugstoreSection,
   presentDrugstore,
@@ -121,5 +123,37 @@ describe("an entry from the Merkzettel", () => {
   it("knows what the drugstore sells", () => {
     expect(isDrugstoreItem("2 Zahnpasta")).toBe(true);
     expect(isDrugstoreItem("Mehl")).toBe(false);
+  });
+});
+
+describe("open entries of earlier drugstore notes", () => {
+  const LAST_SATURDAY = { date: "2026-10-10", place: "drugstore" as const };
+  const TODAY = "2026-10-14";
+  const entry = (id: string, done: boolean, from = LAST_SATURDAY) => ({
+    id,
+    text: id,
+    quantity: 1,
+    forWhom: null,
+    from,
+    done,
+  });
+
+  it("come along to the next note while they are open and their day is over", () => {
+    const carried = carriedOver(
+      [entry("Deo", false), entry("Shampoo", true), entry("Seife", false, SATURDAY)],
+      TODAY,
+    );
+    expect(carried).toEqual([
+      { id: "Deo", text: "Deo", quantity: 1, forWhom: null, from: LAST_SATURDAY },
+    ]);
+  });
+
+  it("go to the first drugstore note from today on, and keep where they were written", () => {
+    const trips = [LAST_SATURDAY, { date: "2026-10-12", place: "supermarket" as const }, SATURDAY];
+    expect(nextDrugstoreTrip(trips, TODAY)).toEqual(SATURDAY);
+    expect(nextDrugstoreTrip(trips, "2026-10-18")).toBeNull();
+    const [line] = drugstoreLines(carriedOver([entry("Deo", false)], TODAY), SATURDAY, "dm");
+    expect(line).toMatchObject({ shoppingDate: SATURDAY.date, key: "manual:Deo" });
+    expect(line.contributions[0].origin).toEqual(LAST_SATURDAY);
   });
 });

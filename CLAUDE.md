@@ -583,6 +583,10 @@ Shopping list
   into a section of the shop, Körperpflege to Haushalt (`drugstoreSection`: the longest
   known word in what was written wins, anything else is "Sonstiges"). Its lines are not
   moved to a food note, have no "Haben wir schon", and the note is not moved to another day.
+  What is still open on a dm note whose day is over comes along to the next one from today
+  on (`carriedOver`, `nextDrugstoreTrip`, eight weeks back at most), until it is ticked or
+  removed. A tick on the note it came along to is stored there; an entry ticked on any
+  earlier note stays behind.
 - The Merkzettel (`restock_item`, in the header of every page with the number of its
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
   moves an entry to the note of the next errand from today on that sells it (`restockTrip`),

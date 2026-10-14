@@ -142,6 +142,11 @@ export interface DrugstoreEntry {
   quantity: number | null;
   /** Who it is for: "Lena". Null when it is for everyone. */
   forWhom: string | null;
+  /**
+   * The note it was written on, where that is an earlier one: it was not bought then and
+   * came along. Left out for an entry on its own note.
+   */
+  from?: ShoppingTrip;
 }
 
 /**
@@ -154,6 +159,20 @@ export function drugstoreEntryFromText(text: string): { text: string; quantity: 
   return match && quantity !== null && quantity >= 1 && quantity <= QUANTITY_MAX
     ? { text: match[2].trim(), quantity }
     : { text: text.trim(), quantity: null };
+}
+
+/**
+ * What is still open on drugstore notes whose day is over, and so goes onto the next one:
+ * nothing written there is forgotten because nobody went that week. `done` says whether the
+ * entry was ticked on any of the notes it stood on.
+ */
+export function carriedOver(
+  entries: readonly (DrugstoreEntry & { from: ShoppingTrip; done: boolean })[],
+  today: IsoDate,
+): DrugstoreEntry[] {
+  return entries
+    .filter((entry) => entry.from.date < today && !entry.done)
+    .map(({ id, text, quantity, forWhom, from }) => ({ id, text, quantity, forWhom, from }));
 }
 
 /** The drugstore note open entries go to: the first one from today on. */
@@ -219,7 +238,7 @@ export function drugstoreLines(
         amount: null,
         originalText: entry.text,
         optional: false,
-        origin: trip,
+        origin: entry.from ?? trip,
       },
     ],
     note: entry.forWhom ? `für ${entry.forWhom}` : null,

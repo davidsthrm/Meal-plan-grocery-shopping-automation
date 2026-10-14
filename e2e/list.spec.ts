@@ -195,6 +195,36 @@ test("the drugstore's note is written by hand: what, how many, for whom", async 
   await expect(dm).not.toContainText("Klopapier");
 });
 
+/** A day as the app writes it, `days` from today in the household's time zone. */
+function fromToday(days: (weekday: number) => number): { date: string; monday: string } {
+  const now = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+  const today = new Date(`${now}T00:00:00Z`);
+  const day = new Date(today.getTime() + days(today.getUTCDay()) * 86_400_000);
+  const monday = new Date(day.getTime() - ((day.getUTCDay() || 7) - 1) * 86_400_000);
+  return { date: day.toISOString().slice(0, 10), monday: monday.toISOString().slice(0, 10) };
+}
+
+test("what was not bought at the drugstore comes along to its next note", async ({ page }) => {
+  // dm is on Saturdays: the last one is over, the next one is today or later.
+  const last = fromToday((weekday) => -((weekday - 6 + 7) % 7 || 7));
+  const next = fromToday((weekday) => (6 - weekday + 7) % 7);
+  await page.goto(`/einkauf?w=${last.monday}&zettel=${last.date}.drugstore`);
+  await page.getByLabel("Was").fill("Deo");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await page.getByLabel("Was").fill("Shampoo");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await page.getByRole("button", { name: "1 Shampoo: erledigt" }).click();
+  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 erledigt");
+
+  // Not bought that day, the deodorant is on the next dm note; the shampoo was bought.
+  await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
+  const dm = page.getByRole("region", { name: /^dm, / });
+  await expect(dm).toContainText("1 Deo");
+  await expect(dm).not.toContainText("Shampoo");
+  await page.getByRole("button", { name: "1 Deo: erledigt" }).click();
+  await expect(dm).toContainText("0 offen, 1 erledigt");
+});
+
 test("a week with nothing planned has empty notes that say where they come from", async ({
   page,
 }) => {
