@@ -1,5 +1,6 @@
 import { daysBetween, isoWeekday, type IsoDate } from "../dates";
 import { LONG_AGO_DAYS } from "../library/discover";
+import { pictogramFor, type Pictogram } from "../library/pictogram";
 import { isMeal, suitsMeal, type History, type RecipeSummary } from "../library/summary";
 import { effortOf } from "../library/tags";
 import { byDayAndMeal, type Meal } from "../plan";
@@ -107,14 +108,23 @@ export interface OpenSlot {
 const COLD = new Set(["salat", "vesper"]);
 
 /**
- * Whether a recipe fits the day. From Monday to Friday nobody cooks for hours: lunch takes
- * what is quick or fits a normal day, the evening only what is quick or cold. A recipe whose
- * effort is not known is kept for the weekend. Planning anything by hand is always possible.
+ * Dishes too filling for the evening, on any day: pasta, rice, potatoes, a casserole. What
+ * kind of dish a recipe is is read as for its pictogram, so a pasta salad is a salad. A
+ * soup, a wrap or toast from the oven is light enough.
+ */
+const HEAVY: ReadonlySet<Pictogram> = new Set(["pasta", "reis", "kartoffel", "auflauf"]);
+
+/**
+ * Whether a recipe fits the meal of the day. The evening is light: nothing heavy is
+ * suggested for it. From Monday to Friday nobody cooks for hours either: lunch takes what is
+ * quick or fits a normal day, the evening only what is quick or cold. A recipe whose effort
+ * is not known is kept for the weekend. Planning anything by hand is always possible.
  */
 export function suitsDay(
-  recipe: Pick<RecipeSummary, "category" | "tags" | "prepMinutes">,
+  recipe: Pick<RecipeSummary, "title" | "category" | "proteinType" | "tags" | "prepMinutes">,
   slot: OpenSlot,
 ): boolean {
+  if (slot.meal === "dinner" && HEAVY.has(pictogramFor(recipe))) return false;
   if (slot.meal === "coffee" || isoWeekday(slot.date) > 5) return true;
   const effort = effortOf(recipe);
   if (slot.meal === "lunch") return effort === "schnell" || effort === "alltag";

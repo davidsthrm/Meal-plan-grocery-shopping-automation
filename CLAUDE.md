@@ -385,6 +385,10 @@ Week plan
   in a week.
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
+- The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is
+  pasta, rice, potatoes or a casserole, read as for the pictogram (`pictogramFor`: category,
+  then the "Gericht" tag, then the title), so a pasta salad is a salad. A soup, a wrap or
+  toast from the oven is fine. The household had Avocado Spaghetti suggested for a dinner.
 - From Monday to Friday nobody cooks for hours (`suitsDay`): lunch is suggested from what
   is quick or fits a normal day, the evening only from what is quick or cold. A recipe whose
   effort is not known is kept for the weekend. The household had many warm main dishes

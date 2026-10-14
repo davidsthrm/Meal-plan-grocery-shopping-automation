@@ -135,6 +135,27 @@ describe("suitsDay", () => {
     expect(suitsDay({ ...supper, tags: ["aufwendig"] }, at("dinner", WEDNESDAY))).toBe(false);
   });
 
+  it("suggests nothing heavy for the evening, on any day", () => {
+    const spaghetti = summary("Avocado Spaghetti", { prepMinutes: 20 });
+    const risotto = summary("Pilzrisotto", { prepMinutes: 25 });
+    const tagged = summary("Ofenkartoffeln", { prepMinutes: 25, tags: ["kartoffeln"] });
+    for (const recipe of [spaghetti, risotto, tagged]) {
+      expect(suitsDay(recipe, at("dinner", WEDNESDAY))).toBe(false);
+      expect(suitsDay(recipe, at("dinner", "2026-10-18"))).toBe(false);
+      expect(suitsDay(recipe, at("lunch", WEDNESDAY))).toBe(true);
+    }
+  });
+
+  it("finds a soup, a wrap, toast from the oven or a pasta salad light enough", () => {
+    const light = [
+      summary("Linsensuppe", { category: "suppe-eintopf", prepMinutes: 25 }),
+      summary("Hähnchen-Wraps", { prepMinutes: 20 }),
+      summary("Überbackener Toast", { prepMinutes: 15, tags: ["ofen"] }),
+      summary("Nudelsalat", { category: "salat", prepMinutes: 20 }),
+    ];
+    for (const recipe of light) expect(suitsDay(recipe, at("dinner", WEDNESDAY))).toBe(true);
+  });
+
   it("has nothing to say about coffee", () => {
     expect(
       suitsDay(summary("torte", { category: "kuchen", prepMinutes: 180 }), at("coffee", WEDNESDAY)),
@@ -154,7 +175,7 @@ describe("suggest", () => {
     expect(ids(suggest(all, at("lunch"), context({ balance }), 1))).toEqual(["lachs"]);
   });
 
-  it("suggests meals only, and a cold supper or a salad only in the evening", () => {
+  it("suggests meals only, a cold supper or a salad only in the evening, and no lasagne then", () => {
     expect(ids(suggest(all, at("lunch"), context(), 10)).sort()).toEqual([
       "huhn",
       "lachs",
@@ -164,7 +185,6 @@ describe("suggest", () => {
     expect(ids(suggest(all, at("dinner"), context(), 10)).sort()).toEqual([
       "huhn",
       "lachs",
-      "lasagne",
       "steak",
       "tomatensalat",
       "wurstsalat",
