@@ -81,7 +81,7 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
             categories={categories}
             books={books}
             tagGroups={tagGroups}
-            favoritesOnly
+            favorites="only"
           />
         </div>
       )}

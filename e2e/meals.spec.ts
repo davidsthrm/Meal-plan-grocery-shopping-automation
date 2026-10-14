@@ -220,8 +220,8 @@ test("a recipe can come in as pasted text, which is asked for before anything is
   page,
 }) => {
   await signIn(page);
-  await page.goto("/rezepte");
-  await page.getByRole("link", { name: "Rezept hinzufügen" }).click();
+  await page.goto("/import");
+  await page.getByRole("link", { name: "Ohne Foto: Rezept eintippen" }).click();
   await page.getByRole("link", { name: "Text einfügen" }).click();
   await expect(page.getByLabel("Text des Rezepts")).toBeVisible();
   // Nothing pasted: nothing is sent to be read.

@@ -41,8 +41,8 @@ export async function setFavorite(form: FormData): Promise<void> {
     .update({ is_favorite: input.favorite === "1" })
     .eq("id", input.recipe);
   if (updated.error) throw new Error(`mark favourite: ${updated.error.message}`);
-  revalidatePath("/rezepte");
-  revalidatePath(`/rezepte/${input.recipe}`);
+  // The heart is on every recipe card: on "Entdecken", on "Favoriten" and on its own page.
+  revalidatePath("/", "layout");
 }
 
 /** Marks a recipe as one someone wants to cook soon, or takes the mark away. */

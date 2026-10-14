@@ -5,8 +5,8 @@ import { isMeal, type Category, type History, type RecipeSummary } from "./summa
 import type { TagGroup } from "./tags";
 
 /**
- * The library to browse. On top a few shelves that change with the day: what someone wants to
- * cook, favourites, what is quick, what is in season. Below them a directory: every way the
+ * The library to browse. On top a few shelves that change with the day: what is quick, what is
+ * in season, what was cooked long ago, what is new. Below them a directory: every way the
  * library can be narrowed down, with the number of recipes behind it.
  */
 
@@ -15,8 +15,9 @@ export interface Shelf {
   title: string;
   /** The filter that lists the whole shelf. Null for a shelf no filter can express. */
   filter: RecipeFilter | null;
+  /** How many recipes the shelf stands for: as many as its filter lists, where it has one. */
   total: number;
-  /** The first few. */
+  /** The first few that nobody has marked yet. */
   recipes: RecipeSummary[];
 }
 
@@ -51,28 +52,38 @@ const SEASON_SHELF: Record<Season, string> = {
   winter: "Jetzt im Winter",
 };
 
+/**
+ * Whether the household has marked a recipe: a favourite, or one someone wants to cook. Those
+ * have the page "Favoriten"; the shelves bring up the others.
+ */
+export function isMarked(recipe: RecipeSummary): boolean {
+  return recipe.isFavorite || recipe.wanted;
+}
+
 /** The shelves on top of the library, without the empty ones. */
 export function discover(recipes: readonly RecipeSummary[], options: DiscoverOptions): Shelf[] {
   const { today, history } = options;
   const size = options.size ?? 10;
 
-  // Favourites lead every shelf. The rest changes from day to day, so that browsing shows
-  // more than the same ten recipes of a shelf with four hundred.
-  const order = (a: RecipeSummary, b: RecipeSummary) =>
-    Number(b.isFavorite) - Number(a.isFavorite) || rank(today, a.id) - rank(today, b.id);
+  // The order changes from day to day, so that browsing shows more than the same ten recipes
+  // of a shelf with four hundred.
+  const order = (a: RecipeSummary, b: RecipeSummary) => rank(today, a.id) - rank(today, b.id);
   const shelf = (
     key: string,
     title: string,
     members: RecipeSummary[],
     filter: RecipeFilter | null,
     sort = order,
-  ): Shelf => ({
-    key,
-    title,
-    filter,
-    total: members.length,
-    recipes: [...members].sort(sort).slice(0, size),
-  });
+  ): Shelf => {
+    const unmarked = members.filter((recipe) => !isMarked(recipe));
+    return {
+      key,
+      title,
+      filter,
+      total: filter ? members.length : unmarked.length,
+      recipes: unmarked.sort(sort).slice(0, size),
+    };
+  };
   const filtered = (key: string, title: string, filter: RecipeFilter) =>
     shelf(
       key,
@@ -90,13 +101,6 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
   const season = seasonOf(today);
 
   const shelves: Shelf[] = [
-    shelf(
-      "wunsch",
-      "Möchte ich kochen",
-      recipes.filter((recipe) => recipe.wanted),
-      null,
-    ),
-    filtered("favoriten", "Favoriten", { ...NO_FILTER, favorites: true }),
     shelf(
       "schnell",
       `Bis ${QUICK_MINUTES} Minuten`,
@@ -117,7 +121,7 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
   if (fresh.length * 3 < recipes.length) {
     shelves.push(shelf("neu", "Neu", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)));
   }
-  return shelves.filter((entry) => entry.total > 0);
+  return shelves.filter((entry) => entry.recipes.length > 0);
 }
 
 /** One way to narrow the library down, and how many recipes it leaves. */
