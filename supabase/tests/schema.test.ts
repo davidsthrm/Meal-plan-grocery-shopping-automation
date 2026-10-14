@@ -244,6 +244,35 @@ describe("schema", () => {
     await db.query("delete from public.recipe where title = 'Probekuchen'");
   });
 
+  it("stores an amount written over a line only with its unit", async () => {
+    const list = await db.query<{ id: string }>(
+      "insert into public.shopping_list (household_id, shopping_date) values ($1, '2026-10-12') returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const state = (key: string, quantity: string, unit: string) =>
+      db.query(
+        `insert into public.shopping_line_state (household_id, shopping_list_id, line_key, quantity, unit)
+         values ($1, $2, $3, ${quantity}, ${unit})`,
+        [SEED_HOUSEHOLD_ID, list.rows[0].id, key],
+      );
+    await expect(state("karotten@main", "5", "'Stück'")).resolves.toBeDefined();
+    await expect(state("milch@main", "1", "null")).rejects.toThrow(/shopping_line_state_amount/);
+    await expect(state("sahne@main", "0", "'ml'")).rejects.toThrow(/quantity_check/);
+    await db.query("delete from public.shopping_list where id = $1", [list.rows[0].id]);
+  });
+
+  it("ranks only supermarkets among the household's supermarkets", async () => {
+    const rank = (kind: string) =>
+      db.query(
+        `insert into public.shop (household_id, name, short_label, kind, supermarket_rank)
+         values ($1, $2, $2, $3, 2)`,
+        [SEED_HOUSEHOLD_ID, `Probeladen ${kind}`, kind],
+      );
+    await expect(rank("supermarket")).resolves.toBeDefined();
+    await expect(rank("butcher")).rejects.toThrow(/shop_supermarket_rank_kind/);
+    await db.query("delete from public.shop where name like 'Probeladen%'");
+  });
+
   it("approves recipes that waited only for unknown ingredients, and no others", async () => {
     // The rule arrived as a migration. Run its statements again on rows made for this test.
     const batch = await db.query<{ id: string }>(

@@ -1,5 +1,5 @@
 import "server-only";
-import { PLACES, type CatalogIndex, type Place } from "@/domain/catalog";
+import { PLACES, type CatalogIndex, type Place, type Shop } from "@/domain/catalog";
 import { addDays, isIsoDate, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList, moveKey } from "@/domain/shopping-list/build";
@@ -10,9 +10,12 @@ import {
   presentDrugstore,
   type DrugstoreEntry,
 } from "@/domain/shopping-list/drugstore";
+import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
+import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
+import type { Amount } from "@/domain/units";
 import { today } from "@/lib/today";
 import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
@@ -54,6 +57,13 @@ export interface WeekNotes {
   index: CatalogIndex;
   /** The names the members of the household are called by: whom a line can be for. */
   members: string[];
+  /** The household's supermarkets, the main one first. Empty until it has named one. */
+  supermarkets: Shop[];
+  /**
+   * For every open line that is on another note of the week too, those notes, by
+   * `lineOnNote`: small tomatoes on Monday's and on Saturday's.
+   */
+  alsoOn: Map<string, ShoppingTrip[]>;
 }
 
 /** The recipes of a week with their ingredient lines, as the list builder needs them. */
@@ -210,7 +220,7 @@ export async function loadShoppingNotes(
       ? db
           .from("shopping_line_state")
           .select(
-            "shopping_list_id, line_key, at_home, shop_id, note, checked_at, checked_by, moved_date, moved_place",
+            "shopping_list_id, line_key, at_home, shop_id, note, checked_at, checked_by, moved_date, moved_place, quantity, unit",
           )
           .in("shopping_list_id", listIds)
       : null,
@@ -262,6 +272,9 @@ export async function loadShoppingNotes(
       ...(row.at_home !== null ? { atHome: row.at_home } : {}),
       ...(row.note !== null ? { note: row.note === "" ? null : row.note } : {}),
       ...(row.shop_id !== null ? { shopId: row.shop_id } : {}),
+      ...(row.quantity !== null && row.unit !== null
+        ? { amount: { quantity: row.quantity, unit: row.unit } }
+        : {}),
       checked: row.checked_at !== null,
     };
     states.set(noteId(trip), ofNote);
@@ -349,7 +362,19 @@ export async function loadShoppingNotes(
   });
   atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));
   const members = [...nameOf.values()].filter((name): name is string => Boolean(name));
-  return { notes, atHome, index, members };
+  return {
+    notes,
+    atHome,
+    index,
+    members,
+    supermarkets: favouriteSupermarkets(index.catalog.shops),
+    alsoOn: alsoOn(
+      notes.map((note) => ({
+        trip: note.trip,
+        lines: note.view.groups.flatMap((group) => group.lines),
+      })),
+    ),
+  };
 }
 
 /**
@@ -417,6 +442,9 @@ async function storeState(
     note?: string;
     moved_date?: string | null;
     moved_place?: string | null;
+    shop_id?: string | null;
+    quantity?: number | null;
+    unit?: Amount["unit"] | null;
   },
 ): Promise<void> {
   const listId = await ensureList(db, household.id, trip);
@@ -442,23 +470,33 @@ export async function changeLine(
   household: Pick<Household, "id" | "userId">,
   trip: ShoppingTrip,
   lineKey: string,
-  change: { checked: boolean } | { atHome: boolean } | { note: string },
+  change:
+    | { checked: boolean }
+    | { atHome: boolean }
+    | { note: string }
+    | { amount: Amount | null }
+    | { shopId: string | null },
 ): Promise<void> {
-  await storeState(
-    db,
-    household,
-    trip,
-    lineKey,
-    "checked" in change
-      ? {
-          checked_at: change.checked ? new Date().toISOString() : null,
-          checked_by: change.checked ? household.userId : null,
-        }
-      : "atHome" in change
-        ? { at_home: change.atHome }
-        : // An empty note is stored as such: it says "no note", also where the line has one.
-          { note: change.note },
-  );
+  await storeState(db, household, trip, lineKey, stateOf(change, household.userId));
+}
+
+/** The columns a change of a line is stored in. */
+function stateOf(change: Parameters<typeof changeLine>[4], userId: string) {
+  if ("checked" in change) {
+    return {
+      checked_at: change.checked ? new Date().toISOString() : null,
+      checked_by: change.checked ? userId : null,
+    };
+  }
+  if ("atHome" in change) return { at_home: change.atHome };
+  // Null: the amount the plan works out again.
+  if ("amount" in change) {
+    return { quantity: change.amount?.quantity ?? null, unit: change.amount?.unit ?? null };
+  }
+  // Null: the household's main supermarket again.
+  if ("shopId" in change) return { shop_id: change.shopId };
+  // An empty note is stored as such: it says "no note", also where the line has one.
+  return { note: change.note };
 }
 
 /** A line as far as moving it needs to know it: its key, and the notes its parts are from. */

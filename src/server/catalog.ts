@@ -6,7 +6,9 @@ import {
   type Place,
   type CatalogIndex,
   type Ingredient,
+  type Shop,
 } from "@/domain/catalog";
+import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import type { GramsPer } from "@/domain/units";
 import type { Database } from "./supabase/database.types";
 
@@ -57,6 +59,28 @@ export async function loadIngredientNames(
   );
 }
 
+/** The household's supermarkets, the main one first. Empty until it has named one. */
+export async function loadSupermarkets(db: Db): Promise<Shop[]> {
+  const rows = must(
+    await db
+      .from("shop")
+      .select("id, name, short_label, sort_order, kind, supermarket_rank")
+      .not("supermarket_rank", "is", null),
+    "load supermarkets",
+  );
+  return favouriteSupermarkets(
+    rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      shortLabel: row.short_label,
+      sortOrder: row.sort_order,
+      kind: row.kind as Place,
+      supermarketRank: row.supermarket_rank,
+      aisleSortOverrides: {},
+    })),
+  );
+}
+
 /**
  * Loads the household's catalog in the shape the domain logic works with. Which household is
  * decided by row level security: the client only sees its own.
@@ -65,7 +89,7 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
   const [shops, overrides, aisles, ingredients] = await Promise.all([
     db
       .from("shop")
-      .select("id, name, short_label, sort_order, is_default, kind")
+      .select("id, name, short_label, sort_order, is_default, kind, supermarket_rank")
       .order("sort_order"),
     db.from("shop_aisle_order").select("shop_id, aisle_group_id, sort_order"),
     db
@@ -97,6 +121,7 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
       shortLabel: shop.short_label,
       sortOrder: shop.sort_order,
       kind: shop.kind as Place,
+      supermarketRank: shop.supermarket_rank,
       aisleSortOverrides: Object.fromEntries(
         overrideRows
           .filter((row) => row.shop_id === shop.id)

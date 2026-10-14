@@ -26,6 +26,11 @@ export interface Shop {
   aisleSortOverrides: Record<string, number>;
   /** What kind of place it is. A supermarket unless it says otherwise. */
   kind?: Place;
+  /**
+   * Where it stands among the household's supermarkets: 1 is the main one, where every
+   * supermarket line is bought unless moved. Null or left out: not one of them.
+   */
+  supermarketRank?: number | null;
 }
 
 export interface AisleGroup {

@@ -1105,6 +1105,7 @@ export type Database = {
           name: string
           short_label: string
           sort_order: number
+          supermarket_rank: number | null
         }
         Insert: {
           household_id: string
@@ -1114,6 +1115,7 @@ export type Database = {
           name: string
           short_label: string
           sort_order?: number
+          supermarket_rank?: number | null
         }
         Update: {
           household_id?: string
@@ -1123,6 +1125,7 @@ export type Database = {
           name?: string
           short_label?: string
           sort_order?: number
+          supermarket_rank?: number | null
         }
         Relationships: [
           {
@@ -1283,8 +1286,10 @@ export type Database = {
           moved_date: string | null
           moved_place: string | null
           note: string | null
+          quantity: number | null
           shop_id: string | null
           shopping_list_id: string
+          unit: Database["public"]["Enums"]["unit"] | null
           updated_at: string
         }
         Insert: {
@@ -1296,8 +1301,10 @@ export type Database = {
           moved_date?: string | null
           moved_place?: string | null
           note?: string | null
+          quantity?: number | null
           shop_id?: string | null
           shopping_list_id: string
+          unit?: Database["public"]["Enums"]["unit"] | null
           updated_at?: string
         }
         Update: {
@@ -1309,8 +1316,10 @@ export type Database = {
           moved_date?: string | null
           moved_place?: string | null
           note?: string | null
+          quantity?: number | null
           shop_id?: string | null
           shopping_list_id?: string
+          unit?: Database["public"]["Enums"]["unit"] | null
           updated_at?: string
         }
         Relationships: [

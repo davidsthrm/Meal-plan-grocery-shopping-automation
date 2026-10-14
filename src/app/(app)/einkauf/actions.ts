@@ -7,6 +7,8 @@ import { isIsoDate, mondayOf } from "@/domain/dates";
 import { dayProblems } from "@/domain/shopping-list/change-day";
 import { readDrugstoreEntry } from "@/domain/shopping-list/drugstore";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import { parseQuantity } from "@/domain/quantity";
+import { isUnit } from "@/domain/units";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import {
@@ -18,6 +20,7 @@ import {
   moveLines,
   removeEntry,
 } from "@/server/shopping/list";
+import { loadSupermarkets } from "@/server/catalog";
 import { createSessionClient } from "@/server/supabase/server";
 
 /** What a shopping note can be told to do. Each action is the target of a plain form. */
@@ -146,6 +149,54 @@ export async function noteLine(form: FormData): Promise<void> {
   const household = await requireHousehold();
   await changeLine(await createSessionClient(), household, noteOf(input.note), input.key, {
     note: input.note,
+  });
+  backToList(input);
+}
+
+/**
+ * Writes an amount over the one the plan works out: "5" Karotten, "300" g Hack. An empty
+ * amount, or "Wie geplant", takes it back. What cannot be read changes nothing.
+ */
+export async function amountLine(form: FormData): Promise<void> {
+  const input = read(
+    line.extend({
+      quantity: z.string().max(12).optional(),
+      unit: z.string().max(12).optional(),
+      reset: z.enum(["1"]).optional(),
+    }),
+    form,
+  );
+  const household = await requireHousehold();
+  const quantity = input.reset ? null : parseQuantity(input.quantity ?? "");
+  const unit = input.unit ?? "";
+  const amount =
+    quantity === null
+      ? null
+      : quantity !== undefined && quantity > 0 && quantity < 100000 && isUnit(unit)
+        ? { quantity, unit }
+        : undefined;
+  if (amount !== undefined) {
+    await changeLine(await createSessionClient(), household, noteOf(input.note), input.key, {
+      amount,
+    });
+  }
+  backToList(input);
+}
+
+/**
+ * Buys a line of a supermarket note at another of the household's supermarkets this week:
+ * "Kaufe ich bei Rewe". No shop, or the main one, puts it back under the main one.
+ */
+export async function buyAtSupermarket(form: FormData): Promise<void> {
+  const input = read(line.extend({ shop: z.union([z.guid(), z.literal("")]) }), form);
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const trip = noteOf(input.note);
+  const favourites = await loadSupermarkets(db);
+  const shop = favourites.find((each) => each.id === input.shop);
+  if (trip.place !== "supermarket" || (input.shop !== "" && !shop)) backToList(input);
+  await changeLine(db, household, trip, input.key, {
+    shopId: shop && shop.id !== favourites[0]?.id ? shop.id : null,
   });
   backToList(input);
 }
