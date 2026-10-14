@@ -99,6 +99,26 @@ export function byDayAndMeal(
   return a.date.localeCompare(b.date) || MEAL_ORDER[a.meal] - MEAL_ORDER[b.meal];
 }
 
+/**
+ * The next lunch or dinner after `after` that has nothing planned yet (`taken` holds the
+ * `slotKey` of every planned meal), up to and including `lastDay`. Coffee on Sunday is
+ * optional and never the next meal to plan. Null when every meal until then is planned.
+ */
+export function nextOpenMeal(
+  after: { date: IsoDate; meal: Meal },
+  taken: ReadonlySet<string>,
+  lastDay: IsoDate,
+): { date: IsoDate; meal: Meal } | null {
+  for (let date = after.date; date <= lastDay; date = addDays(date, 1)) {
+    for (const meal of MEALS) {
+      const candidate = { date, meal };
+      if (byDayAndMeal(candidate, after) <= 0) continue;
+      if (!taken.has(slotKey(date, meal))) return candidate;
+    }
+  }
+  return null;
+}
+
 /** A slot's content without its place in the calendar, as it is entered or copied. */
 export type SlotContent =
   | { kind: "recipes"; items: SlotItem[] }

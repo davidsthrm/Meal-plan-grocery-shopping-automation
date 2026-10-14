@@ -201,8 +201,7 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   background: either way round, the holes lay askew to the note and jumped when it was lifted.
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up. A link to `#merkzettel` pulls it down
-  too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). All of
-  it is off for whoever asked for less motion.
+  too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). All of it is off for whoever asked for less motion.
 - Words on the screen say something concrete or are left out. No filler such as "for
   variety" or "just for you"; a suggestion without a reason shows none.
 - The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the
@@ -338,6 +337,11 @@ Week plan
   is planned. A meal that was emptied or planned otherwise meanwhile is left alone.
   "Eintippen" opens the recipe form with the title filled in and puts the saved recipe on
   that meal. The household plans with the cookbook next to it.
+- The page that plans one meal (`/woche/auswahl`) is a stop of its own: what is picked there
+  is planned and the page stays, saying what the meal is now ("Geplant: …"). "Nächste
+  Mahlzeit" leads to the next lunch or dinner that has nothing planned yet, into the next
+  week too (`nextOpenMeal`); coffee on Sunday is passed over. "← Wochenplan" leads back.
+  Picked anywhere else (a suggestion, a recipe being placed), the week is shown again.
 - Some meals never have a recipe and are one tap away (`MEALS_WITHOUT_RECIPE`): Vesper,
   Reste, Auswärts, Oma Heidrun, Keiner daheim. Typed in, such a name is that meal (`namedMeal`),
   and no upload is offered for it. "Braucht keins" on any other typed meal makes it a meal

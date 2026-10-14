@@ -63,6 +63,7 @@ test("Sunday has a place for coffee and cake", async ({ page }) => {
     .getByRole("region", { name: "Vorschläge" })
     .getByRole("button", { name: "Zitronen-Mohn-Kuchen einplanen" })
     .click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Sonntag Kaffee & Kuchen")).toContainText("1 Springform (Ø 26 cm)");
 });
 
@@ -130,6 +131,7 @@ test("a typed meal becomes its recipe, or a new recipe typed in by hand", async 
   await page.getByRole("link", { name: "Dienstag Abend planen" }).click();
   await page.getByLabel("Eigener Eintrag").fill("pilzrisotto");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(
     meal(page, "Dienstag Abend").getByRole("link", { name: "Pilzrisotto" }),
   ).toBeVisible();
@@ -139,6 +141,7 @@ test("a typed meal becomes its recipe, or a new recipe typed in by hand", async 
   await page.getByRole("link", { name: "Mittwoch Abend planen" }).click();
   await page.getByLabel("Eigener Eintrag").fill("Pestonudeln");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Mittwoch Abend")).toContainText("Pestonudeln");
   await page.getByRole("link", { name: "Mittwoch Abend: Rezept anlegen" }).click();
 

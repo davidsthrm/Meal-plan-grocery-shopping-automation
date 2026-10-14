@@ -2,16 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { ArrowIcon } from "@/components/icons";
 import { RecipeRow } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
 import { SubmitButton } from "@/components/submit-button";
-import { dayAndMonth, isIsoDate, mondayOf, weekdayLong, weekRange } from "@/domain/dates";
+import {
+  addDays,
+  dayAndMonth,
+  isIsoDate,
+  mondayOf,
+  weekdayLong,
+  weekdayShort,
+  weekRange,
+} from "@/domain/dates";
 import { filterRecipes, isNoFilter, NO_FILTER, readFilter } from "@/domain/library/filter";
 import type { RecipeSummary } from "@/domain/library/summary";
-import { MEALS_WITHOUT_RECIPE, type Meal } from "@/domain/plan";
+import { MEALS_WITHOUT_RECIPE, nextOpenMeal, slotKey, type Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
 import { suggest } from "@/domain/recommend/suggest";
-import { MEAL_ADD, MEAL_PLAN, whyText } from "@/lib/plan-text";
+import { MEAL_ADD, MEAL_NAME, MEAL_PLAN, slotText, whyText } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
 import { loadLibrary, searchLibrary } from "@/server/library";
 import { loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
@@ -48,11 +57,12 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
   const filter = readFilter(params);
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const [library, slots, history, extras] = await Promise.all([
+  const [library, slots, history, extras, nextWeek] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
     loadHistory(db, week),
     loadExtras(db, week),
+    extra ? [] : loadWeek(db, addDays(week, 7)),
   ]);
   const { recipes, categories, books, tagGroups } = library;
   const recipeOf = new Map(recipes.map((recipe) => [recipe.id, recipe]));
@@ -67,6 +77,18 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
     ...extras.map((entry) => entry.recipeId),
   ]);
   const browsing = isNoFilter(filter);
+  // What this meal holds now, and the next meal that holds nothing yet: one meal after the
+  // other is planned without going back to the week.
+  const current = extra
+    ? undefined
+    : slots.find((slot) => slot.date === date && slot.meal === meal);
+  const next = extra
+    ? null
+    : nextOpenMeal(
+        { date, meal },
+        new Set([...slots, ...nextWeek].map((slot) => slotKey(slot.date, slot.meal))),
+        addDays(week, 13),
+      );
   // The week without this meal: what is chosen here takes its place.
   const others = slots.filter((slot) => slot.date !== date || slot.meal !== meal);
   const suggestions =
@@ -101,6 +123,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="meal" value={meal} />
       <input type="hidden" name="mode" value={mode} />
+      <input type="hidden" name="bleiben" value="1" />
     </>
   );
   const row = (recipe: RecipeSummary, note?: string) => (
@@ -134,6 +157,51 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
       <h1 className="title mt-1">
         {extra ? "Außerdem einplanen" : mode === "add" ? MEAL_ADD[meal] : MEAL_PLAN[meal]}
       </h1>
+
+      {!extra && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <p className={current ? "" : "text-muted"} role="status">
+            {current ? (
+              <>
+                <span className="text-muted">Geplant: </span>
+                <span className="font-semibold">
+                  {current.kind === "recipes"
+                    ? current.items
+                        .map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept")
+                        .join(" und ")
+                    : slotText(current)}
+                </span>
+              </>
+            ) : (
+              "Noch nichts geplant"
+            )}
+          </p>
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {current?.kind === "free_text" && (
+              <Link
+                href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+                className="link text-sm"
+                aria-label={`${weekdayLong(date)} ${MEAL_NAME[meal]}: Lebensmittel`}
+              >
+                Lebensmittel
+              </Link>
+            )}
+            {next && (
+              <Link
+                href={`/woche/auswahl?${new URLSearchParams({ w: mondayOf(next.date), d: next.date, m: next.meal, modus: "replace" })}`}
+                className="btn btn-primary btn-small"
+                aria-label={`Nächste Mahlzeit: ${weekdayLong(next.date)} ${MEAL_NAME[next.meal]}`}
+              >
+                Nächste Mahlzeit
+                <span className="font-normal opacity-80">
+                  {weekdayShort(next.date)} {MEAL_NAME[next.meal]}
+                </span>
+                <ArrowIcon />
+              </Link>
+            )}
+          </span>
+        </div>
+      )}
 
       {!extra && mode === "replace" && (
         <section className="mt-5" aria-label="Ohne Rezept">
@@ -190,7 +258,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
           keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
           plan={{
             action: extra ? planExtra : planRecipe,
-            fields: extra ? { week } : { week, date, meal, mode },
+            fields: extra ? { week } : { week, date, meal, mode, bleiben: "1" },
           }}
         />
       </section>

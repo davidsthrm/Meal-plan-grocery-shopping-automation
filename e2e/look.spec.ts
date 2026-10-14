@@ -53,6 +53,7 @@ test("screens @look", async ({ page }, info) => {
     await typed.click();
     await page.getByLabel("Eigener Eintrag").fill("Lasagne nach Oma");
     await page.getByRole("button", { name: "Eintragen" }).click();
+    await page.getByRole("link", { name: "← Wochenplan" }).click();
     await page.getByText("Noch kein Rezept dazu").first().waitFor();
   }
   const complete = page.getByRole("button", { name: "Plan vervollständigen" });

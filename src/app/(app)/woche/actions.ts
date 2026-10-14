@@ -55,6 +55,19 @@ function backToWeek(week: string, day?: string): never {
   redirect(`/woche?w=${week}${day ? `#tag-${day}` : ""}`);
 }
 
+/**
+ * After a meal was planned: back to the week, or, when it was planned on the meal's own page
+ * (the form says `bleiben`), back to that page, which says what is planned now and leads on
+ * to the next meal.
+ */
+function afterPlanning(form: FormData, input: { week: string; date: string; meal: string }): never {
+  if (form.get("bleiben") !== "1") backToWeek(input.week, input.date);
+  revalidatePath("/woche");
+  redirect(
+    `/woche/auswahl?${new URLSearchParams({ w: input.week, d: input.date, m: input.meal, modus: "replace" })}`,
+  );
+}
+
 function backToExtras(week: string): never {
   revalidatePath("/woche");
   redirect(`/woche?w=${week}&t=extra`);
@@ -105,7 +118,7 @@ export async function planRecipe(form: FormData): Promise<void> {
       });
     }
   }
-  backToWeek(input.week, input.date);
+  afterPlanning(form, input);
 }
 
 /** Takes over the suggestions shown for the open meals of a week, all at once. */
@@ -170,7 +183,7 @@ export async function markSlot(form: FormData): Promise<void> {
   const label = named?.label ?? input.label;
   if (kind === "free_text" || kind === "away") {
     // Nothing typed is nothing planned.
-    if (!label) backToWeek(input.week, input.date);
+    if (!label) afterPlanning(form, input);
     content = { kind, label };
   } else {
     content = { kind };
@@ -197,7 +210,7 @@ export async function markSlot(form: FormData): Promise<void> {
     }
   }
   await writeSlot(db, household.id, input.week, input.date, input.meal, content);
-  backToWeek(input.week, input.date);
+  afterPlanning(form, input);
 }
 
 /**

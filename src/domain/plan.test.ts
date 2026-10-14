@@ -4,6 +4,7 @@ import {
   copyOfWeek,
   mealsOf,
   namedMeal,
+  nextOpenMeal,
   slotKey,
   type PlanSlot,
   type SlotFood,
@@ -101,5 +102,47 @@ describe("the meals of a day", () => {
       "18 coffee",
       "18 dinner",
     ]);
+  });
+});
+
+describe("nextOpenMeal", () => {
+  const SUNDAY = "2026-10-18";
+  const taken = new Set([slotKey("2026-10-12", "dinner"), slotKey("2026-10-13", "lunch")]);
+
+  it("goes from lunch to dinner, and from dinner to the next day's lunch", () => {
+    expect(nextOpenMeal({ date: "2026-10-14", meal: "lunch" }, new Set(), SUNDAY)).toEqual({
+      date: "2026-10-14",
+      meal: "dinner",
+    });
+    expect(nextOpenMeal({ date: "2026-10-14", meal: "dinner" }, new Set(), SUNDAY)).toEqual({
+      date: "2026-10-15",
+      meal: "lunch",
+    });
+  });
+
+  it("passes over what is planned already", () => {
+    expect(nextOpenMeal({ date: "2026-10-12", meal: "lunch" }, taken, SUNDAY)).toEqual({
+      date: "2026-10-13",
+      meal: "dinner",
+    });
+  });
+
+  it("leaves out coffee on Sunday, and goes on from it to dinner", () => {
+    expect(nextOpenMeal({ date: SUNDAY, meal: "lunch" }, new Set(), "2026-10-25")).toEqual({
+      date: SUNDAY,
+      meal: "dinner",
+    });
+    expect(nextOpenMeal({ date: SUNDAY, meal: "coffee" }, new Set(), SUNDAY)).toEqual({
+      date: SUNDAY,
+      meal: "dinner",
+    });
+  });
+
+  it("goes on into the next week, and finds nothing when all is planned until the last day", () => {
+    expect(nextOpenMeal({ date: SUNDAY, meal: "dinner" }, new Set(), "2026-10-25")).toEqual({
+      date: "2026-10-19",
+      meal: "lunch",
+    });
+    expect(nextOpenMeal({ date: SUNDAY, meal: "dinner" }, new Set(), SUNDAY)).toBeNull();
   });
 });

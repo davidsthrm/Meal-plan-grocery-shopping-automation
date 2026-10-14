@@ -27,6 +27,7 @@ async function plan(page: Page, name: string, recipe: string) {
     .getByRole("region", { name: "Treffer beim Tippen" })
     .getByRole("button", { name: `${recipe} einplanen` })
     .click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, name)).toContainText(recipe);
 }
 
@@ -99,12 +100,14 @@ test("a meal at grandma's or one that is ordered asks for no recipe", async ({ p
   // One tap away, like eating out.
   await page.getByRole("link", { name: "Dienstag Mittag planen" }).click();
   await page.getByRole("button", { name: "Oma Heidrun" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Dienstag Mittag")).toContainText("Oma Heidrun");
   await expect(meal(page, "Dienstag Mittag")).not.toContainText("Noch kein Rezept dazu");
   // Typed in, it is the same meal.
   await page.getByRole("link", { name: "Mittwoch Mittag planen" }).click();
   await page.getByLabel("Eigener Eintrag").fill("oma heidrun");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Mittwoch Mittag")).toContainText("Oma Heidrun");
   await expect(meal(page, "Mittwoch Mittag")).not.toContainText("Noch kein Rezept dazu");
 
