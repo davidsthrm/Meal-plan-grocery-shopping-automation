@@ -163,67 +163,129 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // already shows the next one, as it does from Saturday on.
   const running = mondayOf(now);
   const runningSlots = week === running ? slots : addDays(week, -7) === running ? previous : null;
+  const showToday = runningSlots !== null && !placing && !showExtras && hasToday(runningSlots, now);
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div>
-          {greeting ? (
-            /*
-             * A large title, as on the first screen of an app: the day small above it, the
-             * greeting large with the name in the green of the logo, and the week below as
-             * the heading of the page.
-             */
-            <>
-              <p className="text-sm font-medium text-muted">
-                {weekdayLong(now)}, {dayAndMonth(now)}
-              </p>
-              <p className="greeting mt-1">
-                {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
-              </p>
-              <h1 className="mt-2 text-lg font-semibold tracking-tight text-muted">
-                Euer Wochenplan
-                <span aria-hidden className="mx-2 text-line">
-                  ·
-                </span>
-                <span className="text-ink">{weekRange(week)}</span>
-              </h1>
-            </>
-          ) : (
-            <>
-              <p className="eyebrow">Wochenplan</p>
-              <h1 className="title mt-1">{weekRange(week)}</h1>
-            </>
-          )}
+      {showToday && runningSlots ? (
+        /*
+         * Once something is planned for today or the weekend, it stands next to the greeting
+         * like a widget on a large screen, and under it on a phone.
+         */
+        <div className="grid gap-x-10 gap-y-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:items-start">
+          <div className="flex flex-col gap-4">
+            <div>
+              {greeting ? (
+                /*
+                 * A large title, as on the first screen of an app: the day small above it, the
+                 * greeting large with the name in the green of the logo, and the week below as
+                 * the heading of the page.
+                 */
+                <>
+                  <p className="text-sm font-medium text-muted">
+                    {weekdayLong(now)}, {dayAndMonth(now)}
+                  </p>
+                  <p className="greeting mt-1">
+                    {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
+                  </p>
+                  <h1 className="mt-2 text-lg font-semibold tracking-tight text-muted">
+                    Euer Wochenplan
+                    <span aria-hidden className="mx-2 text-line">
+                      ·
+                    </span>
+                    <span className="text-ink">{weekRange(week)}</span>
+                  </h1>
+                </>
+              ) : (
+                <>
+                  <p className="eyebrow">Wochenplan</p>
+                  <h1 className="title mt-1">{weekRange(week)}</h1>
+                </>
+              )}
+            </div>
+            <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
+              <Link
+                href={weekLink(addDays(week, -7))}
+                className="btn btn-small px-2.5"
+                aria-label="Vorige Woche"
+              >
+                <ArrowIcon back />
+              </Link>
+              {week !== thisWeek && (
+                <Link href={weekLink(thisWeek)} className="btn btn-small">
+                  Aktuelle
+                </Link>
+              )}
+              <Link
+                href={weekLink(addDays(week, 7))}
+                className="btn btn-small px-2.5"
+                aria-label="Nächste Woche"
+              >
+                <ArrowIcon />
+              </Link>
+              <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
+                Alle Wochen
+              </Link>
+            </nav>
+          </div>
+          <Today now={now} week={week} slots={runningSlots} recipeOf={recipeOf} dated={!greeting} />
         </div>
-        <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
-          <Link
-            href={weekLink(addDays(week, -7))}
-            className="btn btn-small px-2.5"
-            aria-label="Vorige Woche"
-          >
-            <ArrowIcon back />
-          </Link>
-          {week !== thisWeek && (
-            <Link href={weekLink(thisWeek)} className="btn btn-small">
-              Aktuelle
+      ) : (
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div>
+            {greeting ? (
+              /*
+               * A large title, as on the first screen of an app: the day small above it, the
+               * greeting large with the name in the green of the logo, and the week below as
+               * the heading of the page.
+               */
+              <>
+                <p className="text-sm font-medium text-muted">
+                  {weekdayLong(now)}, {dayAndMonth(now)}
+                </p>
+                <p className="greeting mt-1">
+                  {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
+                </p>
+                <h1 className="mt-2 text-lg font-semibold tracking-tight text-muted">
+                  Euer Wochenplan
+                  <span aria-hidden className="mx-2 text-line">
+                    ·
+                  </span>
+                  <span className="text-ink">{weekRange(week)}</span>
+                </h1>
+              </>
+            ) : (
+              <>
+                <p className="eyebrow">Wochenplan</p>
+                <h1 className="title mt-1">{weekRange(week)}</h1>
+              </>
+            )}
+          </div>
+          <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
+            <Link
+              href={weekLink(addDays(week, -7))}
+              className="btn btn-small px-2.5"
+              aria-label="Vorige Woche"
+            >
+              <ArrowIcon back />
             </Link>
-          )}
-          <Link
-            href={weekLink(addDays(week, 7))}
-            className="btn btn-small px-2.5"
-            aria-label="Nächste Woche"
-          >
-            <ArrowIcon />
-          </Link>
-          <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
-            Alle Wochen
-          </Link>
-        </nav>
-      </div>
-
-      {runningSlots && !placing && !showExtras && (
-        <Today now={now} week={week} slots={runningSlots} recipeOf={recipeOf} />
+            {week !== thisWeek && (
+              <Link href={weekLink(thisWeek)} className="btn btn-small">
+                Aktuelle
+              </Link>
+            )}
+            <Link
+              href={weekLink(addDays(week, 7))}
+              className="btn btn-small px-2.5"
+              aria-label="Nächste Woche"
+            >
+              <ArrowIcon />
+            </Link>
+            <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
+              Alle Wochen
+            </Link>
+          </nav>
+        </div>
       )}
 
       <Balance lines={balance} />
@@ -440,24 +502,36 @@ function Wishes({
  * What there is to eat today, and what the weekend holds: the two things anyone in the
  * household asks of a week that is running.
  */
+/** The days `Today` speaks of: today, and what is still to come of the weekend. */
+function todayAndWeekend(now: IsoDate): IsoDate[] {
+  const monday = mondayOf(now);
+  return [now, ...[addDays(monday, 5), addDays(monday, 6)].filter((date) => date > now)];
+}
+
+/** Whether there is anything planned for today or the weekend to show. */
+function hasToday(slots: readonly PlanSlot[], now: IsoDate): boolean {
+  return todayAndWeekend(now).some((date) => slots.some((slot) => slot.date === date));
+}
+
 function Today({
   now,
   week,
   slots,
   recipeOf,
+  dated,
 }: {
   now: IsoDate;
   /** The week the page shows, which the recipes named here lead back to. */
   week: IsoDate;
   slots: PlanSlot[];
   recipeOf: ReadonlyMap<string, RecipeSummary>;
+  /** Whether the card says the date: not where the greeting above already does. */
+  dated: boolean;
 }) {
   const monday = mondayOf(now);
-  const weekend = [addDays(monday, 5), addDays(monday, 6)].filter((date) => date > now);
+  const weekend = todayAndWeekend(now).slice(1);
   const at = (date: IsoDate, meal: Meal) =>
     slots.find((slot) => slot.date === date && slot.meal === meal);
-  const planned = [now, ...weekend].some((date) => slots.some((slot) => slot.date === date));
-  if (!planned) return null;
   // Coffee on Sunday is said only when there is some.
   const mealsOn = (date: IsoDate) =>
     mealsOf(date).filter((meal) => meal !== "coffee" || at(date, meal));
@@ -469,10 +543,16 @@ function Today({
         : slotText(slot);
 
   return (
-    <section aria-label="Heute" className="card mt-5 px-4 py-4 sm:px-5">
+    <section aria-label="Heute" className="card px-4 py-4 sm:px-5">
       <h2 className="text-lg font-bold tracking-tight">
-        Heute, {weekdayLong(now)}
-        <span className="font-normal text-muted"> · {dayAndMonth(now)}</span>
+        {dated ? (
+          <>
+            Heute, {weekdayLong(now)}
+            <span className="font-normal text-muted"> · {dayAndMonth(now)}</span>
+          </>
+        ) : (
+          "Heute"
+        )}
       </h2>
       <ul className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2">
         {mealsOn(now).map((meal) => {

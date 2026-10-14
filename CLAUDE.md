@@ -369,7 +369,9 @@ Week plan
   "Plan bearbeiten" opens the whole plan again. Saving is a decision, not a date: a week
   that has begun is not locked by itself.
 - Above the plan of the running week stands what there is to eat today and what the weekend
-  holds (`Today`), also while the page already shows the coming week.
+  holds (`Today`), also while the page already shows the coming week. Once something is
+  planned for those days, it stands next to the greeting like a widget on a large screen,
+  and under it on a phone; otherwise the header is the greeting alone.
 - "Woche leeren" empties a week after asking: every meal and the extras (`resetWeek`).
   The rubber makes the sheet invisible with a class that `ResetWeek` takes off again as
   soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an
