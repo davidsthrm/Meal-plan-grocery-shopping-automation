@@ -321,7 +321,10 @@ Week plan
   optional: nothing is suggested on the plan, and choosing for it suggests cakes and desserts.
   Cakes and desserts are never suggested for lunch or dinner.
 - "Außerdem" holds recipes a week needs outside its meals (`plan_extra`): two cakes for an
-  invitation. They count for the shopping list, not for the balance.
+  invitation. They count for the shopping list, not for the balance. Each can name the day
+  of the week it is needed (`plan_extra.needed_on`, `PlanExtra.date`): it is then bought
+  for that day exactly like a meal on it. Without a day it is bought on the week's first
+  supermarket day.
 - A meal without a recipe can carry foods to buy (`plan_slot_food`): bread, cold cuts and a
   cucumber for a "Vesper". A food is a name, not an amount. It may name where it is bought
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
@@ -380,8 +383,11 @@ Week plan
   effort is not known is kept for the weekend. The household had many warm main dishes
   suggested for workday evenings that it could never cook then.
 - "Möchte ich kochen" marks a recipe someone wants to cook soon (`recipe.wanted_at`). It is
-  suggested before everything else, shown above the plan to be placed with one tap, and the
+  suggested before everything else, shown below the plan to be placed with one tap, and the
   mark goes as soon as the recipe is on a plan (`fulfilWishes`), as a meal or as an extra.
+  There can be dozens, so they are grouped by kind in the kind's pastel (`groupRecipes`
+  with `BY_KIND`), eight per kind until "weitere" shows all (`?wuensche=alle`). A grouping
+  by a group of tags (`byTag`) is ready for when the wishes should be sorted that way.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
   for the month most of its days are in. The week being planned is always listed.
@@ -562,9 +568,9 @@ Shopping list
   the catalog once, when it is written (`restock_item.fresh_place`), so that the header of
   every page can say where each entry goes without reading the catalog. While it has
   entries, the Merkzettel also lies among the shopping notes.
-- Besides the cooked meals the lists hold the week's extras, scaled like a meal and bought on
-  the week's first supermarket day, and the foods of meals without a recipe, by name and
-  without an amount. The exception is a food named as one piece of something bought by the piece:
+- Besides the cooked meals the lists hold the week's extras, scaled like a meal and bought for
+  their day like a meal, or without a day on the week's first supermarket day, and the foods
+  of meals without a recipe, by name and without an amount. The exception is a food named as one piece of something bought by the piece:
   "Gurke" for the catalog's "Gurken" is "1 Gurke" and adds up with what recipes need
   (`namesOnePiece`). Named in the plural it stays a name. A food bought somewhere else than the catalog says is its own line
   (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.

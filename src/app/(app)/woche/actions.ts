@@ -308,15 +308,25 @@ export async function changeExtraServings(form: FormData): Promise<void> {
   backToExtras(input.week);
 }
 
-/** Notes what an extra is for: "Einladung am Samstag". */
-export async function noteExtra(form: FormData): Promise<void> {
+/**
+ * Notes what an extra is for ("Einladung am Samstag") and the day of the week it is needed,
+ * or none: with a day it is bought for that day like a meal.
+ */
+export async function describeExtra(form: FormData): Promise<void> {
   const input = read(
-    z.object({ week: weekStart, recipe: recipeId, note: z.string().trim().max(80) }),
+    z.object({
+      week: weekStart,
+      recipe: recipeId,
+      note: z.string().trim().max(80),
+      date: z.union([z.literal(""), date]),
+    }),
     form,
   );
+  const day = input.date === "" ? null : input.date;
+  if (day !== null && mondayOf(day) !== input.week) throw new Error("A day outside its week.");
   await requireHousehold();
   const db = await createSessionClient();
-  await changeExtra(db, input.week, input.recipe, { note: input.note || null });
+  await changeExtra(db, input.week, input.recipe, { note: input.note || null, date: day });
   backToExtras(input.week);
 }
 

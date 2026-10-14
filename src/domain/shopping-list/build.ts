@@ -15,7 +15,14 @@ import {
 import { parseFreeEntry } from "./free-entry";
 import { purchaseFor } from "./rounding";
 import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
-import type { Contribution, ContributionSource, ManualEntry, ShoppingLine, Trip } from "./types";
+import {
+  dayOf,
+  type Contribution,
+  type ContributionSource,
+  type ManualEntry,
+  type ShoppingLine,
+  type Trip,
+} from "./types";
 
 export interface BuildInput {
   index: CatalogIndex;
@@ -30,7 +37,7 @@ export interface BuildInput {
    * bakery, unless said otherwise. Empty for a household that buys everything in one go.
    */
   onDemand?: readonly Place[];
-  /** The supermarket day the extras are bought on. Without one, the first. */
+  /** The supermarket day the extras without a day are bought on. Without one, the first. */
   extrasDate?: IsoDate;
   manualEntries?: ManualEntry[];
   /**
@@ -103,9 +110,7 @@ interface Bucket {
 }
 
 function neededBy(contributions: Contribution[]): IsoDate | null {
-  const dates = contributions.flatMap((c) =>
-    c.source.type === "recipe" || c.source.type === "food" ? [c.source.date] : [],
-  );
+  const dates = contributions.flatMap((c) => dayOf(c.source) ?? []);
   return dates.length > 0 ? dates.reduce((a, b) => (a < b ? a : b)) : null;
 }
 
@@ -365,7 +370,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
 
   /**
    * Adds every line of a recipe, scaled, as needed on `date`. Without a date it is bought
-   * with the extras.
+   * with the extras that have none.
    */
   const addRecipe = (
     recipe: Recipe,
@@ -467,8 +472,10 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       recipeId: recipe.id,
       recipeTitle: recipe.title,
       note: extra.note,
+      date: extra.date ?? null,
     };
-    addRecipe(recipe, extra.servings, source, null);
+    // An extra for a day is bought for that day, exactly like a meal on it.
+    addRecipe(recipe, extra.servings, source, extra.date ?? null, extra.plannedOn);
   }
 
   for (const entry of input.manualEntries ?? []) {

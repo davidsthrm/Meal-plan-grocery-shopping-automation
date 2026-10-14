@@ -47,7 +47,7 @@ import {
   clearSlot,
   copyLastWeek,
   needsNoRecipe,
-  noteExtra,
+  describeExtra,
   planExtra,
   planRecipe,
   resetWeekPlan,
@@ -566,7 +566,8 @@ function Extras({
     <section aria-label="Außerdem" className="mt-4">
       <p className="text-muted">
         Was diese Woche gebraucht wird und zu keiner Mahlzeit gehört, etwa ein Kuchen für eine
-        Einladung. Es kommt mit auf die Einkaufsliste.
+        Einladung. Mit einem Tag wird es für diesen Tag eingekauft wie eine Mahlzeit, ohne Tag beim
+        ersten Einkauf der Woche.
       </p>
       {extras.length > 0 && (
         <ul className="card mt-3 divide-y divide-line">
@@ -575,12 +576,20 @@ function Extras({
             const title = recipe?.title ?? "Rezept";
             return (
               <li key={extra.recipeId} className="space-y-2 px-4 py-3">
-                <Link
-                  href={`/rezepte/${extra.recipeId}${fromPlan(week)}`}
-                  className="font-semibold decoration-line underline-offset-4 hover:underline"
-                >
-                  {title}
-                </Link>
+                <p>
+                  <Link
+                    href={`/rezepte/${extra.recipeId}${fromPlan(week)}`}
+                    className="font-semibold decoration-line underline-offset-4 hover:underline"
+                  >
+                    {title}
+                  </Link>
+                  {extra.date && (
+                    <span className="text-muted">
+                      {" · für "}
+                      {weekdayLong(extra.date)}
+                    </span>
+                  )}
+                </p>
                 <Amount
                   action={changeExtraServings}
                   fields={{ week, recipe: extra.recipeId }}
@@ -588,20 +597,34 @@ function Extras({
                   unit={recipe?.servings?.unit ?? null}
                   title={title}
                 />
-                <form action={noteExtra} className="flex gap-2">
+                <form
+                  action={describeExtra}
+                  className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[13rem_1fr_auto]"
+                >
                   <input type="hidden" name="week" value={week} />
                   <input type="hidden" name="recipe" value={extra.recipeId} />
-                  <label className="flex-1">
+                  <label className="col-span-2 sm:col-span-1">
+                    <span className="sr-only">An welchem Tag wird {title} gebraucht?</span>
+                    <select name="date" defaultValue={extra.date ?? ""} className="field">
+                      <option value="">Ohne Tag</option>
+                      {weekDates(week).map((day) => (
+                        <option key={day} value={day}>
+                          {weekdayLong(day)}, {dayAndMonth(day)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
                     <span className="sr-only">Wofür ist {title}?</span>
                     <input
                       name="note"
                       defaultValue={extra.note ?? ""}
                       maxLength={80}
                       className="field"
-                      placeholder="Wofür? z. B. Einladung am Samstag"
+                      placeholder="Wofür? z. B. Einladung"
                     />
                   </label>
-                  <SubmitButton className="btn btn-small">Merken</SubmitButton>
+                  <SubmitButton className="btn btn-small min-h-11">Merken</SubmitButton>
                 </form>
               </li>
             );

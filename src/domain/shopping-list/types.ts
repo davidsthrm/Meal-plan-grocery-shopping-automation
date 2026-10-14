@@ -18,11 +18,22 @@ export type ContributionSource =
       recipeId: string;
       recipeTitle: string;
     }
-  /** A recipe the week needs outside its meals. */
-  | { type: "extra"; recipeId: string; recipeTitle: string; note: string | null }
+  /** A recipe the week needs outside its meals, on a day or (null) on none in particular. */
+  | {
+      type: "extra";
+      recipeId: string;
+      recipeTitle: string;
+      note: string | null;
+      date: IsoDate | null;
+    }
   /** Something to buy for a meal without a recipe: bread for the "Vesper". */
   | { type: "food"; slotId: string; date: IsoDate; meal: Meal; mealLabel: string }
   | { type: "manual"; entryId: string };
+
+/** The day what a source buys for is eaten or needed. Null for what belongs to no day. */
+export function dayOf(source: ContributionSource): IsoDate | null {
+  return source.type === "manual" ? null : source.date;
+}
 
 /** One reason an ingredient is on the list, with the amount that reason asks for. */
 export interface Contribution {

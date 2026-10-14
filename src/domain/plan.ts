@@ -54,6 +54,13 @@ export interface PlanExtra {
   servings: number;
   /** What it is for. */
   note: string | null;
+  /**
+   * The day it is needed, within its week: it is bought for that day like a meal. Null
+   * for no day in particular: bought on the week's first supermarket day.
+   */
+  date?: IsoDate | null;
+  /** The day it was added, as for a recipe on a meal. */
+  plannedOn?: IsoDate | null;
 }
 
 /**

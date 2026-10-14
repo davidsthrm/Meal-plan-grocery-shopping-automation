@@ -81,11 +81,14 @@ test("a week can need recipes that belong to none of its meals", async ({ page }
   await expect(extras).toContainText("1 Springform (Ø 26 cm)");
   await page.getByRole("button", { name: "Mehr von Zitronen-Mohn-Kuchen" }).click();
   await expect(extras).toContainText("2 Springform (Ø 26 cm)");
-  await page.getByLabel("Wofür ist Zitronen-Mohn-Kuchen?").fill("Einladung am Samstag");
+  await page.getByLabel("Wofür ist Zitronen-Mohn-Kuchen?").fill("Einladung");
+  // Needed on Saturday: bought for Saturday like a meal on it.
+  await page
+    .getByLabel("An welchem Tag wird Zitronen-Mohn-Kuchen gebraucht?")
+    .selectOption({ label: "Samstag, 6. März" });
   await page.getByRole("button", { name: "Merken" }).click();
-  await expect(page.getByLabel("Wofür ist Zitronen-Mohn-Kuchen?")).toHaveValue(
-    "Einladung am Samstag",
-  );
+  await expect(page.getByLabel("Wofür ist Zitronen-Mohn-Kuchen?")).toHaveValue("Einladung");
+  await expect(extras).toContainText("für Samstag");
   await expect(page.getByRole("link", { name: "Außerdem (1)" })).toBeVisible();
 
   // The meals of the week are untouched by it.
