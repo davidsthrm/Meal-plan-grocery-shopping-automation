@@ -180,16 +180,16 @@ test("the drugstore's note is written by hand: what, how many, for whom", async 
   await page.getByLabel("Menge").fill("2");
   await page.getByLabel("Für wen").fill("Lena");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await expect(group(page, DRUGSTORE, "Körperpflege")).toContainText("2 Duschgel für Lena");
+  await expect(group(page, DRUGSTORE, "Körperpflege")).toContainText("2x Duschgel für Lena");
 
   await page.getByLabel("Was").fill("Klopapier");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await expect(group(page, DRUGSTORE, "Haushalt")).toContainText("1 Klopapier");
+  await expect(group(page, DRUGSTORE, "Haushalt")).toContainText("Klopapier");
 
   // Ticked like any line; moving it to a food note is not offered.
-  await page.getByRole("button", { name: "2 Duschgel für Lena: erledigt" }).click();
+  await page.getByRole("button", { name: "2x Duschgel für Lena: erledigt" }).click();
   await expect(dm).toContainText("1 offen, 1 erledigt");
-  await dm.getByText("1 Klopapier").click();
+  await dm.getByText("Klopapier", { exact: true }).click();
   await expect(dm.getByText("Lieber woanders kaufen:")).toHaveCount(0);
   await dm.getByRole("button", { name: "Klopapier entfernen" }).click();
   await expect(dm).not.toContainText("Klopapier");
@@ -213,15 +213,15 @@ test("what was not bought at the drugstore comes along to its next note", async 
   await page.getByRole("button", { name: "Hinzufügen" }).click();
   await page.getByLabel("Was").fill("Shampoo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await page.getByRole("button", { name: "1 Shampoo: erledigt" }).click();
+  await page.getByRole("button", { name: "Shampoo: erledigt" }).click();
   await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 erledigt");
 
   // Not bought that day, the deodorant is on the next dm note; the shampoo was bought.
   await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
   const dm = page.getByRole("region", { name: /^dm, / });
-  await expect(dm).toContainText("1 Deo");
+  await expect(dm).toContainText("Deo");
   await expect(dm).not.toContainText("Shampoo");
-  await page.getByRole("button", { name: "1 Deo: erledigt" }).click();
+  await page.getByRole("button", { name: "Deo: erledigt" }).click();
   await expect(dm).toContainText("0 offen, 1 erledigt");
 });
 

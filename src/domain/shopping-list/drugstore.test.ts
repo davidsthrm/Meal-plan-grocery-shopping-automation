@@ -66,6 +66,15 @@ describe("readDrugstoreEntry", () => {
     }
   });
 
+  it("takes how many from the item where the field says no more than one", () => {
+    expect(readDrugstoreEntry({ item: "zwei Zahnpasta", quantity: "1", forWhom: "" })).toEqual({
+      text: "Zahnpasta",
+      quantity: 2,
+      forWhom: null,
+    });
+    expect(readDrugstoreEntry({ item: "2 Deo", quantity: "3", forWhom: "" })?.quantity).toBe(3);
+  });
+
   it("adds nothing when no item was written", () => {
     expect(readDrugstoreEntry({ item: "  ", quantity: "2", forWhom: "Lena" })).toBeNull();
   });
@@ -83,10 +92,10 @@ describe("the drugstore's note", () => {
     "dm",
   );
 
-  it("writes every entry as a line: how many, what, for whom", () => {
+  it("writes every entry as a line: how many where more than one, what, for whom", () => {
     const view = presentDrugstore(lines, {});
     const text = view.groups.flatMap((group) => group.lines.map((line) => line.text));
-    expect(text).toEqual(["1 Deo für Max", "1 Duschgel für Lena", "2 Zahnpasta", "Geschenkpapier"]);
+    expect(text).toEqual(["Deo für Max", "Duschgel für Lena", "2x Zahnpasta", "Geschenkpapier"]);
   });
 
   it("lists the sections in the order of the shop, and only those with something", () => {
@@ -118,6 +127,31 @@ describe("an entry from the Merkzettel", () => {
     expect(drugstoreEntryFromText("3x Duschgel")).toEqual({ text: "Duschgel", quantity: 3 });
     expect(drugstoreEntryFromText("Deo")).toEqual({ text: "Deo", quantity: null });
     expect(drugstoreEntryFromText("0 Deo")).toEqual({ text: "0 Deo", quantity: null });
+  });
+
+  it("reads how many written out in words", () => {
+    expect(drugstoreEntryFromText("zwei Zahnpasta")).toEqual({ text: "Zahnpasta", quantity: 2 });
+    expect(drugstoreEntryFromText("Drei Duschgel")).toEqual({ text: "Duschgel", quantity: 3 });
+    expect(drugstoreEntryFromText("eine Zahnbürste")).toEqual({ text: "Zahnbürste", quantity: 1 });
+    expect(drugstoreEntryFromText("fünf Rasierklingen")).toEqual({
+      text: "Rasierklingen",
+      quantity: 5,
+    });
+    expect(drugstoreEntryFromText("2 Stück Seife")).toEqual({ text: "Seife", quantity: 2 });
+    // A word that is no number is part of what is meant.
+    expect(drugstoreEntryFromText("Feuchte Tücher")).toEqual({
+      text: "Feuchte Tücher",
+      quantity: null,
+    });
+  });
+
+  it("shows two of something as 2x, as the handwritten note does", () => {
+    const [line] = drugstoreLines(
+      [{ id: "z", ...drugstoreEntryFromText("zwei Zahnpasta"), forWhom: null }],
+      SATURDAY,
+      "dm",
+    );
+    expect(presentDrugstore([line], {}).groups[0].lines[0].text).toBe("2x Zahnpasta");
   });
 
   it("knows what the drugstore sells", () => {

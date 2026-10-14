@@ -149,16 +149,41 @@ export interface DrugstoreEntry {
   from?: ShoppingTrip;
 }
 
+/** How many, as it is written out: "zwei Zahnpasta", "eine Zahnbürste". */
+const NUMBER_WORDS: Record<string, number> = {
+  ein: 1,
+  eine: 1,
+  einen: 1,
+  eins: 1,
+  zwei: 2,
+  drei: 3,
+  vier: 4,
+  fuenf: 5,
+  sechs: 6,
+  sieben: 7,
+  acht: 8,
+  neun: 9,
+  zehn: 10,
+  elf: 11,
+  zwoelf: 12,
+};
+
 /**
  * An entry as one line of text gives it, the way the Merkzettel holds it: a number in front
- * is how many ("2 Zahnpasta", "2x Duschgel"), the rest is what.
+ * is how many, in digits or in words ("2 Zahnpasta", "2x Duschgel", "zwei Zahnpasta"), the
+ * rest is what.
  */
 export function drugstoreEntryFromText(text: string): { text: string; quantity: number | null } {
-  const match = /^(\d{1,2})\s*[x×]?\s+(.+)$/i.exec(text.trim());
-  const quantity = match ? Number(match[1]) : null;
-  return match && quantity !== null && quantity >= 1 && quantity <= QUANTITY_MAX
-    ? { text: match[2].trim(), quantity }
-    : { text: text.trim(), quantity: null };
+  const written = text.trim().replace(/\s+/g, " ");
+  const match = /^(\d{1,2}|[a-zäöüß]+)\s*(?:x|×|mal|stück|stk\.?)?\s+(.+)$/i.exec(written);
+  if (match) {
+    const word = normalizeName(match[1]);
+    const quantity = /^\d+$/.test(word) ? Number(word) : (NUMBER_WORDS[word] ?? null);
+    if (quantity !== null && quantity >= 1 && quantity <= QUANTITY_MAX) {
+      return { text: match[2].trim(), quantity };
+    }
+  }
+  return { text: written, quantity: null };
 }
 
 /**
@@ -197,11 +222,13 @@ export function readDrugstoreEntry(form: {
   quantity: string;
   forWhom: string;
 }): Omit<DrugstoreEntry, "id"> | null {
-  const text = form.item.trim().replace(/\s+/g, " ").slice(0, DRUGSTORE_TEXT_MAX);
+  // "2 Zahnpasta" typed as the item says how many as well as the field.
+  const written = drugstoreEntryFromText(form.item);
+  const text = written.text.slice(0, DRUGSTORE_TEXT_MAX);
   if (text === "") return null;
   const number = Number(form.quantity.trim());
-  const quantity =
-    Number.isInteger(number) && number >= 1 && number <= QUANTITY_MAX ? number : null;
+  const asked = Number.isInteger(number) && number >= 1 && number <= QUANTITY_MAX ? number : null;
+  const quantity = written.quantity !== null && (asked ?? 1) === 1 ? written.quantity : asked;
   const forWhom = form.forWhom.trim().replace(/\s+/g, " ").slice(0, FOR_WHOM_MAX);
   return { text, quantity, forWhom: forWhom === "" ? null : forWhom };
 }
@@ -210,8 +237,8 @@ export function readDrugstoreEntry(form: {
 const sectionId = (section: DrugstoreSection) => `drogerie:${section}`;
 
 /**
- * The lines of a drugstore note: one per entry, as written, with its quantity in front and
- * whom it is for behind ("2 Duschgel für Lena"). `shopId` is where a line without a catalog
+ * The lines of a drugstore note: one per entry, as written, with how many in front where it
+ * is more than one and whom it is for behind ("2x Duschgel für Lena"). `shopId` is where a line without a catalog
  * ingredient is bought.
  */
 export function drugstoreLines(
@@ -229,7 +256,11 @@ export function drugstoreLines(
     neededBy: null,
     shopId,
     aisleGroupId: sectionId(drugstoreSection(entry.text)),
-    purchase: entry.quantity === null ? null : { quantity: entry.quantity, unit: "Stück" },
+    // As on the handwritten note: "2x Zahnpasta", and one of something is just its name.
+    purchase:
+      entry.quantity !== null && entry.quantity > 1
+        ? { quantity: entry.quantity, unit: "Packung" }
+        : null,
     amounts: [],
     hasUnquantified: false,
     contributions: [

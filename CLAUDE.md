@@ -579,7 +579,7 @@ Shopping list
 - A line typed onto a note stays on that note, unless it is moved.
 - The drugstore's note is written by hand only, never from the plan: what, how many and,
   if it is for someone in particular, for whom (`shopping_manual_entry.quantity`,
-  `for_whom`; "2 Duschgel für Lena"). Typing suggests typical drugstore items
+  `for_whom`; "2x Duschgel für Lena", one of something is just its name). Typing suggests typical drugstore items
   (`DRUGSTORE_ITEMS`), "Für wen" the names of the household's members. Each line is sorted
   into a section of the shop, Körperpflege to Haushalt (`drugstoreSection`: the longest
   known word in what was written wins, anything else is "Sonstiges"). Its lines are not
@@ -594,7 +594,8 @@ Shopping list
   where it is a typed line, and takes it off. Flour noted on a Saturday waits for Monday;
   carrots are bought at the market that day. What the drugstore sells (`isDrugstoreItem`,
   "Zahnpasta", also "Spülmittel" that the food catalog knows) goes to the next dm note, a
-  number in front as its quantity (`drugstoreEntryFromText`: "2 Duschgel"), and is sorted
+  number in front, in digits or words, as its quantity (`drugstoreEntryFromText`: "2
+  Duschgel", "zwei Zahnpasta"), and is sorted
   into its section there. Where an entry is bought fresh is looked up in
   the catalog once, when it is written (`restock_item.fresh_place`), so that the header of
   every page can say where each entry goes without reading the catalog. While it has
