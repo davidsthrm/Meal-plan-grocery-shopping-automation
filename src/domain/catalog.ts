@@ -127,6 +127,22 @@ export function findIngredient(index: CatalogIndex, text: string): Ingredient | 
   return key === "" ? undefined : index.ingredientByName.get(key);
 }
 
+/**
+ * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
+ * The catalog names things in the plural and lists the singular among the other names: a
+ * shorter name the plural starts with, at most two letters shorter ("Schalotte", "Ei").
+ */
+export function nameForOne(ingredient: Pick<Ingredient, "name" | "synonyms">): string {
+  const plural = ingredient.name.toLowerCase();
+  const singular = ingredient.synonyms.find((name) => {
+    const short = name.toLowerCase();
+    return (
+      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
+    );
+  });
+  return singular ?? ingredient.name;
+}
+
 /** Position of an aisle group inside a shop: the shop's own order wins over the default. */
 export function aisleSortOrder(index: CatalogIndex, shopId: string, aisleGroupId: string): number {
   const override = index.shopById.get(shopId)?.aisleSortOverrides[aisleGroupId];

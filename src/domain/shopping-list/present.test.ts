@@ -58,11 +58,11 @@ describe("presentList", () => {
   it("groups by shop, then aisle, and leaves out what is at home", () => {
     expect(texts()).toEqual({
       shops: [
-        ["Aldi", [["Ingwer", "2 Karotten"], ["Sahne"]]],
+        ["Aldi", [["1x Ingwer", "2x Karotten"], ["150 ml Sahne"]]],
         // Dairy, then the meat counter, then the bakery: this shop's own order.
-        ["EC", [["20 Eier", "Milch WS 1.29"], ["600 g Leberkäse"], ["Brot"]]],
+        ["EC", [["20x Eier", "Milch WS 1.29"], ["600 g Leberkäse"], ["Brot"]]],
       ],
-      later: ["4 Rindersteaks"],
+      later: ["4x Rindersteaks"],
       atHome: ["Salz"],
     });
   });
@@ -70,15 +70,15 @@ describe("presentList", () => {
   it("applies what the household changed", () => {
     const result = texts({
       "salz@main": { atHome: false },
-      "ingwer@main": { atHome: true },
+      "ingwer@main#Stück": { atHome: true },
       "sahne@main": { shopId: "ec", note: "die gute" },
       "milch@main": { note: null },
     });
     expect(result.shops).toEqual([
-      ["Aldi", [["2 Karotten"], ["Salz"]]],
-      ["EC", [["20 Eier", "Milch", "Sahne die gute"], ["600 g Leberkäse"], ["Brot"]]],
+      ["Aldi", [["2x Karotten"], ["Salz"]]],
+      ["EC", [["20x Eier", "Milch", "150 ml Sahne die gute"], ["600 g Leberkäse"], ["Brot"]]],
     ]);
-    expect(result.atHome).toEqual(["Ingwer"]);
+    expect(result.atHome).toEqual(["1x Ingwer"]);
   });
 
   it("keeps check-offs on the line without hiding it", () => {
@@ -114,13 +114,13 @@ describe("presentByAisle", () => {
   it("groups by kind of grocery only, whichever shop a thing comes from", () => {
     expect(groups()).toEqual({
       groups: [
-        ["Obst & Gemüse", ["Ingwer", "2 Karotten"]],
+        ["Obst & Gemüse", ["1x Ingwer", "2x Karotten"]],
         ["Brot & Backwaren", ["Brot"]],
         // Cream from one shop and eggs and milk from the other stand together.
-        ["Molkerei & Kühlregal", ["20 Eier", "Milch WS 1.29", "Sahne"]],
+        ["Molkerei & Kühlregal", ["20x Eier", "Milch WS 1.29", "150 ml Sahne"]],
         // The steaks would not keep until Sunday. They stand with the rest of the meat, and
         // the line says for which day they are bought.
-        ["Fleisch & Wurst", ["600 g Leberkäse", "4 Rindersteaks"]],
+        ["Fleisch & Wurst", ["600 g Leberkäse", "4x Rindersteaks"]],
       ],
       atHome: ["Salz"],
     });
@@ -131,9 +131,46 @@ describe("presentByAisle", () => {
   });
 
   it("applies what the household changed, like the list by shop", () => {
-    const view = groups({ "salz@main": { atHome: false }, "ingwer@main": { atHome: true } });
-    expect(view.groups[0]).toEqual(["Obst & Gemüse", ["2 Karotten"]]);
+    const view = groups({
+      "salz@main": { atHome: false },
+      "ingwer@main#Stück": { atHome: true },
+    });
+    expect(view.groups[0]).toEqual(["Obst & Gemüse", ["2x Karotten"]]);
     expect(view.groups.map((group) => group[0])).toContain("Gewürze, Öl & Essig");
-    expect(view.atHome).toEqual(["Ingwer"]);
+    expect(view.atHome).toEqual(["1x Ingwer"]);
+  });
+});
+
+describe("an amount written by hand", () => {
+  const carrots = lines.find((l) => l.key === "karotten@main")!;
+
+  it("stands in front of the name instead of the plan's", () => {
+    const view = resolveLine(carrots, { amount: { quantity: 5, unit: "Stück" } });
+    expect(view).toMatchObject({ text: "5x Karotten", edited: true });
+    expect(view.purchase).toEqual({ quantity: 5, unit: "Stück" });
+    // What the plan says is still there to compare.
+    expect(view.line.purchase).toEqual({ quantity: 2, unit: "Stück" });
+  });
+
+  it("names one piece in the singular, and any other unit by the catalog's name", () => {
+    expect(resolveLine(carrots, { amount: { quantity: 1, unit: "Stück" } }).text).toBe(
+      "1x Karotte",
+    );
+    expect(resolveLine(carrots, { amount: { quantity: 1, unit: "Bund" } }).text).toBe(
+      "1 Bund Karotten",
+    );
+  });
+
+  it("gives a line without an amount one", () => {
+    const bread = lines.find((l) => l.key === "brot@main")!;
+    expect(bread.purchase).toBeNull();
+    expect(resolveLine(bread, { amount: { quantity: 2, unit: "Stück" } }).text).toBe("2x Brot");
+  });
+
+  it("is the plan's amount again once it is taken back", () => {
+    expect(resolveLine(carrots, { amount: null })).toMatchObject({
+      text: "2x Karotten",
+      edited: false,
+    });
   });
 });

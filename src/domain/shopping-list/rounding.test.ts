@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Ingredient } from "../catalog";
-import { purchaseFor, roundUpTo } from "./rounding";
+import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
 
 const base: Ingredient = {
   id: "x",
@@ -33,8 +33,14 @@ describe("roundUpTo", () => {
 });
 
 describe("purchaseFor", () => {
-  it("shows nothing for ingredients that need no quantity", () => {
-    expect(purchaseFor({ ...base, buyingMode: "none" }, 300)).toBeNull();
+  it("shows what is needed of an ingredient without a buying unit, rounded to read well", () => {
+    expect(purchaseFor({ ...base, buyingMode: "none" }, 300)).toEqual({ quantity: 300, unit: "g" });
+    expect(purchaseFor({ ...base, buyingMode: "none" }, 137.5)).toEqual({
+      quantity: 140,
+      unit: "g",
+    });
+    const shallots: Ingredient = { ...base, defaultUnit: "Stück", buyingMode: "none" };
+    expect(purchaseFor(shallots, 0.5)).toEqual({ quantity: 1, unit: "Stück" });
   });
 
   it("rounds counts up to whole pieces", () => {
@@ -59,14 +65,37 @@ describe("purchaseFor", () => {
     expect(purchaseFor(meat, 610)).toEqual({ quantity: 650, unit: "g" });
   });
 
-  it("shows a pack multiplier only for more than one pack", () => {
+  it("shows the amount of what comes in packs, not the packs", () => {
     const cream: Ingredient = { ...base, defaultUnit: "ml", buyingMode: "pack", packSize: 200 };
-    expect(purchaseFor(cream, 150)).toBeNull();
-    expect(purchaseFor(cream, 200)).toBeNull();
-    expect(purchaseFor(cream, 250)).toEqual({ quantity: 2, unit: "Packung" });
+    expect(purchaseFor(cream, 150)).toEqual({ quantity: 150, unit: "ml" });
+    expect(purchaseFor(cream, 250)).toEqual({ quantity: 250, unit: "ml" });
+  });
+});
+
+describe("packsFor", () => {
+  const cream: Ingredient = { ...base, defaultUnit: "ml", buyingMode: "pack", packSize: 200 };
+
+  it("counts the packs an amount takes, at least one", () => {
+    expect(packsFor(cream, 150)).toBe(1);
+    expect(packsFor(cream, 200)).toBe(1);
+    expect(packsFor(cream, 250)).toBe(2);
+    expect(packsFor(cream, 0)).toBe(1);
+  });
+
+  it("is null for what is not bought in packs", () => {
+    expect(packsFor({ ...base, buyingMode: "weight" }, 100)).toBeNull();
   });
 
   it("rejects a pack ingredient without a pack size", () => {
-    expect(() => purchaseFor({ ...base, buyingMode: "pack" }, 100)).toThrow(/no pack size/);
+    expect(() => packsFor({ ...base, buyingMode: "pack" }, 100)).toThrow(/no pack size/);
+  });
+});
+
+describe("naturalStep", () => {
+  it("rounds little finely and much coarser, counted units to whole pieces", () => {
+    expect(naturalStep(40, "g")).toBe(5);
+    expect(naturalStep(437, "ml")).toBe(10);
+    expect(naturalStep(1234, "ml")).toBe(50);
+    expect(naturalStep(3, "Bund")).toBe(1);
   });
 });

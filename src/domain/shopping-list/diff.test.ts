@@ -12,7 +12,7 @@ const recipes: Recipe[] = [
     title: "Eintopf",
     kind: "cookbook",
     servings: { min: 4, max: 4, unit: null },
-    ingredients: [line("karotten", 2, "Stück"), line("sahne", 150, "ml")],
+    ingredients: [line("karotten", 2, "Stück"), line("sahne", 150, "ml"), line("eier", 2, "Stück")],
   },
   {
     id: "salat",
@@ -23,6 +23,7 @@ const recipes: Recipe[] = [
       line("karotten", 3, "Stück"),
       line("tomaten", 4, "Stück"),
       line("sahne", 40, "ml"),
+      line("eier", 3, "Stück"),
     ],
   },
 ];
@@ -45,24 +46,29 @@ describe("diffLines", () => {
 
   it("reports added lines and changed quantities when a meal is added", () => {
     const changes = diffLines(listFor(["eintopf"]), listFor(["eintopf", "salat"]));
-    expect(changes.map((c) => c.type)).toEqual(["changed", "added"]);
+    expect(changes.map((c) => c.type)).toEqual(["changed", "changed", "added"]);
     expect(changes[0]).toMatchObject({
       before: { key: "karotten@main", purchase: { quantity: 2 } },
       after: { key: "karotten@main", purchase: { quantity: 5 } },
     });
-    expect(changes[1]).toMatchObject({ line: { key: "tomaten@main" } });
+    expect(changes[1]).toMatchObject({
+      before: { key: "sahne@main", purchase: { quantity: 150, unit: "ml" } },
+      after: { key: "sahne@main", purchase: { quantity: 190, unit: "ml" } },
+    });
+    expect(changes[2]).toMatchObject({ line: { key: "tomaten@main" } });
   });
 
   it("does not report a change that leaves the shown quantity as it was", () => {
-    // 150 ml and 190 ml of cream are both one pack.
+    // Two eggs and five are both one box of ten.
     const changes = diffLines(listFor(["eintopf"]), listFor(["eintopf", "salat"]));
-    expect(changes.some((c) => c.type === "changed" && c.after.key === "sahne@main")).toBe(false);
+    expect(changes.some((c) => c.type === "changed" && c.after.key === "eier@main")).toBe(false);
   });
 
   it("reports removed lines when a meal is swapped", () => {
     const changes = diffLines(listFor(["salat"]), listFor(["eintopf"]));
     expect(changes).toMatchObject([
       { type: "changed", after: { key: "karotten@main", purchase: { quantity: 2 } } },
+      { type: "changed", after: { key: "sahne@main", purchase: { quantity: 150 } } },
       { type: "removed", line: { key: "tomaten@main" } },
     ]);
   });

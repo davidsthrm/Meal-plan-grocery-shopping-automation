@@ -8,7 +8,13 @@ import { SubmitButton } from "@/components/submit-button";
 import type { ProteinType } from "@/domain/library/summary";
 import { weekdayLong } from "@/domain/dates";
 import { TAG_GROUPS } from "@/domain/library/tags";
-import { amountText, lastCookedText, servingsText, sourceText } from "@/lib/recipe-text";
+import {
+  amountText,
+  ingredientText,
+  lastCookedText,
+  servingsText,
+  sourceText,
+} from "@/lib/recipe-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { readOrigin } from "@/lib/origin";
@@ -65,7 +71,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     ownTags.filter((tag) => tag.group_name === group),
   ).map((tag) => ({ ref: tag.key ?? tag.id, name: tag.name }));
   const wanted = recipe.wanted_at !== null;
-  const names = new Map(ingredients.map((i) => [i.id, i.name]));
+  const catalog = new Map(ingredients.map((i) => [i.id, i]));
   const photoRows = must(photos, "load photos");
   const urls = await viewUrls(
     photoRows.flatMap((photo) => [
@@ -177,19 +183,24 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
         )}
       </div>
       <ul className="card divide-y divide-line">
-        {must(lines, "load lines").map((line) => (
-          <li key={line.id} className="flex gap-3 px-4 py-2">
-            <span className="w-24 shrink-0 text-right text-muted">
-              {amountText(line.quantity, line.quantity_max, line.unit)}
-            </span>
-            <span>
-              {line.ingredient_id ? names.get(line.ingredient_id) : line.original_text}
-              {line.note && <span className="text-muted">, {line.note}</span>}
-              {line.alternative_to && <span className="text-muted"> (Alternative)</span>}
-              {line.is_optional && <span className="text-muted"> (nach Belieben)</span>}
-            </span>
-          </li>
-        ))}
+        {must(lines, "load lines").map((line) => {
+          const known = line.ingredient_id ? catalog.get(line.ingredient_id) : undefined;
+          return (
+            <li key={line.id} className="flex gap-3 px-4 py-2">
+              <span className="w-24 shrink-0 text-right text-muted">
+                {amountText(line.quantity, line.quantity_max, line.unit)}
+              </span>
+              <span>
+                {known
+                  ? ingredientText(known, line.quantity, line.quantity_max, line.unit)
+                  : line.original_text}
+                {line.note && <span className="text-muted">, {line.note}</span>}
+                {line.alternative_to && <span className="text-muted"> (Alternative)</span>}
+                {line.is_optional && <span className="text-muted"> (nach Belieben)</span>}
+              </span>
+            </li>
+          );
+        })}
       </ul>
 
       {recipe.source_text && (

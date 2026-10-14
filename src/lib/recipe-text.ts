@@ -1,7 +1,8 @@
 import { dayAndMonth, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { effortOf, type Effort } from "@/domain/library/tags";
-import { formatAmount } from "@/domain/shopping-list/format";
+import { nameForOne, type Ingredient } from "@/domain/catalog";
+import { formatAmount, formatNumber } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
 
 const EFFORT_NAME: Record<Effort, string> = {
@@ -47,14 +48,32 @@ export function sourceText(book: string | null, page: number | null): string {
   return "";
 }
 
-/** The amount of a recipe line: "250 g", "2–3 Stück", or nothing. */
+/**
+ * The amount of a recipe line: "250 g", "2–3 Zehen", or nothing. Pieces are a bare number,
+ * as a cookbook prints them: "1 Schalotte", not "1 Stück Schalotten".
+ */
 export function amountText(
   quantity: number | null,
   quantityMax: number | null,
   unit: Unit | null,
 ): string {
   if (quantity === null || unit === null) return "";
-  if (quantityMax === null) return formatAmount({ quantity, unit });
-  const upper = formatAmount({ quantity: quantityMax, unit });
-  return `${String(quantity).replace(".", ",")}–${upper}`;
+  const amount = (value: number) =>
+    unit === "Stück" ? formatNumber(value) : formatAmount({ quantity: value, unit });
+  if (quantityMax === null) return amount(quantity);
+  return `${formatNumber(quantity)}–${amount(quantityMax)}`;
+}
+
+/**
+ * The name of a recipe line's ingredient: one piece in the singular where the catalog knows
+ * the word ("1 Schalotte"), anything else by the catalog's name.
+ */
+export function ingredientText(
+  ingredient: Pick<Ingredient, "name" | "synonyms">,
+  quantity: number | null,
+  quantityMax: number | null,
+  unit: Unit | null,
+): string {
+  const most = quantityMax ?? quantity;
+  return unit === "Stück" && most !== null && most <= 1 ? nameForOne(ingredient) : ingredient.name;
 }

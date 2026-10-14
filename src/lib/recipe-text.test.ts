@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastCookedText, timeText } from "./recipe-text";
+import { amountText, ingredientText, lastCookedText, timeText } from "./recipe-text";
 
 describe("timeText", () => {
   it("says the printed minutes where the cookbook prints them", () => {
@@ -25,5 +25,26 @@ describe("lastCookedText", () => {
 
   it("says so when the recipe was never cooked", () => {
     expect(lastCookedText(null, "2026-10-14")).toBe("Noch nie gekocht");
+  });
+});
+
+describe("a recipe line", () => {
+  const shallots = { name: "Schalotten", synonyms: ["Schalotte"] };
+
+  it("writes pieces as a bare number and one piece in the singular", () => {
+    // It read "1 Stück Schalotten".
+    expect(amountText(1, null, "Stück")).toBe("1");
+    expect(ingredientText(shallots, 1, null, "Stück")).toBe("Schalotte");
+    expect(ingredientText(shallots, 0.5, null, "Stück")).toBe("Schalotte");
+    expect(ingredientText(shallots, 2, null, "Stück")).toBe("Schalotten");
+    expect(ingredientText(shallots, 1, 2, "Stück")).toBe("Schalotten");
+  });
+
+  it("keeps every other unit with the amount", () => {
+    expect(amountText(250, null, "g")).toBe("250 g");
+    expect(amountText(2, 3, "Zehe")).toBe("2–3 Zehen");
+    expect(amountText(1.5, 2, "Stück")).toBe("1,5–2");
+    expect(ingredientText(shallots, 1, null, "Bund")).toBe("Schalotten");
+    expect(amountText(null, null, null)).toBe("");
   });
 });

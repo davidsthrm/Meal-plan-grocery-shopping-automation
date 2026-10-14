@@ -69,7 +69,13 @@ export interface ShoppingLine {
    */
   key: string;
   ingredientId: string | null;
+  /** The name the line goes by for its amount: "Schalotte" for one, "Schalotten" else. */
   label: string;
+  /**
+   * The catalog's name for one piece and for more, so that an amount changed by hand is
+   * named right. Null for a line without a catalog ingredient.
+   */
+  forms: { one: string; many: string } | null;
   /** The note the line is on: a place on a day. */
   shoppingDate: IsoDate;
   place: Place;
@@ -83,8 +89,13 @@ export interface ShoppingLine {
   /** True when the shop was named on purpose: bread for a cold supper from the bakery. */
   shopByChoice?: boolean;
   aisleGroupId: string;
-  /** What to show before the name. Null means the name alone is enough. */
+  /**
+   * The amount needed, in the ingredient's own unit, as it stands before the name. Null when
+   * no recipe gives one ("Petersilie") or all ask for a spoonful only ("Salz").
+   */
   purchase: Amount | null;
+  /** For what is bought in packs: how many. Said with the exact amount, not on the line. */
+  packs: number | null;
   /** Exact sums, one per dimension that could not be merged. Shown on tap. */
   amounts: Amount[];
   /** True when at least one recipe asks for this without a quantity ("Salz"). */
@@ -102,7 +113,10 @@ export interface LineState {
   atHome?: boolean;
   checked?: boolean;
   note?: string | null;
+  /** The supermarket it is bought at this week, where it is not the household's main one. */
   shopId?: string | null;
+  /** The amount the household wrote over the one worked out from the plan. */
+  amount?: Amount | null;
 }
 
 export type { Amount, Unit };
