@@ -12,26 +12,36 @@ const WEEKDAYS_LONG = [
   "Sonntag",
 ] as const;
 
+/** A weekday as a chip to tick, the same for every place. */
+const CHIP =
+  "chip min-w-11 cursor-pointer justify-center px-0 has-checked:border-accent has-checked:bg-accent-soft has-checked:text-accent has-focus-visible:outline-2 has-focus-visible:outline-accent";
+
 /**
- * The day the household goes to the drugstore: one weekday. Its note is there every week and
- * is written by hand. Read back with `readWeekday` from `tag-drugstore`.
+ * The day the household goes to the drugstore: a row of weekdays like the others, of which
+ * one is ticked. Its note is there every week and is written by hand. Read back with
+ * `readWeekday` from `tag-drugstore`.
  */
 export function DrugstoreDayField({ days }: { days: readonly ShoppingDay[] }) {
+  const chosen = drugstoreWeekday(days);
   return (
-    <label className="block">
-      <span className="label">{PLACE_NAME.drugstore}</span>
-      <select
-        name="tag-drugstore"
-        defaultValue={drugstoreWeekday(days)}
-        className="field w-auto min-w-44"
-      >
-        {WEEKDAYS_LONG.map((name, at) => (
-          <option key={name} value={at + 1}>
+    <fieldset>
+      <legend className="label">{PLACE_NAME.drugstore}</legend>
+      <div className="flex flex-wrap gap-1.5">
+        {WEEKDAYS.map((name, at) => (
+          <label key={name} className={CHIP}>
+            <input
+              type="radio"
+              name="tag-drugstore"
+              value={at + 1}
+              defaultChecked={chosen === at + 1}
+              aria-label={`${PLACE_NAME.drugstore} am ${WEEKDAYS_LONG[at]}`}
+              className="sr-only"
+            />
             {name}
-          </option>
+          </label>
         ))}
-      </select>
-    </label>
+      </div>
+    </fieldset>
   );
 }
 
@@ -47,10 +57,7 @@ export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
           <legend className="label">{PLACE_NAME[place]}</legend>
           <div className="flex flex-wrap gap-1.5">
             {WEEKDAYS.map((name, at) => (
-              <label
-                key={name}
-                className="chip min-w-11 cursor-pointer justify-center px-0 has-checked:border-accent has-checked:bg-accent-soft has-checked:text-accent has-focus-visible:outline-2 has-focus-visible:outline-accent"
-              >
+              <label key={name} className={CHIP}>
                 <input
                   type="checkbox"
                   name={`tage-${place}`}
