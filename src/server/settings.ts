@@ -17,6 +17,12 @@ export async function storeShoppingDays(
   if (stored.error) throw new Error(`store shopping days: ${stored.error.message}`);
 }
 
+/** Renames the household: "Stührmann". Row level security keeps this to the member's own. */
+export async function renameHousehold(db: Db, householdId: string, name: string): Promise<void> {
+  const stored = await db.from("household").update({ name }).eq("id", householdId);
+  if (stored.error) throw new Error(`rename household: ${stored.error.message}`);
+}
+
 /** Stores the weekday the household goes to the drugstore on. */
 export async function storeDrugstoreWeekday(
   db: Db,

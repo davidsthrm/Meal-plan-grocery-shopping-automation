@@ -7,7 +7,12 @@ import { readName } from "@/domain/family";
 import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
 import { requireHousehold } from "@/server/auth";
 import { createInvite, renameSelf, withdrawInvite } from "@/server/family";
-import { storeDrugstoreWeekday, storeFreshPlaces, storeShoppingDays } from "@/server/settings";
+import {
+  renameHousehold,
+  storeDrugstoreWeekday,
+  storeFreshPlaces,
+  storeShoppingDays,
+} from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
 
 /** What the household sets once. Each action is the target of a plain form on the page. */
@@ -41,6 +46,14 @@ export async function saveFreshPlaces(form: FormData): Promise<void> {
   }
   await storeFreshPlaces(await createSessionClient(), places);
   back("frisch", { ok: "frisch" });
+}
+
+/** Names the household: "Stührmann". An empty name changes nothing. */
+export async function saveHouseholdName(form: FormData): Promise<void> {
+  const household = await requireHousehold();
+  const name = readName(String(form.get("household") ?? ""));
+  if (name !== "") await renameHousehold(await createSessionClient(), household.id, name);
+  back("familie");
 }
 
 /** Sets how the signed-in member is called in the household. */
