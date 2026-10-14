@@ -10,9 +10,13 @@ test("the library has a few shelves and a directory to narrow it down", async ({
   await page.goto("/rezepte");
   await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
   await expect(page.getByText("20 Rezepte im Kochbuch")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toContainText(
-    "Gemüse-Lasagne",
-  );
+  // Favourites and wishes have a page of their own, and recipes are added under Import.
+  await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Möchte ich kochen" })).toHaveCount(0);
+  await expect(
+    page.getByRole("group", { name: "Filter" }).getByRole("link", { name: "Favoriten" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Rezept hinzufügen" })).toHaveCount(0);
 
   // The directory says how many recipes are behind each way to narrow the library down.
   const browse = page.getByRole("region", { name: "Stöbern" });
@@ -31,7 +35,7 @@ test("the library has a few shelves and a directory to narrow it down", async ({
   await expect(page.getByRole("link", { name: /Lachs mit Currysahne/ })).toBeVisible();
 
   await page.getByRole("link", { name: "Alle Filter zurücksetzen" }).click();
-  await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Stöbern" })).toBeVisible();
 
   // A tag narrows the library down like everything else, and two tags mean both.
   await page.goto("/rezepte?tag=herbst");
@@ -85,16 +89,16 @@ test("the search finds a title however it is spelled", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("Kein Rezept passt dazu.");
 });
 
-test("a favourite is one tap and leads its shelves from then on", async ({ page }) => {
+test("a favourite is one tap and has a page of its own", async ({ page }) => {
   await page.goto("/rezepte?q=Pfeffersteak");
   await page.getByRole("link", { name: /Pfeffersteak/ }).click();
   await page.getByRole("button", { name: "Als Favorit merken" }).click();
   await expect(page.getByRole("button", { name: "Favorit", exact: true })).toBeVisible();
 
+  // An old link to the favourites under "Entdecken" leads to their page.
+  await page.goto("/rezepte?favoriten=1");
+  await expect(page).toHaveURL(/\/favoriten/);
   await page.goto("/rezepte");
-  await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toContainText(
-    "Pfeffersteak",
-  );
 
   // The favourites have a page of their own, sorted by what they are.
   await page

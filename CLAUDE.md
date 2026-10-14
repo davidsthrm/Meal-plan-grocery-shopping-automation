@@ -439,9 +439,12 @@ Library
   shares the page with others, with a link to the whole page below.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows a few shelves that change with the day (`discover`):
-  what someone wants to cook, favourites, quick meals, what is tagged for the season, long
-  not cooked, new. A shelf shows ten recipes, favourites first, the others in an order that
-  changes by the day. Below them "Stöbern" is a directory (`directory`): every category,
+  quick meals, what is tagged for the season, long not cooked, new. They bring up what nobody
+  has marked yet (`isMarked`): favourites and what someone wants to cook are on "Favoriten"
+  and on no shelf. A shelf shows ten recipes in an order that changes by the day; its "Alle"
+  link lists everything behind it, marked or not. "Entdecken" has no favourites chip
+  (`/rezepte?favoriten=1` leads to `/favoriten`) and no button to add a recipe: that is
+  under Import ("Ohne Foto: Rezept eintippen"). Below the shelves "Stöbern" is a directory (`directory`): every category,
   tag, diet and cookbook as a tile with the number of recipes behind it. A library of up to
   thirty recipes is also shown whole.
 - "Favoriten" has a page of its own: on top what someone wants to cook, then the favourites

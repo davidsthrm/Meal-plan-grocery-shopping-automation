@@ -26,8 +26,11 @@ interface Props {
   keep?: Record<string, string>;
   /** Set where a recipe is being chosen for a plan. See `LiveSearch`. */
   plan?: { action: (form: FormData) => Promise<void>; fields: Record<string, string> };
-  /** Leave out the favourites chip, on a page that shows nothing else. */
-  favoritesOnly?: boolean;
+  /**
+   * What the bar does with favourites: a chip to narrow down to them, "only" on the page that
+   * shows nothing else, and "none" where favourites have no place (Entdecken).
+   */
+  favorites?: "chip" | "only" | "none";
 }
 
 /**
@@ -43,8 +46,9 @@ export function RecipeFilterBar({
   tagGroups,
   keep = {},
   plan,
-  favoritesOnly = false,
+  favorites = "chip",
 }: Props) {
+  const favoritesOnly = favorites === "only";
   const href = (patch: Partial<RecipeFilter>) =>
     `${path}?${new URLSearchParams({ ...keep, ...filterParams({ ...filter, ...patch }) })}`;
   const chip = (on: boolean) => `chip ${on ? "chip-on" : ""}`;
@@ -70,7 +74,7 @@ export function RecipeFilterBar({
       />
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter">
-        {!favoritesOnly && (
+        {favorites === "chip" && (
           <Link
             href={href({ favorites: !filter.favorites })}
             className={chip(filter.favorites)}

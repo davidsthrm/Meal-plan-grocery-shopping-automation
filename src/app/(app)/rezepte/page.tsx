@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PictogramIcon } from "@/components/pictogram";
 import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
@@ -24,6 +25,10 @@ const SMALL = 30;
 export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const params = await props.searchParams;
   const filter = readFilter(params);
+  // Favourites have a page of their own; an old link to them here leads there.
+  if (filter.favorites) {
+    redirect(`/favoriten?${new URLSearchParams(filterParams({ ...filter, favorites: false }))}`);
+  }
   const shown = Math.max(STEP, Number(params.n) || STEP);
   const db = await createSessionClient();
   const [library, waitingRows] = await Promise.all([
@@ -48,17 +53,10 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div>
-          <p className="eyebrow">
-            {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
-          </p>
-          <h1 className="title mt-1">Entdecken</h1>
-        </div>
-        <Link href="/rezepte/neu" className="btn btn-small">
-          Rezept hinzufügen
-        </Link>
-      </div>
+      <p className="eyebrow">
+        {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
+      </p>
+      <h1 className="title mt-1">Entdecken</h1>
 
       {waiting > 0 && (
         <Link
@@ -85,6 +83,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
             categories={categories}
             books={books}
             tagGroups={tagGroups}
+            favorites="none"
           />
         </div>
       )}

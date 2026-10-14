@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byCategory, directory, discover, seasonOf } from "./discover";
+import { byCategory, directory, discover, isMarked, seasonOf } from "./discover";
 import { filterRecipes } from "./filter";
 import { summary } from "./testing";
 
@@ -11,7 +11,7 @@ const categories = [
 const old = { addedOn: "2026-01-05" };
 const recipes = [
   summary("lasagne", { ...old, prepMinutes: 60, tags: ["aufwendig", "herbst"] }),
-  summary("lachs", { ...old, proteinType: "fish", prepMinutes: 20, isFavorite: true }),
+  summary("lachs", { ...old, proteinType: "fish", prepMinutes: 20 }),
   summary("steak", { ...old, proteinType: "red_meat", sourceBook: "Freude am Kochen" }),
   summary("kuchen", { ...old, category: "kuchen", prepMinutes: 15, sourceBook: null }),
   summary("neu", { addedOn: "2026-10-10", proteinType: "poultry", tags: ["schnell"] }),
@@ -23,17 +23,21 @@ const shelf = (key: string, list = recipes, patch = {}) =>
 describe("discover", () => {
   it("puts a few shelves on top that change with the day, and leaves out empty ones", () => {
     expect(discover(recipes, options).map((entry) => [entry.key, entry.total])).toEqual([
-      ["favoriten", 1],
       ["schnell", 1],
       ["saison", 1],
       ["neu", 1],
     ]);
   });
 
-  it("leads with what someone wants to cook", () => {
-    const wished = recipes.map((recipe) => ({ ...recipe, wanted: recipe.id === "steak" }));
-    const [first] = discover(wished, options);
-    expect(first).toMatchObject({ key: "wunsch", title: "Möchte ich kochen", total: 1 });
+  it("brings up what nobody has marked: favourites and wishes have a page of their own", () => {
+    const marked = recipes.map((recipe) => ({
+      ...recipe,
+      isFavorite: recipe.id === "lachs",
+      wanted: recipe.id === "lasagne",
+    }));
+    const shelves = discover(marked, options);
+    expect(shelves.map((entry) => entry.key)).toEqual(["neu"]);
+    expect(shelves.flatMap((entry) => entry.recipes).some(isMarked)).toBe(false);
   });
 
   it("shows what is tagged for the season of the day", () => {
@@ -42,28 +46,37 @@ describe("discover", () => {
   });
 
   it("gives a shelf the filter that lists all of it, where a filter can say it", () => {
-    for (const entry of discover(recipes, options)) {
-      if (entry.filter === null) continue;
-      expect(filterRecipes(recipes, entry.filter).length, entry.key).toBe(entry.total);
+    // What the filter lists includes the favourites the shelf leaves out.
+    const marked = [...recipes, summary("eintopf", { ...old, tags: ["herbst"], isFavorite: true })];
+    for (const list of [recipes, marked]) {
+      for (const entry of discover(list, options)) {
+        if (entry.filter === null) continue;
+        expect(filterRecipes(list, entry.filter).length, entry.key).toBe(entry.total);
+      }
     }
+    expect(shelf("saison", marked)).toMatchObject({ total: 2, recipes: [{ id: "lasagne" }] });
   });
 
   it("calls only meals quick, not a cake that is stirred in a quarter of an hour", () => {
     expect(shelf("schnell")?.recipes.map((recipe) => recipe.id)).toEqual(["lachs"]);
   });
 
-  it("shows a few recipes of a large shelf, favourites first, others changing by the day", () => {
+  it("shows a few recipes of a large shelf, changing by the day", () => {
     const many = Array.from({ length: 40 }, (_, i) =>
       summary(`r${i}`, { ...old, tags: ["herbst"] }),
     );
-    many[17] = { ...many[17], isFavorite: true };
     const monday = shelf("saison", many, { size: 5 })!;
     expect(monday.total).toBe(40);
     expect(monday.recipes).toHaveLength(5);
-    expect(monday.recipes[0].id).toBe("r17");
     const tuesday = shelf("saison", many, { size: 5, today: "2026-10-13" })!;
-    expect(tuesday.recipes[0].id).toBe("r17");
     expect(tuesday.recipes.map((r) => r.id)).not.toEqual(monday.recipes.map((r) => r.id));
+  });
+
+  it("counts on a shelf without a filter only what it can show", () => {
+    const quick = Array.from({ length: 3 }, (_, i) =>
+      summary(`q${i}`, { ...old, prepMinutes: 10, isFavorite: i === 0 }),
+    );
+    expect(shelf("schnell", quick)).toMatchObject({ total: 2 });
   });
 
   it("brings up what was cooked long ago, longest ago first", () => {
