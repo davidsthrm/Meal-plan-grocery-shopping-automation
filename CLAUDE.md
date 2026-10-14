@@ -451,8 +451,9 @@ Library
   favourite or takes the mark away, without opening it. The heart is a form next to the
   card's link, not inside it, and both lie in the card that lifts. A recipe made a favourite
   on "Entdecken" leaves its shelves.
-- A recipe's page offers "Einplanen", the favourite and "Möchte ich kochen", in this order;
-  a pen next to "Zutaten" opens the form to change it ("Rezept ändern"). Under its facts it
+- A recipe's page offers "Einplanen" and "Möchte ich kochen"; the favourite is the same heart
+  as on a card, next to its title, and a pen next to "Zutaten" opens the form to change it
+  ("Rezept ändern"). Under its facts it
   says when it was last cooked (`lastCooked`: the latest meal before today it was on, from
   the whole plan history), or "Noch nie gekocht". Its ingredients stand in the order the
   cookbook prints them: `recipe_ingredient.position`, written in reading order by every way a

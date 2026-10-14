@@ -92,8 +92,10 @@ test("the search finds a title however it is spelled", async ({ page }) => {
 test("a favourite is one tap and has a page of its own", async ({ page }) => {
   await page.goto("/rezepte?q=Pfeffersteak");
   await page.getByRole("link", { name: /Pfeffersteak/ }).click();
-  await page.getByRole("button", { name: "Als Favorit merken" }).click();
-  await expect(page.getByRole("button", { name: "Favorit", exact: true })).toBeVisible();
+  const heart = page.getByRole("button", { name: "Favorit: Pfeffersteak" });
+  await expect(heart).toHaveAttribute("aria-pressed", "false");
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "true");
 
   // An old link to the favourites under "Entdecken" leads to their page.
   await page.goto("/rezepte?favoriten=1");

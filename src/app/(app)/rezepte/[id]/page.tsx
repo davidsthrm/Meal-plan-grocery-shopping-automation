@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HeartIcon, PenIcon, TickIcon, WishIcon } from "@/components/icons";
+import { FavoriteHeart } from "@/components/favorite-heart";
+import { PenIcon, TickIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
 import type { ProteinType } from "@/domain/library/summary";
@@ -89,10 +90,18 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           }}
           className="mt-1 h-14 w-14 rounded-xl"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           {category && <p className="eyebrow">{category.name}</p>}
           <h1 className="title mt-1">{recipe.title}</h1>
         </div>
+        {recipe.status === "approved" && (
+          // The same heart as in the corner of a recipe card.
+          <form action={setFavorite} className="-mr-2 shrink-0">
+            <input type="hidden" name="recipe" value={recipe.id} />
+            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
+            <FavoriteHeart favorite={recipe.is_favorite} title={recipe.title} />
+          </form>
+        )}
       </div>
       <p className="mt-3 text-muted">
         {[
@@ -142,14 +151,6 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               Einplanen
             </Link>
           )}
-          <form action={setFavorite}>
-            <input type="hidden" name="recipe" value={recipe.id} />
-            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
-            <SubmitButton className={`btn ${recipe.is_favorite ? "text-accent" : ""}`}>
-              <HeartIcon filled={recipe.is_favorite} />
-              {recipe.is_favorite ? "Favorit" : "Als Favorit merken"}
-            </SubmitButton>
-          </form>
           <form action={setWanted}>
             <input type="hidden" name="recipe" value={recipe.id} />
             <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
