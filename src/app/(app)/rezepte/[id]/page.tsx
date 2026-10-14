@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { HeartIcon, WishIcon } from "@/components/icons";
+import { HeartIcon, TickIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
 import type { ProteinType } from "@/domain/library/summary";
+import { weekdayLong } from "@/domain/dates";
 import { TAG_GROUPS } from "@/domain/library/tags";
 import { amountText, servingsText, sourceText } from "@/lib/recipe-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { readOrigin } from "@/lib/origin";
+import { MEAL_NAME } from "@/lib/plan-text";
+import { today } from "@/lib/today";
+import { loadPlannedAt } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { setFavorite, setWanted } from "../actions";
 
@@ -32,7 +36,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     .maybeSingle();
   if (!recipe) notFound();
 
-  const [lines, photos, ingredients, tagLinks, categories] = await Promise.all([
+  const [lines, photos, ingredients, tagLinks, categories, planned] = await Promise.all([
     db
       .from("recipe_ingredient")
       .select(
@@ -48,6 +52,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     loadIngredientNames(db),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
     db.from("tag").select("id, key, name, group_name").order("sort_order"),
+    loadPlannedAt(db, id, today()),
   ]);
   const ownIds = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
   const ownTags = must(categories, "load tags").filter((tag) => ownIds.has(tag.id));
@@ -111,9 +116,37 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
 
       {recipe.status === "approved" && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
-            Einplanen
-          </Link>
+          {planned ? (
+            // On this week's plan already: the button says so and leads to where it stands.
+            <Link
+              href={
+                planned.date
+                  ? `/woche?w=${planned.week}#tag-${planned.date}`
+                  : `/woche?w=${planned.week}&t=extra`
+              }
+              className="btn border-line bg-line text-accent"
+              title={
+                planned.date
+                  ? `${weekdayLong(planned.date)}, ${MEAL_NAME[planned.meal]}`
+                  : "Außerdem in dieser Woche"
+              }
+            >
+              <TickIcon />
+              Eingeplant
+            </Link>
+          ) : (
+            <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
+              Einplanen
+            </Link>
+          )}
+          <form action={setFavorite}>
+            <input type="hidden" name="recipe" value={recipe.id} />
+            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
+            <SubmitButton className={`btn ${recipe.is_favorite ? "text-accent" : ""}`}>
+              <HeartIcon filled={recipe.is_favorite} />
+              {recipe.is_favorite ? "Favorit" : "Als Favorit merken"}
+            </SubmitButton>
+          </form>
           <form action={setWanted}>
             <input type="hidden" name="recipe" value={recipe.id} />
             <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
@@ -125,14 +158,6 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           <Link href={`/rezepte/${recipe.id}/bearbeiten`} className="btn">
             Ändern
           </Link>
-          <form action={setFavorite}>
-            <input type="hidden" name="recipe" value={recipe.id} />
-            <input type="hidden" name="favorite" value={recipe.is_favorite ? "0" : "1"} />
-            <SubmitButton className={`btn ${recipe.is_favorite ? "text-accent" : ""}`}>
-              <HeartIcon filled={recipe.is_favorite} />
-              {recipe.is_favorite ? "Favorit" : "Als Favorit merken"}
-            </SubmitButton>
-          </form>
         </div>
       )}
 

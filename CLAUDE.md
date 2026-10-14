@@ -447,6 +447,14 @@ Library
   under Import ("Ohne Foto: Rezept eintippen"). Below the shelves "Stöbern" is a directory (`directory`): every category,
   tag, diet and cookbook as a tile with the number of recipes behind it. A library of up to
   thirty recipes is also shown whole.
+- A recipe card has a heart in its corner (`FavoriteHeart`): a tap makes the recipe a
+  favourite or takes the mark away, without opening it. The heart is a form next to the
+  card's link, not inside it, and both lie in the card that lifts. A recipe made a favourite
+  on "Entdecken" leaves its shelves.
+- A recipe's page offers "Einplanen", the favourite, "Möchte ich kochen" and "Ändern", in this
+  order. A recipe on the plan of the week the household is in (`currentWeeks`: the running
+  week, from Saturday on also the coming one), as a meal or as an extra, says "Eingeplant"
+  instead, grey with green writing, and leads to where it stands (`plannedAt`).
 - "Favoriten" has a page of its own: on top what someone wants to cook, then the favourites
   sorted by category (`byCategory`). Its search and filters look through favourites only.
 - A recipe can be pasted as text (`/rezepte/neu?art=text`): the reading model reads it by

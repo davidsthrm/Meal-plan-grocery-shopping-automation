@@ -116,6 +116,22 @@ test("a favourite is one tap and has a page of its own", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("Kein Favorit passt dazu.");
 });
 
+test("the heart on a card makes a recipe a favourite without opening it", async ({ page }) => {
+  await page.goto("/rezepte?q=Pfeffersteak");
+  const heart = page.getByRole("button", { name: "Favorit: Pfeffersteak" });
+  await expect(heart).toHaveAttribute("aria-pressed", "false");
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/\/rezepte\?q=Pfeffersteak/);
+
+  await page.goto("/favoriten");
+  const mains = page.getByRole("region", { name: "Hauptgericht" });
+  await expect(mains).toContainText("Pfeffersteak");
+  // Tapped again, it is no favourite any more.
+  await page.getByRole("button", { name: "Favorit: Pfeffersteak" }).click();
+  await expect(mains).not.toContainText("Pfeffersteak");
+});
+
 test("the cookbook page is folded away and shows the recipe's own part", async ({ page }) => {
   await page.goto("/rezepte?q=lasagne");
   await page.getByRole("link", { name: /Gemüse-Lasagne/ }).click();

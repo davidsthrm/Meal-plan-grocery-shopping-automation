@@ -481,7 +481,8 @@ body {
       border-color 0.16s ease;
   }
   .lift:hover,
-  .lift:focus-visible {
+  .lift:focus-visible,
+  .lift:has(> a:focus-visible) {
     transform: translateY(-2px);
     border-color: var(--kind-ink, var(--color-muted));
     box-shadow: 0 10px 22px -14px rgb(35 33 29 / 0.45);
@@ -489,6 +490,34 @@ body {
   .lift:active {
     transform: translateY(0);
   }
+  /* A card whose link is a part of it: the ring of the focus goes inside the card's edge. */
+  .lift > a:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -3px;
+    border-radius: inherit;
+  }
+
+  /* The heart in the corner of a recipe card: a tap makes the recipe a favourite. */
+  .heart {
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: var(--color-muted);
+  }
+  .heart[data-on="true"] {
+    color: var(--color-accent);
+  }
+  .heart:hover {
+    background: var(--color-accent-soft);
+  }
+  .heart:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
   /* A sheet lifts together with the pad it belongs to: the sheets underneath stay. */
   .sheet.lift:hover,
   .sheet.lift:focus-visible {

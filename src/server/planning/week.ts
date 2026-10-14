@@ -13,6 +13,7 @@ import {
   type SlotItem,
 } from "@/domain/plan";
 import { findIngredient } from "@/domain/catalog";
+import { currentWeeks, plannedAt, type PlannedAt } from "@/domain/planned";
 import { today } from "@/lib/today";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 
@@ -520,6 +521,27 @@ export async function removeFood(
     .eq("plan_slot_id", slot.id)
     .eq("label", label);
   if (removed.error) throw new Error(`remove food: ${removed.error.message}`);
+}
+
+/** Where a recipe is planned in the weeks that count as now (`currentWeeks`). */
+export async function loadPlannedAt(
+  db: Db,
+  recipeId: string,
+  now: IsoDate,
+): Promise<PlannedAt | null> {
+  const weeks = currentWeeks(now);
+  const [planned, extras] = await Promise.all([
+    loadWeeks(db, weeks[0], weeks[weeks.length - 1]),
+    Promise.all(weeks.map((weekStart) => loadExtras(db, weekStart))),
+  ]);
+  return plannedAt(
+    recipeId,
+    weeks.map((weekStart, at) => ({
+      weekStart,
+      slots: planned.find((week) => week.weekStart === weekStart)?.slots ?? [],
+      extras: extras[at],
+    })),
+  );
 }
 
 /** The recipes a week needs outside its meals, oldest first. */
