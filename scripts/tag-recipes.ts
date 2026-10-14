@@ -10,10 +10,10 @@ import { TAG_BATCH, tagRecipes } from "@/server/tagging";
  * cuisine, season and occasion. A model suggests them from title, category, printed time and
  * ingredients, about fifteen recipes per request. Tags the household made itself stay.
  *
- *   npm run import:tag-recipes -- "Zuhause"              every recipe not described yet
- *   npm run import:tag-recipes -- "Zuhause" --limit 30   a few, to look at the result first
- *   npm run import:tag-recipes -- "Zuhause" --verbose    print what each recipe got
- *   npm run import:tag-recipes -- "Zuhause" --again      take the suggested tags away first.
+ *   npm run import:tag-recipes -- "Stührmann"              every recipe not described yet
+ *   npm run import:tag-recipes -- "Stührmann" --limit 30   a few, to look at the result first
+ *   npm run import:tag-recipes -- "Stührmann" --verbose    print what each recipe got
+ *   npm run import:tag-recipes -- "Stührmann" --again      take the suggested tags away first.
  *                                                        This also undoes corrections made by hand.
  */
 

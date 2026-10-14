@@ -12,14 +12,15 @@ import {
   dayAndMonth,
   isIsoDate,
   mondayOf,
-  planningWeek,
   weekDates,
   weekdayLong,
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
 import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
+import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
+import { openingWeek } from "@/domain/planned";
 import { mealsOf, MEALS, namedMeal, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
 import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
@@ -35,7 +36,7 @@ import {
   whyText,
 } from "@/lib/plan-text";
 import { fromPlan } from "@/lib/origin";
-import { today } from "@/lib/today";
+import { hourNow, today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
@@ -45,7 +46,6 @@ import {
   changeExtraServings,
   changeServings,
   clearSlot,
-  copyLastWeek,
   needsNoRecipe,
   describeExtra,
   planExtra,
@@ -58,8 +58,8 @@ export const metadata: Metadata = { title: "Wochenplan" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** How many ideas show faintly in an empty week, and what an idea needs to be one of them. */
-const HINTS = 3;
+/** How many meals offer a suggestion unasked, and what an idea needs to be one of them. */
+const HINTS = 5;
 const HINT_SCORE = 2;
 /** How many different suggestions a meal can be asked for before they come round again. */
 const PROPOSALS = 12;
@@ -72,8 +72,13 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const params = await props.searchParams;
   const household = await requireHousehold();
   const now = today();
+  const db = await createSessionClient();
+  // The running week decides which week the planner opens on, and what there is today.
+  const running = mondayOf(now);
+  const runningSlots = await loadWeek(db, running);
+  const thisWeek = openingWeek(now, runningSlots);
   const asked = one(params.w);
-  const week = asked && isIsoDate(asked) ? mondayOf(asked) : planningWeek(now);
+  const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
   // The meal someone asked a suggestion for, and how often they asked for another one.
   const askedFor = one(params.frage) ?? "";
   const draw = Math.max(0, Math.floor(Number(one(params.v)) || 0));
@@ -81,15 +86,20 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // The one meal of a saved plan someone took the pen to.
   const pen = one(params.stift) ?? "";
 
-  const db = await createSessionClient();
-  const [library, slots, history, previous, extras, saved] = await Promise.all([
+  const [library, slots, history, extras, saved, self] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
     loadHistory(db, week),
-    loadWeek(db, addDays(week, -7)),
     loadExtras(db, week),
     isSaved(db, week),
+    db
+      .from("household_member")
+      .select("display_name")
+      .eq("user_id", household.userId)
+      .maybeSingle(),
   ]);
+  // Whoever opens the plan is greeted by the name they gave themselves, if they gave one.
+  const greeting = firstName(self.data?.display_name);
   const recipeOf = new Map(library.recipes.map((recipe) => [recipe.id, recipe]));
   const placing = placingId ? (recipeOf.get(placingId) ?? null) : null;
   // The second view of a week: what it needs outside its meals.
@@ -119,7 +129,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const picks = placing || showExtras || saved ? [] : suggestWeek(library.recipes, open, context);
   const pickAt = (date: IsoDate, meal: Meal) =>
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
-  // A few of them show faintly in their meal: the ones with the most to say for them, and
+  // A few of them are offered in their meal: the ones with the most to say for them, and
   // among equals not simply the first days of the week.
   const hinted = new Set(
     picks
@@ -150,47 +160,91 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
   const weekLink = (monday: IsoDate) =>
     `/woche?w=${monday}${placing ? `&rezept=${placing.id}` : ""}${showExtras ? "&t=extra" : ""}`;
-  const thisWeek = planningWeek(now);
   // "What is there to eat today?" is asked of the week that is running, also while the page
   // already shows the next one, as it does from Saturday on.
-  const running = mondayOf(now);
-  const runningSlots = week === running ? slots : addDays(week, -7) === running ? previous : null;
+  const showToday =
+    (week === running || addDays(week, -7) === running) &&
+    !placing &&
+    !showExtras &&
+    hasToday(runningSlots, now);
+
+  const title = (
+    <div>
+      {greeting ? (
+        /*
+         * A large title, as on the first screen of an app: the day small above it, the
+         * greeting large with the name in the green of the logo, and the week below as
+         * the heading of the page.
+         */
+        <>
+          <p className="text-sm font-medium text-muted">
+            {weekdayLong(now)}, {dayAndMonth(now)}
+          </p>
+          <p className="greeting mt-1">
+            {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
+          </p>
+          <h1 className="mt-2 text-lg font-semibold tracking-tight text-muted">
+            Euer Wochenplan
+            <span aria-hidden className="mx-2 text-line">
+              ·
+            </span>
+            <span className="text-ink">{weekRange(week)}</span>
+          </h1>
+        </>
+      ) : (
+        <>
+          <p className="eyebrow">Wochenplan</p>
+          <h1 className="title mt-1">{weekRange(week)}</h1>
+        </>
+      )}
+    </div>
+  );
+  const weekNav = (
+    <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
+      <Link
+        href={weekLink(addDays(week, -7))}
+        className="btn btn-small px-2.5"
+        aria-label="Vorige Woche"
+      >
+        <ArrowIcon back />
+      </Link>
+      {week !== thisWeek && (
+        <Link href={weekLink(thisWeek)} className="btn btn-small">
+          Aktuelle
+        </Link>
+      )}
+      <Link
+        href={weekLink(addDays(week, 7))}
+        className="btn btn-small px-2.5"
+        aria-label="Nächste Woche"
+      >
+        <ArrowIcon />
+      </Link>
+      <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
+        Alle Wochen
+      </Link>
+    </nav>
+  );
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div>
-          <p className="eyebrow">Wochenplan</p>
-          <h1 className="title mt-1">{weekRange(week)}</h1>
+      {showToday ? (
+        /*
+         * Once something is planned for today or the weekend, it stands next to the greeting
+         * like a widget on a large screen, and under it on a phone.
+         */
+        <div className="grid gap-x-10 gap-y-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:items-start">
+          <div className="flex flex-col gap-4">
+            {title}
+            {weekNav}
+          </div>
+          <Today now={now} week={week} slots={runningSlots} recipeOf={recipeOf} dated={!greeting} />
         </div>
-        <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
-          <Link
-            href={weekLink(addDays(week, -7))}
-            className="btn btn-small px-2.5"
-            aria-label="Vorige Woche"
-          >
-            <ArrowIcon back />
-          </Link>
-          {week !== thisWeek && (
-            <Link href={weekLink(thisWeek)} className="btn btn-small">
-              Aktuelle
-            </Link>
-          )}
-          <Link
-            href={weekLink(addDays(week, 7))}
-            className="btn btn-small px-2.5"
-            aria-label="Nächste Woche"
-          >
-            <ArrowIcon />
-          </Link>
-          <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
-            Alle Wochen
-          </Link>
-        </nav>
-      </div>
-
-      {runningSlots && !placing && !showExtras && (
-        <Today now={now} week={week} slots={runningSlots} recipeOf={recipeOf} />
+      ) : (
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          {title}
+          {weekNav}
+        </div>
       )}
 
       <Balance lines={balance} />
@@ -212,75 +266,78 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           </span>
         </div>
       ) : (
-        <nav aria-label="Ansicht" className="mt-5 flex gap-2">
-          <Link
-            href={`/woche?w=${week}`}
-            className={`chip ${showExtras ? "" : "chip-on"}`}
-            aria-current={showExtras ? undefined : "page"}
-          >
-            Mahlzeiten
-          </Link>
-          <Link
-            href={`/woche?w=${week}&t=extra`}
-            className={`chip ${showExtras ? "chip-on" : ""}`}
-            aria-current={showExtras ? "page" : undefined}
-          >
-            Außerdem{extras.length > 0 ? ` (${extras.length})` : ""}
-          </Link>
-        </nav>
+        /*
+         * The two views of the week on the left; on the right what can be done with the
+         * whole plan, saving it last. On a phone they wrap below the views.
+         */
+        <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-3">
+          <nav aria-label="Ansicht" className="flex gap-2">
+            <Link
+              href={`/woche?w=${week}`}
+              className={`chip ${showExtras ? "" : "chip-on"}`}
+              aria-current={showExtras ? undefined : "page"}
+            >
+              Mahlzeiten
+            </Link>
+            <Link
+              href={`/woche?w=${week}&t=extra`}
+              className={`chip ${showExtras ? "chip-on" : ""}`}
+              aria-current={showExtras ? "page" : undefined}
+            >
+              Außerdem{extras.length > 0 ? ` (${extras.length})` : ""}
+            </Link>
+          </nav>
+          {!showExtras && (
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
+              {picks.length > 0 && (
+                <form action={acceptSuggestions}>
+                  <input type="hidden" name="week" value={week} />
+                  {picks.map((pick) => (
+                    <input
+                      key={`${pick.date}${pick.meal}`}
+                      type="hidden"
+                      name="pick"
+                      value={`${pick.date}|${pick.meal}|${pick.suggestion.recipe.id}`}
+                    />
+                  ))}
+                  <SubmitButton className="btn btn-small">Plan vervollständigen</SubmitButton>
+                </form>
+              )}
+              {/* Done planning: the plan is saved and shown to read. Or the whole week is
+                  rubbed out. */}
+              {slots.length + extras.length > 0 &&
+                (saved ? (
+                  <>
+                    <p className="text-sm text-muted">
+                      Gespeichert. Der Stift an einer Mahlzeit ändert nur sie.
+                    </p>
+                    <form action={saveWeekPlan}>
+                      <input type="hidden" name="week" value={week} />
+                      <input type="hidden" name="saved" value="0" />
+                      <SubmitButton className="btn btn-small">
+                        <PenIcon />
+                        Plan bearbeiten
+                      </SubmitButton>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <ResetWeek action={resetWeekPlan} week={week} sheet="wochenblatt" />
+                    <form action={saveWeekPlan}>
+                      <input type="hidden" name="week" value={week} />
+                      <input type="hidden" name="saved" value="1" />
+                      <SubmitButton className="btn btn-primary btn-small">
+                        Plan speichern
+                      </SubmitButton>
+                    </form>
+                  </>
+                ))}
+            </div>
+          )}
+        </div>
       )}
 
       {showExtras && <Extras week={week} extras={extras} recipeOf={recipeOf} />}
-
-      {!placing && !showExtras && (picks.length > 0 || slots.length === 0) && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {picks.length > 0 && (
-            <form action={acceptSuggestions}>
-              <input type="hidden" name="week" value={week} />
-              {picks.map((pick) => (
-                <input
-                  key={`${pick.date}${pick.meal}`}
-                  type="hidden"
-                  name="pick"
-                  value={`${pick.date}|${pick.meal}|${pick.suggestion.recipe.id}`}
-                />
-              ))}
-              <SubmitButton className="btn btn-small">Plan vervollständigen</SubmitButton>
-            </form>
-          )}
-          {slots.length === 0 && previous.length > 0 && (
-            <form action={copyLastWeek}>
-              <input type="hidden" name="week" value={week} />
-              <SubmitButton className="btn btn-small">Letzte Woche übernehmen</SubmitButton>
-            </form>
-          )}
-        </div>
-      )}
-
-      {/* Done planning: the plan is saved and shown to read. Or the whole week is rubbed out. */}
-      {!placing && !showExtras && slots.length + extras.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <form action={saveWeekPlan}>
-            <input type="hidden" name="week" value={week} />
-            <input type="hidden" name="saved" value={saved ? "0" : "1"} />
-            {saved ? (
-              <SubmitButton className="btn btn-small">
-                <PenIcon />
-                Plan bearbeiten
-              </SubmitButton>
-            ) : (
-              <SubmitButton className="btn btn-primary btn-small">Plan speichern</SubmitButton>
-            )}
-          </form>
-          {saved ? (
-            <p className="text-sm text-muted">
-              Gespeichert. Der Stift an einer Mahlzeit ändert nur sie.
-            </p>
-          ) : (
-            <ResetWeek action={resetWeekPlan} week={week} sheet="wochenblatt" />
-          )}
-        </div>
-      )}
 
       {!showExtras && (
         <div className="sheet mt-6">
@@ -407,24 +464,36 @@ function Wishes({
  * What there is to eat today, and what the weekend holds: the two things anyone in the
  * household asks of a week that is running.
  */
+/** The days `Today` speaks of: today, and what is still to come of the weekend. */
+function todayAndWeekend(now: IsoDate): IsoDate[] {
+  const monday = mondayOf(now);
+  return [now, ...[addDays(monday, 5), addDays(monday, 6)].filter((date) => date > now)];
+}
+
+/** Whether there is anything planned for today or the weekend to show. */
+function hasToday(slots: readonly PlanSlot[], now: IsoDate): boolean {
+  return todayAndWeekend(now).some((date) => slots.some((slot) => slot.date === date));
+}
+
 function Today({
   now,
   week,
   slots,
   recipeOf,
+  dated,
 }: {
   now: IsoDate;
   /** The week the page shows, which the recipes named here lead back to. */
   week: IsoDate;
   slots: PlanSlot[];
   recipeOf: ReadonlyMap<string, RecipeSummary>;
+  /** Whether the card says the date: not where the greeting above already does. */
+  dated: boolean;
 }) {
   const monday = mondayOf(now);
-  const weekend = [addDays(monday, 5), addDays(monday, 6)].filter((date) => date > now);
+  const weekend = todayAndWeekend(now).slice(1);
   const at = (date: IsoDate, meal: Meal) =>
     slots.find((slot) => slot.date === date && slot.meal === meal);
-  const planned = [now, ...weekend].some((date) => slots.some((slot) => slot.date === date));
-  if (!planned) return null;
   // Coffee on Sunday is said only when there is some.
   const mealsOn = (date: IsoDate) =>
     mealsOf(date).filter((meal) => meal !== "coffee" || at(date, meal));
@@ -436,10 +505,16 @@ function Today({
         : slotText(slot);
 
   return (
-    <section aria-label="Heute" className="card mt-5 px-4 py-4 sm:px-5">
+    <section aria-label="Heute" className="card px-4 py-4 sm:px-5">
       <h2 className="text-lg font-bold tracking-tight">
-        Heute, {weekdayLong(now)}
-        <span className="font-normal text-muted"> · {dayAndMonth(now)}</span>
+        {dated ? (
+          <>
+            Heute, {weekdayLong(now)}
+            <span className="font-normal text-muted"> · {dayAndMonth(now)}</span>
+          </>
+        ) : (
+          "Heute"
+        )}
       </h2>
       <ul className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2">
         {mealsOn(now).map((meal) => {
@@ -641,7 +716,7 @@ function Extras({
 /** The week counted: how many meals of each kind, against what the household aims for. */
 function Balance({ lines }: { lines: BalanceLine[] }) {
   return (
-    <div className="mt-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-1 border-y border-line py-3">
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-y border-line py-3">
       <ul
         aria-label="Ausgewogenheit der Woche"
         className="grid flex-1 grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4"
@@ -669,7 +744,7 @@ function Balance({ lines }: { lines: BalanceLine[] }) {
           );
         })}
       </ul>
-      <Link href="/woche/ziele" className="link inline-flex min-h-10 items-center text-sm">
+      <Link href="/woche/ziele" className="btn btn-small">
         Ziele ändern
       </Link>
     </div>
@@ -683,7 +758,7 @@ interface CellProps {
   slot: PlanSlot | undefined;
   /** The answer to "Hast du einen Vorschlag?", when this meal was asked about. */
   proposal: Suggestion | undefined;
-  /** An idea shown faintly in an open meal nobody asked about. */
+  /** An idea offered in an open meal nobody asked about. */
   hint: Suggestion | undefined;
   /** How often another suggestion was asked for. */
   draw: number;
@@ -712,6 +787,8 @@ function MealCell({
   locked,
   withPen,
 }: CellProps) {
+  // The suggestion the meal shows: the one asked for, or else an idea offered unasked.
+  const shown = proposal ?? hint;
   const ask = (again: number) => `/woche?w=${week}&frage=${date}.${meal}&v=${again}#tag-${date}`;
   const where = (
     <>
@@ -848,45 +925,37 @@ function MealCell({
         </div>
       )}
 
-      {!slot && proposal && !placing && (
-        <div className="mt-1 rounded-lg border border-accent/40 bg-surface px-3 py-2.5">
+      {/*
+       * A suggestion, asked for or offered unasked: a box of its own with a dashed edge, so
+       * that it does not read as planned. Nothing is planned until "Gute Idee!".
+       */}
+      {!slot && shown && !placing && (
+        <div className="mt-1 rounded-lg border border-dashed border-accent/50 bg-accent-soft/40 px-3 py-2.5">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
           <div className="mt-1">
-            <KindTitle recipe={proposal.recipe} id={proposal.recipe.id} week={week} />
+            <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} />
           </div>
-          {proposal.reasons.length > 0 && (
-            <p className="mt-1 text-sm text-muted">{whyText(proposal.reasons)}</p>
+          {shown.reasons.length > 0 && (
+            <p className="mt-1 text-sm text-muted">{whyText(shown.reasons)}</p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <form action={planRecipe}>
               {where}
-              <input type="hidden" name="recipe" value={proposal.recipe.id} />
+              <input type="hidden" name="recipe" value={shown.recipe.id} />
               <input type="hidden" name="mode" value="replace" />
               <SubmitButton
                 className="btn btn-primary btn-small"
-                label={`${what}: ${proposal.recipe.title} einplanen`}
+                label={`${what}: ${shown.recipe.title} einplanen`}
               >
                 Gute Idee!
               </SubmitButton>
             </form>
-            <Link href={ask(draw + 1)} scroll={false} className="btn btn-small">
+            {/* An idea offered unasked is the first answer; the next one is the second. */}
+            <Link href={ask(proposal ? draw + 1 : 1)} scroll={false} className="btn btn-small">
               Noch ein Vorschlag
             </Link>
           </div>
         </div>
-      )}
-
-      {/* Nobody asked: an idea may show, pale, and waits to be asked about. */}
-      {!slot && !proposal && hint && !placing && (
-        <Link
-          href={ask(0)}
-          scroll={false}
-          className="mt-1 flex items-center gap-2 opacity-55 transition-opacity hover:opacity-100"
-          aria-label={`${what}: Idee ${hint.recipe.title} ansehen`}
-        >
-          <RecipeBadge recipe={hint.recipe} className="h-7 w-7" />
-          <span className="min-w-0 truncate text-sm text-muted">{hint.recipe.title}</span>
-        </Link>
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -936,12 +1005,12 @@ function MealCell({
           <>
             <Link
               href={choose("replace")}
-              className={proposal ? "link text-sm" : "btn btn-small"}
+              className={shown ? "link text-sm" : "btn btn-small"}
               aria-label={`${what} planen`}
             >
-              {proposal ? "Selbst wählen" : "Planen"}
+              {shown ? "Selbst wählen" : "Planen"}
             </Link>
-            {canAsk && !proposal && (
+            {canAsk && !shown && (
               <Link
                 href={ask(0)}
                 scroll={false}

@@ -403,6 +403,22 @@ body {
   }
 
   /*
+   * The greeting on the week plan: a large title as on the first screen of an app, set
+   * tight, larger on a wider screen.
+   */
+  .greeting {
+    font-size: 2.15rem;
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+  @media (width >= 40rem) {
+    .greeting {
+      font-size: 2.75rem;
+    }
+  }
+
+  /*
    * A small label above something: "Mittag", "Vorschlag", a category. Written as it is
    * spelled: the household found headings in capitals to look machine-made.
    */
@@ -748,8 +764,8 @@ details > summary::-webkit-details-marker {
     color: #000;
   }
   /*
-   * On paper a note keeps the look of its PDF and nothing more: the binding holes and the
-   * ruled lines, drawn faint, no sheet, no shadow, no margin line. The page size comes from
+   * On paper a note keeps the look of its PDF and nothing more: the ruled lines, drawn
+   * faint, no holes, no sheet, no shadow, no margin line. The page size comes from
    * `printRules` (`src/lib/note-paper.ts`), the same size the PDF has.
    */
   .sheet {
@@ -758,12 +774,7 @@ details > summary::-webkit-details-marker {
     background: none;
   }
   .sheet-holes {
-    margin: 0 -2mm 3mm;
-    border-color: #c7c7c7;
-  }
-  .sheet-holes > span {
-    border-color: #c7c7c7;
-    background: none;
+    display: none;
   }
   .ruled {
     background: none;

@@ -53,3 +53,38 @@ export function inviteIsOpen(
 ): boolean {
   return invite.usedAt === null && new Date(invite.expiresAt).getTime() > now.getTime();
 }
+
+/**
+ * Words a household may be called that are no family name: they are never turned into
+ * "die Zuhauses".
+ */
+const NOT_A_FAMILY = new Set(["zuhause", "daheim", "haushalt", "familie", "home", "wir"]);
+
+/**
+ * The household's name as the family is spoken of: "Stührmann" becomes "Stührmanns", as in
+ * "bei den Stührmanns". A name already ending in an s sound stays as it is ("Fuchs"). Null
+ * for a name that is no single family name ("Zuhause", "E2E-Test (automatisch)"): the page
+ * then says what it says without it.
+ */
+export function familyName(householdName: string): string | null {
+  const name = householdName.trim();
+  if (!/^\p{Lu}[\p{Ll}ß]+(?:-\p{Lu}[\p{Ll}ß]+)?$/u.test(name)) return null;
+  if (NOT_A_FAMILY.has(name.toLowerCase())) return null;
+  return /(?:s|ß|x|z)$/.test(name) ? name : `${name}s`;
+}
+
+/** How a member is greeted: the first word of the name they gave. Null without a name. */
+export function firstName(displayName: string | null | undefined): string | null {
+  const first = (displayName ?? "").trim().split(/\s+/)[0];
+  return first ? first : null;
+}
+
+/**
+ * How a member is greeted at this hour where the household lives: "Guten Morgen" until
+ * eleven, "Guten Abend" from six in the evening, "Hallo" in between and at night.
+ */
+export function salutation(hour: number): string {
+  if (hour >= 5 && hour < 11) return "Guten Morgen";
+  if (hour >= 18 && hour < 23) return "Guten Abend";
+  return "Hallo";
+}

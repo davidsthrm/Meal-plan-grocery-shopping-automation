@@ -192,8 +192,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   more sheets underneath), a list has ruled lines and a margin (`.ruled`) with a tick made by
   a pen (`.tickbox`), what ran out at home is written on a yellow note stuck on with tape
   (`.note`), a meal without a recipe carries a small yellow slip, and today is marked with a
-  highlighter (`.marked`). No handwriting typeface. On real paper only a note's binding
-  holes and ruled lines are printed, faint, as in its PDF.
+  highlighter (`.marked`). No handwriting typeface. On real paper only a note's ruled lines
+  are printed, faint, as in its PDF.
 - The shopping notes of a week lie next to each other as small notes, a little askew
   (`.tiles`), each with the pictogram of its place on that place's pastel (`PLACE_LOOK`).
   One is picked up to work through it and comes closer (`.zoom-in`). The household found
@@ -217,7 +217,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   lines in `pictogram-paths.ts`). It stands large and pale behind a card's text
   (`.watermark`) and small on its pastel in front of a name (`.badge`). It is drawn sharp:
   the household did not want it out of focus. The kind of dish decides before what is in it:
-  a salmon pasta is pasta. Never a photo.
+  a salmon pasta is pasta. The dish a title names first decides before its sides: "Steak
+  mit Pfefferrahmsoße, Pilzen und Spätzle" is meat. A meatless dish named after a vegetable
+  with a picture of its own shows that one ("Pilze in Knoblauchsauce" a mushroom), and only
+  the rest the carrot. Never a photo.
 - Every way to narrow the library down has a pictogram too (`pictogramForFilter`, 24 more):
   each category, effort, kind of dish, cuisine, season, occasion, diet, and a book for a
   cookbook. A tag the household made itself is a label. They show on the tiles under
@@ -275,6 +278,15 @@ Household
   days, of which only a hash is stored. Whoever opens it gives a name, an e-mail and a
   password, gets an account and belongs to the household (`acceptInvite`). An account
   belongs to one household; someone who has one cannot use an invitation.
+- The household's name (`household.name`, "Stührmann", set in the family card of
+  `/einstellungen`) is spoken of as the family in two places, read from the data: the empty
+  shopping notes ("Bei den Stührmanns …") and the invitation ("Die Stührmanns laden dich
+  ein"), through `familyName`, which says nothing for a name that is no single family name
+  ("Zuhause"). The week plan greets whoever opens it by the first word of their own name
+  as a large title, the way an app's first screen does: the day small above it, "Guten
+  Morgen, David" by the time of day (`salutation`, `firstName`; `.greeting`, the name in the
+  accent green), and "Euer Wochenplan · 12.–18. Oktober" below as the page's heading.
+  Without a name, the plain label and the week as the title. Nowhere else.
 - A new household for another family is not made in the app: it needs its own catalog,
   tags and categories, as `npm run e2e:setup` makes them for the test household.
 
@@ -315,7 +327,12 @@ Week plan
   (a main dish and its side), or something without a recipe: free text such as "Vesper",
   leftovers, away, or skipped. A meal that is not planned has no row.
 - The planner opens on the running week, and from Saturday on the coming one: the household
-  plans on the weekend.
+  plans on the weekend. From Thursday on it opens on the coming week already when nothing is
+  planned for the rest of the running one (`openingWeek`); earlier an empty week is still the
+  one to plan.
+- Above the sheet stands one row: the views "Mahlzeiten" and "Außerdem" on the left, what is
+  done with the whole plan on the right ("Plan vervollständigen", "Woche leeren", "Plan
+  speichern" last). On a phone the actions wrap below the views.
 - A week is counted by the heaviest protein of each cooked meal: red meat, poultry, fish,
   vegetarian (vegan counts as vegetarian). Only recipes that are a meal by themselves count
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
@@ -360,7 +377,9 @@ Week plan
   "Plan bearbeiten" opens the whole plan again. Saving is a decision, not a date: a week
   that has begun is not locked by itself.
 - Above the plan of the running week stands what there is to eat today and what the weekend
-  holds (`Today`), also while the page already shows the coming week.
+  holds (`Today`), also while the page already shows the coming week. Once something is
+  planned for those days, it stands next to the greeting like a widget on a large screen,
+  and under it on a phone; otherwise the header is the greeting alone.
 - "Woche leeren" empties a week after asking: every meal and the extras (`resetWeek`).
   The rubber makes the sheet invisible with a class that `ResetWeek` takes off again as
   soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an
@@ -370,8 +389,7 @@ Week plan
   anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
   `SlotItem.plannedOn`). A meal written again with other servings or another side keeps the
-  day of what was there; a week copied from the last one is planned today. Null for what was
-  planned before this was recorded.
+  day of what was there. Null for what was planned before this was recorded.
 - A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
   when its group is still below the least the week should have, -4 when its group is used
   up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
@@ -381,9 +399,12 @@ Week plan
   Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Noch
   ein Vorschlag" for the next best; after twelve they come round again. The household found
   a plan that arrives full of suggestions too pushy.
-- Up to three open meals show an idea faintly, without being asked: the suggestions with
-  the most to say for them (a wish, a favourite, a gap in the week), spread over the week.
-  Tapping one asks about that meal.
+- Up to five open meals offer a suggestion without being asked: those with the most to say
+  for them (a wish, a favourite, a gap in the week; `HINT_SCORE`), spread over the week. It
+  is the same box as an answer to "Hast du einen Vorschlag?", with a dashed edge and
+  "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Noch ein
+  Vorschlag" shows the next best. More wishes and favourites mean more such meals, up to
+  five. The household took the pale ideas shown before for planned meals.
 - "Plan vervollständigen" plans every open meal that is still to come at once. Those
   suggestions are chosen one after the other as if the earlier ones were accepted
   (`suggestWeek`), so that the completed week meets the targets. Nothing is suggested twice
@@ -391,8 +412,9 @@ Week plan
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
 - The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is
-  pasta, rice, potatoes or a casserole, read as for the pictogram (`pictogramFor`: category,
-  then the "Gericht" tag, then the title), so a pasta salad is a salad. A soup, a wrap or
+  pasta, rice, potatoes or a casserole (`dishOf`: category, then the "Gericht" tag, then any
+  dish word of the title, a side included), so a pasta salad is a salad and a steak with
+  Spätzle is heavy, though its pictogram is the steak. A soup, a wrap or
   toast from the oven is fine. The household had Avocado Spaghetti suggested for a dinner.
 - From Monday to Friday nobody cooks for hours (`suitsDay`): lunch is suggested from what
   is quick or fits a normal day, the evening only from what is quick or cold. A recipe whose
@@ -409,8 +431,6 @@ Week plan
   for the month most of its days are in. The week being planned is always listed.
 - A recipe for persons is planned for the household's servings, a recipe with a servings
   unit as written.
-- "Letzte Woche übernehmen" copies last week's meals into the meals this week has not
-  planned yet. Leftovers lose the link to the meal they came from.
 
 Library
 
@@ -480,7 +500,7 @@ Library
   the whole plan history), or "Noch nie gekocht". Its ingredients stand in the order the
   cookbook prints them: `recipe_ingredient.position`, written in reading order by every way a
   recipe is saved. A recipe on the plan of the week the household is in (`currentWeeks`: the running
-  week, from Saturday on also the coming one), as a meal or as an extra, says "Eingeplant"
+  week, from Thursday on also the coming one), as a meal or as an extra, says "Eingeplant"
   instead, grey with green writing, and leads to where it stands (`plannedAt`).
 - "Favoriten" has a page of its own: on top what someone wants to cook, then the favourites
   sorted by category (`byCategory`). Its search and filters look through favourites only.
@@ -558,7 +578,10 @@ Shopping list
   lines are summed, so a moved line adds up with what its new note needs anyway. Every part
   of a line knows the note it came from (`Contribution.origin`).
 - What is needed and at home is one list for the whole week, under the notes ("Haben wir
-  schon"), not one per note.
+  schon"), not one per note: each thing once, by kind of grocery, without the note it would
+  be on (`groupAtHome`). "Doch kaufen" puts every line it stands for back on its note while
+  that errand is still to come, and otherwise on the next note from today on that sells it
+  (`noteToBuyOn`), where it is not at home either.
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked.
@@ -611,8 +634,8 @@ Shopping list
   `NOTE_PAPER`) for the note that is picked up, and `/einkauf/pdf` writes notes with `pdf-lib`:
   each note as a file of its own, or all of them in one file, every note on its own page.
   Both show what is still to buy, without what is ticked off or at home. The PDF is a small
-  notepad sheet to take along instead of a phone: A6, one column, black on white, binding
-  holes along the top and faint ruled lines. The size is one constant for both (`NOTE_PAPER`
+  notepad sheet to take along instead of a phone: A6, one column, black on white, faint
+  ruled lines, no binding holes. The size is one constant for both (`NOTE_PAPER`
   in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out).
 
 Import

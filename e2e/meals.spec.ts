@@ -94,7 +94,7 @@ test("a week can need recipes that belong to none of its meals", async ({ page }
 
   // The meals of the week are untouched by it.
   await page.getByRole("link", { name: "Mahlzeiten" }).click();
-  await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(14);
+  await expect(page.getByRole("link", { name: / planen$/ })).toHaveCount(15);
 });
 
 test("a cold supper gets the things to buy for it", async ({ page }) => {

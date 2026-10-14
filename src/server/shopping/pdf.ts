@@ -5,8 +5,8 @@ import { NOTE_PAPER, PAPERS, type Paper } from "@/lib/note-paper";
 /**
  * The shopping notes as sheets of a small notepad, for whoever would rather take paper than
  * a phone: every errand starts a sheet of its own, with a heading per kind of grocery and a
- * box to tick per line. Black on white, like the note it replaces, with the binding holes
- * along the top and faint ruled lines as the only decoration.
+ * box to tick per line. Black on white, like the note it replaces, with faint ruled lines
+ * as the only decoration.
  */
 
 export type PdfSection =
@@ -17,10 +17,8 @@ export type PdfSection =
 
 const GUTTER = 24;
 const BLACK = rgb(0, 0, 0);
-/** The ruled lines and the edge of the holes: faint, so they use little ink. */
+/** The ruled lines: faint, so they use little ink. */
 const RULE = rgb(0.78, 0.78, 0.78);
-/** The strip at the top of a sheet that holds the binding holes. */
-const HOLES = { strip: 18, radius: 3.2, gap: 14 };
 
 /** The standard fonts know Western European letters only. Anything else becomes "?". */
 function printable(text: string, font: PDFFont): string {
@@ -68,27 +66,9 @@ export async function shoppingListPdf(
   const x = () => margin + at * (column + GUTTER);
   const newPage = (): PDFPage => {
     const sheet = pdf.addPage([width, height]);
-    // The binding: a row of holes along the top, and the edge the sheet was torn off at.
-    const count = Math.floor((width - 2 * HOLES.gap) / (2 * HOLES.radius + HOLES.gap)) + 1;
-    const span = (count - 1) * (2 * HOLES.radius + HOLES.gap);
-    for (let hole = 0; hole < count; hole++) {
-      sheet.drawCircle({
-        x: (width - span) / 2 + hole * (2 * HOLES.radius + HOLES.gap),
-        y: height - HOLES.strip / 2,
-        size: HOLES.radius,
-        borderColor: RULE,
-        borderWidth: 0.6,
-      });
-    }
-    sheet.drawLine({
-      start: { x: 0, y: height - HOLES.strip },
-      end: { x: width, y: height - HOLES.strip },
-      color: RULE,
-      thickness: 0.5,
-    });
     page = sheet;
     at = 0;
-    top = height - HOLES.strip - margin / 2;
+    top = height - margin;
     y = top;
     return sheet;
   };

@@ -97,6 +97,16 @@ const BY_WORD: [RegExp, Pictogram][] = [
   [/salat/, "salat"],
 ];
 
+/**
+ * Words in a title that name the vegetable a meatless dish is about, where there is a picture
+ * of it. Read only where the carrot would be shown otherwise: chicken with mushrooms is
+ * chicken.
+ */
+const BY_VEGETABLE: [RegExp, Pictogram][] = [
+  [/pilz|champignon|pfifferling|morchel|seitling/, "pilz"],
+  [/tomate/, "tomate"],
+];
+
 const BY_PROTEIN: Partial<Record<NonNullable<RecipeSummary["proteinType"]>, Pictogram>> = {
   fish: "fisch",
   poultry: "gefluegel",
@@ -107,7 +117,7 @@ const BY_PROTEIN: Partial<Record<NonNullable<RecipeSummary["proteinType"]>, Pict
 
 /**
  * The pictogram of a recipe. What kind of dish it is counts before what is in it: a salmon
- * pasta is shown as pasta, a roast as meat.
+ * pasta is shown as pasta, a roast as meat. A side named after "mit" does not make the dish.
  */
 export function pictogramFor(
   recipe: Pick<RecipeSummary, "title" | "category" | "proteinType" | "tags">,
@@ -117,9 +127,41 @@ export function pictogramFor(
   const byTag = BY_TAG.find(([tag]) => recipe.tags.includes(tag));
   if (byTag) return byTag[1];
   const title = searchKey(recipe.title);
-  const byWord = BY_WORD.find(([words]) => words.test(title));
-  if (byWord) return byWord[1];
-  return (recipe.proteinType && BY_PROTEIN[recipe.proteinType]) || "teller";
+  // The dish a title names first is the dish: "Steak mit Pfefferrahmsoße und Spätzle" is a
+  // steak, "Spaghetti mit Lachs" pasta. What comes after is read only where nothing else
+  // says what it is.
+  const head = searchKey(recipe.title.split(/,|\s(?:mit|an|auf|dazu)\s/i)[0]);
+  const byProtein = recipe.proteinType ? BY_PROTEIN[recipe.proteinType] : undefined;
+  return (
+    wordIn(BY_WORD, head) ??
+    (byProtein !== "gemuese" ? byProtein : undefined) ??
+    wordIn(BY_VEGETABLE, head) ??
+    wordIn(BY_WORD, title) ??
+    wordIn(BY_VEGETABLE, title) ??
+    byProtein ??
+    "teller"
+  );
+}
+
+/**
+ * What kind of dish a recipe is as far as anything in it says so: its category, a tag of the
+ * group "Gericht", or a dish word anywhere in its title, a side included. The evening reads
+ * this to keep heavy food off it: a steak with Spätzle is heavy, though its picture is the
+ * steak. Undefined where nothing says it.
+ */
+export function dishOf(
+  recipe: Pick<RecipeSummary, "title" | "category" | "tags">,
+): Pictogram | undefined {
+  return (
+    (recipe.category ? BY_CATEGORY[recipe.category] : undefined) ??
+    BY_TAG.find(([tag]) => recipe.tags.includes(tag))?.[1] ??
+    wordIn(BY_WORD, searchKey(recipe.title))
+  );
+}
+
+/** The picture of the first words of the list that fit the text. */
+function wordIn(list: [RegExp, Pictogram][], text: string): Pictogram | undefined {
+  return list.find(([words]) => words.test(text))?.[1];
 }
 
 /** Every category has a picture where the library is browsed by it. */

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LogoMark } from "@/components/logo";
+import { familyName } from "@/domain/family";
 import { findInvite } from "@/server/family";
 import { createSessionClient } from "@/server/supabase/server";
 import { JoinForm } from "./join-form";
@@ -38,7 +39,16 @@ export default async function InvitePage(props: PageProps<"/einladung/[token]">)
       ) : invite ? (
         <>
           <p className="mt-1 mb-8 text-muted">
-            <span className="font-semibold text-ink">{invite.householdName}</span> lädt dich ein:
+            {familyName(invite.householdName) ? (
+              <span className="font-semibold text-ink">
+                Die {familyName(invite.householdName)} laden dich ein:
+              </span>
+            ) : (
+              <>
+                <span className="font-semibold text-ink">{invite.householdName}</span> lädt dich
+                ein:
+              </>
+            )}{" "}
             derselbe Wochenplan, dieselben Einkaufszettel, mit deinem eigenen Konto.
           </p>
           <JoinForm token={token} />
