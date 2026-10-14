@@ -201,7 +201,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   background: either way round, the holes lay askew to the note and jumped when it was lifted.
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up. A link to `#merkzettel` pulls it down
-  too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). All of it is off for whoever asked for less motion.
+  too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). Going
+  on to the next meal tears the meal's page off like a sheet of a pad (a React
+  `<ViewTransition>` keyed by the meal, `.note-off` and `.note-on`, started only by that
+  link's `transitionTypes`). All of it is off for whoever asked for less motion.
 - Words on the screen say something concrete or are left out. No filler such as "for
   variety" or "just for you"; a suggestion without a reason shows none.
 - The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the

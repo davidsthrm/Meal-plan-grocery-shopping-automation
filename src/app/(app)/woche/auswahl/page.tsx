@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { ViewTransition, type ReactNode } from "react";
 import { ArrowIcon } from "@/components/icons";
 import { RecipeRow } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
@@ -30,6 +30,13 @@ import { markSlot, planExtra, planRecipe } from "../actions";
 export const metadata: Metadata = { title: "Mahlzeit planen" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
+/**
+ * Going on to the next meal turns to a new note: the page of this meal is torn off like a
+ * sheet of a pad and the next one settles in (`.note-off`, `.note-on`). Only that link
+ * carries the type; every other way here simply shows the page.
+ */
+const NEXT_MEAL = "naechste-mahlzeit";
 
 /** How many suggestions and how many results the page lists. */
 const SUGGESTIONS = 8;
@@ -147,151 +154,159 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
   const back = extra ? `/woche?w=${week}&t=extra` : `/woche?w=${week}#tag-${date}`;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <Link href={back} className="link text-sm">
-        ← Wochenplan
-      </Link>
-      <p className="eyebrow mt-3">
-        {extra ? weekRange(week) : `${weekdayLong(date)}, ${dayAndMonth(date)}`}
-      </p>
-      <h1 className="title mt-1">
-        {extra ? "Außerdem einplanen" : mode === "add" ? MEAL_ADD[meal] : MEAL_PLAN[meal]}
-      </h1>
+    <ViewTransition
+      key={extra ? "extra" : `${date}.${meal}`}
+      enter={{ [NEXT_MEAL]: "note-on", default: "none" }}
+      exit={{ [NEXT_MEAL]: "note-off", default: "none" }}
+      default="none"
+    >
+      <div className="mx-auto max-w-3xl">
+        <Link href={back} className="link text-sm">
+          ← Wochenplan
+        </Link>
+        <p className="eyebrow mt-3">
+          {extra ? weekRange(week) : `${weekdayLong(date)}, ${dayAndMonth(date)}`}
+        </p>
+        <h1 className="title mt-1">
+          {extra ? "Außerdem einplanen" : mode === "add" ? MEAL_ADD[meal] : MEAL_PLAN[meal]}
+        </h1>
 
-      {!extra && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          <p className={current ? "" : "text-muted"} role="status">
-            {current ? (
-              <>
-                <span className="text-muted">Geplant: </span>
-                <span className="font-semibold">
-                  {current.kind === "recipes"
-                    ? current.items
-                        .map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept")
-                        .join(" und ")
-                    : slotText(current)}
-                </span>
-              </>
-            ) : (
-              "Noch nichts geplant"
-            )}
-          </p>
-          <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {current?.kind === "free_text" && (
-              <Link
-                href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
-                className="link text-sm"
-                aria-label={`${weekdayLong(date)} ${MEAL_NAME[meal]}: Lebensmittel`}
-              >
-                Lebensmittel
-              </Link>
-            )}
-            {next && (
-              <Link
-                href={`/woche/auswahl?${new URLSearchParams({ w: mondayOf(next.date), d: next.date, m: next.meal, modus: "replace" })}`}
-                className="btn btn-primary btn-small"
-                aria-label={`Nächste Mahlzeit: ${weekdayLong(next.date)} ${MEAL_NAME[next.meal]}`}
-              >
-                Nächste Mahlzeit
-                <span className="font-normal opacity-80">
-                  {weekdayShort(next.date)} {MEAL_NAME[next.meal]}
-                </span>
-                <ArrowIcon />
-              </Link>
-            )}
-          </span>
-        </div>
-      )}
+        {!extra && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+            <p className={current ? "" : "text-muted"} role="status">
+              {current ? (
+                <>
+                  <span className="text-muted">Geplant: </span>
+                  <span className="font-semibold">
+                    {current.kind === "recipes"
+                      ? current.items
+                          .map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept")
+                          .join(" und ")
+                      : slotText(current)}
+                  </span>
+                </>
+              ) : (
+                "Noch nichts geplant"
+              )}
+            </p>
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {current?.kind === "free_text" && (
+                <Link
+                  href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+                  className="link text-sm"
+                  aria-label={`${weekdayLong(date)} ${MEAL_NAME[meal]}: Lebensmittel`}
+                >
+                  Lebensmittel
+                </Link>
+              )}
+              {next && (
+                <Link
+                  href={`/woche/auswahl?${new URLSearchParams({ w: mondayOf(next.date), d: next.date, m: next.meal, modus: "replace" })}`}
+                  transitionTypes={[NEXT_MEAL]}
+                  className="btn btn-primary btn-small"
+                  aria-label={`Nächste Mahlzeit: ${weekdayLong(next.date)} ${MEAL_NAME[next.meal]}`}
+                >
+                  Nächste Mahlzeit
+                  <span className="font-normal opacity-80">
+                    {weekdayShort(next.date)} {MEAL_NAME[next.meal]}
+                  </span>
+                  <ArrowIcon />
+                </Link>
+              )}
+            </span>
+          </div>
+        )}
 
-      {!extra && mode === "replace" && (
-        <section className="mt-5" aria-label="Ohne Rezept">
-          <h2 className="eyebrow">Ohne Rezept</h2>
-          {meal !== "coffee" && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {MEALS_WITHOUT_RECIPE.map((option) => (
-                <form key={option.label} action={markSlot}>
-                  {where}
-                  <input type="hidden" name="kind" value={option.kind} />
-                  <input type="hidden" name="label" value={option.label} />
-                  <SubmitButton className="chip">{option.label}</SubmitButton>
-                </form>
+        {!extra && mode === "replace" && (
+          <section className="mt-5" aria-label="Ohne Rezept">
+            <h2 className="eyebrow">Ohne Rezept</h2>
+            {meal !== "coffee" && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {MEALS_WITHOUT_RECIPE.map((option) => (
+                  <form key={option.label} action={markSlot}>
+                    {where}
+                    <input type="hidden" name="kind" value={option.kind} />
+                    <input type="hidden" name="label" value={option.label} />
+                    <SubmitButton className="chip">{option.label}</SubmitButton>
+                  </form>
+                ))}
+              </div>
+            )}
+            <form action={markSlot} className="mt-2 flex gap-2">
+              {where}
+              <input type="hidden" name="kind" value="free_text" />
+              <label className="flex-1">
+                <span className="sr-only">Eigener Eintrag</span>
+                <input
+                  name="label"
+                  maxLength={60}
+                  list="rezepttitel"
+                  autoComplete="off"
+                  className="field"
+                  placeholder={
+                    meal === "coffee"
+                      ? "Eigener Eintrag, z. B. Kuchen vom Bäcker"
+                      : "Eigener Eintrag, z. B. Pestonudeln oder bei Oma"
+                  }
+                />
+              </label>
+              <SubmitButton>Eintragen</SubmitButton>
+            </form>
+            {/* What is typed here and is the title of a recipe is planned as that recipe. */}
+            <datalist id="rezepttitel">
+              {recipes.map((recipe) => (
+                <option key={recipe.id} value={recipe.title} />
               ))}
-            </div>
-          )}
-          <form action={markSlot} className="mt-2 flex gap-2">
-            {where}
-            <input type="hidden" name="kind" value="free_text" />
-            <label className="flex-1">
-              <span className="sr-only">Eigener Eintrag</span>
-              <input
-                name="label"
-                maxLength={60}
-                list="rezepttitel"
-                autoComplete="off"
-                className="field"
-                placeholder={
-                  meal === "coffee"
-                    ? "Eigener Eintrag, z. B. Kuchen vom Bäcker"
-                    : "Eigener Eintrag, z. B. Pestonudeln oder bei Oma"
-                }
-              />
-            </label>
-            <SubmitButton>Eintragen</SubmitButton>
-          </form>
-          {/* What is typed here and is the title of a recipe is planned as that recipe. */}
-          <datalist id="rezepttitel">
-            {recipes.map((recipe) => (
-              <option key={recipe.id} value={recipe.title} />
-            ))}
-          </datalist>
-        </section>
-      )}
+            </datalist>
+          </section>
+        )}
 
-      <section className="mt-6" aria-label="Rezept suchen">
-        <h2 className="eyebrow mb-2">Aus dem Kochbuch</h2>
-        <RecipeFilterBar
-          path="/woche/auswahl"
-          filter={filter}
-          categories={categories}
-          books={books}
-          tagGroups={tagGroups}
-          keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
-          plan={{
-            action: extra ? planExtra : planRecipe,
-            fields: extra ? { week } : { week, date, meal, mode, bleiben: "1" },
-          }}
-        />
-      </section>
-
-      {list(
-        "Vorschläge",
-        suggestions.map((entry) => row(entry.recipe, whyText(entry.reasons) || undefined)),
-      )}
-      {list(
-        "Favoriten",
-        favorites.slice(0, 12).map((recipe) => row(recipe)),
-      )}
-      {!browsing && (
-        <section className="mt-6" aria-label="Ergebnisse">
-          <p className="text-muted" role="status">
-            {results.length === 0
-              ? "Kein Rezept passt dazu."
-              : results.length === 1
-                ? "1 Rezept passt dazu"
-                : `${results.length} Rezepte passen dazu`}
-            {results.length > RESULTS && `. Die ersten ${RESULTS} davon:`}
-          </p>
-          {results.length > 0 && (
-            <ul className="card mt-2 divide-y divide-line">
-              {results.slice(0, RESULTS).map((recipe) => row(recipe))}
-            </ul>
-          )}
+        <section className="mt-6" aria-label="Rezept suchen">
+          <h2 className="eyebrow mb-2">Aus dem Kochbuch</h2>
+          <RecipeFilterBar
+            path="/woche/auswahl"
+            filter={filter}
+            categories={categories}
+            books={books}
+            tagGroups={tagGroups}
+            keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
+            plan={{
+              action: extra ? planExtra : planRecipe,
+              fields: extra ? { week } : { week, date, meal, mode, bleiben: "1" },
+            }}
+          />
         </section>
-      )}
-      {list(
-        "Ähnliche Rezepte",
-        related.map((recipe) => row(recipe)),
-      )}
-    </div>
+
+        {list(
+          "Vorschläge",
+          suggestions.map((entry) => row(entry.recipe, whyText(entry.reasons) || undefined)),
+        )}
+        {list(
+          "Favoriten",
+          favorites.slice(0, 12).map((recipe) => row(recipe)),
+        )}
+        {!browsing && (
+          <section className="mt-6" aria-label="Ergebnisse">
+            <p className="text-muted" role="status">
+              {results.length === 0
+                ? "Kein Rezept passt dazu."
+                : results.length === 1
+                  ? "1 Rezept passt dazu"
+                  : `${results.length} Rezepte passen dazu`}
+              {results.length > RESULTS && `. Die ersten ${RESULTS} davon:`}
+            </p>
+            {results.length > 0 && (
+              <ul className="card mt-2 divide-y divide-line">
+                {results.slice(0, RESULTS).map((recipe) => row(recipe))}
+              </ul>
+            )}
+          </section>
+        )}
+        {list(
+          "Ähnliche Rezepte",
+          related.map((recipe) => row(recipe)),
+        )}
+      </div>
+    </ViewTransition>
   );
 }
