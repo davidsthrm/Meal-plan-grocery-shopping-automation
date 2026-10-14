@@ -600,7 +600,10 @@ Shopping list
 - Export: the page has a print layout (black on white, two columns, a box per line, no
   controls) for the note that is picked up, and `/einkauf/pdf` writes notes with `pdf-lib`:
   each note as a file of its own, or all of them in one file, every note on its own page.
-  Both show what is still to buy, without what is ticked off or at home.
+  Both show what is still to buy, without what is ticked off or at home. The PDF is a small
+  notepad sheet to take along instead of a phone: A6, one column, black on white, binding
+  holes along the top and faint ruled lines. The size is one constant (`NOTE_PAPER` in
+  `src/server/shopping/pdf.ts`, with A6, A5 and A4 laid out).
 
 Import
 
