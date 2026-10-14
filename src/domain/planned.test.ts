@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "./plan";
-import { currentWeeks, plannedAt, type WeekOnPlan } from "./planned";
+import { currentWeeks, lastCooked, plannedAt, type WeekOnPlan } from "./planned";
 
 describe("currentWeeks", () => {
   it("is the running week from Monday to Friday", () => {
@@ -66,5 +66,20 @@ describe("plannedAt", () => {
     };
     expect(plannedAt("lasagne", [next, week])?.date).toBe("2026-10-14");
     expect(plannedAt("lasagne", [next])?.date).toBe("2026-10-19");
+  });
+});
+
+describe("lastCooked", () => {
+  it("is the latest day the recipe was on a meal before today", () => {
+    expect(lastCooked(["2026-09-01", "2026-10-12", "2026-08-30"], "2026-10-14")).toBe("2026-10-12");
+  });
+
+  it("leaves out today and what is still to come", () => {
+    expect(lastCooked(["2026-10-14", "2026-10-18", "2026-10-02"], "2026-10-14")).toBe("2026-10-02");
+    expect(lastCooked(["2026-10-14", "2026-10-18"], "2026-10-14")).toBeNull();
+  });
+
+  it("is null for a recipe that was never on a plan", () => {
+    expect(lastCooked([], "2026-10-14")).toBeNull();
   });
 });

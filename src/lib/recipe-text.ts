@@ -1,3 +1,4 @@
+import { dayAndMonth, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { effortOf, type Effort } from "@/domain/library/tags";
 import { formatAmount } from "@/domain/shopping-list/format";
@@ -26,6 +27,16 @@ export function timeText(recipe: Pick<RecipeSummary, "tags" | "prepMinutes">): s
 export function servingsText(min: number | null, max: number | null, unit: string | null): string {
   if (min === null || max === null) return "? Portionen";
   return `${min === max ? min : `${min}–${max}`} ${unit ?? "Portionen"}`;
+}
+
+/**
+ * When a recipe was last cooked, as its page says it: "Zuletzt gekocht am 12. Oktober", with
+ * the year when it was another year than today's, or "Noch nie gekocht".
+ */
+export function lastCookedText(day: IsoDate | null, today: IsoDate): string {
+  if (day === null) return "Noch nie gekocht";
+  const year = day.slice(0, 4) === today.slice(0, 4) ? "" : ` ${day.slice(0, 4)}`;
+  return `Zuletzt gekocht am ${dayAndMonth(day)}${year}`;
 }
 
 /** "Speed Cooking, S. 97", or what is known of it. */

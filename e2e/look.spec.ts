@@ -120,7 +120,7 @@ test("screens @look", async ({ page }, info) => {
     await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
     await page.waitForLoadState("networkidle");
     await shot("2-rezept");
-    const edit = page.getByRole("link", { name: "Ändern" });
+    const edit = page.getByRole("link", { name: "Rezept ändern" });
     if (await edit.count()) {
       const recipeUrl = page.url();
       await edit.click();

@@ -144,6 +144,8 @@ test("a recipe found while browsing is put on the plan from its own page", async
   await page.goto("/rezepte?q=Pfeffersteak");
   await page.getByRole("link", { name: /Pfeffersteak/ }).click();
   await expect(page.getByRole("link", { name: "Einplanen" })).toHaveCount(0);
+  // Planned for a day still to come is not cooked yet.
+  await expect(page.getByText("Noch nie gekocht")).toBeVisible();
   await page.getByRole("link", { name: "Eingeplant" }).click();
   await expect(meal(page, "Sonntag Abend")).toContainText("Pfeffersteak");
 });

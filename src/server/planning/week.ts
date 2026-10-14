@@ -13,7 +13,7 @@ import {
   type SlotItem,
 } from "@/domain/plan";
 import { findIngredient } from "@/domain/catalog";
-import { currentWeeks, plannedAt, type PlannedAt } from "@/domain/planned";
+import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/planned";
 import { today } from "@/lib/today";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 
@@ -463,6 +463,42 @@ export async function loadHistory(db: Db, before: IsoDate): Promise<Map<string, 
     }
   }
   return history;
+}
+
+/**
+ * The day a recipe was last cooked (`lastCooked`), from every meal it was ever on. Unlike
+ * `loadHistory`, which reads half a year of the whole plan, this reads one recipe's meals.
+ */
+export async function loadLastCooked(
+  db: Db,
+  recipeId: string,
+  today: IsoDate,
+): Promise<IsoDate | null> {
+  const items = await allRows(
+    (from, to) =>
+      db
+        .from("plan_slot_item")
+        .select("id, plan_slot_id")
+        .eq("recipe_id", recipeId)
+        .order("id")
+        .range(from, to),
+    "load meals of recipe",
+  );
+  const ids = [...new Set(items.map((item) => item.plan_slot_id))];
+  const days: IsoDate[] = [];
+  // In portions, so the list of meals fits into the address of one request.
+  for (let at = 0; at < ids.length; at += SLOTS_PER_REQUEST) {
+    const slots = must(
+      await db
+        .from("plan_slot")
+        .select("date")
+        .in("id", ids.slice(at, at + SLOTS_PER_REQUEST))
+        .lt("date", today),
+      "load days of recipe",
+    );
+    days.push(...slots.map((slot) => slot.date));
+  }
+  return lastCooked(days, today);
 }
 
 /** The meal of a week at a day and time, if it is one without a recipe. */
