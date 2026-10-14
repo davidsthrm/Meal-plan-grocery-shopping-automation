@@ -526,12 +526,11 @@ function Line({
           <span>
             {view.text}
             {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
-            {needed !== "" && (
-              <span className="text-sm text-muted print:text-black"> · {needed}</span>
-            )}
           </span>
         </summary>
         <div className="mt-1 mb-2 space-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
+          {/* The day is said here, not on the line: on every line it was too much. */}
+          {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
           {exact !== "" && <p>Genau: {exact}</p>}
           <ul className="text-muted">
             {line.contributions.map((entry, at) => (

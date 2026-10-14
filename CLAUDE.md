@@ -520,9 +520,10 @@ Shopping list
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
 - What would not keep from its shopping day, and what was planned after the last shopping
   day before its meal, is bought shortly before (`trip` "later"). It is no section of its
-  own: the line stands with its kind of grocery. Only what goes bad says for which day it
-  is bought ("für Do. 15. Oktober", `neededBy`): tomatoes and yoghurt, not flour. The
-  household found a date on every line too much.
+  own: the line stands with its kind of grocery. Only what goes bad knows for which day it
+  is bought ("für Do. 15. Oktober", `neededBy`): tomatoes and yoghurt, not flour. The day is
+  shown when the line is opened with a tap, not on the line, and not on paper or in the PDF:
+  the household found a date on every line too much.
 - A note is the same real errand from whichever week it is looked at: Saturday's market note
   holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
   The page of a week shows the errands in it, and one before it when that buys for the

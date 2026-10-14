@@ -1,5 +1,5 @@
 import { isIsoDate, mondayOf, planningWeek, weekRange } from "@/domain/dates";
-import { coversText, neededText, PLACE_NAME, whenText } from "@/lib/list-text";
+import { coversText, PLACE_NAME, whenText } from "@/lib/list-text";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { chosenShop, loadShoppingNotes } from "@/server/shopping/list";
@@ -29,8 +29,8 @@ export async function GET(request: Request): Promise<Response> {
       lines: lines
         .filter((line) => !line.checked)
         .map((line) => {
-          const extra = [chosenShop(index, line), neededText(line)].filter(Boolean).join(", ");
-          return extra === "" ? line.text : `${line.text} (${extra})`;
+          const shop = chosenShop(index, line);
+          return shop ? `${line.text} (${shop})` : line.text;
         }),
     })),
   ]);
