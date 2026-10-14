@@ -138,32 +138,44 @@ body {
 
   /*
    * A sheet of a pad: the week plan, a shopping list. Barely rounded, with the holes of the
-   * binding along its top and two more sheets showing underneath. Holes, rule and the sheets
-   * underneath are painted by the sheet itself, not by a box of their own, so whatever moves
-   * the sheet (a lift, a turn, a zoom) moves all of it as one.
+   * binding along its top (`SheetHoles`) and two more sheets showing underneath.
    */
   .sheet {
     --sheets-under:
       0 5px 0 -2px var(--color-surface), 0 5px 0 -1px var(--color-line),
       0 10px 0 -4px var(--color-surface), 0 10px 0 -3px var(--color-line);
     position: relative;
-    padding-top: 1.5rem;
     border: 1px solid var(--color-line);
     border-radius: 0.3rem;
-    background:
-      radial-gradient(
-          circle at 50% 55%,
-          var(--color-paper) 0 0.27rem,
-          var(--color-line) 0.27rem 0.33rem,
-          transparent 0.35rem
-        )
-        0.2rem 0 / 1.7rem calc(1.5rem - 1px) repeat-x,
-      linear-gradient(var(--color-rule), var(--color-rule)) 0 calc(1.5rem - 1px) / 100% 1px
-        no-repeat,
-      var(--color-surface);
+    background: var(--color-surface);
     box-shadow:
       var(--sheets-under),
       0 24px 28px -24px rgb(35 33 29 / 0.4);
+  }
+  /*
+   * Every hole is a box of its own, laid out and drawn like the sheet's edge. Drawn as a
+   * repeated background, the holes were rounded to whole pixels apart from the edge and
+   * jumped against it while a note tile was lifted.
+   */
+  .sheet-holes {
+    display: flex;
+    height: 1.5rem;
+    flex: none;
+    align-items: center;
+    gap: 1.04rem;
+    /* As wide as the sheet: the holes that do not fit neither show nor widen it. */
+    contain: inline-size;
+    overflow: hidden;
+    padding: 0.15rem 0 0 0.72rem;
+    border-bottom: 1px solid var(--color-rule);
+  }
+  .sheet-holes > span {
+    width: 0.66rem;
+    height: 0.66rem;
+    flex: none;
+    border: 0.06rem solid var(--color-line);
+    border-radius: 50%;
+    background: var(--color-paper);
   }
 
   /* The lines of a list on ruled paper, with the margin the boxes to tick stand in. */
@@ -661,10 +673,12 @@ details > summary::-webkit-details-marker {
   }
   /* Real paper needs no picture of paper. */
   .sheet {
-    padding-top: 0;
     border: 0;
     box-shadow: none;
     background: none;
+  }
+  .sheet-holes {
+    display: none;
   }
   .ruled {
     background: none;

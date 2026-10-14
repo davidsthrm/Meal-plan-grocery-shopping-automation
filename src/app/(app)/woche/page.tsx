@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ArrowIcon, PenIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
+import { SheetHoles } from "@/components/sheet-holes";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
@@ -301,45 +302,48 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
 
       {!showExtras && (
-        <ol id="wochenblatt" className="sheet mt-6 divide-y divide-rule">
-          {days.map((date) => (
-            <li
-              key={date}
-              id={`tag-${date}`}
-              className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] sm:px-5"
-            >
-              <h2 className="flex items-baseline gap-2 sm:block">
-                <span
-                  className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
-                >
-                  {weekdayLong(date)}
-                </span>
-                <span className="text-sm text-muted sm:block">
-                  {date === now ? "Heute" : dayAndMonth(date)}
-                </span>
-              </h2>
-              {mealsOf(date).map((meal) => (
-                <MealCell
-                  key={meal}
-                  week={week}
-                  date={date}
-                  meal={meal}
-                  slot={slotAt(date, meal)}
-                  proposal={
-                    question?.date === date && question.meal === meal ? proposal : undefined
-                  }
-                  hint={hinted.has(`${date}.${meal}`) ? pickAt(date, meal) : undefined}
-                  draw={draw}
-                  canAsk={date >= now && meal !== "coffee" && !saved}
-                  recipeOf={recipeOf}
-                  placing={placing}
-                  locked={saved && !placing && pen !== `${date}.${meal}`}
-                  withPen={saved && pen === `${date}.${meal}`}
-                />
-              ))}
-            </li>
-          ))}
-        </ol>
+        <div className="sheet mt-6">
+          <SheetHoles />
+          <ol id="wochenblatt" className="relative divide-y divide-rule">
+            {days.map((date) => (
+              <li
+                key={date}
+                id={`tag-${date}`}
+                className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] sm:px-5"
+              >
+                <h2 className="flex items-baseline gap-2 sm:block">
+                  <span
+                    className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
+                  >
+                    {weekdayLong(date)}
+                  </span>
+                  <span className="text-sm text-muted sm:block">
+                    {date === now ? "Heute" : dayAndMonth(date)}
+                  </span>
+                </h2>
+                {mealsOf(date).map((meal) => (
+                  <MealCell
+                    key={meal}
+                    week={week}
+                    date={date}
+                    meal={meal}
+                    slot={slotAt(date, meal)}
+                    proposal={
+                      question?.date === date && question.meal === meal ? proposal : undefined
+                    }
+                    hint={hinted.has(`${date}.${meal}`) ? pickAt(date, meal) : undefined}
+                    draw={draw}
+                    canAsk={date >= now && meal !== "coffee" && !saved}
+                    recipeOf={recipeOf}
+                    placing={placing}
+                    locked={saved && !placing && pen !== `${date}.${meal}`}
+                    withPen={saved && pen === `${date}.${meal}`}
+                  />
+                ))}
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
     </div>
   );

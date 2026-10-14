@@ -3,6 +3,7 @@ import Link from "next/link";
 import { NoteIcon, TickIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
+import { SheetHoles } from "@/components/sheet-holes";
 import { SubmitButton } from "@/components/submit-button";
 import type { CatalogIndex } from "@/domain/catalog";
 import {
@@ -262,6 +263,7 @@ function NoteTile({ note, week, today: now }: { note: NoteList; week: IsoDate; t
         note.completed ? "erledigt" : `${note.open} offen`
       }`}
     >
+      <SheetHoles />
       <span className={`flex flex-1 flex-col px-4 pt-3 pb-4 ${note.completed ? "done-note" : ""}`}>
         <NoteHead note={note} today={now} />
         <span className="mt-3 block flex-1 text-[0.95rem]">
@@ -343,6 +345,7 @@ function NoteSheet({
       aria-label={`${PLACE_NAME[trip.place]}, ${whenText(trip)}`}
       className="sheet zoom-in mt-4"
     >
+      <SheetHoles />
       <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h1>
