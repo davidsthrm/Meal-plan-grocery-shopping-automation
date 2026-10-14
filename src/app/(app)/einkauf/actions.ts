@@ -117,6 +117,29 @@ export async function markAtHome(form: FormData): Promise<void> {
   backToList(input);
 }
 
+/**
+ * "Doch kaufen" on a thing at home: every line it stands for is to be bought again. A line
+ * whose errand is over goes to the note the page chose for it (`noteToBuyOn`), and is not at
+ * home there either. Each `line` field is "<note>|<key>|<target note>|<origins>".
+ */
+export async function buyAfterAll(form: FormData): Promise<void> {
+  const input = read(place, form);
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  for (const value of form.getAll("line").map(String)) {
+    const [note, key, to, origins = ""] = value.split("|");
+    if (!note || !key || !to || key.length > 200) continue;
+    const trip = noteOf(note);
+    const target = noteOf(to);
+    await changeLine(db, household, trip, key, { atHome: false });
+    if (noteId(target) === noteId(trip)) continue;
+    const from = origins === "" ? [trip] : origins.split(",").map(noteOf);
+    await moveLines(db, household, [{ key, origins: from }], target);
+    await changeLine(db, household, target, key, { atHome: false });
+  }
+  backToList(input);
+}
+
 /** Writes a note next to a line: a brand, an offer price. */
 export async function noteLine(form: FormData): Promise<void> {
   const input = read(line.extend({ note: z.string().trim().max(80) }), form);

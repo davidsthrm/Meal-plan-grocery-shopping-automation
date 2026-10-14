@@ -14,10 +14,11 @@ import {
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
+import { groupAtHome, noteToBuyOn, type AtHomeGroup } from "@/domain/shopping-list/at-home";
 import { dayProblems } from "@/domain/shopping-list/change-day";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
 import type { ViewLine } from "@/domain/shopping-list/present";
-import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import { noteId, type ShoppingDay, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import {
   coversText,
   dayName,
@@ -39,6 +40,7 @@ import { loadRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 import {
   addDrugstoreEntry,
+  buyAfterAll,
   addListEntry,
   changeNoteDay,
   checkLine,
@@ -112,6 +114,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   }
 
   const open = notes.reduce((sum, note) => sum + note.open, 0);
+  const atHomeGroups = groupAtHome(atHome, index);
   const done = notes.reduce((sum, note) => sum + note.done, 0);
   const nothing = open + done + atHome.length === 0;
 
@@ -188,42 +191,14 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         )}
       </ul>
 
-      {atHome.length > 0 && (
-        <details className="card mt-8 px-4 py-2">
-          <summary className="flex min-h-11 items-center justify-between gap-3 font-semibold">
-            <span>Haben wir schon</span>
-            <span className="text-sm font-normal text-muted tabular-nums">{atHome.length}</span>
-          </summary>
-          <p className="text-sm text-muted">
-            Wird für die Woche gebraucht, steht aber auf keinem Zettel.
-          </p>
-          <ul className="mt-2 gap-x-10 sm:columns-2 lg:columns-3">
-            {atHome.map(({ trip, line }) => (
-              <li
-                key={`${noteId(trip)}|${line.line.key}`}
-                className="flex break-inside-avoid items-center justify-between gap-3 border-b border-rule py-1"
-              >
-                <span className="min-w-0">
-                  {line.text}
-                  <span className="text-sm text-muted"> · {noteName(trip)}</span>
-                </span>
-                <form action={markAtHome}>
-                  <input type="hidden" name="week" value={week} />
-                  <input type="hidden" name="note" value={noteId(trip)} />
-                  <input type="hidden" name="back" value="all" />
-                  <input type="hidden" name="key" value={line.line.key} />
-                  <input type="hidden" name="atHome" value="0" />
-                  <SubmitButton
-                    className="link min-h-10 text-sm whitespace-nowrap"
-                    label={`${line.line.label} doch kaufen`}
-                  >
-                    Doch kaufen
-                  </SubmitButton>
-                </form>
-              </li>
-            ))}
-          </ul>
-        </details>
+      {atHomeGroups.length > 0 && (
+        <AtHomeList
+          groups={atHomeGroups}
+          week={week}
+          today={now}
+          days={household.shoppingDays}
+          index={index}
+        />
       )}
 
       {open > 0 && (
@@ -245,6 +220,89 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         </nav>
       )}
     </div>
+  );
+}
+
+/**
+ * "Haben wir schon": what the week needs and is at home, each thing once by kind of grocery.
+ * "Doch kaufen" puts it on the note that buys it next.
+ */
+function AtHomeList({
+  groups: atHomeGroups,
+  week,
+  today: now,
+  days,
+  index,
+}: {
+  groups: AtHomeGroup[];
+  week: IsoDate;
+  today: IsoDate;
+  days: readonly ShoppingDay[];
+  index: CatalogIndex;
+}) {
+  return (
+    <details className="card mt-8 px-4 py-2">
+      <summary className="flex min-h-11 items-center justify-between gap-3 font-semibold">
+        <span>Haben wir schon</span>
+        <span className="text-sm font-normal text-muted tabular-nums">
+          {atHomeGroups.reduce((sum, group) => sum + group.items.length, 0)}
+        </span>
+      </summary>
+      <p className="text-sm text-muted">
+        Wird für die Woche gebraucht, steht aber auf keinem Zettel. „Doch kaufen“ schreibt es auf
+        den Zettel, der es als Nächstes kauft.
+      </p>
+      <div className="mt-3 gap-x-10 sm:columns-2 lg:columns-3">
+        {atHomeGroups.map(({ aisleGroup, items }) => (
+          <section
+            key={aisleGroup.id}
+            aria-label={aisleGroup.name}
+            className="mb-4 break-inside-avoid-column"
+          >
+            <h3 className="eyebrow">{aisleGroup.name}</h3>
+            <ul className="mt-1">
+              {items.map((item) => (
+                <li
+                  key={item.label}
+                  className="flex items-center justify-between gap-3 border-b border-rule py-0.5"
+                >
+                  <span className="min-w-0">{item.label}</span>
+                  <form action={buyAfterAll}>
+                    <input type="hidden" name="week" value={week} />
+                    <input type="hidden" name="note" value={noteId(item.lines[0].trip)} />
+                    <input type="hidden" name="back" value="all" />
+                    {item.lines.map(({ trip, line }) => {
+                      const fresh =
+                        index.aisleGroupById.get(line.line.aisleGroupId)?.freshPlace ?? null;
+                      const target = noteToBuyOn(trip, now, days, fresh);
+                      const origins = [
+                        ...new Set(
+                          line.line.contributions.map((part) => noteId(part.origin ?? trip)),
+                        ),
+                      ];
+                      return (
+                        <input
+                          key={`${noteId(trip)}|${line.line.key}`}
+                          type="hidden"
+                          name="line"
+                          value={[noteId(trip), line.line.key, noteId(target), origins].join("|")}
+                        />
+                      );
+                    })}
+                    <SubmitButton
+                      className="link min-h-10 text-sm whitespace-nowrap"
+                      label={`${item.label} doch kaufen`}
+                    >
+                      Doch kaufen
+                    </SubmitButton>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </details>
   );
 }
 

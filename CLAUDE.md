@@ -558,7 +558,10 @@ Shopping list
   lines are summed, so a moved line adds up with what its new note needs anyway. Every part
   of a line knows the note it came from (`Contribution.origin`).
 - What is needed and at home is one list for the whole week, under the notes ("Haben wir
-  schon"), not one per note.
+  schon"), not one per note: each thing once, by kind of grocery, without the note it would
+  be on (`groupAtHome`). "Doch kaufen" puts every line it stands for back on its note while
+  that errand is still to come, and otherwise on the next note from today on that sells it
+  (`noteToBuyOn`), where it is not at home either.
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked.
