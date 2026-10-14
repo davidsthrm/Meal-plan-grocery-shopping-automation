@@ -46,7 +46,6 @@ import {
   changeExtraServings,
   changeServings,
   clearSlot,
-  copyLastWeek,
   needsNoRecipe,
   describeExtra,
   planExtra,
@@ -59,8 +58,8 @@ export const metadata: Metadata = { title: "Wochenplan" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** How many ideas show faintly in an empty week, and what an idea needs to be one of them. */
-const HINTS = 3;
+/** How many meals offer a suggestion unasked, and what an idea needs to be one of them. */
+const HINTS = 5;
 const HINT_SCORE = 2;
 /** How many different suggestions a meal can be asked for before they come round again. */
 const PROPOSALS = 12;
@@ -87,11 +86,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // The one meal of a saved plan someone took the pen to.
   const pen = one(params.stift) ?? "";
 
-  const [library, slots, history, previous, extras, saved, self] = await Promise.all([
+  const [library, slots, history, extras, saved, self] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
     loadHistory(db, week),
-    loadWeek(db, addDays(week, -7)),
     loadExtras(db, week),
     isSaved(db, week),
     db
@@ -131,7 +129,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const picks = placing || showExtras || saved ? [] : suggestWeek(library.recipes, open, context);
   const pickAt = (date: IsoDate, meal: Meal) =>
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
-  // A few of them show faintly in their meal: the ones with the most to say for them, and
+  // A few of them are offered in their meal: the ones with the most to say for them, and
   // among equals not simply the first days of the week.
   const hinted = new Set(
     picks
@@ -303,12 +301,6 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                     />
                   ))}
                   <SubmitButton className="btn btn-small">Plan vervollständigen</SubmitButton>
-                </form>
-              )}
-              {slots.length === 0 && previous.length > 0 && (
-                <form action={copyLastWeek}>
-                  <input type="hidden" name="week" value={week} />
-                  <SubmitButton className="btn btn-small">Letzte Woche übernehmen</SubmitButton>
                 </form>
               )}
               {/* Done planning: the plan is saved and shown to read. Or the whole week is
@@ -766,7 +758,7 @@ interface CellProps {
   slot: PlanSlot | undefined;
   /** The answer to "Hast du einen Vorschlag?", when this meal was asked about. */
   proposal: Suggestion | undefined;
-  /** An idea shown faintly in an open meal nobody asked about. */
+  /** An idea offered in an open meal nobody asked about. */
   hint: Suggestion | undefined;
   /** How often another suggestion was asked for. */
   draw: number;
@@ -795,6 +787,8 @@ function MealCell({
   locked,
   withPen,
 }: CellProps) {
+  // The suggestion the meal shows: the one asked for, or else an idea offered unasked.
+  const shown = proposal ?? hint;
   const ask = (again: number) => `/woche?w=${week}&frage=${date}.${meal}&v=${again}#tag-${date}`;
   const where = (
     <>
@@ -931,45 +925,37 @@ function MealCell({
         </div>
       )}
 
-      {!slot && proposal && !placing && (
-        <div className="mt-1 rounded-lg border border-accent/40 bg-surface px-3 py-2.5">
+      {/*
+       * A suggestion, asked for or offered unasked: a box of its own with a dashed edge, so
+       * that it does not read as planned. Nothing is planned until "Gute Idee!".
+       */}
+      {!slot && shown && !placing && (
+        <div className="mt-1 rounded-lg border border-dashed border-accent/50 bg-accent-soft/40 px-3 py-2.5">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
           <div className="mt-1">
-            <KindTitle recipe={proposal.recipe} id={proposal.recipe.id} week={week} />
+            <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} />
           </div>
-          {proposal.reasons.length > 0 && (
-            <p className="mt-1 text-sm text-muted">{whyText(proposal.reasons)}</p>
+          {shown.reasons.length > 0 && (
+            <p className="mt-1 text-sm text-muted">{whyText(shown.reasons)}</p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <form action={planRecipe}>
               {where}
-              <input type="hidden" name="recipe" value={proposal.recipe.id} />
+              <input type="hidden" name="recipe" value={shown.recipe.id} />
               <input type="hidden" name="mode" value="replace" />
               <SubmitButton
                 className="btn btn-primary btn-small"
-                label={`${what}: ${proposal.recipe.title} einplanen`}
+                label={`${what}: ${shown.recipe.title} einplanen`}
               >
                 Gute Idee!
               </SubmitButton>
             </form>
-            <Link href={ask(draw + 1)} scroll={false} className="btn btn-small">
+            {/* An idea offered unasked is the first answer; the next one is the second. */}
+            <Link href={ask(proposal ? draw + 1 : 1)} scroll={false} className="btn btn-small">
               Noch ein Vorschlag
             </Link>
           </div>
         </div>
-      )}
-
-      {/* Nobody asked: an idea may show, pale, and waits to be asked about. */}
-      {!slot && !proposal && hint && !placing && (
-        <Link
-          href={ask(0)}
-          scroll={false}
-          className="mt-1 flex items-center gap-2 opacity-55 transition-opacity hover:opacity-100"
-          aria-label={`${what}: Idee ${hint.recipe.title} ansehen`}
-        >
-          <RecipeBadge recipe={hint.recipe} className="h-7 w-7" />
-          <span className="min-w-0 truncate text-sm text-muted">{hint.recipe.title}</span>
-        </Link>
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -1019,12 +1005,12 @@ function MealCell({
           <>
             <Link
               href={choose("replace")}
-              className={proposal ? "link text-sm" : "btn btn-small"}
+              className={shown ? "link text-sm" : "btn btn-small"}
               aria-label={`${what} planen`}
             >
-              {proposal ? "Selbst wählen" : "Planen"}
+              {shown ? "Selbst wählen" : "Planen"}
             </Link>
-            {canAsk && !proposal && (
+            {canAsk && !shown && (
               <Link
                 href={ask(0)}
                 scroll={false}

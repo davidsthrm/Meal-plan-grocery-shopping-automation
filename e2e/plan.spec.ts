@@ -21,12 +21,13 @@ const count = async (page: Page, group: string) => {
 test("an empty week waits to be asked: a suggestion comes on request", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
-  // Nothing is put on the plan unasked. A few ideas show, pale, in their meals.
-  await expect(page.getByText("Vorschlag", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /Idee .+ ansehen/ })).toHaveCount(3);
+  // Nothing is put on the plan unasked. A few meals offer a suggestion, to take or leave.
+  await expect(page.getByText("Vorschlag", { exact: true })).toHaveCount(5);
+  await expect(page.getByText("4 Personen")).toHaveCount(0);
 
+  // Asked for, whether it offered one already or not.
   const monday = meal(page, "Montag Mittag");
-  await page.getByRole("link", { name: "Montag Mittag: Hast du einen Vorschlag?" }).click();
+  await page.goto(`/woche?w=${WEEK}&frage=${WEEK}.lunch&v=0`);
   await expect(monday.getByText("Vorschlag", { exact: true })).toBeVisible();
   // Nothing is planned yet, so the suggestion is there to fill a gap.
   await expect(monday).toContainText("fehlt diese Woche noch");
@@ -36,7 +37,7 @@ test("an empty week waits to be asked: a suggestion comes on request", async ({ 
 
   await monday.getByRole("button", { name: /einplanen/ }).click();
   await expect(monday).toContainText("4 Personen");
-  await expect(page.getByText("Vorschlag", { exact: true })).toHaveCount(0);
+  await expect(monday.getByText("Vorschlag", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Plan vervollständigen" }).click();
   await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(0);
@@ -73,7 +74,7 @@ test("what someone wants to cook is suggested first, until it is planned", async
   const wishes = page.getByRole("region", { name: "Möchte ich kochen" });
   await expect(wishes.getByRole("link", { name: "Forelle Müllerin einplanen" })).toBeVisible();
   const monday = meal(page, "Montag Mittag");
-  await page.getByRole("link", { name: "Montag Mittag: Hast du einen Vorschlag?" }).click();
+  await page.goto(`/woche?w=${WEEK}&frage=${WEEK}.lunch&v=0`);
   await expect(monday).toContainText("Forelle Müllerin");
   await expect(monday).toContainText("Möchtest du kochen");
 
@@ -183,26 +184,6 @@ test("a recipe found while browsing is put on the plan from its own page", async
   await expect(page.getByText("Noch nie gekocht")).toBeVisible();
   await page.getByRole("link", { name: "Eingeplant" }).click();
   await expect(meal(page, "Sonntag Abend")).toContainText("Pfeffersteak");
-});
-
-test("last week is a starting point for the next one", async ({ page }) => {
-  await page.goto(`/woche?w=${WEEK}`);
-  await page.getByRole("link", { name: "Montag Mittag: Hast du einen Vorschlag?" }).click();
-  await meal(page, "Montag Mittag")
-    .getByRole("button", { name: /einplanen/ })
-    .click();
-  await expect(meal(page, "Montag Mittag")).toContainText("4 Personen");
-  const cooked = await meal(page, "Montag Mittag").getByRole("link").first().innerText();
-  await page.getByRole("link", { name: "Montag Abend planen" }).click();
-  await page.getByRole("button", { name: "Reste" }).click();
-  await page.getByRole("link", { name: "← Wochenplan" }).click();
-  await expect(meal(page, "Montag Abend")).toContainText("Reste");
-
-  await page.getByRole("link", { name: "Nächste Woche" }).click();
-  await expect(page.getByRole("heading", { name: "8.–14. März" })).toBeVisible();
-  await page.getByRole("button", { name: "Letzte Woche übernehmen" }).click();
-  await expect(meal(page, "Montag Mittag")).toContainText(cooked);
-  await expect(meal(page, "Montag Abend")).toContainText("Reste");
 });
 
 test("all weeks are listed month by month and lead back to their plan", async ({ page }) => {

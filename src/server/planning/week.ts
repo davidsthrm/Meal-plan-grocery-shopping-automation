@@ -2,7 +2,6 @@ import "server-only";
 import { addDays, type IsoDate } from "@/domain/dates";
 import type { PlannedWeek } from "@/domain/plan-history";
 import {
-  copyOfWeek,
   slotKey,
   type Meal,
   type NewSlot,
@@ -409,22 +408,6 @@ export async function changeItem(
     return servings === null ? [] : [{ ...item, servings }];
   });
   await writeSlot(db, householdId, weekStart, date, meal, { kind: "recipes", items });
-}
-
-/** Takes over last week's meals for every meal this week has not planned yet. */
-export async function copyPreviousWeek(
-  db: Db,
-  householdId: string,
-  weekStart: IsoDate,
-): Promise<number> {
-  const [previous, current] = await Promise.all([
-    loadWeek(db, addDays(weekStart, -7)),
-    loadWeek(db, weekStart),
-  ]);
-  const taken = new Set(current.map((slot) => slotKey(slot.date, slot.meal)));
-  const copies = copyOfWeek(previous, 7, taken);
-  await planOpenSlots(db, householdId, weekStart, copies);
-  return copies.length;
 }
 
 /** How far back the history of planned meals is read. */

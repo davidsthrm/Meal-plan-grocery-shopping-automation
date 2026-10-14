@@ -20,7 +20,6 @@ import {
   changeExtra,
   changeItem,
   removeFood,
-  copyPreviousWeek,
   loadWeek,
   planOpenSlots,
   resetWeek,
@@ -279,14 +278,6 @@ export async function changeServings(form: FormData): Promise<void> {
     input.servings === 0 ? null : input.servings,
   );
   backToWeek(input.week, input.date);
-}
-
-export async function copyLastWeek(form: FormData): Promise<void> {
-  const week = weekStart.parse(form.get("week"));
-  const household = await requireHousehold();
-  const db = await createSessionClient();
-  await copyPreviousWeek(db, household.id, week);
-  backToWeek(week);
 }
 
 /** Adds a recipe to the week outside its meals. */

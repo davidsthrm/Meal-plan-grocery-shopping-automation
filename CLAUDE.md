@@ -386,8 +386,7 @@ Week plan
   anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
   `SlotItem.plannedOn`). A meal written again with other servings or another side keeps the
-  day of what was there; a week copied from the last one is planned today. Null for what was
-  planned before this was recorded.
+  day of what was there. Null for what was planned before this was recorded.
 - A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
   when its group is still below the least the week should have, -4 when its group is used
   up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
@@ -397,9 +396,12 @@ Week plan
   Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Noch
   ein Vorschlag" for the next best; after twelve they come round again. The household found
   a plan that arrives full of suggestions too pushy.
-- Up to three open meals show an idea faintly, without being asked: the suggestions with
-  the most to say for them (a wish, a favourite, a gap in the week), spread over the week.
-  Tapping one asks about that meal.
+- Up to five open meals offer a suggestion without being asked: those with the most to say
+  for them (a wish, a favourite, a gap in the week; `HINT_SCORE`), spread over the week. It
+  is the same box as an answer to "Hast du einen Vorschlag?", with a dashed edge and
+  "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Noch ein
+  Vorschlag" shows the next best. More wishes and favourites mean more such meals, up to
+  five. The household took the pale ideas shown before for planned meals.
 - "Plan vervollständigen" plans every open meal that is still to come at once. Those
   suggestions are chosen one after the other as if the earlier ones were accepted
   (`suggestWeek`), so that the completed week meets the targets. Nothing is suggested twice
@@ -425,8 +427,6 @@ Week plan
   for the month most of its days are in. The week being planned is always listed.
 - A recipe for persons is planned for the household's servings, a recipe with a servings
   unit as written.
-- "Letzte Woche übernehmen" copies last week's meals into the meals this week has not
-  planned yet. Leftovers lose the link to the meal they came from.
 
 Library
 
