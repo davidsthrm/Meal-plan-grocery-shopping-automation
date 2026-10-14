@@ -196,7 +196,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - The shopping notes of a week lie next to each other as small notes, a little askew
   (`.tiles`), each with the pictogram of its place on that place's pastel (`PLACE_LOOK`).
   One is picked up to work through it and comes closer (`.zoom-in`). The household found
-  one long page of lists unstructured.
+  one long page of lists unstructured. Each tile is turned as one layer (`will-change`), at rest
+  as under the finger, and the holes of a sheet are elements (`SheetHoles`), not a repeated
+  background: either way round, the holes lay askew to the note and jumped when it was lifted.
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up. A link to `#merkzettel` pulls it down
   too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). All of
