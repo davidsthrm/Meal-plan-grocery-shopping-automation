@@ -31,6 +31,7 @@ import {
   sourceText,
   whenText,
 } from "@/lib/list-text";
+import { printRules } from "@/lib/note-paper";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { chosenShop, loadShoppingNotes, type NoteList } from "@/server/shopping/list";
@@ -85,6 +86,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             .filter((trip) => noteId(trip) !== picked.id && trip.place !== "drugstore");
     return (
       <div className="mx-auto max-w-3xl">
+        {/* Printed, the note has the size and the layout of its PDF. */}
+        <style>{printRules()}</style>
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
           <Link href={`/einkauf?w=${week}`} className="link">
             ← Alle Zettel
@@ -251,7 +254,7 @@ function NoteHead({ note, today: now }: { note: NoteList; today?: IsoDate }) {
   const look = PLACE_LOOK[trip.place];
   return (
     <span className={`flex items-center gap-3 ${look.tone}`}>
-      <span className="badge size-11">
+      <span className="badge size-11 print:hidden">
         <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
       </span>
       <span className="min-w-0">
@@ -366,7 +369,7 @@ function NoteSheet({
   return (
     <section
       aria-label={`${PLACE_NAME[trip.place]}, ${whenText(trip)}`}
-      className="sheet zoom-in mt-4"
+      className="sheet zoom-in mt-4 print:mt-0"
     >
       <SheetHoles />
       <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
@@ -398,7 +401,7 @@ function NoteSheet({
           </p>
         )}
 
-        <div className="mt-4 gap-x-10 sm:columns-2 print:columns-2">
+        <div className="note-columns mt-4 gap-x-10 sm:columns-2">
           {view.groups.map(({ aisleGroup, lines }) => (
             <section
               key={aisleGroup.id}

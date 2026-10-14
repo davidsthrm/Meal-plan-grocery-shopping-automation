@@ -1,5 +1,6 @@
 import "server-only";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
+import { NOTE_PAPER, PAPERS, type Paper } from "@/lib/note-paper";
 
 /**
  * The shopping notes as sheets of a small notepad, for whoever would rather take paper than
@@ -13,49 +14,6 @@ export type PdfSection =
   | { heading: string; lines: string[] }
   /** A shopping day: it starts a new page, and the sections after it belong to it. */
   | { title: string; subtitle: string };
-
-/** A paper size, and how a note is laid out on it. Lengths in points (1/72 inch). */
-interface Paper {
-  width: number;
-  height: number;
-  margin: number;
-  columns: number;
-  size: { title: number; subtitle: number; heading: number; line: number };
-  lineHeight: number;
-}
-
-const MM = 72 / 25.4;
-
-/** The sizes a note can be printed on. A6 fits a pocket, A4 is a whole page. */
-const PAPERS = {
-  A6: {
-    width: 105 * MM,
-    height: 148 * MM,
-    margin: 20,
-    columns: 1,
-    size: { title: 13, subtitle: 8.5, heading: 9.5, line: 9.5 },
-    lineHeight: 14,
-  },
-  A5: {
-    width: 148 * MM,
-    height: 210 * MM,
-    margin: 28,
-    columns: 1,
-    size: { title: 16, subtitle: 9.5, heading: 11, line: 10.5 },
-    lineHeight: 16,
-  },
-  A4: {
-    width: 210 * MM,
-    height: 297 * MM,
-    margin: 42,
-    columns: 2,
-    size: { title: 18, subtitle: 10, heading: 12.5, line: 11 },
-    lineHeight: 16,
-  },
-} satisfies Record<string, Paper>;
-
-/** The size every note is printed on. Change it here; nothing else depends on it. */
-export const NOTE_PAPER: keyof typeof PAPERS = "A6";
 
 const GUTTER = 24;
 const BLACK = rgb(0, 0, 0);
