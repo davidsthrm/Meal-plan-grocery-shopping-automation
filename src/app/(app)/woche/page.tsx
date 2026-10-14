@@ -168,8 +168,20 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
-          {greeting && <p className="mb-1 text-lg">Hallo {greeting}</p>}
-          <p className="eyebrow">Wochenplan</p>
+          {/* The greeting is part of the label, not a heading of its own. */}
+          <p className="eyebrow">
+            {greeting ? (
+              <>
+                Hallo {greeting}
+                <span aria-hidden className="mx-1.5">
+                  ·
+                </span>
+                Wochenplan
+              </>
+            ) : (
+              "Wochenplan"
+            )}
+          </p>
           <h1 className="title mt-1">{weekRange(week)}</h1>
         </div>
         <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
