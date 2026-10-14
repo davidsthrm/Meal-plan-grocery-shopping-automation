@@ -15,6 +15,7 @@ import {
   type IsoDate,
 } from "@/domain/dates";
 import { dayProblems } from "@/domain/shopping-list/change-day";
+import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
 import type { ViewLine } from "@/domain/shopping-list/present";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import {
@@ -36,6 +37,7 @@ import { chosenShop, loadShoppingNotes, type NoteList } from "@/server/shopping/
 import { loadRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 import {
+  addDrugstoreEntry,
   addListEntry,
   changeNoteDay,
   checkLine,
@@ -66,15 +68,21 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const thisWeek = planningWeek(now);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
   const db = await createSessionClient();
-  const [{ notes, atHome, index }, noted] = await Promise.all([
+  const [{ notes, atHome, index, members }, noted] = await Promise.all([
     loadShoppingNotes(db, household, week),
     loadRestock(db, household, now),
   ]);
   const picked = notes.find((note) => note.id === one(params.zettel));
 
   if (picked) {
-    // A line can be moved to every other note of the week.
-    const others = notes.map((note) => note.trip).filter((trip) => noteId(trip) !== picked.id);
+    // A line can be moved to every other note of the week that sells food. The drugstore's
+    // note is written by hand and keeps what is written on it.
+    const others =
+      picked.trip.place === "drugstore"
+        ? []
+        : notes
+            .map((note) => note.trip)
+            .filter((trip) => noteId(trip) !== picked.id && trip.place !== "drugstore");
     return (
       <div className="mx-auto max-w-3xl">
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
@@ -88,7 +96,14 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             </a>
           </span>
         </div>
-        <NoteSheet note={picked} week={week} index={index} others={others} today={now} />
+        <NoteSheet
+          note={picked}
+          week={week}
+          index={index}
+          others={others}
+          today={now}
+          members={members}
+        />
       </div>
     );
   }
@@ -277,7 +292,11 @@ function NoteTile({ note, week, today: now }: { note: NoteList; week: IsoDate; t
               {entry.text}
             </span>
           ))}
-          {lines.length === 0 && <span className="block py-1 text-muted">Nichts zu kaufen</span>}
+          {lines.length === 0 && (
+            <span className="block py-1 text-muted">
+              {note.trip.place === "drugstore" ? "Noch nichts notiert" : "Nichts zu kaufen"}
+            </span>
+          )}
         </span>
         <span className="mt-2 flex items-baseline justify-between gap-3 text-sm text-muted">
           <span>{more > 0 ? `und ${more} weitere` : ""}</span>
@@ -324,6 +343,7 @@ function NoteSheet({
   index,
   others,
   today: now,
+  members,
 }: {
   note: NoteList;
   week: IsoDate;
@@ -331,8 +351,11 @@ function NoteSheet({
   /** The notes a line can be moved to. */
   others: ShoppingTrip[];
   today: IsoDate;
+  /** Whom a line on the drugstore's note can be for. */
+  members: string[];
 }) {
   const { trip, view } = note;
+  const drugstore = trip.place === "drugstore";
   const covers = coversText(view);
   // The errand on another day: which of the days around it would work, and why the others
   // would not.
@@ -368,7 +391,11 @@ function NoteSheet({
           </p>
         )}
         {view.groups.length === 0 && (
-          <p className="mt-4 text-muted print:hidden">Nichts zu kaufen.</p>
+          <p className="mt-4 text-muted print:hidden">
+            {drugstore
+              ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
+              : "Nichts zu kaufen."}
+          </p>
         )}
 
         <div className="mt-4 gap-x-10 sm:columns-2 print:columns-2">
@@ -388,6 +415,7 @@ function NoteSheet({
                     note={trip}
                     shop={chosenShop(index, line)}
                     others={others}
+                    drugstore={drugstore}
                   />
                 ))}
               </ul>
@@ -395,26 +423,32 @@ function NoteSheet({
           ))}
         </div>
 
-        <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
-          <Where week={week} note={note.id} />
-          <label className="flex-1">
-            <span className="sr-only">Auf den Zettel schreiben</span>
-            <input
-              name="text"
-              maxLength={120}
-              list="zutaten"
-              autoComplete="off"
-              className="field"
-              placeholder="Dazuschreiben"
-            />
-          </label>
-          <SubmitButton>Hinzufügen</SubmitButton>
-        </form>
-        <datalist id="zutaten">
-          {index.catalog.ingredients.map((ingredient) => (
-            <option key={ingredient.id} value={ingredient.name} />
-          ))}
-        </datalist>
+        {drugstore ? (
+          <DrugstoreForm week={week} note={note.id} members={members} />
+        ) : (
+          <>
+            <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
+              <Where week={week} note={note.id} />
+              <label className="flex-1">
+                <span className="sr-only">Auf den Zettel schreiben</span>
+                <input
+                  name="text"
+                  maxLength={120}
+                  list="zutaten"
+                  autoComplete="off"
+                  className="field"
+                  placeholder="Dazuschreiben"
+                />
+              </label>
+              <SubmitButton>Hinzufügen</SubmitButton>
+            </form>
+            <datalist id="zutaten">
+              {index.catalog.ingredients.map((ingredient) => (
+                <option key={ingredient.id} value={ingredient.name} />
+              ))}
+            </datalist>
+          </>
+        )}
 
         {note.open > 0 && (
           <form action={completeListNote} className="mt-5 print:hidden">
@@ -426,7 +460,7 @@ function NoteSheet({
           </form>
         )}
 
-        {lines.length > 0 && (
+        {lines.length > 0 && !drugstore && (
           <details className="mt-3 print:hidden">
             <summary className="link inline-flex min-h-10 items-center">
               An einem anderen Tag einkaufen
@@ -472,6 +506,75 @@ function NoteSheet({
   );
 }
 
+/**
+ * Writing on the drugstore's note: what, with typical drugstore items suggested while typing,
+ * how many, and for whom if it is for someone in particular.
+ */
+function DrugstoreForm({
+  week,
+  note,
+  members,
+}: {
+  week: IsoDate;
+  note: string;
+  members: string[];
+}) {
+  return (
+    <form
+      action={addDrugstoreEntry}
+      className="mt-2 grid grid-cols-[1fr_5rem] gap-2 sm:grid-cols-[1fr_5rem_10rem_auto] print:hidden"
+    >
+      <Where week={week} note={note} />
+      <label>
+        <span className="label">Was</span>
+        <input
+          name="item"
+          required
+          maxLength={80}
+          list="drogerie"
+          autoComplete="off"
+          className="field"
+          placeholder="z. B. Duschgel"
+        />
+      </label>
+      <label>
+        <span className="label">Menge</span>
+        <input
+          name="quantity"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={QUANTITY_MAX}
+          defaultValue={1}
+          className="field"
+        />
+      </label>
+      <label className="col-span-2 sm:col-span-1">
+        <span className="label">Für wen</span>
+        <input
+          name="forWhom"
+          maxLength={FOR_WHOM_MAX}
+          list="familie"
+          autoComplete="off"
+          className="field"
+          placeholder="optional"
+        />
+      </label>
+      <SubmitButton className="btn col-span-2 self-end sm:col-span-1">Hinzufügen</SubmitButton>
+      <datalist id="drogerie">
+        {DRUGSTORE_ITEMS.map((item) => (
+          <option key={item.name} value={item.name} />
+        ))}
+      </datalist>
+      <datalist id="familie">
+        {members.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+    </form>
+  );
+}
+
 /** One line of a note: a box to tick, the text, and behind it where it comes from. */
 function Line({
   view,
@@ -479,6 +582,7 @@ function Line({
   note,
   shop,
   others,
+  drugstore,
 }: {
   view: ViewLine;
   week: IsoDate;
@@ -486,6 +590,8 @@ function Line({
   /** The shop, where the line names one on purpose. */
   shop: string | null;
   others: ShoppingTrip[];
+  /** A line of the drugstore's note: written by hand, nothing to add to it but its removal. */
+  drugstore: boolean;
 }) {
   const { line } = view;
   const here = noteId(note);
@@ -542,28 +648,32 @@ function Line({
               </li>
             ))}
           </ul>
-          <form action={noteLine} className="flex gap-2">
-            {where}
-            <label className="flex-1">
-              <span className="sr-only">Notiz zu {line.label}</span>
-              <input
-                name="note"
-                defaultValue={view.note ?? ""}
-                maxLength={80}
-                className="field"
-                placeholder="Notiz, z. B. Marke oder Angebot"
-              />
-            </label>
-            <SubmitButton className="btn btn-small">Merken</SubmitButton>
-          </form>
-          <div className="flex flex-wrap gap-2">
-            <form action={markAtHome}>
+          {!drugstore && (
+            <form action={noteLine} className="flex gap-2">
               {where}
-              <input type="hidden" name="atHome" value="1" />
-              <SubmitButton className="btn btn-small" label={`${line.label} haben wir schon`}>
-                Haben wir schon
-              </SubmitButton>
+              <label className="flex-1">
+                <span className="sr-only">Notiz zu {line.label}</span>
+                <input
+                  name="note"
+                  defaultValue={view.note ?? ""}
+                  maxLength={80}
+                  className="field"
+                  placeholder="Notiz, z. B. Marke oder Angebot"
+                />
+              </label>
+              <SubmitButton className="btn btn-small">Merken</SubmitButton>
             </form>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {!drugstore && (
+              <form action={markAtHome}>
+                {where}
+                <input type="hidden" name="atHome" value="1" />
+                <SubmitButton className="btn btn-small" label={`${line.label} haben wir schon`}>
+                  Haben wir schon
+                </SubmitButton>
+              </form>
+            )}
             {typed.map((entry) => (
               <form key={entry.id} action={removeListEntry}>
                 <Where week={week} note={here} />

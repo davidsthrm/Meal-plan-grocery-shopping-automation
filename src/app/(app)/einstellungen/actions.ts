@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { readName } from "@/domain/family";
-import { readDaysForm } from "@/domain/shopping-list/trips";
+import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
 import { requireHousehold } from "@/server/auth";
 import { createInvite, renameSelf, withdrawInvite } from "@/server/family";
-import { storeFreshPlaces, storeShoppingDays } from "@/server/settings";
+import { storeDrugstoreWeekday, storeFreshPlaces, storeShoppingDays } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
 
 /** What the household sets once. Each action is the target of a plain form on the page. */
@@ -23,7 +23,10 @@ export async function saveShoppingDays(form: FormData): Promise<void> {
   const days = readDaysForm((place) => form.getAll(`tage-${place}`).map(String));
   if (!days) back("einkaufstage", { fehler: "tage" });
   const household = await requireHousehold();
-  await storeShoppingDays(await createSessionClient(), household.id, days);
+  const db = await createSessionClient();
+  await storeShoppingDays(db, household.id, days);
+  const drugstore = readWeekday(form.get("tag-drugstore"));
+  if (drugstore !== null) await storeDrugstoreWeekday(db, household.id, drugstore);
   back("einkaufstage", { ok: "tage" });
 }
 

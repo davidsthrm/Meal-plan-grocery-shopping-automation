@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { CopyLink } from "@/components/copy-link";
-import { ShoppingDaysFields } from "@/components/shopping-days-fields";
+import { DrugstoreDayField, ShoppingDaysFields } from "@/components/shopping-days-fields";
 import { SubmitButton } from "@/components/submit-button";
 import { INVITE_DAYS } from "@/domain/family";
 import { BALANCE_GROUPS } from "@/domain/recommend/balance";
@@ -84,7 +84,8 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
         <p className="mt-1 mb-3 text-sm text-muted">
           Jeder Einkauf bekommt seinen eigenen Zettel. Metzger und Bäcker haben keinen festen Tag:
           was eine Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit,
-          für einen Sonntag auf dem vom Samstag.
+          für einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
+          bereit und wird von Hand geschrieben.
         </p>
         {one(params.fehler) === "tage" && (
           <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
@@ -94,6 +95,9 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
         )}
         <form action={saveShoppingDays}>
           <ShoppingDaysFields days={household.shoppingDays} />
+          <div className="mt-3">
+            <DrugstoreDayField days={household.shoppingDays} />
+          </div>
           <div className="mt-4 flex items-center gap-3">
             <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
             {said === "tage" && (

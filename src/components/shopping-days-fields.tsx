@@ -1,4 +1,4 @@
-import { DAY_PLACES, type ShoppingDay } from "@/domain/shopping-list/trips";
+import { DAY_PLACES, drugstoreWeekday, type ShoppingDay } from "@/domain/shopping-list/trips";
 import { PLACE_NAME } from "@/lib/list-text";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
@@ -11,6 +11,29 @@ const WEEKDAYS_LONG = [
   "Samstag",
   "Sonntag",
 ] as const;
+
+/**
+ * The day the household goes to the drugstore: one weekday. Its note is there every week and
+ * is written by hand. Read back with `readWeekday` from `tag-drugstore`.
+ */
+export function DrugstoreDayField({ days }: { days: readonly ShoppingDay[] }) {
+  return (
+    <label className="block">
+      <span className="label">{PLACE_NAME.drugstore}</span>
+      <select
+        name="tag-drugstore"
+        defaultValue={drugstoreWeekday(days)}
+        className="field w-auto min-w-44"
+      >
+        {WEEKDAYS_LONG.map((name, at) => (
+          <option key={name} value={at + 1}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 /**
  * The fields for the days a household shops on: a row per place, a box per weekday. They

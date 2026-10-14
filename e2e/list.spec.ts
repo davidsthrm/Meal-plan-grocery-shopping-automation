@@ -36,6 +36,7 @@ const MONDAY = "Supermarkt, Montag, 1. März";
 const FRIDAY = "Supermarkt, Freitag, 5. März";
 const BAKERY = "Bäcker, Montag, 1. März";
 const MARKET_ON_FRIDAY = "Markt, Freitag, 26. Februar";
+const DRUGSTORE = "dm, Samstag, 6. März";
 
 test("the week becomes a note for every errand, to pick up and work through", async ({ page }) => {
   // A long walk: planning, seven notes, ticking, moving, and the plan changed again.
@@ -60,8 +61,10 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
   // Every errand is a note: the market before the week, because it buys for Monday and
   // Tuesday, the supermarket twice, the market again, and the butcher and the bakery on the
-  // day of the meal that needs something from them. Neither has a day of its own.
-  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(6);
+  // day of the meal that needs something from them. Neither has a day of its own. And dm on
+  // Saturday, which the plan never fills.
+  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(7);
+  await expect(tile(page, DRUGSTORE)).toContainText("Noch nichts notiert");
   // What is fresh comes from the market, the meat from the butcher on the day it is cooked.
   // A note shows its first lines while it lies among the others.
   await expect(tile(page, MARKET)).toContainText("2 Karotten");
@@ -165,6 +168,31 @@ test("the week becomes a note for every errand, to pick up and work through", as
     expect(pdf.headers()["content-type"]).toBe("application/pdf");
     expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
   }
+});
+
+test("the drugstore's note is written by hand: what, how many, for whom", async ({ page }) => {
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await tile(page, DRUGSTORE).click();
+  const dm = sheet(page, DRUGSTORE);
+  await expect(dm).toContainText("Noch nichts notiert.");
+
+  await page.getByLabel("Was").fill("Duschgel");
+  await page.getByLabel("Menge").fill("2");
+  await page.getByLabel("Für wen").fill("Lena");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(group(page, DRUGSTORE, "Körperpflege")).toContainText("2 Duschgel für Lena");
+
+  await page.getByLabel("Was").fill("Klopapier");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(group(page, DRUGSTORE, "Haushalt")).toContainText("1 Klopapier");
+
+  // Ticked like any line; moving it to a food note is not offered.
+  await page.getByRole("button", { name: "2 Duschgel für Lena: erledigt" }).click();
+  await expect(dm).toContainText("1 offen, 1 erledigt");
+  await dm.getByText("1 Klopapier").click();
+  await expect(dm.getByText("Lieber woanders kaufen:")).toHaveCount(0);
+  await dm.getByRole("button", { name: "Klopapier entfernen" }).click();
+  await expect(dm).not.toContainText("Klopapier");
 });
 
 test("a week with nothing planned has empty notes that say where they come from", async ({

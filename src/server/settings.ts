@@ -17,6 +17,19 @@ export async function storeShoppingDays(
   if (stored.error) throw new Error(`store shopping days: ${stored.error.message}`);
 }
 
+/** Stores the weekday the household goes to the drugstore on. */
+export async function storeDrugstoreWeekday(
+  db: Db,
+  householdId: string,
+  weekday: number,
+): Promise<void> {
+  const stored = await db
+    .from("household")
+    .update({ drugstore_weekday: weekday })
+    .eq("id", householdId);
+  if (stored.error) throw new Error(`store drugstore day: ${stored.error.message}`);
+}
+
 /**
  * Stores where each kind of grocery is bought fresh: at the market, at the butcher, or
  * (null) at the supermarket. Row level security keeps this to the household's own groups.

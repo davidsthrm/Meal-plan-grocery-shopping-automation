@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   assignTrip,
+  DEFAULT_DRUGSTORE_WEEKDAY,
   DEFAULT_SHOPPING_DAYS,
+  drugstoreWeekday,
   nextTrip,
   noteId,
   onDemandDay,
@@ -10,6 +12,8 @@ import {
   readShoppingDays,
   singleTrip,
   tripsBetween,
+  readWeekday,
+  withDrugstore,
   type Need,
 } from "./trips";
 
@@ -247,5 +251,41 @@ describe("nextTrip", () => {
       date: FRIDAY,
       place: "supermarket",
     });
+  });
+});
+
+describe("the drugstore", () => {
+  const days = withDrugstore(DEFAULT_SHOPPING_DAYS, DEFAULT_DRUGSTORE_WEEKDAY);
+  const withDm = tripsBetween(days, "2026-10-05", "2026-10-25");
+
+  it("has a note on its weekday every week, next to the other errands of that day", () => {
+    expect(tripsBetween(days, FRIDAY, SATURDAY)).toEqual([
+      { date: FRIDAY, place: "supermarket" },
+      { date: SATURDAY, place: "market" },
+      { date: SATURDAY, place: "drugstore" },
+    ]);
+    expect(drugstoreWeekday(days)).toBe(6);
+    expect(drugstoreWeekday(withDrugstore(days, 3))).toBe(3);
+    expect(withDrugstore(days, 3).filter((day) => day.places.includes("drugstore"))).toEqual([
+      { weekday: 3, places: ["drugstore"] },
+    ]);
+  });
+
+  it("is never where the meal plan buys anything", () => {
+    for (const fresh of [null, "market", "butcher"] as const) {
+      for (const date of [MONDAY, WEDNESDAY, SATURDAY, SUNDAY, NEXT_MONDAY]) {
+        expect(assignTrip(need(date, { fresh }), withDm)?.place).not.toBe("drugstore");
+      }
+    }
+    expect(nextTrip(days, SATURDAY, null)).toEqual({ date: NEXT_MONDAY, place: "supermarket" });
+  });
+
+  it("reads a weekday as stored or sent, and nothing else", () => {
+    expect(readWeekday(6)).toBe(6);
+    expect(readWeekday("2")).toBe(2);
+    expect(readWeekday(0)).toBeNull();
+    expect(readWeekday("8")).toBeNull();
+    expect(readWeekday(null)).toBeNull();
+    expect(readNoteId(`${SATURDAY}.drugstore`)).toEqual({ date: SATURDAY, place: "drugstore" });
   });
 });

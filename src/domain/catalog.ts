@@ -1,7 +1,10 @@
 import type { GramsPer, Unit } from "./units";
 
-/** Where the household shops. Every place it goes to on a day has a note of its own. */
-export const PLACES = ["supermarket", "market", "butcher", "bakery"] as const;
+/**
+ * Where the household shops. Every place it goes to on a day has a note of its own. The
+ * drugstore sells no food: its note is written by hand.
+ */
+export const PLACES = ["supermarket", "market", "butcher", "bakery", "drugstore"] as const;
 export type Place = (typeof PLACES)[number];
 
 /**

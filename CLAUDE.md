@@ -264,6 +264,10 @@ Household
   want standing days for them. They are gone to for the meal that needs something from
   there, on the day of that meal, and on the Saturday for a Sunday (`onDemandDay`). Days once
   stored for them are ignored.
+- The drugstore (dm, place `drugstore`) has one weekday, Saturday until the household picks
+  another on `/einstellungen` (`household.drugstore_weekday`, merged into the shopping days
+  by `withDrugstore`). It is kept apart from `shopping_days`, which older versions read
+  strictly. Its note lies among the others every week, empty until someone writes on it.
 - A family shares one household, everyone with an account of their own
   (`household_member`, with the name the household calls them by). A member makes an
   invitation on `/einstellungen` (`household_invite`): a link that works once and for seven
@@ -572,6 +576,13 @@ Shopping list
   made before there were several shopping days keep their week (`week_plan_id`); new ones
   have none.
 - A line typed onto a note stays on that note, unless it is moved.
+- The drugstore's note is written by hand only, never from the plan: what, how many and,
+  if it is for someone in particular, for whom (`shopping_manual_entry.quantity`,
+  `for_whom`; "2 Duschgel für Lena"). Typing suggests typical drugstore items
+  (`DRUGSTORE_ITEMS`), "Für wen" the names of the household's members. Each line is sorted
+  into a section of the shop, Körperpflege to Haushalt (`drugstoreSection`: the longest
+  known word in what was written wins, anything else is "Sonstiges"). Its lines are not
+  moved to a food note, have no "Haben wir schon", and the note is not moved to another day.
 - The Merkzettel (`restock_item`, in the header of every page with the number of its
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
   moves an entry to the note of the next errand from today on that sells it (`restockTrip`),

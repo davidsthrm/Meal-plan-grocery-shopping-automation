@@ -36,6 +36,35 @@ export const DAY_PLACES = ["supermarket", "market"] as const;
 export type DayPlace = (typeof DAY_PLACES)[number];
 
 /**
+ * The drugstore has one weekday, Saturday unless the household chose another. Its note is
+ * there every week, empty until someone writes on it: the meal plan puts nothing on it.
+ */
+export const DEFAULT_DRUGSTORE_WEEKDAY = 6;
+
+/** A weekday as it is stored for the drugstore, or null for anything that is none. */
+export function readWeekday(value: unknown): number | null {
+  const day = typeof value === "string" ? Number(value) : value;
+  return typeof day === "number" && Number.isInteger(day) && day >= 1 && day <= 7 ? day : null;
+}
+
+/** The shopping days with the drugstore's day among them. */
+export function withDrugstore(days: readonly ShoppingDay[], weekday: number): ShoppingDay[] {
+  const others = days.map((day): ShoppingDay => ({
+    weekday: day.weekday,
+    places: day.places.filter((place) => place !== "drugstore"),
+  }));
+  const that = others.find((day) => day.weekday === weekday);
+  if (that) that.places.push("drugstore");
+  else others.push({ weekday, places: ["drugstore"] });
+  return others.filter((day) => day.places.length > 0).sort((a, b) => a.weekday - b.weekday);
+}
+
+/** The weekday the drugstore is gone to on, from shopping days that hold it. */
+export function drugstoreWeekday(days: readonly ShoppingDay[]): number {
+  return days.find((day) => day.places.includes("drugstore"))?.weekday ?? DEFAULT_DRUGSTORE_WEEKDAY;
+}
+
+/**
  * The places without weekdays: the household goes there when the plan has a meal that needs
  * something from there, on the day of that meal. It did not want standing days for them.
  */
@@ -54,7 +83,7 @@ export function noteId(trip: ShoppingTrip): string {
 
 /** The note an id names, or null for anything else. */
 export function readNoteId(id: string): ShoppingTrip | null {
-  const match = /^(\d{4}-\d{2}-\d{2})\.(supermarket|market|butcher|bakery)$/.exec(id);
+  const match = /^(\d{4}-\d{2}-\d{2})\.(supermarket|market|butcher|bakery|drugstore)$/.exec(id);
   return match ? { date: match[1], place: match[2] as Place } : null;
 }
 
@@ -111,7 +140,7 @@ export function tripsBetween(
   const trips: ShoppingTrip[] = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
     const day = days.find((entry) => entry.weekday === isoWeekday(date));
-    for (const place of DAY_PLACES) {
+    for (const place of [...DAY_PLACES, "drugstore"] as const) {
       if (day?.places.includes(place)) trips.push({ date, place });
     }
   }

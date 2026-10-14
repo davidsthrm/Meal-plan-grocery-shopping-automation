@@ -51,6 +51,7 @@ export type Database = {
       }
       household: {
         Row: {
+          drugstore_weekday: number | null
           balance_targets: Json | null
           created_at: string
           default_servings: number
@@ -60,6 +61,7 @@ export type Database = {
           shopping_weekday: number
         }
         Insert: {
+          drugstore_weekday?: number | null
           balance_targets?: Json | null
           created_at?: string
           default_servings?: number
@@ -69,6 +71,7 @@ export type Database = {
           shopping_weekday?: number
         }
         Update: {
+          drugstore_weekday?: number | null
           balance_targets?: Json | null
           created_at?: string
           default_servings?: number
@@ -1378,6 +1381,8 @@ export type Database = {
       }
       shopping_manual_entry: {
         Row: {
+          quantity: number | null
+          for_whom: string | null
           aisle_group_id: string | null
           created_at: string
           created_by: string | null
@@ -1388,6 +1393,8 @@ export type Database = {
           text: string
         }
         Insert: {
+          quantity?: number | null
+          for_whom?: string | null
           aisle_group_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1398,6 +1405,8 @@ export type Database = {
           text: string
         }
         Update: {
+          quantity?: number | null
+          for_whom?: string | null
           aisle_group_id?: string | null
           created_at?: string
           created_by?: string | null
