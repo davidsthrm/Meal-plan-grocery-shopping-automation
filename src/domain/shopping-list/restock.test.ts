@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { freshPlaceOf, readRestock, restockTrip } from "./restock";
 import { testIndex } from "./test-catalog";
-import { DEFAULT_SHOPPING_DAYS } from "./trips";
+import { DEFAULT_SHOPPING_DAYS, withDrugstore } from "./trips";
 
 const TUESDAY = "2026-10-13";
 const FRIDAY = "2026-10-16";
@@ -9,7 +9,7 @@ const SATURDAY = "2026-10-17";
 const NEXT_MONDAY = "2026-10-19";
 
 const errand = (text: string, today: string) =>
-  restockTrip({ freshPlace: freshPlaceOf(text, testIndex) }, DEFAULT_SHOPPING_DAYS, today);
+  restockTrip({ text, freshPlace: freshPlaceOf(text, testIndex) }, DEFAULT_SHOPPING_DAYS, today);
 
 describe("readRestock", () => {
   it("tidies what was written", () => {
@@ -48,6 +48,18 @@ describe("restockTrip", () => {
   });
 
   it("has no errand for a household that never shops", () => {
-    expect(restockTrip({ freshPlace: null }, [], TUESDAY)).toBeNull();
+    expect(restockTrip({ text: "Milch", freshPlace: null }, [], TUESDAY)).toBeNull();
+  });
+
+  it("sends what the drugstore sells to its next note, also what the food catalog knows", () => {
+    const days = withDrugstore(DEFAULT_SHOPPING_DAYS, 6);
+    const at = (text: string, today: string) =>
+      restockTrip({ text, freshPlace: freshPlaceOf(text, testIndex) }, days, today);
+    expect(at("Zahnpasta", TUESDAY)).toEqual({ date: SATURDAY, place: "drugstore" });
+    expect(at("2 Duschgel", SATURDAY)).toEqual({ date: SATURDAY, place: "drugstore" });
+    expect(at("Spülmittel", TUESDAY)).toEqual({ date: SATURDAY, place: "drugstore" });
+    // Food still goes where it did.
+    expect(at("Milch", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
+    expect(at("Karotten", SATURDAY)).toEqual({ date: SATURDAY, place: "market" });
   });
 });

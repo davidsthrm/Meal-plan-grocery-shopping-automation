@@ -587,7 +587,10 @@ Shopping list
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
   moves an entry to the note of the next errand from today on that sells it (`restockTrip`),
   where it is a typed line, and takes it off. Flour noted on a Saturday waits for Monday;
-  carrots are bought at the market that day. Where an entry is bought fresh is looked up in
+  carrots are bought at the market that day. What the drugstore sells (`isDrugstoreItem`,
+  "Zahnpasta", also "Spülmittel" that the food catalog knows) goes to the next dm note, a
+  number in front as its quantity (`drugstoreEntryFromText`: "2 Duschgel"), and is sorted
+  into its section there. Where an entry is bought fresh is looked up in
   the catalog once, when it is written (`restock_item.fresh_place`), so that the header of
   every page can say where each entry goes without reading the catalog. While it has
   entries, the Merkzettel also lies among the shopping notes.

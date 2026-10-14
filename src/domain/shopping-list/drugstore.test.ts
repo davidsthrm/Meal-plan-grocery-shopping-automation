@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  drugstoreEntryFromText,
   DRUGSTORE_ITEMS,
+  isDrugstoreItem,
   drugstoreLines,
   drugstoreSection,
   presentDrugstore,
@@ -105,5 +107,19 @@ describe("the drugstore's note", () => {
     const ticked = presentDrugstore(lines, { "manual:a": { checked: true } });
     const toothpaste = ticked.groups.flatMap((group) => group.lines).find((line) => line.checked);
     expect(toothpaste?.line.label).toBe("Zahnpasta");
+  });
+});
+
+describe("an entry from the Merkzettel", () => {
+  it("reads a number in front as how many", () => {
+    expect(drugstoreEntryFromText("2 Zahnpasta")).toEqual({ text: "Zahnpasta", quantity: 2 });
+    expect(drugstoreEntryFromText("3x Duschgel")).toEqual({ text: "Duschgel", quantity: 3 });
+    expect(drugstoreEntryFromText("Deo")).toEqual({ text: "Deo", quantity: null });
+    expect(drugstoreEntryFromText("0 Deo")).toEqual({ text: "0 Deo", quantity: null });
+  });
+
+  it("knows what the drugstore sells", () => {
+    expect(isDrugstoreItem("2 Zahnpasta")).toBe(true);
+    expect(isDrugstoreItem("Mehl")).toBe(false);
   });
 });

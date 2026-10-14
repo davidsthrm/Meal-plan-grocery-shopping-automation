@@ -1,4 +1,5 @@
 import { normalizeName, type AisleGroup } from "../catalog";
+import type { IsoDate } from "../dates";
 import type { AisleView, ViewLine } from "./present";
 import { resolveLine } from "./present";
 import type { ShoppingTrip } from "./trips";
@@ -128,6 +129,11 @@ export function drugstoreSection(text: string): DrugstoreSection {
   return best?.section ?? "sonstiges";
 }
 
+/** Whether something is bought at the drugstore: an item of its list, or one of its words. */
+export function isDrugstoreItem(text: string): boolean {
+  return drugstoreSection(text) !== "sonstiges";
+}
+
 /** A line written onto the drugstore note: what, how many, and for whom. */
 export interface DrugstoreEntry {
   id: string;
@@ -136,6 +142,26 @@ export interface DrugstoreEntry {
   quantity: number | null;
   /** Who it is for: "Lena". Null when it is for everyone. */
   forWhom: string | null;
+}
+
+/**
+ * An entry as one line of text gives it, the way the Merkzettel holds it: a number in front
+ * is how many ("2 Zahnpasta", "2x Duschgel"), the rest is what.
+ */
+export function drugstoreEntryFromText(text: string): { text: string; quantity: number | null } {
+  const match = /^(\d{1,2})\s*[x×]?\s+(.+)$/i.exec(text.trim());
+  const quantity = match ? Number(match[1]) : null;
+  return match && quantity !== null && quantity >= 1 && quantity <= QUANTITY_MAX
+    ? { text: match[2].trim(), quantity }
+    : { text: text.trim(), quantity: null };
+}
+
+/** The drugstore note open entries go to: the first one from today on. */
+export function nextDrugstoreTrip(
+  trips: readonly ShoppingTrip[],
+  today: IsoDate,
+): ShoppingTrip | null {
+  return trips.find((trip) => trip.place === "drugstore" && trip.date >= today) ?? null;
 }
 
 /** The longest an item, and a name it is for, may be. */
