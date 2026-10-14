@@ -18,6 +18,7 @@ async function plan(page: Page, meal: string, recipe: string) {
     .getByRole("region", { name: "Treffer beim Tippen" })
     .getByRole("button", { name: `${recipe} einplanen` })
     .click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(page.getByRole("region", { name: meal, exact: true })).toContainText(recipe);
 }
 

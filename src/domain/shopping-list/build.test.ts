@@ -469,6 +469,7 @@ describe("what a week needs besides its cooked meals", () => {
       recipeId: "kuchen",
       recipeTitle: "kuchen",
       note: "Einladung",
+      date: null,
     });
     const eggs = lines.find((entry) => entry.ingredientId === "eier")!;
     expect(eggs.amounts).toEqual([{ quantity: 8, unit: "Stück" }]);
@@ -672,6 +673,43 @@ describe("several errands", () => {
       extrasDate: MONDAY,
     });
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["butter@main"]);
+  });
+
+  it("buys an extra for a day like a meal on that day", () => {
+    const cake = recipe("kuchen", [
+      line("butter", 250, "g"),
+      line("karotten", 4, "Stück"),
+      line("tomaten", 2, "Stück"),
+    ]);
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [],
+      extras: [{ recipeId: "kuchen", servings: 4, note: "Einladung", date: SATURDAY }],
+      trips,
+      extrasDate: MONDAY,
+    });
+    // Not on the first supermarket day of the week, but on the errands before Saturday.
+    expect(on(lines, `${MONDAY}.supermarket`)).toEqual([]);
+    expect(on(lines, `${FRIDAY}.supermarket`)).toEqual(["butter@main"]);
+    expect(on(lines, `${SATURDAY}.market`)).toEqual(["karotten@main", "tomaten@main"]);
+    const tomatoes = lines.find((entry) => entry.ingredientId === "tomaten")!;
+    expect(tomatoes.contributions[0].source).toMatchObject({ type: "extra", date: SATURDAY });
+  });
+
+  it("buys an extra added after its shopping day shortly before it is needed", () => {
+    const cake = recipe("kuchen", [line("sahne", 200, "ml")]);
+    const [cream] = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [],
+      extras: [
+        { recipeId: "kuchen", servings: 4, note: null, date: THURSDAY, plannedOn: "2026-10-14" },
+      ],
+      trips,
+      extrasDate: MONDAY,
+    });
+    expect(cream).toMatchObject({ shoppingDate: MONDAY, place: "supermarket", trip: "later" });
   });
 
   it("refuses to build a list without a shopping day", () => {

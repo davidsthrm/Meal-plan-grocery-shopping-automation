@@ -5,7 +5,7 @@ import type { AisleView, ViewLine } from "@/domain/shopping-list/present";
 import type { Place } from "@/domain/catalog";
 import type { Pictogram } from "@/domain/library/pictogram";
 import type { ShoppingTrip } from "@/domain/shopping-list/trips";
-import type { Contribution } from "@/domain/shopping-list/types";
+import { dayOf, type Contribution } from "@/domain/shopping-list/types";
 import { MEAL_NAME } from "./plan-text";
 
 /** The words of the shopping list that screen, paper and PDF share. */
@@ -17,7 +17,9 @@ export function sourceText(contribution: Contribution): string {
     case "recipe":
       return `${weekdayShort(source.date)} ${MEAL_NAME[source.meal]}: ${source.recipeTitle}`;
     case "extra":
-      return `Außerdem: ${source.recipeTitle}`;
+      return source.date
+        ? `Außerdem, ${weekdayShort(source.date)}: ${source.recipeTitle}`
+        : `Außerdem: ${source.recipeTitle}`;
     case "food":
       return `${weekdayShort(source.date)} ${MEAL_NAME[source.meal]}: ${source.mealLabel}`;
     case "manual":
@@ -89,9 +91,7 @@ export function coversText(view: AisleView): string {
   const days: IsoDate[] = view.groups
     .flatMap((group) => group.lines)
     .flatMap((entry) => entry.line.contributions)
-    .flatMap(({ source }) =>
-      source.type === "recipe" || source.type === "food" ? [source.date] : [],
-    )
+    .flatMap(({ source }) => dayOf(source) ?? [])
     .sort();
   if (days.length === 0) return "";
   const first = days[0];

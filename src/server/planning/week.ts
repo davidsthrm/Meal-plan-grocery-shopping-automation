@@ -588,12 +588,18 @@ export async function loadExtras(db: Db, weekStart: IsoDate): Promise<PlanExtra[
   const rows = must(
     await db
       .from("plan_extra")
-      .select("recipe_id, servings, note")
+      .select("recipe_id, servings, note, needed_on, planned_on")
       .eq("week_plan_id", plan.data.id)
       .order("created_at"),
     "load extras of week",
   );
-  return rows.map((row) => ({ recipeId: row.recipe_id, servings: row.servings, note: row.note }));
+  return rows.map((row) => ({
+    recipeId: row.recipe_id,
+    servings: row.servings,
+    note: row.note,
+    date: row.needed_on,
+    plannedOn: row.planned_on,
+  }));
 }
 
 /** Adds a recipe to a week outside its meals. Adding it twice changes nothing. */
@@ -610,6 +616,7 @@ export async function addExtra(
       week_plan_id: planId,
       recipe_id: item.recipeId,
       servings: item.servings,
+      planned_on: today(),
     },
     { onConflict: "week_plan_id,recipe_id", ignoreDuplicates: true },
   );
@@ -617,21 +624,25 @@ export async function addExtra(
   await fulfilWishes(db, [item.recipeId]);
 }
 
-/** Changes an extra: how much of it, what it is for, or (servings null) not at all. */
+/**
+ * Changes an extra: how much of it, or (servings null) not at all; or what it is for and the
+ * day it is needed (null for none in particular).
+ */
 export async function changeExtra(
   db: Db,
   weekStart: IsoDate,
   recipeId: string,
-  change: { servings: number | null } | { note: string | null },
+  change: { servings: number | null } | { note: string | null; date: IsoDate | null },
 ): Promise<void> {
   const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
   if (plan.error) throw new Error(`load week: ${plan.error.message}`);
   if (!plan.data) return;
   const planId = plan.data.id;
-  const update = (values: { servings: number } | { note: string | null }) =>
-    db.from("plan_extra").update(values).eq("week_plan_id", planId).eq("recipe_id", recipeId);
+  const update = (
+    values: { servings: number } | { note: string | null; needed_on: IsoDate | null },
+  ) => db.from("plan_extra").update(values).eq("week_plan_id", planId).eq("recipe_id", recipeId);
   let done;
-  if ("note" in change) done = await update({ note: change.note });
+  if ("note" in change) done = await update({ note: change.note, needed_on: change.date });
   else if (change.servings !== null) done = await update({ servings: change.servings });
   else {
     done = await db

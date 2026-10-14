@@ -533,7 +533,9 @@ export type Database = {
           created_at: string
           household_id: string
           id: string
+          needed_on: string | null
           note: string | null
+          planned_on: string | null
           recipe_id: string
           servings: number
           week_plan_id: string
@@ -542,7 +544,9 @@ export type Database = {
           created_at?: string
           household_id: string
           id?: string
+          needed_on?: string | null
           note?: string | null
+          planned_on?: string | null
           recipe_id: string
           servings: number
           week_plan_id: string
@@ -551,7 +555,9 @@ export type Database = {
           created_at?: string
           household_id?: string
           id?: string
+          needed_on?: string | null
           note?: string | null
+          planned_on?: string | null
           recipe_id?: string
           servings?: number
           week_plan_id?: string

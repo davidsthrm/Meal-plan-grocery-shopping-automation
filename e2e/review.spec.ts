@@ -98,6 +98,7 @@ test("a meal planned as text gets its recipe from an upload started there", asyn
   await page.getByRole("link", { name: "Mittwoch Mittag planen" }).click();
   await page.getByLabel("Eigener Eintrag").fill("Topinambursuppe");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
 
   // The cookbook has no such recipe: the meal says so and offers to upload the page.
   await expect(lunch).toContainText("Noch kein Rezept dazu");

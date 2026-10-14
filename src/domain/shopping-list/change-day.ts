@@ -1,6 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { daysBetween, type IsoDate } from "../dates";
-import type { ShoppingLine } from "./types";
+import { dayOf, type ShoppingLine } from "./types";
 
 /**
  * Doing an errand on another day: whether that works for everything on its note, and if
@@ -17,11 +17,7 @@ export type DayProblem =
 
 /** The days the meals behind a line are on. Empty for what belongs to no meal. */
 function neededOn(line: ShoppingLine): IsoDate[] {
-  return line.contributions
-    .flatMap(({ source }) =>
-      source.type === "recipe" || source.type === "food" ? [source.date] : [],
-    )
-    .sort();
+  return line.contributions.flatMap(({ source }) => dayOf(source) ?? []).sort();
 }
 
 /**

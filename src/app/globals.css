@@ -679,7 +679,45 @@ body {
 main > * {
   animation: page-in 0.22s ease-out both;
 }
+/*
+ * On to the next meal: the meal's page is torn off like a sheet of a pad. It stays on top,
+ * turns from its upper corner and is pulled away, and the next one settles in underneath.
+ */
+::view-transition-group(.note-off) {
+  z-index: 1;
+}
+::view-transition-old(.note-off) {
+  /* A sheet, not a pane of glass: what lies underneath does not show through it. */
+  background: var(--color-paper);
+  box-shadow: 0 18px 30px -18px rgb(35 33 29 / 0.45);
+  transform-origin: 100% 0;
+  animation: note-off 0.42s cubic-bezier(0.45, 0, 0.7, 0.4) both;
+}
+::view-transition-new(.note-on) {
+  transform-origin: 50% 0;
+  animation: note-on 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) 0.12s both;
+}
+@keyframes note-off {
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-35%, 4%) rotate(-14deg);
+  }
+}
+@keyframes note-on {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.985);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
   main > *,
   .zoom-in,
   .note-drawer[open],

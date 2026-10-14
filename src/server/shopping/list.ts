@@ -5,7 +5,7 @@ import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList, moveKey } from "@/domain/shopping-list/build";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
-import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
+import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
 import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
 import { loadExtras, loadWeeks } from "../planning/week";
@@ -111,9 +111,9 @@ export async function loadShoppingNotes(
   const weekEnd = addDays(weekStart, 6);
   const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
   // An errand can buy for two weeks, so the weeks around this one are read with it.
-  const [weeks, extras, index, memberRows, listRows] = await Promise.all([
+  const [weeks, extrasAround, index, memberRows, listRows] = await Promise.all([
     loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
-    loadExtras(db, weekStart),
+    Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
     loadCatalogIndex(db),
     db.from("household_member").select("user_id, display_name"),
     db
@@ -123,6 +123,11 @@ export async function loadShoppingNotes(
       .lte("shopping_date", weekEnd),
   ]);
   const slots = weeks.flatMap((week) => week.slots);
+  // The weeks around buy their extras for a day like their meals. One without a day is
+  // bought on its own week's first supermarket day, which only this week's notes show.
+  const extras = extrasAround.flatMap((list, at) =>
+    at === 1 ? list : list.filter((extra) => extra.date),
+  );
   const lists = must(listRows, "load shopping lists");
   const listIds = lists.map((list) => list.id);
   const tripOf = new Map(
@@ -207,9 +212,10 @@ export async function loadShoppingNotes(
     lines.filter((line) => line.shoppingDate === trip.date && line.place === trip.place);
   const buysForWeek = (trip: ShoppingTrip) =>
     linesOf(trip).some((line) =>
-      line.contributions.some(
-        ({ source }) => (source.type === "recipe" || source.type === "food") && inWeek(source.date),
-      ),
+      line.contributions.some(({ source }) => {
+        const day = dayOf(source);
+        return day !== null && inWeek(day);
+      }),
     );
   // The household's shopping days of the week, and every other day something is bought on:
   // the bakery on the day of a cold supper, a note the household moved to another day.

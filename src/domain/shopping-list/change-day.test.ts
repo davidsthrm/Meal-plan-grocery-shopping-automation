@@ -45,6 +45,31 @@ const monday = notes.filter(
 const check = (target: string) => dayProblems(monday, target, TODAY, testIndex);
 
 describe("dayProblems", () => {
+  it("counts an extra for a day like a meal on it", () => {
+    const cake: Recipe = { ...recipe, id: "kuchen", ingredients: [line("sahne", 200, "ml")] };
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [],
+      extras: [{ recipeId: "kuchen", servings: 4, note: null, date: TUESDAY }],
+      trips,
+      onDemand: [],
+    });
+    expect(dayProblems(lines, WEDNESDAY, TODAY, testIndex)).toEqual([
+      { kind: "too-late", label: "Sahne", neededOn: TUESDAY },
+    ]);
+    // Without a day it belongs to no meal and goes with any errand.
+    const undated = buildShoppingList({
+      index: testIndex,
+      recipes: [cake],
+      slots: [],
+      extras: [{ recipeId: "kuchen", servings: 4, note: null }],
+      trips,
+      onDemand: [],
+    });
+    expect(dayProblems(undated, WEDNESDAY, TODAY, testIndex)).toEqual([]);
+  });
+
   it("finds nothing wrong with a day everything is bought in time and keeps from", () => {
     // Monday's note holds cream and steaks for Monday and Wednesday, and carrots for Wednesday.
     expect(monday.map((entry) => entry.key).sort()).toEqual([

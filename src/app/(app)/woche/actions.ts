@@ -55,6 +55,19 @@ function backToWeek(week: string, day?: string): never {
   redirect(`/woche?w=${week}${day ? `#tag-${day}` : ""}`);
 }
 
+/**
+ * After a meal was planned: back to the week, or, when it was planned on the meal's own page
+ * (the form says `bleiben`), back to that page, which says what is planned now and leads on
+ * to the next meal.
+ */
+function afterPlanning(form: FormData, input: { week: string; date: string; meal: string }): never {
+  if (form.get("bleiben") !== "1") backToWeek(input.week, input.date);
+  revalidatePath("/woche");
+  redirect(
+    `/woche/auswahl?${new URLSearchParams({ w: input.week, d: input.date, m: input.meal, modus: "replace" })}`,
+  );
+}
+
 function backToExtras(week: string): never {
   revalidatePath("/woche");
   redirect(`/woche?w=${week}&t=extra`);
@@ -105,7 +118,7 @@ export async function planRecipe(form: FormData): Promise<void> {
       });
     }
   }
-  backToWeek(input.week, input.date);
+  afterPlanning(form, input);
 }
 
 /** Takes over the suggestions shown for the open meals of a week, all at once. */
@@ -170,7 +183,7 @@ export async function markSlot(form: FormData): Promise<void> {
   const label = named?.label ?? input.label;
   if (kind === "free_text" || kind === "away") {
     // Nothing typed is nothing planned.
-    if (!label) backToWeek(input.week, input.date);
+    if (!label) afterPlanning(form, input);
     content = { kind, label };
   } else {
     content = { kind };
@@ -197,7 +210,7 @@ export async function markSlot(form: FormData): Promise<void> {
     }
   }
   await writeSlot(db, household.id, input.week, input.date, input.meal, content);
-  backToWeek(input.week, input.date);
+  afterPlanning(form, input);
 }
 
 /**
@@ -308,15 +321,25 @@ export async function changeExtraServings(form: FormData): Promise<void> {
   backToExtras(input.week);
 }
 
-/** Notes what an extra is for: "Einladung am Samstag". */
-export async function noteExtra(form: FormData): Promise<void> {
+/**
+ * Notes what an extra is for ("Einladung am Samstag") and the day of the week it is needed,
+ * or none: with a day it is bought for that day like a meal.
+ */
+export async function describeExtra(form: FormData): Promise<void> {
   const input = read(
-    z.object({ week: weekStart, recipe: recipeId, note: z.string().trim().max(80) }),
+    z.object({
+      week: weekStart,
+      recipe: recipeId,
+      note: z.string().trim().max(80),
+      date: z.union([z.literal(""), date]),
+    }),
     form,
   );
+  const day = input.date === "" ? null : input.date;
+  if (day !== null && mondayOf(day) !== input.week) throw new Error("A day outside its week.");
   await requireHousehold();
   const db = await createSessionClient();
-  await changeExtra(db, input.week, input.recipe, { note: input.note || null });
+  await changeExtra(db, input.week, input.recipe, { note: input.note || null, date: day });
   backToExtras(input.week);
 }
 

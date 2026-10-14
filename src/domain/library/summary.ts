@@ -50,6 +50,11 @@ const EVENING_ONLY = new Set(["vesper", "salat"]);
 /** What goes with coffee in the afternoon. */
 const SWEET = new Set(["kuchen", "dessert"]);
 
+/** A cake or a dessert: never shown or counted as a vegetarian meal. */
+export function isSweet(recipe: Pick<RecipeSummary, "category">): boolean {
+  return recipe.category !== null && SWEET.has(recipe.category);
+}
+
 /**
  * Whether a recipe is something to suggest for this meal. In this household lunch is the
  * cooked meal; a cold supper or a salad is suggested for the evening only. Planning one for
@@ -57,7 +62,7 @@ const SWEET = new Set(["kuchen", "dessert"]);
  */
 export function suitsMeal(recipe: Pick<RecipeSummary, "category">, meal: Meal): boolean {
   // Cakes and desserts are never suggested for lunch or dinner, only for coffee.
-  if (meal === "coffee") return recipe.category !== null && SWEET.has(recipe.category);
+  if (meal === "coffee") return isSweet(recipe);
   if (!isMeal(recipe)) return false;
   return meal === "dinner" || recipe.category === null || !EVENING_ONLY.has(recipe.category);
 }

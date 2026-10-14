@@ -88,17 +88,50 @@ test("a meal can be something without a recipe, and be emptied again", async ({ 
   await page.getByRole("link", { name: "Montag Abend planen" }).click();
   await expect(page.getByRole("heading", { name: "Abendessen planen" })).toBeVisible();
   await page.getByRole("button", { name: "Vesper" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("Vesper");
 
   await page.getByRole("link", { name: "Montag Abend ändern" }).click();
   await page.getByLabel("Eigener Eintrag").fill("bei Oma");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("bei Oma");
   await expect(meal(page, "Montag Abend")).not.toContainText("Vesper");
 
   await page.getByRole("button", { name: "Montag Abend leeren" }).click();
   await expect(page.getByRole("link", { name: "Montag Abend planen" })).toBeVisible();
   await expect(meal(page, "Montag Abend")).not.toContainText("bei Oma");
+});
+
+test("one meal after the other is planned without going back to the week", async ({ page }) => {
+  await page.goto(`/woche?w=${WEEK}`);
+  await page.getByRole("link", { name: "Montag Mittag planen" }).click();
+  await expect(page.getByRole("status").first()).toHaveText("Noch nichts geplant");
+  await page.getByPlaceholder("Titel oder Zutat").fill("pilz");
+  await page
+    .getByRole("region", { name: "Treffer beim Tippen" })
+    .getByRole("button", { name: "Pilzrisotto einplanen" })
+    .click();
+  // The page stays and says what the meal is now.
+  await expect(page.getByRole("heading", { name: "Mittagessen planen" })).toBeVisible();
+  await expect(page.getByText("Geplant: Pilzrisotto")).toBeVisible();
+
+  await page.getByRole("link", { name: "Nächste Mahlzeit: Montag Abend" }).click();
+  await expect(page.getByRole("heading", { name: "Abendessen planen" })).toBeVisible();
+  await page.getByRole("button", { name: "Keiner daheim" }).click();
+  await expect(page.getByText("Geplant: Keiner daheim")).toBeVisible();
+
+  // Tuesday's lunch is planned already: the next open meal is its dinner.
+  await page.goto(`/woche?w=${WEEK}`);
+  await page.getByRole("link", { name: "Dienstag Mittag planen" }).click();
+  await page.getByRole("button", { name: "Reste" }).click();
+  await page.goto(`/woche/auswahl?w=${WEEK}&d=2027-03-01&m=dinner&modus=replace`);
+  await page.getByRole("link", { name: "Nächste Mahlzeit: Dienstag Abend" }).click();
+  await expect(page.getByText("Dienstag, 2. März")).toBeVisible();
+
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
+  await expect(meal(page, "Montag Mittag")).toContainText("Pilzrisotto");
+  await expect(meal(page, "Montag Abend")).toContainText("Keiner daheim");
 });
 
 test("a cake is planned as written, and a side dish can join a meal", async ({ page }) => {
@@ -110,6 +143,7 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
     .getByRole("region", { name: "Treffer beim Tippen" })
     .getByRole("button", { name: "Zitronen-Mohn-Kuchen einplanen" })
     .click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
 
   // One cake tin, not four of them for four persons.
   const tuesday = meal(page, "Dienstag Mittag");
@@ -121,6 +155,7 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
   await expect(page.getByRole("heading", { name: "Zum Mittagessen dazu" })).toBeVisible();
   await page.getByRole("link", { name: "Vegan", exact: true }).click();
   await page.getByRole("button", { name: "Tomatensalat einplanen" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(tuesday).toContainText("Zitronen-Mohn-Kuchen");
   await expect(tuesday).toContainText("Tomatensalat");
   await expect(tuesday).toContainText("4 Personen");
@@ -160,6 +195,7 @@ test("last week is a starting point for the next one", async ({ page }) => {
   const cooked = await meal(page, "Montag Mittag").getByRole("link").first().innerText();
   await page.getByRole("link", { name: "Montag Abend planen" }).click();
   await page.getByRole("button", { name: "Reste" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("Reste");
 
   await page.getByRole("link", { name: "Nächste Woche" }).click();
@@ -173,6 +209,7 @@ test("all weeks are listed month by month and lead back to their plan", async ({
   await page.goto(`/woche?w=${WEEK}`);
   await page.getByRole("link", { name: "Montag Abend planen" }).click();
   await page.getByRole("button", { name: "Vesper" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("Vesper");
 
   // The week is far ahead of today; the list reaches eight weeks ahead and back from there.

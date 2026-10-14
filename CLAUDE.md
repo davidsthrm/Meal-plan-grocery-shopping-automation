@@ -201,8 +201,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   background: either way round, the holes lay askew to the note and jumped when it was lifted.
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up. A link to `#merkzettel` pulls it down
-  too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). All of
-  it is off for whoever asked for less motion.
+  too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). Going
+  on to the next meal tears the meal's page off like a sheet of a pad (a React
+  `<ViewTransition>` keyed by the meal, `.note-off` and `.note-on`, started only by that
+  link's `transitionTypes`). All of it is off for whoever asked for less motion.
 - Words on the screen say something concrete or are left out. No filler such as "for
   variety" or "just for you"; a suggestion without a reason shows none.
 - The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the
@@ -321,7 +323,10 @@ Week plan
   optional: nothing is suggested on the plan, and choosing for it suggests cakes and desserts.
   Cakes and desserts are never suggested for lunch or dinner.
 - "Außerdem" holds recipes a week needs outside its meals (`plan_extra`): two cakes for an
-  invitation. They count for the shopping list, not for the balance.
+  invitation. They count for the shopping list, not for the balance. Each can name the day
+  of the week it is needed (`plan_extra.needed_on`, `PlanExtra.date`): it is then bought
+  for that day exactly like a meal on it. Without a day it is bought on the week's first
+  supermarket day.
 - A meal without a recipe can carry foods to buy (`plan_slot_food`): bread, cold cuts and a
   cucumber for a "Vesper". A food is a name, not an amount. It may name where it is bought
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
@@ -335,8 +340,13 @@ Week plan
   is planned. A meal that was emptied or planned otherwise meanwhile is left alone.
   "Eintippen" opens the recipe form with the title filled in and puts the saved recipe on
   that meal. The household plans with the cookbook next to it.
+- The page that plans one meal (`/woche/auswahl`) is a stop of its own: what is picked there
+  is planned and the page stays, saying what the meal is now ("Geplant: …"). "Nächste
+  Mahlzeit" leads to the next lunch or dinner that has nothing planned yet, into the next
+  week too (`nextOpenMeal`); coffee on Sunday is passed over. "← Wochenplan" leads back.
+  Picked anywhere else (a suggestion, a recipe being placed), the week is shown again.
 - Some meals never have a recipe and are one tap away (`MEALS_WITHOUT_RECIPE`): Vesper,
-  Reste, Auswärts, Oma Heidrun, Fällt aus. Typed in, such a name is that meal (`namedMeal`),
+  Reste, Auswärts, Oma Heidrun, Keiner daheim. Typed in, such a name is that meal (`namedMeal`),
   and no upload is offered for it. "Braucht keins" on any other typed meal makes it a meal
   away from the kitchen that keeps its name ("Pizza bestellen").
 - A plan the household is done with is saved (`week_plan.saved_at`, "Plan speichern"). A
@@ -375,13 +385,20 @@ Week plan
   in a week.
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
+- The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is
+  pasta, rice, potatoes or a casserole, read as for the pictogram (`pictogramFor`: category,
+  then the "Gericht" tag, then the title), so a pasta salad is a salad. A soup, a wrap or
+  toast from the oven is fine. The household had Avocado Spaghetti suggested for a dinner.
 - From Monday to Friday nobody cooks for hours (`suitsDay`): lunch is suggested from what
   is quick or fits a normal day, the evening only from what is quick or cold. A recipe whose
   effort is not known is kept for the weekend. The household had many warm main dishes
   suggested for workday evenings that it could never cook then.
 - "Möchte ich kochen" marks a recipe someone wants to cook soon (`recipe.wanted_at`). It is
-  suggested before everything else, shown above the plan to be placed with one tap, and the
+  suggested before everything else, shown below the plan to be placed with one tap, and the
   mark goes as soon as the recipe is on a plan (`fulfilWishes`), as a meal or as an extra.
+  There can be dozens, so they are grouped by kind in the kind's pastel (`groupRecipes`
+  with `BY_KIND`), eight per kind until "weitere" shows all (`?wuensche=alle`). A grouping
+  by a group of tags (`byTag`) is ready for when the wishes should be sorted that way.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
   for the month most of its days are in. The week being planned is always listed.
@@ -562,9 +579,9 @@ Shopping list
   the catalog once, when it is written (`restock_item.fresh_place`), so that the header of
   every page can say where each entry goes without reading the catalog. While it has
   entries, the Merkzettel also lies among the shopping notes.
-- Besides the cooked meals the lists hold the week's extras, scaled like a meal and bought on
-  the week's first supermarket day, and the foods of meals without a recipe, by name and
-  without an amount. The exception is a food named as one piece of something bought by the piece:
+- Besides the cooked meals the lists hold the week's extras, scaled like a meal and bought for
+  their day like a meal, or without a day on the week's first supermarket day, and the foods
+  of meals without a recipe, by name and without an amount. The exception is a food named as one piece of something bought by the piece:
   "Gurke" for the catalog's "Gurken" is "1 Gurke" and adds up with what recipes need
   (`namesOnePiece`). Named in the plural it stays a name. A food bought somewhere else than the catalog says is its own line
   (`<ingredient>@<trip>@<shop>`). What someone asked for by name is never assumed to be at home.
