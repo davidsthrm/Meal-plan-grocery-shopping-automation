@@ -118,3 +118,49 @@ export async function supermarketNamed(
   );
   return created.id;
 }
+
+/** Stores where the household lives, or (null) forgets it. */
+export async function storePostalCode(
+  db: Db,
+  householdId: string,
+  postalCode: string | null,
+  placeName: string | null,
+): Promise<void> {
+  const stored = await db
+    .from("household")
+    .update({ postal_code: postalCode, place_name: placeName?.slice(0, 80) ?? null })
+    .eq("id", householdId);
+  if (stored.error) throw new Error(`store postal code: ${stored.error.message}`);
+}
+
+/**
+ * Keeps the supermarkets found near a postal code as shops of the household, to be chosen
+ * from. One the household has by that name already is given its logo and street; the others
+ * are made. Those found for an earlier postal code stay, and stay chosen if they were.
+ */
+export async function storeFoundSupermarkets(
+  db: Db,
+  householdId: string,
+  postalCode: string,
+  found: readonly { name: string; address: string | null; logoUrl: string | null }[],
+): Promise<void> {
+  const shops = must(await db.from("shop").select("id, name, kind, sort_order"), "load shops");
+  let order = Math.max(0, ...shops.map((shop) => shop.sort_order));
+  for (const shop of found) {
+    const known = shops.find((each) => each.name.toLowerCase() === shop.name.toLowerCase());
+    const details = { logo_url: shop.logoUrl, address: shop.address, found_near: postalCode };
+    // A butcher of the same name is no supermarket: it is left as it is.
+    if (known && known.kind !== "supermarket") continue;
+    const stored = known
+      ? await db.from("shop").update(details).eq("id", known.id)
+      : await db.from("shop").insert({
+          household_id: householdId,
+          name: shop.name,
+          short_label: shop.name,
+          sort_order: ++order,
+          kind: "supermarket",
+          ...details,
+        });
+    if (stored.error) throw new Error(`store supermarket: ${stored.error.message}`);
+  }
+}

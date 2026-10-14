@@ -51,6 +51,8 @@ export type Database = {
       }
       household: {
         Row: {
+          place_name: string | null
+          postal_code: string | null
           drugstore_weekday: number | null
           balance_targets: Json | null
           created_at: string
@@ -61,6 +63,8 @@ export type Database = {
           shopping_weekday: number
         }
         Insert: {
+          place_name?: string | null
+          postal_code?: string | null
           drugstore_weekday?: number | null
           balance_targets?: Json | null
           created_at?: string
@@ -71,6 +75,8 @@ export type Database = {
           shopping_weekday?: number
         }
         Update: {
+          place_name?: string | null
+          postal_code?: string | null
           drugstore_weekday?: number | null
           balance_targets?: Json | null
           created_at?: string
@@ -1098,6 +1104,9 @@ export type Database = {
       }
       shop: {
         Row: {
+          found_near: string | null
+          address: string | null
+          logo_url: string | null
           household_id: string
           id: string
           is_default: boolean
@@ -1108,6 +1117,9 @@ export type Database = {
           supermarket_rank: number | null
         }
         Insert: {
+          found_near?: string | null
+          address?: string | null
+          logo_url?: string | null
           household_id: string
           id?: string
           is_default?: boolean
@@ -1118,6 +1130,9 @@ export type Database = {
           supermarket_rank?: number | null
         }
         Update: {
+          found_near?: string | null
+          address?: string | null
+          logo_url?: string | null
           household_id?: string
           id?: string
           is_default?: boolean

@@ -31,6 +31,12 @@ export interface Shop {
    * supermarket line is bought unless moved. Null or left out: not one of them.
    */
   supermarketRank?: number | null;
+  /** The chain's logo, for a supermarket found near the household. */
+  logoUrl?: string | null;
+  /** Its street: "Biberacher Straße 12". */
+  address?: string | null;
+  /** The postal code it was found near. Null for shops not found that way. */
+  foundNear?: string | null;
 }
 
 export interface AisleGroup {

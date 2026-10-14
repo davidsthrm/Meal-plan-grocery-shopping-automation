@@ -64,7 +64,7 @@ export async function loadSupermarkets(db: Db): Promise<Shop[]> {
   const rows = must(
     await db
       .from("shop")
-      .select("id, name, short_label, sort_order, kind, supermarket_rank")
+      .select("id, name, short_label, sort_order, kind, supermarket_rank, logo_url")
       .not("supermarket_rank", "is", null),
     "load supermarkets",
   );
@@ -76,6 +76,7 @@ export async function loadSupermarkets(db: Db): Promise<Shop[]> {
       sortOrder: row.sort_order,
       kind: row.kind as Place,
       supermarketRank: row.supermarket_rank,
+      logoUrl: row.logo_url,
       aisleSortOverrides: {},
     })),
   );
@@ -89,7 +90,9 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
   const [shops, overrides, aisles, ingredients] = await Promise.all([
     db
       .from("shop")
-      .select("id, name, short_label, sort_order, is_default, kind, supermarket_rank")
+      .select(
+        "id, name, short_label, sort_order, is_default, kind, supermarket_rank, logo_url, address, found_near",
+      )
       .order("sort_order"),
     db.from("shop_aisle_order").select("shop_id, aisle_group_id, sort_order"),
     db
@@ -122,6 +125,9 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
       sortOrder: shop.sort_order,
       kind: shop.kind as Place,
       supermarketRank: shop.supermarket_rank,
+      logoUrl: shop.logo_url,
+      address: shop.address,
+      foundNear: shop.found_near,
       aisleSortOverrides: Object.fromEntries(
         overrideRows
           .filter((row) => row.shop_id === shop.id)

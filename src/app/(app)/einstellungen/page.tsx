@@ -21,7 +21,7 @@ import {
   saveShoppingDays,
   withdrawInvitation,
 } from "./actions";
-import { PantryCard, SupermarketsCard } from "./shop-settings";
+import { PantryTile, SupermarketsCard } from "./shop-settings";
 
 export const metadata: Metadata = { title: "Einstellungen" };
 
@@ -120,12 +120,13 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
           </section>
 
           <SupermarketsCard
-            supermarkets={supermarkets}
-            others={index.catalog.shops.filter(
-              (shop) =>
-                (shop.kind ?? "supermarket") === "supermarket" && !supermarkets.includes(shop),
+            postalCode={household.postalCode}
+            placeName={household.placeName}
+            found={index.catalog.shops.filter(
+              (shop) => household.postalCode !== null && shop.foundNear === household.postalCode,
             )}
-            failed={one(params.fehler) === "supermarkt"}
+            chosen={supermarkets}
+            problem={one(params.fehler) ?? null}
           />
         </div>
 
@@ -253,12 +254,10 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
             </details>
           </section>
 
-          <PantryCard
+          <PantryTile
             staples={ingredients
               .filter((ingredient) => ingredient.isPantryStaple)
               .sort((a, b) => a.name.localeCompare(b.name, "de"))}
-            ingredients={ingredients}
-            unknown={one(params.fehler) === "vorrat" ? (one(params.name) ?? null) : null}
           />
         </div>
       </div>
