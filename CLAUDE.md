@@ -192,8 +192,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   more sheets underneath), a list has ruled lines and a margin (`.ruled`) with a tick made by
   a pen (`.tickbox`), what ran out at home is written on a yellow note stuck on with tape
   (`.note`), a meal without a recipe carries a small yellow slip, and today is marked with a
-  highlighter (`.marked`). No handwriting typeface. On real paper only a note's binding
-  holes and ruled lines are printed, faint, as in its PDF.
+  highlighter (`.marked`). No handwriting typeface. On real paper only a note's ruled lines
+  are printed, faint, as in its PDF.
 - The shopping notes of a week lie next to each other as small notes, a little askew
   (`.tiles`), each with the pictogram of its place on that place's pastel (`PLACE_LOOK`).
   One is picked up to work through it and comes closer (`.zoom-in`). The household found
@@ -614,8 +614,8 @@ Shopping list
   `NOTE_PAPER`) for the note that is picked up, and `/einkauf/pdf` writes notes with `pdf-lib`:
   each note as a file of its own, or all of them in one file, every note on its own page.
   Both show what is still to buy, without what is ticked off or at home. The PDF is a small
-  notepad sheet to take along instead of a phone: A6, one column, black on white, binding
-  holes along the top and faint ruled lines. The size is one constant for both (`NOTE_PAPER`
+  notepad sheet to take along instead of a phone: A6, one column, black on white, faint
+  ruled lines, no binding holes. The size is one constant for both (`NOTE_PAPER`
   in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out).
 
 Import
