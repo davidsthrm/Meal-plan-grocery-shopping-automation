@@ -139,7 +139,12 @@ describe("suitsDay", () => {
     const spaghetti = summary("Avocado Spaghetti", { prepMinutes: 20 });
     const risotto = summary("Pilzrisotto", { prepMinutes: 25 });
     const tagged = summary("Ofenkartoffeln", { prepMinutes: 25, tags: ["kartoffeln"] });
-    for (const recipe of [spaghetti, risotto, tagged]) {
+    // Shown as a steak, but the Spätzle with it make it heavy all the same.
+    const steak = summary("Steak mit Pilzen und Spätzle", {
+      prepMinutes: 25,
+      proteinType: "red_meat",
+    });
+    for (const recipe of [spaghetti, risotto, tagged, steak]) {
       expect(suitsDay(recipe, at("dinner", WEDNESDAY))).toBe(false);
       expect(suitsDay(recipe, at("dinner", "2026-10-18"))).toBe(false);
       expect(suitsDay(recipe, at("lunch", WEDNESDAY))).toBe(true);

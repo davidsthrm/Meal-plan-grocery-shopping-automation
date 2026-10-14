@@ -217,7 +217,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   lines in `pictogram-paths.ts`). It stands large and pale behind a card's text
   (`.watermark`) and small on its pastel in front of a name (`.badge`). It is drawn sharp:
   the household did not want it out of focus. The kind of dish decides before what is in it:
-  a salmon pasta is pasta. Never a photo.
+  a salmon pasta is pasta. The dish a title names first decides before its sides: "Steak
+  mit Pfefferrahmsoße, Pilzen und Spätzle" is meat. A meatless dish named after a vegetable
+  with a picture of its own shows that one ("Pilze in Knoblauchsauce" a mushroom), and only
+  the rest the carrot. Never a photo.
 - Every way to narrow the library down has a pictogram too (`pictogramForFilter`, 24 more):
   each category, effort, kind of dish, cuisine, season, occasion, diet, and a book for a
   cookbook. A tag the household made itself is a label. They show on the tiles under
@@ -409,8 +412,9 @@ Week plan
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
 - The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is
-  pasta, rice, potatoes or a casserole, read as for the pictogram (`pictogramFor`: category,
-  then the "Gericht" tag, then the title), so a pasta salad is a salad. A soup, a wrap or
+  pasta, rice, potatoes or a casserole (`dishOf`: category, then the "Gericht" tag, then any
+  dish word of the title, a side included), so a pasta salad is a salad and a steak with
+  Spätzle is heavy, though its pictogram is the steak. A soup, a wrap or
   toast from the oven is fine. The household had Avocado Spaghetti suggested for a dinner.
 - From Monday to Friday nobody cooks for hours (`suitsDay`): lunch is suggested from what
   is quick or fits a normal day, the evening only from what is quick or cold. A recipe whose

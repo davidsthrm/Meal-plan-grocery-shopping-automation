@@ -1,6 +1,6 @@
 import { daysBetween, isoWeekday, type IsoDate } from "../dates";
 import { LONG_AGO_DAYS } from "../library/discover";
-import { pictogramFor, type Pictogram } from "../library/pictogram";
+import { dishOf, type Pictogram } from "../library/pictogram";
 import { isMeal, suitsMeal, type History, type RecipeSummary } from "../library/summary";
 import { effortOf } from "../library/tags";
 import { byDayAndMeal, type Meal } from "../plan";
@@ -124,7 +124,7 @@ export function suitsDay(
   recipe: Pick<RecipeSummary, "title" | "category" | "proteinType" | "tags" | "prepMinutes">,
   slot: OpenSlot,
 ): boolean {
-  if (slot.meal === "dinner" && HEAVY.has(pictogramFor(recipe))) return false;
+  if (slot.meal === "dinner" && HEAVY.has(dishOf(recipe) ?? "teller")) return false;
   if (slot.meal === "coffee" || isoWeekday(slot.date) > 5) return true;
   const effort = effortOf(recipe);
   if (slot.meal === "lunch") return effort === "schnell" || effort === "alltag";

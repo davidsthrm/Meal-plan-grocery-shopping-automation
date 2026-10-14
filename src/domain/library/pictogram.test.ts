@@ -29,6 +29,25 @@ describe("pictogramFor", () => {
     expect(of("Ratatouille", { proteinType: "vegan" })).toBe("gemuese");
   });
 
+  it("shows the vegetable a meatless dish is named after, where there is a picture of it", () => {
+    expect(of("Pilze in Knoblauchsauce", { proteinType: "vegetarian" })).toBe("pilz");
+    expect(of("Champignon-Pfanne", { proteinType: null })).toBe("pilz");
+    expect(of("Gefüllte Tomaten", { proteinType: "vegan" })).toBe("tomate");
+    // Meat and fish come first, and so does the kind of dish.
+    expect(of("Hähnchen mit Champignons", { proteinType: "poultry" })).toBe("gefluegel");
+    expect(of("Pilzrisotto", { proteinType: "vegetarian" })).toBe("reis");
+    expect(of("Tomatensuppe", { proteinType: "vegetarian" })).toBe("suppe");
+  });
+
+  it("takes the dish a title names first, not its side", () => {
+    const steak = "Steak mit Pfefferrahmsoße, Pilzen und Spätzle";
+    expect(of(steak, { proteinType: "red_meat" })).toBe("fleisch");
+    expect(of("Lachs mit Ofenkartoffeln", { proteinType: "fish" })).toBe("fisch");
+    expect(of("Pilze mit Spätzle", { proteinType: "vegetarian" })).toBe("pilz");
+    // Where the dish itself says nothing, the side still does better than a carrot.
+    expect(of("Gemüsecurry mit Reis", { proteinType: "vegan" })).toBe("reis");
+  });
+
   it("shows a plate when nothing is known", () => {
     expect(of("Überraschung", { proteinType: null, category: null })).toBe("teller");
   });
