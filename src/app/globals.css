@@ -403,6 +403,22 @@ body {
   }
 
   /*
+   * The greeting on the week plan: a large title as on the first screen of an app, set
+   * tight, larger on a wider screen.
+   */
+  .greeting {
+    font-size: 2.15rem;
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+  @media (width >= 40rem) {
+    .greeting {
+      font-size: 2.75rem;
+    }
+  }
+
+  /*
    * A small label above something: "Mittag", "Vorschlag", a category. Written as it is
    * spelled: the household found headings in capitals to look machine-made.
    */

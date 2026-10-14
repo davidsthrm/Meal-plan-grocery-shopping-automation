@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { familyName, firstName, inviteIsOpen, readJoin, readName } from "./family";
+import { familyName, firstName, inviteIsOpen, readJoin, readName, salutation } from "./family";
 
 describe("readName", () => {
   it("tidies a name", () => {
@@ -74,5 +74,18 @@ describe("firstName", () => {
     expect(firstName("  Lena ")).toBe("Lena");
     expect(firstName(null)).toBeNull();
     expect(firstName("   ")).toBeNull();
+  });
+});
+
+describe("salutation", () => {
+  it("greets by the time of day", () => {
+    expect(salutation(7)).toBe("Guten Morgen");
+    expect(salutation(10)).toBe("Guten Morgen");
+    expect(salutation(11)).toBe("Hallo");
+    expect(salutation(17)).toBe("Hallo");
+    expect(salutation(18)).toBe("Guten Abend");
+    expect(salutation(22)).toBe("Guten Abend");
+    expect(salutation(23)).toBe("Hallo");
+    expect(salutation(3)).toBe("Hallo");
   });
 });

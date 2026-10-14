@@ -280,7 +280,10 @@ Household
   shopping notes ("Bei den Stührmanns …") and the invitation ("Die Stührmanns laden dich
   ein"), through `familyName`, which says nothing for a name that is no single family name
   ("Zuhause"). The week plan greets whoever opens it by the first word of their own name
-  ("Hallo David", `firstName`), and not at all without one. Nowhere else.
+  as a large title, the way an app's first screen does: the day small above it, "Guten
+  Morgen, David" by the time of day (`salutation`, `firstName`; `.greeting`, the name in the
+  accent green), and "Euer Wochenplan · 12.–18. Oktober" below as the page's heading.
+  Without a name, the plain label and the week as the title. Nowhere else.
 - A new household for another family is not made in the app: it needs its own catalog,
   tags and categories, as `npm run e2e:setup` makes them for the test household.
 

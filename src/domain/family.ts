@@ -78,3 +78,13 @@ export function firstName(displayName: string | null | undefined): string | null
   const first = (displayName ?? "").trim().split(/\s+/)[0];
   return first ? first : null;
 }
+
+/**
+ * How a member is greeted at this hour where the household lives: "Guten Morgen" until
+ * eleven, "Guten Abend" from six in the evening, "Hallo" in between and at night.
+ */
+export function salutation(hour: number): string {
+  if (hour >= 5 && hour < 11) return "Guten Morgen";
+  if (hour >= 18 && hour < 23) return "Guten Abend";
+  return "Hallo";
+}

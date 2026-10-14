@@ -19,7 +19,7 @@ import {
   type IsoDate,
 } from "@/domain/dates";
 import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
-import { firstName } from "@/domain/family";
+import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { mealsOf, MEALS, namedMeal, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
@@ -36,7 +36,7 @@ import {
   whyText,
 } from "@/lib/plan-text";
 import { fromPlan } from "@/lib/origin";
-import { today } from "@/lib/today";
+import { hourNow, today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
@@ -168,21 +168,33 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     <div className="mx-auto max-w-5xl">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
-          {/* The greeting is part of the label, not a heading of its own. */}
-          <p className="eyebrow">
-            {greeting ? (
-              <>
-                Hallo {greeting}
-                <span aria-hidden className="mx-1.5">
+          {greeting ? (
+            /*
+             * A large title, as on the first screen of an app: the day small above it, the
+             * greeting large with the name in the green of the logo, and the week below as
+             * the heading of the page.
+             */
+            <>
+              <p className="text-sm font-medium text-muted">
+                {weekdayLong(now)}, {dayAndMonth(now)}
+              </p>
+              <p className="greeting mt-1">
+                {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
+              </p>
+              <h1 className="mt-2 text-lg font-semibold tracking-tight text-muted">
+                Euer Wochenplan
+                <span aria-hidden className="mx-2 text-line">
                   ·
                 </span>
-                Wochenplan
-              </>
-            ) : (
-              "Wochenplan"
-            )}
-          </p>
-          <h1 className="title mt-1">{weekRange(week)}</h1>
+                <span className="text-ink">{weekRange(week)}</span>
+              </h1>
+            </>
+          ) : (
+            <>
+              <p className="eyebrow">Wochenplan</p>
+              <h1 className="title mt-1">{weekRange(week)}</h1>
+            </>
+          )}
         </div>
         <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
           <Link
