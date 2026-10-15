@@ -191,12 +191,14 @@ export function NoteSheet({
             {named && section.shop && (
               <h2 className="mb-2 flex items-center gap-2 border-b border-line pb-1.5 text-base font-bold tracking-tight print:text-black">
                 <span className="print:hidden">
-                  <ShopLogo shop={section.shop} size="size-8" />
+                  <ShopLogo shop={section.shop} size={32} />
                 </span>
                 {section.shop.name}
               </h2>
             )}
-            <div className="note-columns gap-x-10 sm:columns-2">
+            {/* One column on screen, so that an opened line has the sheet's whole width;
+                on paper the columns of `printRules`. */}
+            <div className="note-columns gap-x-10">
               {section.groups.map(({ aisleGroup, lines }) => (
                 <section
                   key={aisleGroup.id}
@@ -450,79 +452,74 @@ function Line({
               )}
             </span>
           </summary>
-          <div className="mt-1 mb-2 space-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
-            {/* The day is said here, not on the line: on every line it was too much. */}
-            {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
-            {exact !== "" && <p>Genau: {exact}</p>}
-            <ul className="text-muted">
-              {line.contributions.map((entry, at) => (
-                <li key={at}>
-                  {sourceText(entry)}
-                  {entry.origin && noteId(entry.origin) !== here && (
-                    <> · verschoben von {noteName(entry.origin)}</>
-                  )}
-                </li>
-              ))}
-            </ul>
+          <div className="mt-1 mb-2 grid gap-x-6 gap-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm sm:grid-cols-2 print:hidden">
+            <div className="space-y-1">
+              {/* The day is said here, not on the line: on every line it was too much. */}
+              {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
+              {exact !== "" && <p>Genau: {exact}</p>}
+              <ul className="text-muted">
+                {line.contributions.map((entry, at) => (
+                  <li key={at}>
+                    {sourceText(entry)}
+                    {entry.origin && noteId(entry.origin) !== here && (
+                      <> · verschoben von {noteName(entry.origin)}</>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
             {!drugstore && (
-              <div>
-                <form action={amountLine} className="flex flex-wrap items-end gap-2">
+              <div className="space-y-2">
+                <form action={amountLine} className="flex flex-wrap items-center gap-2">
                   {where}
-                  <label>
-                    <span className="label">Menge</span>
-                    <input
-                      name="quantity"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      maxLength={8}
-                      defaultValue={quantityText(view.purchase?.quantity ?? null)}
-                      className="field w-20"
-                      aria-label={`Menge von ${line.label}`}
-                    />
-                  </label>
-                  <label>
-                    <span className="sr-only">Einheit</span>
-                    <select
-                      name="unit"
-                      defaultValue={view.purchase?.unit ?? "Stück"}
-                      className="field w-28"
-                      aria-label={`Einheit von ${line.label}`}
-                    >
-                      {units.map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <input
+                    name="quantity"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    maxLength={8}
+                    defaultValue={quantityText(view.purchase?.quantity ?? null)}
+                    className="field w-20"
+                    aria-label={`Menge von ${line.label}`}
+                    placeholder="Menge"
+                  />
+                  <select
+                    name="unit"
+                    defaultValue={view.purchase?.unit ?? "Stück"}
+                    className="field w-28"
+                    aria-label={`Einheit von ${line.label}`}
+                  >
+                    {units.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
                   <SubmitButton className="btn btn-small">Menge ändern</SubmitButton>
                 </form>
                 {view.edited && (
-                  <form action={amountLine} className="mt-1">
+                  <form action={amountLine}>
                     {where}
                     <input type="hidden" name="reset" value="1" />
-                    <SubmitButton className="link min-h-10">Wie geplant: {planned}</SubmitButton>
+                    <SubmitButton className="link min-h-9">Wie geplant: {planned}</SubmitButton>
                   </form>
                 )}
+                <form action={noteLine} className="flex gap-2">
+                  {where}
+                  <label className="flex-1">
+                    <span className="sr-only">Notiz zu {line.label}</span>
+                    <input
+                      name="note"
+                      defaultValue={view.note ?? ""}
+                      maxLength={80}
+                      className="field"
+                      placeholder="Notiz, z. B. Marke oder Angebot"
+                    />
+                  </label>
+                  <SubmitButton className="btn btn-small">Merken</SubmitButton>
+                </form>
               </div>
             )}
-            {!drugstore && (
-              <form action={noteLine} className="flex gap-2">
-                {where}
-                <label className="flex-1">
-                  <span className="sr-only">Notiz zu {line.label}</span>
-                  <input
-                    name="note"
-                    defaultValue={view.note ?? ""}
-                    maxLength={80}
-                    className="field"
-                    placeholder="Notiz, z. B. Marke oder Angebot"
-                  />
-                </label>
-                <SubmitButton className="btn btn-small">Merken</SubmitButton>
-              </form>
-            )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
               {!drugstore && (
                 <form action={markAtHome}>
                   {where}
@@ -532,6 +529,24 @@ function Line({
                   </SubmitButton>
                 </form>
               )}
+              {/* Another of the household's supermarkets for this week: a button like the
+                  others, with the market's logo. */}
+              {supermarkets.length > 1 &&
+                supermarkets
+                  .filter((market) => market.id !== boughtAt?.id)
+                  .map((market) => (
+                    <form key={market.id} action={buyAtSupermarket}>
+                      {where}
+                      <input type="hidden" name="shop" value={market.id} />
+                      <SubmitButton
+                        className="btn btn-small gap-2 pl-2"
+                        label={`${line.label} bei ${market.name} kaufen`}
+                      >
+                        <ShopLogo shop={market} size={22} />
+                        Bei {market.name} kaufen
+                      </SubmitButton>
+                    </form>
+                  ))}
               {typed.map((entry) => (
                 <form key={entry.id} action={removeListEntry}>
                   <Where week={week} note={here} />
@@ -545,46 +560,26 @@ function Line({
                 </form>
               ))}
             </div>
-            {supermarkets.length > 1 && (
-              <div role="group" aria-label={`${line.label}: anderer Supermarkt`}>
-                <p className="mb-1.5 text-muted">Kaufe ich bei:</p>
-                <div className="flex flex-wrap gap-2">
-                  {supermarkets
-                    .filter((market) => market.id !== boughtAt?.id)
-                    .map((market) => (
-                      <form key={market.id} action={buyAtSupermarket}>
-                        {where}
-                        <input type="hidden" name="shop" value={market.id} />
-                        <SubmitButton
-                          className="chip min-h-10 gap-2 py-1 pl-1.5 text-sm"
-                          label={`${line.label} bei ${market.name} kaufen`}
-                        >
-                          <ShopLogo shop={market} size="size-7" />
-                          {market.name}
-                        </SubmitButton>
-                      </form>
-                    ))}
-                </div>
-              </div>
-            )}
             {others.length > 0 && (
-              <div role="group" aria-label={`${line.label} verschieben`}>
-                <p className="mb-1.5 text-muted">Lieber woanders kaufen:</p>
-                <div className="flex flex-wrap gap-2">
-                  {others.map((other) => (
-                    <form key={noteId(other)} action={moveListLine}>
-                      {where}
-                      <input type="hidden" name="origins" value={origins.join(",")} />
-                      <input type="hidden" name="to" value={noteId(other)} />
-                      <SubmitButton
-                        className="chip min-h-9 text-sm"
-                        label={`${line.label} verschieben: ${noteName(other)}`}
-                      >
-                        {noteName(other)}
-                      </SubmitButton>
-                    </form>
-                  ))}
-                </div>
+              <div
+                role="group"
+                aria-label={`${line.label} verschieben`}
+                className="flex flex-wrap items-center gap-2 sm:col-span-2"
+              >
+                <span className="text-muted">Lieber woanders kaufen:</span>
+                {others.map((other) => (
+                  <form key={noteId(other)} action={moveListLine}>
+                    {where}
+                    <input type="hidden" name="origins" value={origins.join(",")} />
+                    <input type="hidden" name="to" value={noteId(other)} />
+                    <SubmitButton
+                      className="chip min-h-9 text-sm"
+                      label={`${line.label} verschieben: ${noteName(other)}`}
+                    >
+                      {noteName(other)}
+                    </SubmitButton>
+                  </form>
+                ))}
               </div>
             )}
           </div>

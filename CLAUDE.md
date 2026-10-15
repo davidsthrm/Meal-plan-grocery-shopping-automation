@@ -546,7 +546,9 @@ Shopping list
   with the exact amount, on tap (`packsFor`). Only a line without any amount ("Petersilie")
   and one asked for by the spoonful only ("Salz") show the name alone.
 - Line text: quantity, name, note ("600 g Leberkäse", "Milch WS 1.29"). The exact sum and
-  the meals it comes from stay available per line.
+  the meals it comes from stay available per line. A note picked up is one column on screen,
+  the width of the page, so that an opened line has room: what it is for on the left, amount
+  and note on the right, its buttons in one row below. On paper it keeps its columns.
 - The amount of a line can be changed on its note ("Menge ändern", `LineState.amount`,
   `shopping_line_state.quantity` and `unit`). The line then says what the plan has, and
   "Wie geplant" takes the change back. The change stays when the plan changes.
@@ -562,16 +564,21 @@ Shopping list
   the nearest five left out Aldi and Lidl in Laupheim. Chosen ones stand first, then the
   chains and the rest by name (`src/server/supermarket-search.ts`,
   `pickSupermarkets`). They are kept as shops (`shop.found_near`, `logo_url`, `address`).
-  None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app. One
-  is marked as the main market, others as further markets (`shop.supermarket_rank`, 1 the
-  main one; `favouriteSupermarkets`); a market the map does not know can be typed in. A supermarket note buys everything at the main one. A
+  None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app. While
+  the search runs, which can take up to a minute, the card says so (`SearchPending`). A tap
+  on a market makes it one of the household's or no longer one, the first one chosen being
+  the main market; the star next to a chosen one makes it the main one
+  (`shop.supermarket_rank`, 1 the main one; `favouriteSupermarkets`). A market the map does
+  not know can be typed in. A supermarket note buys everything at the main one. A
   line can be bought at another one for the week ("Kaufe ich bei: Rewe",
   `shopping_line_state.shop_id`): that supermarket then has a section of its own on the
   note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
   the catalog buys a thing (`preferredShopId`) does not decide the section. The logos stand
   wherever a supermarket is named (`ShopLogo`, the name's first letter without one): the
   main one in place of the cart on its notes, whose PDF is titled with its name, each
-  further one at its section and on its "Kaufe ich bei" button.
+  further one at its section and on its button "Bei EDEKA kaufen", a button like "Haben wir
+  schon". A logo's size is set in pixels on the element, never by a class: with a size class
+  the stylesheet lacked, the 128-pixel picture filled half the note.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
   names: "1 Zitrone".

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowIcon, LockIcon } from "@/components/icons";
+import { ArrowIcon, LockIcon, StarIcon, TickIcon } from "@/components/icons";
 import { ShopLogo } from "@/components/shop-logo";
 import { SubmitButton } from "@/components/submit-button";
 import type { Ingredient, Shop } from "@/domain/catalog";
 import { addSupermarket, markSupermarket, savePostalCode, searchAgain } from "./actions";
+import { SearchPending } from "./search-pending";
 
 /** What went wrong the last time, as the card says it. */
 const PROBLEM: Record<string, string> = {
@@ -54,7 +55,7 @@ export function SupermarketsCard({
         einem weiteren Markt schieben, der dann einen eigenen Abschnitt bekommt.
       </p>
 
-      <form action={savePostalCode} className="mt-3 flex items-end gap-2">
+      <form action={savePostalCode} className="mt-3 flex flex-wrap items-end gap-2">
         <label className="flex-1">
           <span className="label">Postleitzahl</span>
           <input
@@ -68,6 +69,7 @@ export function SupermarketsCard({
           />
         </label>
         <SubmitButton>{postalCode ? "Ändern" : "Suchen"}</SubmitButton>
+        <SearchPending />
       </form>
       {problem && PROBLEM[problem] && (
         <p role="alert" className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
@@ -92,10 +94,14 @@ export function SupermarketsCard({
             <h3 className="font-semibold">
               {placeName ? `In ${placeName}` : `Rund um ${postalCode}`}
             </h3>
-            <form action={searchAgain}>
+            <form action={searchAgain} className="flex flex-wrap items-center justify-end gap-2">
               <SubmitButton className="link min-h-10 text-sm">Neu suchen</SubmitButton>
+              <SearchPending />
             </form>
           </div>
+          <p className="text-sm text-muted">
+            Tippe die Märkte an, in denen ihr einkauft. Der mit dem Stern ist der Hauptmarkt.
+          </p>
           {tiles.length === 0 ? (
             <p className="mt-2 text-muted">
               Keine Supermärkte gefunden. „Neu suchen“ versucht es noch einmal, oder unten von Hand
@@ -143,49 +149,69 @@ export function SupermarketsCard({
   );
 }
 
-/** One supermarket: its logo and name, what it is to the household, and how to change that. */
+/**
+ * One supermarket: a tap on it makes it one of the household's or no longer one; the star
+ * next to a chosen one makes it the main market. The first one chosen is the main one by
+ * itself. Two buttons per market were one too many to choose five.
+ */
 function SupermarketTile({ shop, role }: { shop: Shop; role: "main" | "more" | "none" }) {
-  const mark = (as: "main" | "more" | "none", text: string, label: string, className: string) => (
-    <form action={markSupermarket}>
-      <input type="hidden" name="id" value={shop.id} />
-      <input type="hidden" name="as" value={as} />
-      <SubmitButton className={className} label={label}>
-        {text}
-      </SubmitButton>
-    </form>
-  );
+  const chosen = role !== "none";
   return (
     <li
-      className={`flex flex-col gap-2 rounded-lg border p-3 ${
+      className={`flex items-center gap-1 rounded-lg border pr-1 ${
         role === "main"
-          ? "border-accent bg-accent-soft/60"
-          : role === "more"
-            ? "border-accent/40"
+          ? "border-accent bg-accent-soft/70"
+          : chosen
+            ? "border-accent/50 bg-accent-soft/30"
             : "border-line"
       }`}
     >
-      <span className="flex items-center gap-3">
-        <ShopLogo shop={shop} />
-        <span className="min-w-0">
-          <span className="block truncate font-semibold">{shop.name}</span>
-          <span className="block truncate text-sm text-muted">
-            {role === "main" ? "Hauptmarkt" : role === "more" ? "Weiterer Markt" : shop.address}
+      <form action={markSupermarket} className="min-w-0 flex-1">
+        <input type="hidden" name="id" value={shop.id} />
+        <input type="hidden" name="as" value={chosen ? "none" : "more"} />
+        <SubmitButton
+          className="flex w-full items-center gap-3 rounded-lg p-2 text-left"
+          label={chosen ? `${shop.name} abwählen` : `${shop.name} auswählen`}
+          on={chosen}
+        >
+          <ShopLogo shop={shop} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{shop.name}</span>
+            <span className="block truncate text-sm text-muted">
+              {role === "main" ? "Hauptmarkt" : role === "more" ? "Weiterer Markt" : shop.address}
+            </span>
           </span>
-        </span>
-      </span>
-      <span className="flex flex-wrap gap-2">
-        {role !== "main" &&
-          mark("main", "Hauptmarkt", `${shop.name} als Hauptmarkt`, "chip min-h-9 text-sm")}
-        {role === "none" &&
-          mark("more", "Weiterer Markt", `${shop.name} als weiteren Markt`, "chip min-h-9 text-sm")}
-        {role !== "none" &&
-          mark(
-            "none",
-            "Entfernen",
-            `${shop.name} entfernen`,
-            "min-h-9 px-1 text-sm font-semibold text-muted hover:text-danger",
-          )}
-      </span>
+          <span
+            aria-hidden
+            className={`flex size-7 shrink-0 items-center justify-center rounded-full border ${
+              chosen ? "border-accent bg-accent text-white" : "border-line bg-white"
+            }`}
+          >
+            {chosen && <TickIcon />}
+          </span>
+        </SubmitButton>
+      </form>
+      {chosen &&
+        (role === "main" ? (
+          <span
+            className="flex size-10 items-center justify-center text-accent"
+            title="Hauptmarkt"
+            aria-label={`${shop.name} ist der Hauptmarkt`}
+          >
+            <StarIcon filled />
+          </span>
+        ) : (
+          <form action={markSupermarket}>
+            <input type="hidden" name="id" value={shop.id} />
+            <input type="hidden" name="as" value="main" />
+            <SubmitButton
+              className="flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent"
+              label={`${shop.name} zum Hauptmarkt machen`}
+            >
+              <StarIcon />
+            </SubmitButton>
+          </form>
+        ))}
     </li>
   );
 }

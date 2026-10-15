@@ -173,3 +173,20 @@ export function TrashIcon() {
     </svg>
   );
 }
+
+export function StarIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg {...base} fill={filled ? "currentColor" : "none"}>
+      <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z" />
+    </svg>
+  );
+}
+
+/** A circle turning while something takes its time. Still for whoever asked for less motion. */
+export function SpinnerIcon() {
+  return (
+    <svg {...base} className="animate-spin motion-reduce:animate-none">
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" />
+    </svg>
+  );
+}

@@ -62,7 +62,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             .map((note) => note.trip)
             .filter((trip) => noteId(trip) !== picked.id && trip.place !== "drugstore");
     return (
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-5xl">
         {/* Printed, the note has the size and the layout of its PDF. */}
         <style>{printRules()}</style>
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
