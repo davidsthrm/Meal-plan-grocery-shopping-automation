@@ -148,3 +148,45 @@ export function SettingsIcon() {
     </svg>
   );
 }
+
+export function LockIcon() {
+  return (
+    <svg {...base}>
+      <rect x="5" y="10.5" width="14" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+export function PlusIcon() {
+  return (
+    <svg {...base}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function TrashIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />
+    </svg>
+  );
+}
+
+export function StarIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg {...base} fill={filled ? "currentColor" : "none"}>
+      <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z" />
+    </svg>
+  );
+}
+
+/** A circle turning while something takes its time. Still for whoever asked for less motion. */
+export function SpinnerIcon() {
+  return (
+    <svg {...base} className="animate-spin motion-reduce:animate-none">
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" />
+    </svg>
+  );
+}

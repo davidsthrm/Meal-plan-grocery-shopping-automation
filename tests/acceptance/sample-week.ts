@@ -1,9 +1,15 @@
-import { aisleSortOrder, createCatalogIndex, findIngredient } from "@/domain/catalog";
+import {
+  aisleSortOrder,
+  createCatalogIndex,
+  findIngredient,
+  type Ingredient,
+} from "@/domain/catalog";
 import type { PlanSlot } from "@/domain/plan";
-import { buildShoppingList } from "@/domain/shopping-list/build";
+import { buildShoppingList, toDefaultUnit } from "@/domain/shopping-list/build";
 import { formatAmount } from "@/domain/shopping-list/format";
 import { parseFreeEntry } from "@/domain/shopping-list/free-entry";
 import { presentList, type ListView } from "@/domain/shopping-list/present";
+import { packsFor, purchaseFor } from "@/domain/shopping-list/rounding";
 import { singleTrip } from "@/domain/shopping-list/trips";
 import type { LineState, ShoppingLine } from "@/domain/shopping-list/types";
 import type { Amount } from "@/domain/units";
@@ -19,7 +25,10 @@ import handwritten from "../fixtures/sample-week/shopping-list.json";
  */
 
 export type LineStatus =
-  /** On both lists, in the same shop, with the same quantity and note. */
+  /**
+   * On both lists, in the same shop, buying the same quantity, and with the same note. A
+   * line the paper writes without a quantity may show the amount the recipes need.
+   */
   | "match"
   /** On both lists, but shop, quantity or note differ. */
   | "different"
@@ -88,9 +97,19 @@ function planSlots(): PlanSlot[] {
   });
 }
 
-function sameAmount(a: Amount | null, b: Amount | null): boolean {
-  if (a === null || b === null) return a === b;
-  return a.quantity === b.quantity && a.unit === b.unit;
+/**
+ * Whether the generated line buys what the handwritten one says. Where the paper shows no
+ * quantity, the app may show the amount the recipes need: the household asked for it in
+ * front of every line. Where the paper shows one, the line must buy the same: as many packs
+ * of what comes in packs ("2x Garnelen" is 450 g), the same amount of everything else.
+ */
+function sameAmount(ingredient: Ingredient, written: Amount | null, line: ShoppingLine): boolean {
+  if (written === null) return true;
+  const inDefault = toDefaultUnit(ingredient, written);
+  if (inDefault === null || line.purchase === null) return false;
+  if (ingredient.buyingMode === "pack") return packsFor(ingredient, inDefault) === line.packs;
+  const bought = purchaseFor(ingredient, inDefault);
+  return bought.quantity === line.purchase.quantity && bought.unit === line.purchase.unit;
 }
 
 const describeAmount = (amount: Amount | null) => (amount ? formatAmount(amount) : "no quantity");
@@ -143,7 +162,7 @@ export function buildSampleWeek(): SampleWeek {
       if (line) {
         explained.add(line.line.key);
         const problems = [
-          sameAmount(parsed.amount, line.line.purchase)
+          sameAmount(ingredient, parsed.amount, line.line)
             ? null
             : `handwritten ${describeAmount(parsed.amount)}, generated ${describeAmount(line.line.purchase)}`,
           (parsed.note ?? null) === (line.note ?? null)

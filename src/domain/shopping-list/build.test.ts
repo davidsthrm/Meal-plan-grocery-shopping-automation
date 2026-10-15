@@ -97,15 +97,48 @@ describe("buildShoppingList", () => {
     ).toBe(2);
   });
 
-  it("merges units that convert and shows a multiplier only beyond one pack", () => {
+  it("merges units that convert and shows the amount needed, with the packs said apart", () => {
     const sauce = recipe("sauce", [line("sahne", 150, "ml"), line("sahne", 2, "EL")]);
     const one = build([sauce], [slot(MONDAY, "sauce")]).get("sahne@main")!;
     expect(one.amounts).toEqual([{ quantity: 180, unit: "ml" }]);
-    expect(one.purchase).toBeNull();
+    expect(one.purchase).toEqual({ quantity: 180, unit: "ml" });
+    expect(one.packs).toBe(1);
 
     const two = build([sauce], [slot(MONDAY, "sauce", 8)]).get("sahne@main")!;
     expect(two.amounts).toEqual([{ quantity: 360, unit: "ml" }]);
-    expect(two.purchase).toEqual({ quantity: 2, unit: "Packung" });
+    expect(two.purchase).toEqual({ quantity: 360, unit: "ml" });
+    expect(two.packs).toBe(2);
+  });
+
+  it("shows one pack by its amount as much as several: never the name alone", () => {
+    // Before, one pack showed the name only and two "2x": the list mixed both.
+    const one = build([recipe("a", [line("kleine-tomaten", 200, "g")])], [slot(MONDAY, "a")]);
+    expect(one.get("kleine-tomaten@main")!.purchase).toEqual({ quantity: 200, unit: "g" });
+    const four = build([recipe("a", [line("kleine-tomaten", 900, "g")])], [slot(MONDAY, "a")]);
+    expect(four.get("kleine-tomaten@main")).toMatchObject({
+      purchase: { quantity: 900, unit: "g" },
+      packs: 4,
+    });
+  });
+
+  it("rounds what is not bought by count or weight only as far as it reads well", () => {
+    const lines = build([recipe("a", [line("ingwer", 13.4, "g")])], [slot(MONDAY, "a", 6)]);
+    // 13,4 g for four persons is 20,1 g for six.
+    expect(lines.get("ingwer@main")!.purchase).toEqual({ quantity: 25, unit: "g" });
+  });
+
+  it("names an ingredient by the spoonful without an amount", () => {
+    const lines = build(
+      [recipe("a", [line("sahne", 2, "EL")]), recipe("b", [line("sahne", 100, "ml")])],
+      [slot(MONDAY, "a"), slot(TUESDAY, "b")],
+    );
+    // A spoonful next to a real amount is added to it.
+    expect(lines.get("sahne@main")!.purchase).toEqual({ quantity: 130, unit: "ml" });
+    const spoons = build([recipe("a", [line("sahne", 2, "EL")])], [slot(MONDAY, "a")]);
+    expect(spoons.get("sahne@main")).toMatchObject({
+      purchase: null,
+      amounts: [{ quantity: 30, unit: "ml" }],
+    });
   });
 
   it("keeps amounts apart that cannot be converted instead of guessing", () => {
@@ -148,7 +181,8 @@ describe("buildShoppingList", () => {
     expect(tomato.get("tomaten@main")).toMatchObject({ label: "Tomaten" });
   });
 
-  it("needs only one line for an ingredient that shows no quantity", () => {
+  it("shows what an ingredient without a buying unit needs, apart where it cannot be added", () => {
+    // Ginger used to be "Ingwer" alone, whatever the recipes asked for.
     const lines = build(
       [
         recipe("a", [
@@ -159,14 +193,25 @@ describe("buildShoppingList", () => {
       ],
       [slot(MONDAY, "a")],
     );
-    const ginger = lines.get("ingwer@main")!;
-    expect(lines.size).toBe(1);
-    expect(ginger.purchase).toBeNull();
-    expect(ginger.amounts).toEqual([
-      { quantity: 20, unit: "g" },
-      { quantity: 1, unit: "Stück" },
-    ]);
-    expect(ginger.hasUnquantified).toBe(true);
+    expect(lines.get("ingwer@main")).toMatchObject({
+      purchase: { quantity: 20, unit: "g" },
+      hasUnquantified: true,
+    });
+    expect(lines.get("ingwer@main#Stück")).toMatchObject({
+      purchase: { quantity: 1, unit: "Stück" },
+    });
+  });
+
+  it("names one piece in the singular where the catalog knows the word, at any buying mode", () => {
+    // "1 Stück Schalotten" was the line: now "1x Schalotte".
+    const shallot = build([recipe("a", [line("schalotten", 1, "Stück")])], [slot(MONDAY, "a")]);
+    expect(shallot.get("schalotten@main")).toMatchObject({
+      label: "Schalotte",
+      purchase: { quantity: 1, unit: "Stück" },
+      forms: { one: "Schalotte", many: "Schalotten" },
+    });
+    const half = build([recipe("a", [line("schalotten", 0.5, "Stück")])], [slot(MONDAY, "a")]);
+    expect(half.get("schalotten@main")!.purchase).toEqual({ quantity: 1, unit: "Stück" });
   });
 
   it("lists an ingredient without any quantity by name", () => {
@@ -181,7 +226,26 @@ describe("buildShoppingList", () => {
       [recipe("a", [line("ingwer", 1, "Stück"), line("salz", 1, "TL", { alternativeTo: 0 })])],
       [slot(MONDAY, "a")],
     );
-    expect([...lines.keys()]).toEqual(["ingwer@main"]);
+    expect([...lines.keys()]).toEqual(["ingwer@main#Stück"]);
+  });
+
+  it("buys the extra portions of a meal cooked for leftovers with it", () => {
+    const stew = recipe("eintopf", [line("karotten", 2, "Stück")]);
+    const cooked = { ...slot(MONDAY, "eintopf", 4), extra: 2 } as PlanSlot;
+    // Two extra portions for four persons: half as much again.
+    expect(build([stew], [cooked]).get("karotten@main")!.purchase?.quantity).toBe(3);
+  });
+
+  it("does not bake more cakes for leftovers", () => {
+    const cake = recipe("kuchen", [line("eier", 4, "Stück")], {
+      min: 1,
+      max: 1,
+      unit: "Springform",
+    });
+    const baked = { ...slot(MONDAY, "kuchen", 1), extra: 4 } as PlanSlot;
+    expect(build([cake], [baked]).get("eier@main")!.amounts).toEqual([
+      { quantity: 4, unit: "Stück" },
+    ]);
   });
 
   it("uses the upper bound of a quantity range", () => {
@@ -257,7 +321,7 @@ describe("buildShoppingList", () => {
         [slot(MONDAY, "a")],
       );
       expect(lines.get("salz@main")!.defaultAtHome).toBe(true);
-      expect(lines.get("ingwer@main")!.defaultAtHome).toBe(false);
+      expect(lines.get("ingwer@main#Stück")!.defaultAtHome).toBe(false);
     });
 
     it("never pre-ticks a staple the household put on the list by hand", () => {
@@ -284,7 +348,10 @@ describe("buildShoppingList", () => {
         [{ id: "m1", text: "2x Sahne" }],
       );
       expect(lines.get("sahne@main")!.amounts).toEqual([{ quantity: 550, unit: "ml" }]);
-      expect(lines.get("sahne@main")!.purchase).toEqual({ quantity: 3, unit: "Packung" });
+      expect(lines.get("sahne@main")).toMatchObject({
+        purchase: { quantity: 550, unit: "ml" },
+        packs: 3,
+      });
     });
 
     it("carries a typed quantity onto the list", () => {
@@ -298,7 +365,11 @@ describe("buildShoppingList", () => {
         ],
       );
       expect(lines.get("leberkaese@main")!.purchase).toEqual({ quantity: 600, unit: "g" });
-      expect(lines.get("garnelen@main")!.purchase).toEqual({ quantity: 2, unit: "Packung" });
+      // Two packs of 225 g, said as what they weigh.
+      expect(lines.get("garnelen@main")).toMatchObject({
+        purchase: { quantity: 450, unit: "g" },
+        packs: 2,
+      });
       expect(lines.get("eier@main")!.purchase).toEqual({ quantity: 20, unit: "Stück" });
     });
 
@@ -347,7 +418,7 @@ describe("buildShoppingList", () => {
       ],
       [slot(MONDAY, "a"), slot(MONDAY, "b")],
     );
-    expect(lines.get("ingwer@main")!.optional).toBe(true);
+    expect(lines.get("ingwer@main#Stück")!.optional).toBe(true);
     expect(lines.get("tomaten@main")!.optional).toBe(false);
   });
 });
@@ -523,8 +594,11 @@ describe("several errands", () => {
     );
     const monday = lines.find((entry) => entry.shoppingDate === MONDAY)!;
     expect(monday.amounts).toEqual([{ quantity: 400, unit: "ml" }]);
-    expect(monday.purchase).toEqual({ quantity: 2, unit: "Packung" });
-    expect(lines.find((entry) => entry.shoppingDate === FRIDAY)!.purchase).toBeNull();
+    expect(monday).toMatchObject({ purchase: { quantity: 400, unit: "ml" }, packs: 2 });
+    expect(lines.find((entry) => entry.shoppingDate === FRIDAY)!.purchase).toEqual({
+      quantity: 200,
+      unit: "ml",
+    });
   });
 
   it("buys vegetables at the market on its day and meat at the butcher for each meal", () => {

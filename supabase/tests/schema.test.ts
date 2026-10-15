@@ -244,6 +244,70 @@ describe("schema", () => {
     await db.query("delete from public.recipe where title = 'Probekuchen'");
   });
 
+  it("stores an amount written over a line only with its unit", async () => {
+    const list = await db.query<{ id: string }>(
+      "insert into public.shopping_list (household_id, shopping_date) values ($1, '2026-10-12') returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const state = (key: string, quantity: string, unit: string) =>
+      db.query(
+        `insert into public.shopping_line_state (household_id, shopping_list_id, line_key, quantity, unit)
+         values ($1, $2, $3, ${quantity}, ${unit})`,
+        [SEED_HOUSEHOLD_ID, list.rows[0].id, key],
+      );
+    await expect(state("karotten@main", "5", "'Stück'")).resolves.toBeDefined();
+    await expect(state("milch@main", "1", "null")).rejects.toThrow(/shopping_line_state_amount/);
+    await expect(state("sahne@main", "0", "'ml'")).rejects.toThrow(/quantity_check/);
+    await db.query("delete from public.shopping_list where id = $1", [list.rows[0].id]);
+  });
+
+  it("keeps a household's postal code as five digits, empty until one is entered", async () => {
+    const row = await db.query<{ postal_code: string | null }>(
+      "select postal_code from public.household where id = $1",
+      [OTHER_HOUSEHOLD],
+    );
+    expect(row.rows[0].postal_code).toBeNull();
+    const store = (code: string) =>
+      db.query("update public.household set postal_code = $2 where id = $1", [
+        OTHER_HOUSEHOLD,
+        code,
+      ]);
+    await expect(store("88471")).resolves.toBeDefined();
+    await expect(store("Laupheim")).rejects.toThrow(/postal_code_check/);
+    await db.query("update public.household set postal_code = null where id = $1", [
+      OTHER_HOUSEHOLD,
+    ]);
+  });
+
+  it("cooks a meal with up to twenty extra portions for leftovers, none unless asked", async () => {
+    const plan = await db.query<{ id: string }>(
+      "insert into public.week_plan (household_id, week_start) values ($1, '2026-11-02') returning id",
+      [SEED_HOUSEHOLD_ID],
+    );
+    const meal = (extra: string) =>
+      db.query<{ extra_servings: number }>(
+        `insert into public.plan_slot (household_id, week_plan_id, date, meal, kind${extra === "" ? "" : ", extra_servings"})
+         values ($1, $2, '2026-11-02', 'lunch', 'recipes'${extra === "" ? "" : `, ${extra}`}) returning extra_servings`,
+        [SEED_HOUSEHOLD_ID, plan.rows[0].id],
+      );
+    expect((await meal("")).rows[0].extra_servings).toBe(0);
+    await db.query("delete from public.plan_slot where week_plan_id = $1", [plan.rows[0].id]);
+    await expect(meal("21")).rejects.toThrow(/extra_servings_check/);
+    await db.query("delete from public.week_plan where id = $1", [plan.rows[0].id]);
+  });
+
+  it("ranks only supermarkets among the household's supermarkets", async () => {
+    const rank = (kind: string) =>
+      db.query(
+        `insert into public.shop (household_id, name, short_label, kind, supermarket_rank)
+         values ($1, $2, $2, $3, 2)`,
+        [SEED_HOUSEHOLD_ID, `Probeladen ${kind}`, kind],
+      );
+    await expect(rank("supermarket")).resolves.toBeDefined();
+    await expect(rank("butcher")).rejects.toThrow(/shop_supermarket_rank_kind/);
+    await db.query("delete from public.shop where name like 'Probeladen%'");
+  });
+
   it("approves recipes that waited only for unknown ingredients, and no others", async () => {
     // The rule arrived as a migration. Run its statements again on rows made for this test.
     const batch = await db.query<{ id: string }>(

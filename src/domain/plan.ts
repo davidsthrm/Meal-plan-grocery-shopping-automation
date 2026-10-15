@@ -25,7 +25,15 @@ export interface SlotItem {
  * A slot that is not planned yet simply does not exist.
  */
 export type PlanSlot =
-  | (SlotBase & { kind: "recipes"; items: SlotItem[] })
+  | (SlotBase & {
+      kind: "recipes";
+      items: SlotItem[];
+      /**
+       * "Mehr kochen": portions cooked beyond the persons, for leftovers on a later meal.
+       * Added to every recipe of the meal that is cooked for persons. Zero or left out: none.
+       */
+      extra?: number;
+    })
   /** A meal without a recipe, e.g. "Vesper". It can still need things from the shops. */
   | (SlotBase & { kind: "free_text"; label: string; foods?: SlotFood[] })
   /** Leftovers. The source meal is optional and may lie in an earlier week. */
@@ -100,30 +108,59 @@ export function byDayAndMeal(
 }
 
 /**
- * The next lunch or dinner after `after` that has nothing planned yet (`taken` holds the
- * `slotKey` of every planned meal), up to and including `lastDay`. Coffee on Sunday is
- * optional and never the next meal to plan. Null when every meal until then is planned.
+ * The lunches and dinners after `after` that have nothing planned yet (`taken` holds the
+ * `slotKey` of every planned meal), up to and including `lastDay`, in order. Coffee on
+ * Sunday is optional and never among them.
+ */
+export function openMealsAfter(
+  after: { date: IsoDate; meal: Meal },
+  taken: ReadonlySet<string>,
+  lastDay: IsoDate,
+): { date: IsoDate; meal: Meal }[] {
+  const open: { date: IsoDate; meal: Meal }[] = [];
+  for (let date = after.date; date <= lastDay; date = addDays(date, 1)) {
+    for (const meal of MEALS) {
+      const candidate = { date, meal };
+      if (byDayAndMeal(candidate, after) <= 0) continue;
+      if (!taken.has(slotKey(date, meal))) open.push(candidate);
+    }
+  }
+  return open;
+}
+
+/**
+ * The next lunch or dinner after `after` that has nothing planned yet, up to and including
+ * `lastDay`. Null when every meal until then is planned.
  */
 export function nextOpenMeal(
   after: { date: IsoDate; meal: Meal },
   taken: ReadonlySet<string>,
   lastDay: IsoDate,
 ): { date: IsoDate; meal: Meal } | null {
-  for (let date = after.date; date <= lastDay; date = addDays(date, 1)) {
-    for (const meal of MEALS) {
-      const candidate = { date, meal };
-      if (byDayAndMeal(candidate, after) <= 0) continue;
-      if (!taken.has(slotKey(date, meal))) return candidate;
-    }
-  }
-  return null;
+  return openMealsAfter(after, taken, lastDay)[0] ?? null;
+}
+
+/** How many days after a meal its leftovers can be eaten. */
+export const LEFTOVER_DAYS = 3;
+
+/**
+ * How much of a recipe is cooked on a meal: its planned servings, and for a recipe cooked for
+ * persons the meal's extra portions too ("Mehr kochen"). A cake for one tin stays one cake.
+ */
+export function cookedServings(
+  servings: number,
+  extra: number | undefined,
+  forPersons: boolean,
+): number {
+  return forPersons ? servings + (extra ?? 0) : servings;
 }
 
 /** A slot's content without its place in the calendar, as it is entered or copied. */
 export type SlotContent =
-  | { kind: "recipes"; items: SlotItem[] }
+  | { kind: "recipes"; items: SlotItem[]; extra?: number }
   | { kind: "free_text"; label: string; foods?: SlotFood[] }
-  | { kind: "leftovers" }
+  /** Leftovers, of the meal they were cooked with where that is known. */
+  | { kind: "leftovers"; ofSlotId?: string | null }
   | { kind: "away"; label: string }
   | { kind: "skipped" };
 

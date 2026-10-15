@@ -250,6 +250,7 @@ export function drugstoreLines(
     key: `manual:${entry.id}`,
     ingredientId: null,
     label: entry.text,
+    forms: null,
     shoppingDate: trip.date,
     place: trip.place,
     trip: "main",
@@ -261,6 +262,7 @@ export function drugstoreLines(
       entry.quantity !== null && entry.quantity > 1
         ? { quantity: entry.quantity, unit: "Packung" }
         : null,
+    packs: null,
     amounts: [],
     hasUnquantified: false,
     contributions: [

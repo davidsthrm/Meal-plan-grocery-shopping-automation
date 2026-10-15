@@ -41,11 +41,12 @@ export function formatAmount(amount: Amount): string {
 }
 
 /**
- * The quantity as it stands in front of the name on the list, the way the handwritten list
- * does it: pieces as a bare number ("2 Karotten"), packs as a multiplier ("2x Garnelen").
+ * The quantity as it stands in front of the name on the list: pieces and packs as a
+ * multiplier ("1x Schalotte", "2x Garnelen"), as on the drugstore's note, everything else
+ * with its unit ("200 g Crème fraîche", "1 Bund Petersilie").
  */
 export function formatPurchase(amount: Amount): string {
-  if (amount.unit === "Stück") return formatNumber(amount.quantity);
+  if (amount.unit === "Stück") return `${formatNumber(amount.quantity)}x`;
   if (amount.unit === "Packung") return `${formatNumber(amount.quantity)}x`;
   return formatAmount(amount);
 }
@@ -53,4 +54,17 @@ export function formatPurchase(amount: Amount): string {
 /** One list line: quantity where needed, name, then the note. */
 export function formatLine(label: string, purchase: Amount | null, note: string | null): string {
   return [purchase ? formatPurchase(purchase) : null, label, note].filter(Boolean).join(" ");
+}
+
+/**
+ * The name a line goes by for an amount: one piece in the singular ("1x Schalotte"), any
+ * other amount by the catalog's name. A line without catalog forms keeps its label.
+ */
+export function labelFor(
+  forms: { one: string; many: string } | null,
+  label: string,
+  amount: Amount | null,
+): string {
+  if (!forms) return label;
+  return amount?.unit === "Stück" && amount.quantity === 1 ? forms.one : forms.many;
 }

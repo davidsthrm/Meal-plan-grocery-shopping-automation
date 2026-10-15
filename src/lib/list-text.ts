@@ -31,7 +31,13 @@ export function sourceText(contribution: Contribution): string {
 export function exactText(view: ViewLine): string {
   const amounts = view.line.amounts.map(formatAmount);
   if (view.line.hasUnquantified && amounts.length > 0) amounts.push("und ohne Mengenangabe");
-  return amounts.join(" + ");
+  const packs = view.line.packs;
+  // What comes in packs says how many that is: "300 ml, das sind 2 Packungen".
+  const inPacks =
+    packs === null || amounts.length === 0
+      ? ""
+      : `, das ${packs === 1 ? "ist 1 Packung" : `sind ${packs} Packungen`}`;
+  return amounts.join(" + ") + inPacks;
 }
 
 /** The places the household shops at. */

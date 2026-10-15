@@ -26,6 +26,17 @@ export interface Shop {
   aisleSortOverrides: Record<string, number>;
   /** What kind of place it is. A supermarket unless it says otherwise. */
   kind?: Place;
+  /**
+   * Where it stands among the household's supermarkets: 1 is the main one, where every
+   * supermarket line is bought unless moved. Null or left out: not one of them.
+   */
+  supermarketRank?: number | null;
+  /** The chain's logo, for a supermarket found near the household. */
+  logoUrl?: string | null;
+  /** Its street: "Biberacher Straße 12". */
+  address?: string | null;
+  /** The postal code it was found near. Null for shops not found that way. */
+  foundNear?: string | null;
 }
 
 export interface AisleGroup {
@@ -125,6 +136,22 @@ export function createCatalogIndex(catalog: Catalog): CatalogIndex {
 export function findIngredient(index: CatalogIndex, text: string): Ingredient | undefined {
   const key = normalizeName(text);
   return key === "" ? undefined : index.ingredientByName.get(key);
+}
+
+/**
+ * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
+ * The catalog names things in the plural and lists the singular among the other names: a
+ * shorter name the plural starts with, at most two letters shorter ("Schalotte", "Ei").
+ */
+export function nameForOne(ingredient: Pick<Ingredient, "name" | "synonyms">): string {
+  const plural = ingredient.name.toLowerCase();
+  const singular = ingredient.synonyms.find((name) => {
+    const short = name.toLowerCase();
+    return (
+      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
+    );
+  });
+  return singular ?? ingredient.name;
 }
 
 /** Position of an aisle group inside a shop: the shop's own order wins over the default. */

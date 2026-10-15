@@ -1,7 +1,7 @@
 import type { CatalogIndex, Ingredient, Place } from "../catalog";
-import { normalizeName } from "../catalog";
+import { nameForOne, normalizeName } from "../catalog";
 import type { IsoDate } from "../dates";
-import type { PlanExtra, PlanSlot } from "../plan";
+import { cookedServings, type PlanExtra, type PlanSlot } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
 import {
   baseUnitOf,
@@ -13,7 +13,8 @@ import {
   type Unit,
 } from "../units";
 import { parseFreeEntry } from "./free-entry";
-import { purchaseFor } from "./rounding";
+import { labelFor } from "./format";
+import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
 import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
 import {
   dayOf,
@@ -65,23 +66,11 @@ export function toDefaultUnit(ingredient: Ingredient, amount: Amount): number | 
   return meansPacks && ingredient.packSize ? amount.quantity * ingredient.packSize : null;
 }
 
-/** Amounts too small to shop for when they cannot be added to the rest. */
-const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp"]);
-
 /**
- * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
- * The catalog names things in the plural and lists the singular among the other names.
+ * Amounts too small to shop for: a spoonful or a pinch. One that cannot be added to the rest
+ * counts as "some", and a line asked for by the spoonful only shows no amount.
  */
-function nameForOne(ingredient: Ingredient): string {
-  const plural = ingredient.name.toLowerCase();
-  const singular = ingredient.synonyms.find((name) => {
-    const short = name.toLowerCase();
-    return (
-      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
-    );
-  });
-  return singular ?? ingredient.name;
-}
+const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp"]);
 
 /**
  * Whether a food was named as one piece of something bought by the piece: "Gurke", where the
@@ -130,6 +119,9 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   let primarySum = 0;
   let hasSum = false;
   let hasUnquantified = false;
+  // Whether everything with an amount asks for a spoonful or a pinch: then no amount is
+  // shown, three tablespoons of oil are "Öl", not "45 ml Öl".
+  let bySpoonOnly = true;
   // Amounts with no conversion path stay apart, one sum per dimension.
   const apart = new Map<Dimension, { sum: number; contributions: Contribution[] }>();
 
@@ -139,17 +131,19 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       primary.push(contribution);
       continue;
     }
+    const spoonful = SPOONFULS.has(contribution.amount.unit);
     const inDefault = toDefaultUnit(ingredient, contribution.amount);
     if (inDefault !== null) {
       primarySum += inDefault;
       hasSum = true;
+      if (!spoonful) bySpoonOnly = false;
       primary.push(contribution);
       continue;
     }
     // A spoonful or a pinch of something bought by weight or by the piece changes nothing
     // about what to buy. It counts as "some", and does not become a line of its own that
     // would read "55 ml Butter".
-    if (SPOONFULS.has(contribution.amount.unit)) {
+    if (spoonful) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;
@@ -166,9 +160,10 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     apart.set(dimension, group);
   }
 
+  const forms = { one: nameForOne(ingredient), many: ingredient.name };
   const common = {
     ingredientId: ingredient.id,
-    label: ingredient.name,
+    forms,
     shoppingDate: bucket.shoppingDate,
     place: bucket.place,
     trip,
@@ -194,36 +189,18 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   // close to their meal, flour is simply on the list.
   const dated = trip === "later" && ingredient.shelfLifeDays !== null;
 
-  // No quantity is shown anyway, so differing units need no separate lines.
-  if (ingredient.buyingMode === "none") {
-    return [
-      {
-        ...common,
-        key,
-        neededBy: dated ? neededBy(bucket.contributions) : null,
-        purchase: null,
-        amounts: [...primaryAmounts, ...apartAmounts],
-        hasUnquantified,
-        contributions: bucket.contributions,
-        note,
-        defaultAtHome,
-        optional: isOptional(bucket.contributions),
-      },
-    ];
-  }
-
   const lines: ShoppingLine[] = [];
   if (primary.length > 0) {
-    const purchase = hasSum ? purchaseFor(ingredient, primarySum) : null;
+    // The amount needed stands in front of the name whenever it is known, whatever the
+    // ingredient is bought as: "200 g Crème fraîche", "1x Schalotte", "400 g Champignons".
+    const purchase = hasSum && !bySpoonOnly ? purchaseFor(ingredient, primarySum) : null;
     lines.push({
       ...common,
-      label:
-        purchase?.unit === "Stück" && purchase.quantity === 1
-          ? nameForOne(ingredient)
-          : ingredient.name,
+      label: labelFor(forms, ingredient.name, purchase),
       key,
       neededBy: dated ? neededBy(primary) : null,
       purchase,
+      packs: hasSum ? packsFor(ingredient, primarySum) : null,
       amounts: primaryAmounts,
       hasUnquantified,
       contributions: primary,
@@ -234,12 +211,19 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   }
   let index = 0;
   for (const [dimension, group] of apart) {
+    const exact = apartAmounts[index];
+    const purchase = {
+      quantity: roundUpTo(exact.quantity, naturalStep(exact.quantity, exact.unit)),
+      unit: exact.unit,
+    };
     lines.push({
       ...common,
+      label: labelFor(forms, ingredient.name, purchase),
       key: `${key}#${dimension}`,
       neededBy: dated ? neededBy(group.contributions) : null,
-      purchase: apartAmounts[index],
-      amounts: [apartAmounts[index]],
+      purchase,
+      packs: null,
+      amounts: [exact],
       hasUnquantified: false,
       contributions: group.contributions,
       // The note belongs to the main line. Without one, it must not get lost.
@@ -345,6 +329,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     const line = loose.get(key) ?? {
       key: lineKey,
       ingredientId: null,
+      forms: null,
       label,
       shoppingDate: on.date,
       place: on.place,
@@ -354,6 +339,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       shopByChoice: Boolean(entry?.shopId),
       aisleGroupId: entry?.aisleGroupId ?? catalog.fallbackAisleGroupId,
       purchase: null,
+      packs: null,
       amounts: [],
       hasUnquantified: true,
       contributions: [],
@@ -424,7 +410,9 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           recipeId: recipe.id,
           recipeTitle: recipe.title,
         };
-        addRecipe(recipe, item.servings, source, slot.date, item.plannedOn);
+        // Extra portions for leftovers are bought with the meal ("Mehr kochen").
+        const servings = cookedServings(item.servings, slot.extra, recipe.servings.unit === null);
+        addRecipe(recipe, servings, source, slot.date, item.plannedOn);
       }
     }
     // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".

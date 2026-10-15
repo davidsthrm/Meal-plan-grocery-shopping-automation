@@ -1,5 +1,5 @@
 import "server-only";
-import { addDays, type IsoDate } from "@/domain/dates";
+import { addDays, mondayOf, type IsoDate } from "@/domain/dates";
 import type { PlannedWeek } from "@/domain/plan-history";
 import {
   slotKey,
@@ -14,7 +14,7 @@ import {
 import { findIngredient } from "@/domain/catalog";
 import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/planned";
 import { today } from "@/lib/today";
-import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
+import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned
@@ -102,7 +102,7 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     (from, to) =>
       db
         .from("plan_slot")
-        .select("id, date, meal, kind, label, leftovers_of_slot_id")
+        .select("id, date, meal, kind, label, leftovers_of_slot_id, extra_servings")
         .in("week_plan_id", planIds)
         .order("date")
         .order("id")
@@ -157,6 +157,7 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
         return {
           ...base,
           kind: "recipes",
+          extra: slot.extra_servings,
           items: items
             .filter((item) => item.plan_slot_id === slot.id)
             .map((item) => ({
@@ -242,7 +243,8 @@ async function fulfilWishes(db: Db, recipeIds: string[]): Promise<void> {
 /**
  * Sets what one meal of a week is, replacing what was there. Null empties it. A recipe that
  * comes without the day it was planned on is planned today; one that is written again, with
- * other servings or next to a new side, keeps its day.
+ * other servings or next to a new side, keeps its day. Returns the meal's new id, or null
+ * when nothing is planned on it now.
  */
 export async function writeSlot(
   db: Db,
@@ -251,40 +253,59 @@ export async function writeSlot(
   date: IsoDate,
   meal: Meal,
   content: SlotContent | null,
-): Promise<void> {
+): Promise<string | null> {
   const planId = await ensureWeek(db, householdId, weekStart);
-  const removed = await db
-    .from("plan_slot")
-    .delete()
-    .eq("week_plan_id", planId)
-    .eq("date", date)
-    .eq("meal", meal);
-  if (removed.error) throw new Error(`clear meal: ${removed.error.message}`);
-  if (content === null) return;
-  // A meal without a recipe is no "recipes" meal.
-  if (content.kind === "recipes" && content.items.length === 0) return;
-
-  const slot = must(
+  const existing = maybe(
     await db
       .from("plan_slot")
-      .insert({
-        household_id: householdId,
-        week_plan_id: planId,
-        date,
-        meal,
-        kind: content.kind,
-        label: content.kind === "free_text" || content.kind === "away" ? content.label : null,
-      })
       .select("id")
-      .single(),
-    "plan meal",
+      .eq("week_plan_id", planId)
+      .eq("date", date)
+      .eq("meal", meal)
+      .maybeSingle(),
+    "find meal",
   );
-  if (content.kind === "free_text") await storeFoods(db, householdId, slot.id, content.foods ?? []);
-  if (content.kind !== "recipes") return;
+  // A meal without a recipe is no "recipes" meal.
+  if (content === null || (content.kind === "recipes" && content.items.length === 0)) {
+    if (existing) {
+      const removed = await db.from("plan_slot").delete().eq("id", existing.id);
+      if (removed.error) throw new Error(`clear meal: ${removed.error.message}`);
+    }
+    return null;
+  }
+
+  const row = {
+    kind: content.kind,
+    label: content.kind === "free_text" || content.kind === "away" ? content.label : null,
+    leftovers_of_slot_id: content.kind === "leftovers" ? (content.ofSlotId ?? null) : null,
+    extra_servings: content.kind === "recipes" ? (content.extra ?? 0) : 0,
+  };
+  let slotId: string;
+  if (existing) {
+    // The meal keeps its id, so that leftovers planned from it stay linked to it.
+    for (const table of ["plan_slot_item", "plan_slot_food"] as const) {
+      const cleared = await db.from(table).delete().eq("plan_slot_id", existing.id);
+      if (cleared.error) throw new Error(`clear meal: ${cleared.error.message}`);
+    }
+    const updated = await db.from("plan_slot").update(row).eq("id", existing.id);
+    if (updated.error) throw new Error(`plan meal: ${updated.error.message}`);
+    slotId = existing.id;
+  } else {
+    slotId = must(
+      await db
+        .from("plan_slot")
+        .insert({ household_id: householdId, week_plan_id: planId, date, meal, ...row })
+        .select("id")
+        .single(),
+      "plan meal",
+    ).id;
+  }
+  if (content.kind === "free_text") await storeFoods(db, householdId, slotId, content.foods ?? []);
+  if (content.kind !== "recipes") return slotId;
   const items = await db.from("plan_slot_item").insert(
     content.items.map((item, position) => ({
       household_id: householdId,
-      plan_slot_id: slot.id,
+      plan_slot_id: slotId,
       recipe_id: item.recipeId,
       servings: item.servings,
       position,
@@ -293,13 +314,14 @@ export async function writeSlot(
   );
   if (items.error) {
     // Do not leave a meal behind that claims to have recipes and has none.
-    await db.from("plan_slot").delete().eq("id", slot.id);
+    await db.from("plan_slot").delete().eq("id", slotId);
     throw new Error(`plan recipes of meal: ${items.error.message}`);
   }
   await fulfilWishes(
     db,
     content.items.map((item) => item.recipeId),
   );
+  return slotId;
 }
 
 /**
@@ -386,6 +408,47 @@ export async function addToSlot(
   await writeSlot(db, householdId, weekStart, date, meal, {
     kind: "recipes",
     items: [...items, item],
+    extra: existing?.kind === "recipes" ? existing.extra : 0,
+  });
+}
+
+/**
+ * "Mehr kochen": a meal is cooked with `extra` portions beyond its persons, for leftovers,
+ * and the leftovers are planned for a later meal that is still open. A meal planned
+ * meanwhile is left as it is. Zero extra portions cooks the meal as planned again; the
+ * leftovers stay until someone changes them.
+ */
+export async function setExtraPortions(
+  db: Db,
+  householdId: string,
+  weekStart: IsoDate,
+  date: IsoDate,
+  meal: Meal,
+  extra: number,
+  leftoversOn: { date: IsoDate; meal: Meal } | null = null,
+): Promise<void> {
+  const planId = await ensureWeek(db, householdId, weekStart);
+  const cooked = maybe(
+    await db
+      .from("plan_slot")
+      .update({ extra_servings: extra })
+      .eq("week_plan_id", planId)
+      .eq("date", date)
+      .eq("meal", meal)
+      .eq("kind", "recipes")
+      .select("id")
+      .maybeSingle(),
+    "cook more",
+  );
+  if (!cooked || !leftoversOn) return;
+  const later = mondayOf(leftoversOn.date);
+  const taken = (await loadWeek(db, later)).some(
+    (slot) => slot.date === leftoversOn.date && slot.meal === leftoversOn.meal,
+  );
+  if (taken) return;
+  await writeSlot(db, householdId, later, leftoversOn.date, leftoversOn.meal, {
+    kind: "leftovers",
+    ofSlotId: cooked.id,
   });
 }
 
@@ -407,7 +470,11 @@ export async function changeItem(
     if (item.recipeId !== recipeId) return [item];
     return servings === null ? [] : [{ ...item, servings }];
   });
-  await writeSlot(db, householdId, weekStart, date, meal, { kind: "recipes", items });
+  await writeSlot(db, householdId, weekStart, date, meal, {
+    kind: "recipes",
+    items,
+    extra: existing.extra,
+  });
 }
 
 /** How far back the history of planned meals is read. */

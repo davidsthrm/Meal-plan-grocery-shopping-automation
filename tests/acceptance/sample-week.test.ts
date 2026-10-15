@@ -56,7 +56,8 @@ describe("sample week: generated list against the handwritten one", () => {
     const staples = week.view.atHome.filter((v) => v.line.defaultAtHome).map((v) => v.line.label);
     expect(staples).toEqual([
       "Gemüsebrühe",
-      "getrocknete Chilischoten",
+      // One piece is named in the singular.
+      "getrocknete Chilischote",
       "Hühnerbrühe",
       "Knoblauch",
       "Öl",

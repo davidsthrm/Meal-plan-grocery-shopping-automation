@@ -1,0 +1,246 @@
+import Link from "next/link";
+import { ArrowIcon, LockIcon, StarIcon, TickIcon } from "@/components/icons";
+import { ShopLogo } from "@/components/shop-logo";
+import { SubmitButton } from "@/components/submit-button";
+import type { Ingredient, Shop } from "@/domain/catalog";
+import { addSupermarket, markSupermarket, savePostalCode, searchAgain } from "./actions";
+import { SearchPending } from "./search-pending";
+
+/** What went wrong the last time, as the card says it. */
+const PROBLEM: Record<string, string> = {
+  plz: "Diese Postleitzahl gibt es nicht. Eine deutsche Postleitzahl hat fünf Ziffern.",
+  suche:
+    "Die Suche nach Supermärkten hat gerade nicht geklappt. Die Postleitzahl ist gespeichert, „Neu suchen“ versucht es noch einmal.",
+  supermarkt: "Das ist kein Supermarkt: Metzger, Bäcker und Markt haben eigene Zettel.",
+};
+
+/**
+ * The household's supermarkets, found near its postal code: five to choose from, with their
+ * logos. One is the main market, where everything for the supermarket is bought; the others
+ * marked are gone to now and then, and a line moved to one of them for a week stands in a
+ * section of its own on the note. Without a postal code nothing can be chosen.
+ */
+export function SupermarketsCard({
+  postalCode,
+  placeName,
+  found,
+  chosen,
+  problem,
+  reason,
+}: {
+  postalCode: string | null;
+  placeName: string | null;
+  /** The supermarkets found near the postal code. */
+  found: Shop[];
+  /** The household's supermarkets, the main one first. */
+  chosen: Shop[];
+  /** What went wrong the last time, if anything (`PROBLEM`). */
+  problem: string | null;
+  /** Why the search failed, as the services said it: "overpass-api.de: 504". */
+  reason?: string | null;
+}) {
+  // The chosen ones first, then the rest of what was found near the postal code: the chains,
+  // whose logo is known, before the others, each by name, so that a market is easy to find.
+  const rest = found
+    .filter((shop) => !chosen.some((each) => each.id === shop.id))
+    .sort((a, b) => Number(!a.logoUrl) - Number(!b.logoUrl) || a.name.localeCompare(b.name, "de"));
+  const tiles = [...chosen, ...rest];
+  return (
+    <section className="card scroll-mt-4 p-4" aria-labelledby="supermaerkte">
+      <h2 id="supermaerkte" className="text-lg font-bold tracking-tight">
+        Supermärkte
+      </h2>
+      <p className="mt-1 text-sm text-muted">
+        Alles für den Supermarkt steht unter dem Hauptmarkt. Eine Zeile lässt sich auf dem Zettel zu
+        einem weiteren Markt schieben, der dann einen eigenen Abschnitt bekommt.
+      </p>
+
+      <form action={savePostalCode} className="mt-3 flex flex-wrap items-end gap-2">
+        <label className="flex-1">
+          <span className="label">Postleitzahl</span>
+          <input
+            name="plz"
+            defaultValue={postalCode ?? ""}
+            inputMode="numeric"
+            autoComplete="postal-code"
+            maxLength={7}
+            className="field"
+            placeholder="z. B. 10115"
+          />
+        </label>
+        <SubmitButton>{postalCode ? "Ändern" : "Suchen"}</SubmitButton>
+        <SearchPending />
+      </form>
+      {problem && PROBLEM[problem] && (
+        <p role="alert" className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
+          {PROBLEM[problem]}
+          {problem === "suche" && reason && (
+            <span className="mt-1 block text-sm opacity-80">Grund: {reason}</span>
+          )}
+        </p>
+      )}
+
+      {!postalCode ? (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-line p-4 text-muted">
+          <LockIcon />
+          <p className="text-sm">
+            Mit eurer Postleitzahl sucht die App die Supermärkte in eurer Nähe. Bis dahin lässt sich
+            kein Markt auswählen.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-4 flex flex-wrap items-baseline justify-between gap-x-3">
+            <h3 className="font-semibold">
+              {placeName ? `In ${placeName}` : `Rund um ${postalCode}`}
+            </h3>
+            <form action={searchAgain} className="flex flex-wrap items-center justify-end gap-2">
+              <SubmitButton className="link min-h-10 text-sm">Neu suchen</SubmitButton>
+              <SearchPending />
+            </form>
+          </div>
+          <p className="text-sm text-muted">
+            Tippe die Märkte an, in denen ihr einkauft. Der mit dem Stern ist der Hauptmarkt.
+          </p>
+          {tiles.length === 0 ? (
+            <p className="mt-2 text-muted">
+              Keine Supermärkte gefunden. „Neu suchen“ versucht es noch einmal, oder unten von Hand
+              eintragen.
+            </p>
+          ) : (
+            <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1" aria-label="Supermärkte">
+              {tiles.map((shop) => (
+                <SupermarketTile
+                  key={shop.id}
+                  shop={shop}
+                  role={
+                    chosen[0]?.id === shop.id
+                      ? "main"
+                      : chosen.some((each) => each.id === shop.id)
+                        ? "more"
+                        : "none"
+                  }
+                />
+              ))}
+            </ul>
+          )}
+          <details className="mt-3">
+            <summary className="link inline-flex min-h-10 items-center text-sm">
+              Ein Markt fehlt?
+            </summary>
+            <form action={addSupermarket} className="mt-1 flex gap-2">
+              <label className="flex-1">
+                <span className="sr-only">Supermarkt von Hand eintragen</span>
+                <input
+                  name="name"
+                  required
+                  maxLength={40}
+                  autoComplete="off"
+                  className="field"
+                  placeholder="Name, z. B. Rewe"
+                />
+              </label>
+              <SubmitButton>Eintragen</SubmitButton>
+            </form>
+          </details>
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * One supermarket: a tap on it makes it one of the household's or no longer one; the star
+ * next to a chosen one makes it the main market. The first one chosen is the main one by
+ * itself. Two buttons per market were one too many to choose five.
+ */
+function SupermarketTile({ shop, role }: { shop: Shop; role: "main" | "more" | "none" }) {
+  const chosen = role !== "none";
+  return (
+    <li
+      className={`flex items-center gap-1 rounded-lg border pr-1 ${
+        role === "main"
+          ? "border-accent bg-accent-soft/70"
+          : chosen
+            ? "border-accent/50 bg-accent-soft/30"
+            : "border-line"
+      }`}
+    >
+      <form action={markSupermarket} className="min-w-0 flex-1">
+        <input type="hidden" name="id" value={shop.id} />
+        <input type="hidden" name="as" value={chosen ? "none" : "more"} />
+        <SubmitButton
+          className="flex w-full items-center gap-3 rounded-lg p-2 text-left"
+          label={chosen ? `${shop.name} abwählen` : `${shop.name} auswählen`}
+          on={chosen}
+        >
+          <ShopLogo shop={shop} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{shop.name}</span>
+            <span className="block truncate text-sm text-muted">
+              {role === "main" ? "Hauptmarkt" : role === "more" ? "Weiterer Markt" : shop.address}
+            </span>
+          </span>
+          <span
+            aria-hidden
+            className={`flex size-7 shrink-0 items-center justify-center rounded-full border ${
+              chosen ? "border-accent bg-accent text-white" : "border-line bg-white"
+            }`}
+          >
+            {chosen && <TickIcon />}
+          </span>
+        </SubmitButton>
+      </form>
+      {chosen &&
+        (role === "main" ? (
+          <span
+            className="flex size-10 items-center justify-center text-accent"
+            title="Hauptmarkt"
+            aria-label={`${shop.name} ist der Hauptmarkt`}
+          >
+            <StarIcon filled />
+          </span>
+        ) : (
+          <form action={markSupermarket}>
+            <input type="hidden" name="id" value={shop.id} />
+            <input type="hidden" name="as" value="main" />
+            <SubmitButton
+              className="flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent"
+              label={`${shop.name} zum Hauptmarkt machen`}
+            >
+              <StarIcon />
+            </SubmitButton>
+          </form>
+        ))}
+    </li>
+  );
+}
+
+/**
+ * What is usually at home, as a tile: how many things and the first of them. The list
+ * itself, by kind of grocery and to search and change, is a page of its own.
+ */
+export function PantryTile({ staples }: { staples: Ingredient[] }) {
+  return (
+    <Link
+      href="/einstellungen/vorrat"
+      className="card lift flex items-center justify-between gap-4 p-4"
+      aria-label={`Vorrat: ${staples.length} Zutaten, ansehen und ändern`}
+    >
+      <span className="min-w-0">
+        <span className="block text-lg font-bold tracking-tight">Vorrat</span>
+        <span className="mt-1 block text-sm text-muted">
+          {staples.length === 0
+            ? "Noch nichts. Was meistens da ist, steht unter „Haben wir schon“ statt auf einem Zettel."
+            : `${staples.length} Zutaten, die meistens da sind: ${staples
+                .slice(0, 5)
+                .map((ingredient) => ingredient.name)
+                .join(", ")}${staples.length > 5 ? " …" : ""}`}
+        </span>
+      </span>
+      <span className="text-accent">
+        <ArrowIcon />
+      </span>
+    </Link>
+  );
+}

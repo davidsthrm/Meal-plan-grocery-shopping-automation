@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { aisleSortOrder, createCatalogIndex, findIngredient, normalizeName } from "./catalog";
+import {
+  aisleSortOrder,
+  createCatalogIndex,
+  findIngredient,
+  nameForOne,
+  normalizeName,
+} from "./catalog";
 import { testCatalog, testIndex } from "./shopping-list/test-catalog";
 
 describe("normalizeName", () => {
@@ -47,5 +53,18 @@ describe("aisleSortOrder", () => {
     expect(aisleSortOrder(testIndex, "aldi", "brot")).toBe(60);
     expect(aisleSortOrder(testIndex, "ec", "brot")).toBe(85);
     expect(aisleSortOrder(testIndex, "ec", "molkerei")).toBe(70);
+  });
+});
+
+describe("nameForOne", () => {
+  it("finds the singular among the other names", () => {
+    expect(nameForOne({ name: "Schalotten", synonyms: ["Schalotte"] })).toBe("Schalotte");
+    expect(nameForOne({ name: "Eier", synonyms: ["Ei", "Hühnereier"] })).toBe("Ei");
+    expect(nameForOne({ name: "Karotten", synonyms: ["Möhren", "Karotte"] })).toBe("Karotte");
+  });
+
+  it("keeps the name where no other name is its singular", () => {
+    expect(nameForOne({ name: "Ingwer", synonyms: ["frischer Ingwer"] })).toBe("Ingwer");
+    expect(nameForOne({ name: "Tomaten", synonyms: ["Tomatenmark"] })).toBe("Tomaten");
   });
 });

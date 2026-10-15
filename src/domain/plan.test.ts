@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   byDayAndMeal,
+  cookedServings,
   mealsOf,
   namedMeal,
   nextOpenMeal,
+  openMealsAfter,
   slotKey,
 } from "./plan";
 
@@ -80,5 +82,32 @@ describe("nextOpenMeal", () => {
       meal: "lunch",
     });
     expect(nextOpenMeal({ date: SUNDAY, meal: "dinner" }, new Set(), SUNDAY)).toBeNull();
+  });
+});
+
+describe("openMealsAfter", () => {
+  it("lists the open meals of the next days in order, where leftovers can go", () => {
+    const taken = new Set([slotKey("2026-10-13", "lunch")]);
+    expect(openMealsAfter({ date: "2026-10-12", meal: "dinner" }, taken, "2026-10-14")).toEqual([
+      { date: "2026-10-13", meal: "dinner" },
+      { date: "2026-10-14", meal: "lunch" },
+      { date: "2026-10-14", meal: "dinner" },
+    ]);
+  });
+
+  it("is empty when everything until the last day is planned", () => {
+    const taken = new Set([slotKey("2026-10-12", "dinner")]);
+    expect(openMealsAfter({ date: "2026-10-12", meal: "lunch" }, taken, "2026-10-12")).toEqual([]);
+  });
+});
+
+describe("cookedServings", () => {
+  it("adds the extra portions to what is cooked for persons", () => {
+    expect(cookedServings(4, 2, true)).toBe(6);
+    expect(cookedServings(4, undefined, true)).toBe(4);
+  });
+
+  it("leaves a recipe that makes something else as it is: one cake tin stays one", () => {
+    expect(cookedServings(1, 2, false)).toBe(1);
   });
 });

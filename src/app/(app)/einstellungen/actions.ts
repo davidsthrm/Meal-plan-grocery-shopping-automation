@@ -4,16 +4,25 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { readName } from "@/domain/family";
+import { withAdded, withMain, without } from "@/domain/shopping-list/supermarkets";
+import { readPostalCode } from "@/domain/supermarket-search";
 import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
-import { requireHousehold } from "@/server/auth";
+import { requireHousehold, type Household } from "@/server/auth";
 import { createInvite, renameSelf, withdrawInvite } from "@/server/family";
+import { loadSupermarkets } from "@/server/catalog";
 import {
   renameHousehold,
   storeDrugstoreWeekday,
+  storeFoundSupermarkets,
   storeFreshPlaces,
+  storePantryStaple,
+  storePostalCode,
   storeShoppingDays,
+  storeSupermarkets,
+  supermarketNamed,
 } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
+import { searchSupermarkets } from "@/server/supermarket-search";
 
 /** What the household sets once. Each action is the target of a plain form on the page. */
 
@@ -75,4 +84,111 @@ export async function withdrawInvitation(form: FormData): Promise<void> {
   await requireHousehold();
   await withdrawInvite(await createSessionClient(), id);
   back("familie");
+}
+
+/** Back to the page of what is usually at home, with the search that was open. */
+function backToPantry(form: FormData): never {
+  revalidatePath("/", "layout");
+  const q = String(form.get("q") ?? "").slice(0, 80);
+  redirect(`/einstellungen/vorrat${q ? `?${new URLSearchParams({ q })}` : ""}`);
+}
+
+/** Adds an ingredient of the catalog to what is usually at home. */
+export async function addStaple(form: FormData): Promise<void> {
+  const id = z.guid().parse(form.get("id"));
+  await requireHousehold();
+  await storePantryStaple(await createSessionClient(), id, true);
+  backToPantry(form);
+}
+
+/** Takes an ingredient off what is usually at home: it goes on the notes again. */
+export async function removeStaple(form: FormData): Promise<void> {
+  const id = z.guid().parse(form.get("id"));
+  await requireHousehold();
+  await storePantryStaple(await createSessionClient(), id, false);
+  backToPantry(form);
+}
+
+/** Looks for the supermarkets near the household's postal code and keeps them to choose. */
+async function findSupermarkets(household: Household, postalCode: string): Promise<never> {
+  const db = await createSessionClient();
+  let search: Awaited<ReturnType<typeof searchSupermarkets>>;
+  try {
+    search = await searchSupermarkets(postalCode);
+  } catch (error) {
+    // The postal code is kept: "Neu suchen" tries again. What went wrong is said on the page.
+    const reason = (error instanceof Error ? error.message : String(error)).slice(0, 300);
+    console.error(`supermarket search for ${postalCode}: ${reason}`);
+    await storePostalCode(db, household.id, postalCode, household.placeName);
+    back("supermaerkte", { fehler: "suche", grund: reason });
+  }
+  if (!search) back("supermaerkte", { fehler: "plz" });
+  await storePostalCode(db, household.id, postalCode, search.place);
+  await storeFoundSupermarkets(db, household.id, postalCode, search.supermarkets);
+  back("supermaerkte");
+}
+
+/**
+ * Stores where the household lives and finds the supermarkets there. Nothing typed forgets
+ * it, and the supermarkets cannot be chosen again until a postal code is entered.
+ */
+export async function savePostalCode(form: FormData): Promise<void> {
+  const household = await requireHousehold();
+  const typed = String(form.get("plz") ?? "").trim();
+  if (typed === "") {
+    await storePostalCode(await createSessionClient(), household.id, null, null);
+    back("supermaerkte");
+  }
+  const postalCode = readPostalCode(typed);
+  if (!postalCode) back("supermaerkte", { fehler: "plz" });
+  await findSupermarkets(household, postalCode);
+}
+
+/** Looks for the supermarkets near the household's postal code once more. */
+export async function searchAgain(): Promise<void> {
+  const household = await requireHousehold();
+  if (!household.postalCode) back("supermaerkte");
+  await findSupermarkets(household, household.postalCode);
+}
+
+/** The household's supermarkets as ids, the main one first. */
+async function rankedSupermarkets(): Promise<string[]> {
+  return (await loadSupermarkets(await createSessionClient())).map((shop) => shop.id);
+}
+
+/**
+ * Marks a supermarket: as the main one, as one more the household goes to, or as none of
+ * them. A new main one makes the one before it one more. Only with a postal code.
+ */
+export async function markSupermarket(form: FormData): Promise<void> {
+  const input = z
+    .object({ id: z.guid(), as: z.enum(["main", "more", "none"]) })
+    .parse(Object.fromEntries(form));
+  const household = await requireHousehold();
+  if (!household.postalCode) back("supermaerkte");
+  const ranked = await rankedSupermarkets();
+  const db = await createSessionClient();
+  if (input.as === "none") {
+    await storeSupermarkets(db, without(ranked, input.id), [input.id]);
+  } else {
+    const order = input.as === "main" ? withMain(ranked, input.id) : withAdded(ranked, input.id);
+    await storeSupermarkets(db, order);
+  }
+  back("supermaerkte");
+}
+
+/**
+ * A supermarket the map does not know, by its name. It is one more the household goes to,
+ * or the main one when there is none yet.
+ */
+export async function addSupermarket(form: FormData): Promise<void> {
+  const household = await requireHousehold();
+  if (!household.postalCode) back("supermaerkte");
+  const name = readName(String(form.get("name") ?? ""));
+  if (name === "") back("supermaerkte");
+  const db = await createSessionClient();
+  const id = await supermarketNamed(db, household.id, name);
+  if (!id) back("supermaerkte", { fehler: "supermarkt" });
+  await storeSupermarkets(db, withAdded(await rankedSupermarkets(), id));
+  back("supermaerkte");
 }

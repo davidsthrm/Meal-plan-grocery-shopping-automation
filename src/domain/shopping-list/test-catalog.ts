@@ -119,7 +119,12 @@ export const testCatalog: Catalog = {
       buyingMode: "weight",
       roundingStep: 50,
     }),
-    ingredient("brot", "Brot", { aisleGroupId: "brot", preferredShopId: "ec" }),
+    ingredient("brot", "Brot", {
+      aisleGroupId: "brot",
+      preferredShopId: "ec",
+      defaultUnit: "Stück",
+    }),
+    ingredient("schalotten", "Schalotten", { synonyms: ["Schalotte"], defaultUnit: "Stück" }),
     ingredient("eier", "Eier", {
       aisleGroupId: "molkerei",
       preferredShopId: "ec",

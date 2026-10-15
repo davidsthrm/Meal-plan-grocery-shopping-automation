@@ -1,13 +1,19 @@
 import { aisleSortOrder, type AisleGroup, type CatalogIndex, type Shop } from "../catalog";
-import { formatLine } from "./format";
-import type { LineState, ShoppingLine } from "./types";
+import { formatLine, labelFor } from "./format";
+import type { Amount, LineState, ShoppingLine } from "./types";
 
 /** A line with the household's changes applied. */
 export interface ViewLine {
   line: ShoppingLine;
   /** The line as it reads on the list. */
   text: string;
+  /** The amount in front of the name: the one written by hand, or the plan's. */
+  purchase: Amount | null;
+  /** True when the household wrote an amount of its own over the plan's. */
+  edited: boolean;
   shopId: string;
+  /** The supermarket chosen for it this week, if one was. */
+  chosenShopId: string | null;
   note: string | null;
   atHome: boolean;
   checked: boolean;
@@ -25,10 +31,16 @@ export interface ListView {
 /** Applies what the household changed on a line. Their changes win over the defaults. */
 export function resolveLine(line: ShoppingLine, state: LineState = {}): ViewLine {
   const note = state.note !== undefined ? state.note : line.note;
+  const edited = Boolean(state.amount);
+  const purchase = state.amount ?? line.purchase;
+  const label = edited ? labelFor(line.forms, line.label, purchase) : line.label;
   return {
     line,
-    text: formatLine(line.label, line.purchase, note),
+    text: formatLine(label, purchase, note),
+    purchase,
+    edited,
     shopId: state.shopId ?? line.shopId,
+    chosenShopId: state.shopId ?? null,
     note,
     atHome: state.atHome ?? line.defaultAtHome,
     checked: state.checked ?? false,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatLine, formatNumber, formatPurchase } from "./format";
+import { formatAmount, formatLine, formatNumber, formatPurchase, labelFor } from "./format";
 
 describe("formatNumber", () => {
   it("uses a decimal comma and at most two decimals", () => {
@@ -26,8 +26,9 @@ describe("formatAmount", () => {
 });
 
 describe("formatPurchase", () => {
-  it("writes pieces as a bare number and packs as a multiplier", () => {
-    expect(formatPurchase({ quantity: 12, unit: "Stück" })).toBe("12");
+  it("writes pieces and packs as a multiplier, everything else with its unit", () => {
+    expect(formatPurchase({ quantity: 12, unit: "Stück" })).toBe("12x");
+    expect(formatPurchase({ quantity: 200, unit: "ml" })).toBe("200 ml");
     expect(formatPurchase({ quantity: 2, unit: "Packung" })).toBe("2x");
     expect(formatPurchase({ quantity: 600, unit: "g" })).toBe("600 g");
     expect(formatPurchase({ quantity: 1, unit: "Bund" })).toBe("1 Bund");
@@ -35,11 +36,30 @@ describe("formatPurchase", () => {
 });
 
 describe("formatLine", () => {
-  it("reads like the handwritten list", () => {
-    expect(formatLine("Karotten", { quantity: 2, unit: "Stück" }, null)).toBe("2 Karotten");
+  it("puts the amount in front of the name and the note behind it", () => {
+    expect(formatLine("Karotten", { quantity: 2, unit: "Stück" }, null)).toBe("2x Karotten");
+    expect(formatLine("Schalotte", { quantity: 1, unit: "Stück" }, null)).toBe("1x Schalotte");
+    expect(formatLine("Crème fraîche", { quantity: 200, unit: "g" }, null)).toBe(
+      "200 g Crème fraîche",
+    );
     expect(formatLine("Leberkäse", { quantity: 600, unit: "g" }, null)).toBe("600 g Leberkäse");
     expect(formatLine("Garnelen", { quantity: 2, unit: "Packung" }, null)).toBe("2x Garnelen");
     expect(formatLine("Milch", null, "WS 1.29")).toBe("Milch WS 1.29");
     expect(formatLine("Feldsalat", null, null)).toBe("Feldsalat");
+  });
+});
+
+describe("labelFor", () => {
+  const forms = { one: "Schalotte", many: "Schalotten" };
+
+  it("takes the singular for one piece only", () => {
+    expect(labelFor(forms, "Schalotten", { quantity: 1, unit: "Stück" })).toBe("Schalotte");
+    expect(labelFor(forms, "Schalotte", { quantity: 2, unit: "Stück" })).toBe("Schalotten");
+    expect(labelFor(forms, "Schalotte", { quantity: 1, unit: "Packung" })).toBe("Schalotten");
+    expect(labelFor(forms, "Schalotte", null)).toBe("Schalotten");
+  });
+
+  it("keeps the label of a line the catalog does not know", () => {
+    expect(labelFor(null, "Geschenkpapier", { quantity: 1, unit: "Stück" })).toBe("Geschenkpapier");
   });
 });

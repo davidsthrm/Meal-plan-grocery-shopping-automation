@@ -22,6 +22,12 @@ export interface Household {
   shoppingDays: readonly ShoppingDay[];
   /** What a week should contain. The app's own defaults until the household has chosen. */
   targets: BalanceTargets;
+  /**
+   * Where the household lives, for finding its supermarkets: "88471", "Laupheim". Null
+   * until a member enters it.
+   */
+  postalCode: string | null;
+  placeName: string | null;
   userId: string;
 }
 
@@ -38,7 +44,9 @@ export async function requireHousehold(): Promise<Household> {
 
   const { data, error } = await supabase
     .from("household")
-    .select("id, name, default_servings, balance_targets, shopping_days, drugstore_weekday")
+    .select(
+      "id, name, default_servings, balance_targets, shopping_days, drugstore_weekday, postal_code, place_name",
+    )
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`could not load the household: ${error.message}`);
@@ -52,6 +60,8 @@ export async function requireHousehold(): Promise<Household> {
       readWeekday(data.drugstore_weekday) ?? DEFAULT_DRUGSTORE_WEEKDAY,
     ),
     targets: readTargets(data.balance_targets) ?? DEFAULT_TARGETS,
+    postalCode: data.postal_code,
+    placeName: data.place_name,
     userId,
   };
 }

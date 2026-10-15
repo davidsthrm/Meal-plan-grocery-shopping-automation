@@ -40,6 +40,7 @@ is easier than pen and paper.
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
 | Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
+| Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`         |
 | Regenerate the database types after a migration                           | `npm run db:types`                             |
 | Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
 
@@ -125,7 +126,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
 - Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
-  its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for), `/woche/auswahl`
+  its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for, `?mehr=<date>.<meal>`
+  the meal "Mehr kochen" is open under), `/woche/auswahl`
   (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
   month by month), `/rezepte` (browse and search, called "Entdecken"), `/favoriten`,
@@ -133,7 +135,7 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/einkauf` (the shopping notes of
   a week as tiles; `?zettel=<date>.<place>` shows one of them picked up) with `/einkauf/pdf`
   (all notes, or with `zettel` one, as a PDF), `/merkzettel` (what ran out at home, as a
-  page; the header pulls the same note down over any page), `/einstellungen`, `/import`
+  page; the header pulls the same note down over any page), `/einstellungen` with `/einstellungen/vorrat` (what is usually at home), `/import`
   (`?d=<date>&m=<meal>` when it was opened from a meal planned as text), and outside the
   login `/einladung/[token]` (joining a household).
 - `LiveRefresh` in the layout listens for changes to the plan, the lists, the note, the goals
@@ -246,8 +248,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 ## Acceptance test
 
 The generated list is accepted when, per shop, it has the same lines as the handwritten one,
-with the same quantity where the paper shows one and none where it shows none, the same note,
-and an aisle order the handwritten order does not contradict. The handwritten week had one
+buying the same quantity where the paper shows one (as many packs of what comes in packs:
+"2x Garnelen" is 450 g), the same note, and an aisle order the handwritten order does not
+contradict. Where the paper shows no quantity, the line may show the amount the recipes
+need: the household asked for it in front of every line (October 2026). The handwritten week had one
 shopping day, so the test builds its list for Monday alone (`singleTrip`).
 
 Lines that come from a recipe the household has not added yet are listed under `pendingLines`
@@ -426,6 +430,22 @@ Week plan
   There can be dozens, so they are grouped by kind in the kind's pastel (`groupRecipes`
   with `BY_KIND`), eight per kind until "weitere" shows all (`?wuensche=alle`). A grouping
   by a group of tags (`byTag`) is ready for when the wishes should be sorted that way.
+- "Mehr kochen" on a planned meal cooks extra portions for leftovers. They are the meal's own
+  number (`plan_slot.extra_servings`, `PlanSlot.extra`), apart from its persons: the meal
+  shows "4 Personen" and below "2 Extra-Portionen" with minus and plus, so a third person at
+  the leftovers makes it 3; zero cooks the meal as planned again. The list buys them with
+  every recipe of the meal that is cooked for persons (`cookedServings`); a cake for one tin
+  is not baked twice. The later meal picked for the leftovers, an open lunch or dinner of the
+  next three days (`openMealsAfter`, `LEFTOVER_DAYS`), becomes "Reste" with the meal it is
+  from (`plan_slot.leftovers_of_slot_id`), and the extra portions say for which meal they
+  are. A meal planned meanwhile is left alone. A meal written again keeps its id
+  (`writeSlot` updates in place), so the link holds.
+- A planned meal's actions are signs in one row, each with its words as label and title:
+  a pen to change it, a plus for a side, a bin to empty it; "Mehr kochen" is the one word
+  among them, a small button that opens its form under the row (`?mehr=<date>.<meal>`,
+  "Übernehmen" or "Abbrechen"), the way a suggestion is asked for. The household found the
+  row of words, and "Mehr kochen" on a line of its own, took too much room in the plan;
+  folded open inside the row it stood beside the signs in Safari.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
   for the month most of its days are in. The week being planned is always listed.
@@ -517,10 +537,49 @@ Shopping list
 
 - Lines are built per canonical ingredient: scale, convert to the ingredient's default unit,
   sum, then round for purchase.
-- Buying mode decides what is shown: `none` shows the name only, `count` a number of pieces,
-  `weight` a weight, `pack` a multiplier only when more than one pack is needed ("2x Garnelen").
-- Line text follows the handwritten list: quantity, name, note ("600 g Leberkäse",
-  "Milch WS 1.29"). The exact sum and the meals it comes from stay available per line.
+- Every line shows the amount needed in the ingredient's own unit, whatever its buying mode
+  (`purchaseFor`): "200 g Crème fraîche", "400 g Champignons", "1 Bund Petersilie", pieces as
+  "1x Schalotte", as on the dm note. `count` and `weight` round to the catalog's step,
+  everything else to whole pieces or just enough to read well (`naturalStep`: 137,5 g is
+  140 g). The household found "Champignons" one week and "4x Champignons" the next, and had
+  to open "Crème fraîche" to learn it was 200 g. What comes in packs says how many packs
+  with the exact amount, on tap (`packsFor`). Only a line without any amount ("Petersilie")
+  and one asked for by the spoonful only ("Salz") show the name alone.
+- Line text: quantity, name, note ("600 g Leberkäse", "Milch WS 1.29"). The exact sum and
+  the meals it comes from stay available per line. A note picked up is one column on screen,
+  the width of the page, so that an opened line has room: what it is for on the left, amount
+  and note on the right, its buttons in one row below. On paper it keeps its columns.
+- The amount of a line can be changed on its note ("Menge ändern", `LineState.amount`,
+  `shopping_line_state.quantity` and `unit`). The line then says what the plan has, and
+  "Wie geplant" takes the change back. The change stays when the plan changes.
+- The same thing on another open note of the week (small tomatoes on Monday's supermarket
+  note and Saturday's market note) is said under the line ("Auch auf: Sa 17. Markt",
+  `alsoOn`). "Dort mitkaufen" moves the line there where that is not too late and it keeps
+  (`dayProblems`); otherwise it is only said.
+- The household's supermarkets are found by its postal code (`household.postal_code`,
+  `place_name`; empty for a new household, and until it is entered no market can be
+  chosen). The server looks the code up on OpenStreetMap (Nominatim), asks Overpass for the
+  supermarkets inside its area and offers all of them, each name once (two shops of one name
+  are one chain), with the chain's logo from Wikidata and Wikimedia Commons. Showing only
+  the nearest five left out Aldi and Lidl in Laupheim. Chosen ones stand first, then the
+  chains and the rest by name (`src/server/supermarket-search.ts`,
+  `pickSupermarkets`). They are kept as shops (`shop.found_near`, `logo_url`, `address`).
+  None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app. While
+  the search runs, which can take up to a minute, the card says so (`SearchPending`). A tap
+  on a market makes it one of the household's or no longer one, the first one chosen being
+  the main market; the star next to a chosen one makes it the main one
+  (`shop.supermarket_rank`, 1 the main one; `favouriteSupermarkets`). A market the map does
+  not know can be typed in. A supermarket note buys everything at the main one. A
+  line can be bought at another one for the week ("Kaufe ich bei: Rewe",
+  `shopping_line_state.shop_id`): that supermarket then has a section of its own on the
+  note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
+  the catalog buys a thing (`preferredShopId`) does not decide the section. The logos stand
+  wherever a supermarket is named (`ShopLogo`, the name's first letter without one): the
+  supermarket note is named after the markets it is taken to, the main one first, and shows
+  their logos in place of the cart: "Aldi & Rewe", "Aldi, Rewe & Botzenhardt"
+  (`marketsOfNote`, `namesText`), its PDF too; each further one has its logo at its section and on its button "Bei EDEKA kaufen", a button like "Haben wir
+  schon". A logo's size is set in pixels on the element, never by a class: with a size class
+  the stylesheet lacked, the 128-pixel picture filled half the note.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
   names: "1 Zitrone".
@@ -584,7 +643,11 @@ Shopping list
   (`noteToBuyOn`), where it is not at home either.
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
-  is never pre-ticked.
+  is never pre-ticked. The staples are the household's to change: a tile in the settings
+  opens `/einstellungen/vorrat` (`ingredient.is_pantry_staple`), the staples by kind of
+  grocery (`pantryByAisle`), with a search that follows while typing through the whole
+  catalog (`searchCatalog`), to take each out or put it in with one tap. The household found
+  the 180 staples as chips on the settings page unstructured.
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
   the rest as a note. Text that matches nothing stays a free line.
 - When the plan changes, lines are recomputed and matched by a stable line key
@@ -774,8 +837,8 @@ Import
   again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The cut-out view of a recipe that is deleted by itself stays in storage until its batch
   is deleted.
-- The shopping list does not show yet what changed since it was last looked at, the shop of
-  a line cannot be changed for one week, and ticking off needs a connection. The "Haben wir
+- The shopping list does not show yet what changed since it was last looked at, and ticking
+  off needs a connection. Only a supermarket line can be bought at another shop for a week. The "Haben wir
   schon?" step is a plain section of each list for now.
 - The shopping days are the same every week. For a holiday on a shopping day the errand is
   moved to another day by hand ("An einem anderen Tag einkaufen").

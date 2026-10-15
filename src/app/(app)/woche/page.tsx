@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowIcon, PenIcon, WishIcon } from "@/components/icons";
+import { ArrowIcon, PenIcon, PlusIcon, TrashIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -14,6 +14,7 @@ import {
   mondayOf,
   weekDates,
   weekdayLong,
+  weekdayShort,
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
@@ -21,7 +22,17 @@ import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
 import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { openingWeek } from "@/domain/planned";
-import { mealsOf, MEALS, namedMeal, type Meal, type PlanExtra, type PlanSlot } from "@/domain/plan";
+import {
+  LEFTOVER_DAYS,
+  mealsOf,
+  MEALS,
+  namedMeal,
+  openMealsAfter,
+  slotKey,
+  type Meal,
+  type PlanExtra,
+  type PlanSlot,
+} from "@/domain/plan";
 import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
 import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
 import { rank } from "@/domain/rank";
@@ -41,6 +52,7 @@ import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
+import { CookMore, ExtraPortions } from "./cook-more";
 import {
   acceptSuggestions,
   changeExtraServings,
@@ -85,10 +97,14 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const placingId = one(params.rezept) ?? null;
   // The one meal of a saved plan someone took the pen to.
   const pen = one(params.stift) ?? "";
+  // The meal someone is cooking more of: "Mehr kochen" is open under it.
+  const cookingMore = one(params.mehr) ?? "";
 
-  const [library, slots, history, extras, saved, self] = await Promise.all([
+  const [library, slots, nextSlots, history, extras, saved, self] = await Promise.all([
     loadLibrary(db),
     loadWeek(db, week),
+    // Leftovers of Sunday's dinner can be eaten in the next week.
+    loadWeek(db, addDays(week, 7)),
     loadHistory(db, week),
     loadExtras(db, week),
     isSaved(db, week),
@@ -106,6 +122,25 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const showExtras = one(params.t) === "extra" && !placing;
   const slotAt = (date: IsoDate, meal: Meal) =>
     slots.find((slot) => slot.date === date && slot.meal === meal);
+  // The open meals in the days after a meal: where its leftovers can go.
+  const taken = new Set([...slots, ...nextSlots].map((slot) => slotKey(slot.date, slot.meal)));
+  const laterMeals = (date: IsoDate, meal: Meal) =>
+    openMealsAfter({ date, meal }, taken, addDays(date, LEFTOVER_DAYS));
+  // A meal cooked for leftovers says on which meal they are eaten.
+  const leftoversOn = (slot: PlanSlot | undefined) => {
+    const on = [...slots, ...nextSlots].find(
+      (other) => other.kind === "leftovers" && slot && other.ofSlotId === slot.id,
+    );
+    return on ? { date: on.date, meal: on.meal } : null;
+  };
+  // Leftovers say which meal they are from, where it is in this week.
+  const leftoversOf = (slot: PlanSlot | undefined) => {
+    const from =
+      slot?.kind === "leftovers" && slot.ofSlotId
+        ? slots.find((other) => other.id === slot.ofSlotId)
+        : undefined;
+    return from ? `von ${weekdayShort(from.date)} ${MEAL_NAME[from.meal]}` : undefined;
+  };
 
   const balance = weekBalance(slots, (id) => recipeOf.get(id), household.targets);
   const days = weekDates(week);
@@ -376,6 +411,11 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                     placing={placing}
                     locked={saved && !placing && pen !== `${date}.${meal}`}
                     withPen={saved && pen === `${date}.${meal}`}
+                    later={laterMeals(date, meal)}
+                    servings={household.defaultServings}
+                    leftoversOf={leftoversOf(slotAt(date, meal))}
+                    leftoversOn={leftoversOn(slotAt(date, meal))}
+                    cookingMore={cookingMore === `${date}.${meal}`}
                   />
                 ))}
               </li>
@@ -751,6 +791,10 @@ function Balance({ lines }: { lines: BalanceLine[] }) {
   );
 }
 
+/** A meal's action shown as a sign: round, large enough for a finger. */
+const ICON_ACTION =
+  "-mx-1 flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent";
+
 interface CellProps {
   week: IsoDate;
   date: IsoDate;
@@ -771,6 +815,16 @@ interface CellProps {
   locked: boolean;
   /** The plan is saved and someone took the pen to this meal. */
   withPen: boolean;
+  /** The open meals after this one where leftovers can go. */
+  later: { date: IsoDate; meal: Meal }[];
+  /** How many persons the household cooks for. */
+  servings: number;
+  /** For leftovers: the meal they are from, "von Mo Mittag", where it is known. */
+  leftoversOf: string | undefined;
+  /** For a meal cooked for leftovers: the meal they are eaten at, where one is planned. */
+  leftoversOn: { date: IsoDate; meal: Meal } | null;
+  /** "Mehr kochen" is open under this meal. */
+  cookingMore: boolean;
 }
 
 function MealCell({
@@ -786,6 +840,11 @@ function MealCell({
   placing,
   locked,
   withPen,
+  later,
+  servings,
+  leftoversOf,
+  leftoversOn,
+  cookingMore,
 }: CellProps) {
   // The suggestion the meal shows: the one asked for, or else an idea offered unasked.
   const shown = proposal ?? hint;
@@ -800,6 +859,11 @@ function MealCell({
   const choose = (mode: "replace" | "add") =>
     `/woche/auswahl?w=${week}&d=${date}&m=${meal}&modus=${mode}`;
   const what = `${weekdayLong(date)} ${MEAL_NAME[meal]}`;
+  // "Mehr kochen" for a meal cooked for persons that has no extra portions yet.
+  const canCookMore =
+    slot?.kind === "recipes" &&
+    !(slot.extra ?? 0) &&
+    slot.items.some((item) => !recipeOf.get(item.recipeId)?.servings?.unit);
   // From tablet width on, coffee sits below lunch and dinner stays in the right column.
   const column =
     meal === "coffee"
@@ -836,11 +900,17 @@ function MealCell({
                 </li>
               );
             })}
+            {(slot.extra ?? 0) > 0 && (
+              <li className="text-sm font-semibold text-accent">
+                + {slot.extra === 1 ? "1 Extra-Portion" : `${slot.extra} Extra-Portionen`} für Reste
+              </li>
+            )}
           </ul>
         )}
         {slot && slot.kind !== "recipes" && (
           <p className={`font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
             {slotText(slot)}
+            {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
           </p>
         )}
         {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
@@ -881,10 +951,21 @@ function MealCell({
           })}
         </ul>
       )}
+      {slot?.kind === "recipes" && (slot.extra ?? 0) > 0 && (
+        <ExtraPortions
+          week={week}
+          date={date}
+          meal={meal}
+          extra={slot.extra ?? 0}
+          leftoversOn={leftoversOn}
+          what={what}
+        />
+      )}
 
       {slot && slot.kind !== "recipes" && (
         <p className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
           {slotText(slot)}
+          {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
         </p>
       )}
       {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
@@ -970,16 +1051,24 @@ function MealCell({
           </form>
         ) : slot ? (
           <>
-            <Link href={choose("replace")} className="link text-sm" aria-label={`${what} ändern`}>
-              Ändern
+            {/* Signs instead of words, so that the row stays one line: what each does is in
+                its label, and in its title for a mouse. */}
+            <Link
+              href={choose("replace")}
+              className={ICON_ACTION}
+              aria-label={`${what} ändern`}
+              title="Ändern"
+            >
+              <PenIcon />
             </Link>
             {slot.kind === "recipes" && (
               <Link
                 href={choose("add")}
-                className="link text-sm"
+                className={ICON_ACTION}
                 aria-label={`${what}: etwas dazu`}
+                title="Etwas dazu"
               >
-                Etwas dazu
+                <PlusIcon />
               </Link>
             )}
             {slot.kind === "free_text" && (
@@ -993,13 +1082,28 @@ function MealCell({
             )}
             <form action={clearSlot}>
               {where}
-              <SubmitButton
-                className="min-h-10 text-sm font-semibold text-muted hover:text-danger"
-                label={`${what} leeren`}
-              >
-                Leeren
+              <SubmitButton className={`${ICON_ACTION} hover:text-danger`} label={`${what} leeren`}>
+                <TrashIcon />
               </SubmitButton>
             </form>
+            {/* Cooked for more than the household: leftovers for a later meal. Once cooked
+                more, the extra portions stand under the recipes instead. A cake for one tin
+                is not cooked "more". */}
+            {canCookMore && (
+              <Link
+                href={
+                  cookingMore
+                    ? `/woche?w=${week}#tag-${date}`
+                    : `/woche?w=${week}&mehr=${date}.${meal}#tag-${date}`
+                }
+                scroll={false}
+                className={`btn btn-small min-h-9 ${cookingMore ? "border-accent bg-accent-soft text-accent" : ""}`}
+                aria-label={`${what}: mehr kochen`}
+                aria-expanded={cookingMore}
+              >
+                Mehr kochen
+              </Link>
+            )}
           </>
         ) : (
           <>
@@ -1023,6 +1127,16 @@ function MealCell({
           </>
         )}
       </div>
+      {canCookMore && cookingMore && !placing && (
+        <CookMore
+          week={week}
+          date={date}
+          meal={meal}
+          servings={servings}
+          later={later}
+          close={`/woche?w=${week}#tag-${date}`}
+        />
+      )}
     </section>
   );
 }
