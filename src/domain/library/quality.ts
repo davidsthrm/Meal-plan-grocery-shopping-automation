@@ -79,15 +79,18 @@ export interface AnimalPart {
 const HEAVINESS: readonly AnimalPart["kind"][] = ["red_meat", "poultry", "fish"];
 
 const FISH =
-  /lachs|thunfisch|fisch|garnele|shrimp|scampi|krabbe|gamba|forelle|kabeljau|dorsch|zander|scholle|makrele|hering|matjes|sardelle|sardine|anchovi|muschel|calamar|pulpo|oktopus|hummer|languste|surimi|pangasius|tilapia|rotbarsch|heilbutt|dorade|saibling|karpfen|kaviar|auster|meeresfrucht/;
+  /lachs|thunfisch|fisch|garnele|shrimp|scampi|krabbe|gamba|forelle|kabeljau|dorsch|zander|scholle|makrele|hering|matjes|sardelle|sardine|anchovi|muschel|calamar|pulpo|oktopus|hummer|languste|surimi|pangasius|tilapia|rotbarsch|heilbutt|dorade|saibling|karpfen|^kaviar|auster|meeresfrucht/;
 const NOT_FISH = /lachsschinken|fischgewurz|austernpilz|muschelnudel/;
 const POULTRY =
-  /hahnchen|hahnch|huhn|huhner|hendl|pute|truthahn|gans|gefluge|chicken|poulard|wachtel|^ente|ente$|entenbrust|entenkeule/;
+  /hahnchen|hahnch|huhn|huhner|hendl|pute|truthahn|gans(?!eblum)|gefluge|chicken|poulard|wachtel(?!ei)|^ente|ente$|entenbrust|entenkeule/;
 const RED_MEAT =
-  /rind|schwein|kalb|lamm|hackfleisch|hack$|^hack|gehacktes|speck|schinken|salami|wurst|wurstchen|leberkas|lyoner|chorizo|bacon|pancetta|prosciutto|serrano|kassler|kasseler|mett|gulasch|hirsch|wildschwein|reh(rucken|keule|fleisch|gulasch)|kotelett|schnitzel|roastbeef|pastrami|tafelspitz|ochsen|cevapcici|frikadelle|bulette|haxe|cabanossi|mortadella|guanciale|lardo|fleisch|^steaks?$|rumpsteak|huftsteak|entrecote/;
-/** Words that look like meat and are not: bark of cheese, baking ammonia, a kind of tomato. */
+  /rind|schwein|kalb|lamm|hackfleisch|hack$|^hack|gehacktes|speck|schinken|salami|wurst|wurstchen|leberkas|lyoner|chorizo|bacon|pancetta|prosciutto|serrano|kassler|kasseler|^mett|gulasch|hirsch|wildschwein|reh(rucken|keule|fleisch|gulasch)|kotelett|schnitzel|roastbeef|pastrami|tafelspitz|ochsen|cevapcici|frikadelle|bulette|haxe|cabanossi|mortadella|guanciale|lardo|fleisch|^steaks?$|rumpsteak|huftsteak|entrecote/;
+/**
+ * Words that look like meat and are not: bark of cheese, baking ammonia, a kind of tomato,
+ * and dishes of vegetables named after meat (a mushroom goulash, a cauliflower steak).
+ */
 const NOT_MEAT =
-  /rinde$|flamm|hirschhorn|ochsenherz|fleischtomate|fruchtfleisch|kokosfleisch|vegetarisch|vegan|veggie|sojaschnetzel|sellerieschnitzel|blumenkohlsteak/;
+  /rinde$|flamm|hirschhorn|ochsenherz|fleischtomate|fruchtfleisch|kokosfleisch|vegetarisch|vegan|veggie|(gemuse|pilz|linsen|kohlrabi|sellerie|blumenkohl|tofu|seitan|soja)(gulasch|schnitzel|schnetzel|steak|frikadelle|bulette|hack|wurst)/;
 /** What is only a seasoning: it makes a dish not vegetarian, but it is not what it is about. */
 const TRACE = /bruhe|fond|bouillon|schmalz|sauce|sosse|paste|gelatine|extrakt|aspik/;
 
@@ -95,7 +98,7 @@ const TRACE = /bruhe|fond|bouillon|schmalz|sauce|sosse|paste|gelatine|extrakt|as
 const ANIMAL_PRODUCT =
   /milch|butter|sahne|rahm|kase|quark|joghurt|jogurt|schmand|creme fraiche|mascarpone|mozzarella|parmesan|gouda|feta|ricotta|^eier?$|^eigelb|^eiweiss|^eiklar|honig|mayonnaise|kefir|molke|ghee/;
 const PLANT_BASED =
-  /kokos|hafer|mandel|soja|reismilch|erdnussbutter|kakaobutter|vegan|pflanzlich|nussbutter|butternut|honigmelone/;
+  /kokos|hafer|mandel|soja|reismilch|erdnussbutter|kakaobutter|vegan|pflanzlich|nussbutter|butternut|butterbohne|honigmelone/;
 
 /** The words of an ingredient's name, without the amount and the note after a comma. */
 function nameWords(name: string): string[] {
@@ -475,4 +478,67 @@ export function suggestionText(
   if (finding.field === "category") return categoryName(value);
   if (finding.field === "time") return EFFORT_NAME[value as Effort] ?? value;
   return value;
+}
+
+/** What a recipe makes, as one answer to a finding about its servings. */
+export interface ServingsChoice {
+  min: number;
+  max: number;
+  unit: string;
+}
+
+/** What baking usually makes when nothing in the library says otherwise. */
+const USUAL_UNITS = ["Springform (Ø 26 cm)", "Backblech", "Kastenform", "Auflaufform"];
+/** A unit that is one tin, tray or dish: a recipe makes one of it. */
+const CONTAINER = /form|blech|ring|platte/i;
+/** How many choices a finding offers. */
+const MOST_CHOICES = 6;
+
+/**
+ * The units the library counts in most, most used first: what this household's cookbooks
+ * print ("Springform (Ø 26 cm)", "Muffins"). Units used once say little.
+ */
+export function commonServingsUnits(servings: readonly (Servings | null)[], count = 4): string[] {
+  const uses = new Map<string, { unit: string; n: number }>();
+  for (const one of servings) {
+    const unit = one?.unit?.trim();
+    if (!unit) continue;
+    const key = unit.toLowerCase();
+    uses.set(key, { unit: uses.get(key)?.unit ?? unit, n: (uses.get(key)?.n ?? 0) + 1 });
+  }
+  return [...uses.values()]
+    .filter((use) => use.n > 1)
+    .sort((a, b) => b.n - a.n || a.unit.localeCompare(b.unit, "de"))
+    .slice(0, count)
+    .map((use) => use.unit);
+}
+
+/**
+ * Answers to a finding about servings, one tap each: one tin or tray of what the library
+ * uses most and of what baking usually makes, and where more persons were read than a
+ * recipe is for, the number as pieces ("20 Stück", "20 Muffins").
+ */
+export function servingsChoices(
+  servings: Servings | null,
+  common: readonly string[],
+): ServingsChoice[] {
+  const choices: ServingsChoice[] = [];
+  const add = (choice: ServingsChoice) => {
+    const key = choice.unit.toLowerCase();
+    if (!choices.some((other) => other.unit.toLowerCase() === key)) choices.push(choice);
+  };
+  // Twenty persons were probably twenty pieces; four persons of a cake were not four pieces.
+  const pieces = servings !== null && servings.max > MOST_PERSONS ? servings : null;
+  for (const unit of [...common, ...USUAL_UNITS]) {
+    if (CONTAINER.test(unit)) add({ min: 1, max: 1, unit });
+    else if (pieces) add({ min: pieces.min, max: pieces.max, unit });
+  }
+  if (pieces) add({ min: pieces.min, max: pieces.max, unit: "Stück" });
+  return choices.slice(0, MOST_CHOICES);
+}
+
+/** "1 Backblech", "20–24 Stück". */
+export function servingsChoiceText(choice: ServingsChoice): string {
+  const count = choice.min === choice.max ? `${choice.min}` : `${choice.min}–${choice.max}`;
+  return `${count} ${choice.unit}`;
 }

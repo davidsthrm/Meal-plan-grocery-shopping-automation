@@ -3,7 +3,10 @@ import {
   animalIn,
   checkLibrary,
   checkRecipe,
+  commonServingsUnits,
   isAnimalProduct,
+  servingsChoices,
+  servingsChoiceText,
   suggestionText,
   type QualityRecipe,
 } from "./quality";
@@ -54,6 +57,12 @@ describe("animalIn", () => {
       "Parmesanrinde",
       "Austernpilze",
       "Muschelnudeln",
+      "Limettensaft",
+      "Auberginenkaviar",
+      "Wachteleier",
+      "Gänseblümchen",
+      "Pilzgulasch",
+      "Kohlrabischnitzel",
       "Ochsenherztomate",
       "Petersilie, gehackt",
       "gehackte Mandeln",
@@ -128,6 +137,20 @@ describe("the kind of a recipe", () => {
       recipe({ proteinType: null, ingredients: ["Lachsfilet", "Dill", "Kartoffeln"] }),
     ).findings;
     expect(finding.suggestion).toBe("fish");
+  });
+
+  it("leaves a vegan smoothie with lime juice alone", () => {
+    expect(
+      fields(
+        recipe({
+          title: "Beeren-Kokos-Smoothie",
+          category: "dessert",
+          proteinType: "vegan",
+          servings: { min: 2, max: 2, unit: "Gläser" },
+          ingredients: ["Himbeeren", "Kokosmilch", "Banane", "Limettensaft", "Agavendicksaft"],
+        }),
+      ),
+    ).toEqual([]);
   });
 
   it("accepts what fits, and says nothing without ingredients", () => {
@@ -255,5 +278,40 @@ describe("checkLibrary", () => {
       ["fish", 7],
       ["slow", 2],
     ]);
+  });
+});
+
+describe("servings choices", () => {
+  it("takes the units the library uses more than once, most used first", () => {
+    expect(
+      commonServingsUnits([
+        { min: 1, max: 1, unit: "Backblech" },
+        { min: 12, max: 12, unit: "Muffins" },
+        { min: 1, max: 1, unit: "backblech" },
+        { min: 12, max: 12, unit: "Muffins" },
+        { min: 1, max: 1, unit: "Muffins" },
+        { min: 1, max: 1, unit: "Gugelhupfform" },
+        { min: 4, max: 4, unit: null },
+        null,
+      ]),
+    ).toEqual(["Muffins", "Backblech"]);
+  });
+
+  it("offers one tin or tray, and the number read as pieces", () => {
+    const choices = servingsChoices({ min: 20, max: 20, unit: null }, ["Muffins", "Backblech"]);
+    expect(choices.map(servingsChoiceText)).toEqual([
+      "20 Muffins",
+      "1 Backblech",
+      "1 Springform (Ø 26 cm)",
+      "1 Kastenform",
+      "1 Auflaufform",
+      "20 Stück",
+    ]);
+  });
+
+  it("offers a cake for four persons only tins and trays", () => {
+    expect(
+      servingsChoices({ min: 4, max: 4, unit: null }, ["Muffins"]).map(servingsChoiceText),
+    ).toEqual(["1 Springform (Ø 26 cm)", "1 Backblech", "1 Kastenform", "1 Auflaufform"]);
   });
 });
