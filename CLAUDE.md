@@ -568,7 +568,10 @@ Shopping list
   line can be bought at another one for the week ("Kaufe ich bei: Rewe",
   `shopping_line_state.shop_id`): that supermarket then has a section of its own on the
   note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
-  the catalog buys a thing (`preferredShopId`) does not decide the section.
+  the catalog buys a thing (`preferredShopId`) does not decide the section. The logos stand
+  wherever a supermarket is named (`ShopLogo`, the name's first letter without one): the
+  main one in place of the cart on its notes, whose PDF is titled with its name, each
+  further one at its section and on its "Kaufe ich bei" button.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
   names: "1 Zitrone".

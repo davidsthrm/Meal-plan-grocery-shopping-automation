@@ -31,7 +31,8 @@ export async function GET(request: Request): Promise<Response> {
     const named = parts.some((part) => part.shop && part.shop !== favourites[0]);
     return [
       {
-        title: `${PLACE_NAME[trip.place]}: ${whenText(trip)}`,
+        // A supermarket note is the main supermarket's: "Kaufland: Montag, 12. Oktober".
+        title: `${(trip.place === "supermarket" && supermarkets[0]?.name) || PLACE_NAME[trip.place]}: ${whenText(trip)}`,
         subtitle: coversText(view),
       },
       ...parts.flatMap((part) =>

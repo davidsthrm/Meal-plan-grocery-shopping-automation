@@ -1,6 +1,7 @@
 import { TickIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
+import { ShopLogo } from "@/components/shop-logo";
 import { SubmitButton } from "@/components/submit-button";
 import type { CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
@@ -42,17 +43,36 @@ import {
 } from "./actions";
 
 /** The heading every note has: where, and when. */
-export function NoteHead({ note, today: now }: { note: NoteList; today?: IsoDate }) {
+export function NoteHead({
+  note,
+  today: now,
+  market,
+}: {
+  note: NoteList;
+  today?: IsoDate;
+  /**
+   * The household's main supermarket, on a supermarket note: its logo and name stand there
+   * instead of the cart and "Supermarkt".
+   */
+  market?: Shop;
+}) {
   const { trip } = note;
   const look = PLACE_LOOK[trip.place];
+  const shop = trip.place === "supermarket" ? market : undefined;
   return (
     <span className={`flex items-center gap-3 ${look.tone}`}>
-      <span className="badge size-11 print:hidden">
-        <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
-      </span>
+      {shop ? (
+        <span className="print:hidden">
+          <ShopLogo shop={shop} />
+        </span>
+      ) : (
+        <span className="badge size-11 print:hidden">
+          <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
+        </span>
+      )}
       <span className="min-w-0">
-        <span className="block text-lg leading-tight font-bold tracking-tight">
-          {PLACE_NAME[trip.place]}
+        <span className="block truncate text-lg leading-tight font-bold tracking-tight">
+          {shop?.name ?? PLACE_NAME[trip.place]}
         </span>
         <span className="block text-sm font-normal text-muted print:text-black">
           {now && trip.date === now ? "Heute" : whenText(trip)}
@@ -136,7 +156,7 @@ export function NoteSheet({
       <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h1>
-            <NoteHead note={note} />
+            <NoteHead note={note} market={supermarkets[0]} />
           </h1>
           {note.open + note.done > 0 && (
             <p className="text-sm text-muted tabular-nums print:hidden">
@@ -169,7 +189,10 @@ export function NoteSheet({
             className="mt-4"
           >
             {named && section.shop && (
-              <h2 className="mb-2 border-b border-line pb-1 text-base font-bold tracking-tight print:text-black">
+              <h2 className="mb-2 flex items-center gap-2 border-b border-line pb-1.5 text-base font-bold tracking-tight print:text-black">
+                <span className="print:hidden">
+                  <ShopLogo shop={section.shop} size="size-8" />
+                </span>
                 {section.shop.name}
               </h2>
             )}
@@ -533,9 +556,10 @@ function Line({
                         {where}
                         <input type="hidden" name="shop" value={market.id} />
                         <SubmitButton
-                          className="chip min-h-9 text-sm"
+                          className="chip min-h-10 gap-2 py-1 pl-1.5 text-sm"
                           label={`${line.label} bei ${market.name} kaufen`}
                         >
+                          <ShopLogo shop={market} size="size-7" />
                           {market.name}
                         </SubmitButton>
                       </form>

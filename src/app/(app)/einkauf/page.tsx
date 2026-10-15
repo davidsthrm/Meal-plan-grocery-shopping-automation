@@ -4,7 +4,7 @@ import { NoteIcon, TickIcon } from "@/components/icons";
 import { PrintButton } from "@/components/print-button";
 import { SheetHoles } from "@/components/sheet-holes";
 import { SubmitButton } from "@/components/submit-button";
-import type { CatalogIndex } from "@/domain/catalog";
+import type { CatalogIndex, Shop } from "@/domain/catalog";
 import {
   addDays,
   isIsoDate,
@@ -143,7 +143,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {notes.map((note) => (
           <li key={note.id}>
-            <NoteTile note={note} week={week} today={now} />
+            <NoteTile note={note} week={week} today={now} market={supermarkets[0]} />
           </li>
         ))}
         {noted.length > 0 && (
@@ -289,7 +289,18 @@ function AtHomeList({
 }
 
 /** A note as it lies among the others: its heading, its first lines, and how much is open. */
-function NoteTile({ note, week, today: now }: { note: NoteList; week: IsoDate; today: IsoDate }) {
+function NoteTile({
+  note,
+  week,
+  today: now,
+  market,
+}: {
+  note: NoteList;
+  week: IsoDate;
+  today: IsoDate;
+  /** The household's main supermarket, shown on its notes. */
+  market?: Shop;
+}) {
   const lines = note.view.groups.flatMap((group) => group.lines);
   const more = lines.length - PREVIEW;
   return (
@@ -302,7 +313,7 @@ function NoteTile({ note, week, today: now }: { note: NoteList; week: IsoDate; t
     >
       <SheetHoles />
       <span className={`flex flex-1 flex-col px-4 pt-3 pb-4 ${note.completed ? "done-note" : ""}`}>
-        <NoteHead note={note} today={now} />
+        <NoteHead note={note} today={now} market={market} />
         <span className="mt-3 block flex-1 text-[0.95rem]">
           {lines.slice(0, PREVIEW).map((entry) => (
             <span
