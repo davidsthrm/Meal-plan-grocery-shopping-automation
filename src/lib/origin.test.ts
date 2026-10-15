@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { FROM_FAVORITES, fromPlan, readOrigin } from "./origin";
+import { FROM_DUPLICATES, FROM_FAVORITES, fromFieldChecks, fromPlan, readOrigin } from "./origin";
 
-const read = (query: string) => {
+const RECIPE = "0b6d5a52-6f3c-4c6e-9d6a-3f1e2b7c8a90";
+
+const read = (query: string, recipeId?: string) => {
   const params = new URLSearchParams(query);
-  return readOrigin(params.get("von") ?? undefined, params.get("w") ?? undefined);
+  return readOrigin(params.get("von") ?? undefined, params.get("w") ?? undefined, {
+    recipeId,
+    field: params.get("feld") ?? undefined,
+  });
 };
 
 describe("where a recipe was opened from", () => {
@@ -16,6 +21,22 @@ describe("where a recipe was opened from", () => {
 
   it("leads back to the favourites", () => {
     expect(read(FROM_FAVORITES)).toEqual({ href: "/favoriten", label: "Favoriten" });
+  });
+
+  it("leads back to the recipe among the fields to check, under the same filter", () => {
+    expect(read(fromFieldChecks("protein"), RECIPE)).toEqual({
+      href: `/import/pruefen/angaben?feld=protein#r-${RECIPE}`,
+      label: "Angaben prüfen",
+    });
+    expect(read(fromFieldChecks(null), RECIPE).href).toBe(`/import/pruefen/angaben#r-${RECIPE}`);
+    expect(read("?von=angaben&feld=//boese", "x#y").href).toBe("/import/pruefen/angaben");
+  });
+
+  it("leads back to the duplicates", () => {
+    expect(read(FROM_DUPLICATES)).toEqual({
+      href: "/import/pruefen/doppelt",
+      label: "Doppelte Rezepte",
+    });
   });
 
   it("is the library for everything else", () => {

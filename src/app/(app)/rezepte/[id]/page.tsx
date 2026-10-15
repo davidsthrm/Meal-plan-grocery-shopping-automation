@@ -31,7 +31,7 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { id } = await props.params;
   const query = await props.searchParams;
-  const back = readOrigin(one(query.von), one(query.w));
+  const back = readOrigin(one(query.von), one(query.w), { recipeId: id, field: one(query.feld) });
   const db = await createSessionClient();
   // Row level security decides whether this recipe exists for the person asking.
   const { data: recipe } = await db
