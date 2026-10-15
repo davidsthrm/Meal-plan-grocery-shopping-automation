@@ -60,11 +60,22 @@ export function CheckTiles({ waiting, proposals, fields = 0, pairs = 0 }: Counts
 /**
  * The tiles with the checks of the whole library added: assigned fields that do not fit,
  * and recipes that are there twice. They are worked out from the library, which takes a
- * moment, so the page shows the other tiles meanwhile.
+ * moment, so the page shows the other tiles meanwhile. When they cannot be worked out (a
+ * migration not applied yet, an outage), the page shows the other tiles and carries on: the
+ * upload must not depend on them.
  */
 export async function CheckTilesWithLibrary(counts: Counts) {
-  const db = await createSessionClient();
-  const library = await loadLibraryChecks(db);
-  const pairs = await duplicatePairs(db, library);
-  return <CheckTiles {...counts} fields={recipeChecks(library).length} pairs={pairs.length} />;
+  return <CheckTiles {...counts} {...await countLibraryChecks()} />;
+}
+
+async function countLibraryChecks(): Promise<{ fields?: number; pairs?: number }> {
+  try {
+    const db = await createSessionClient();
+    const library = await loadLibraryChecks(db);
+    const pairs = await duplicatePairs(db, library);
+    return { fields: recipeChecks(library).length, pairs: pairs.length };
+  } catch (error) {
+    console.error("library checks on the import page:", error);
+    return {};
+  }
 }
