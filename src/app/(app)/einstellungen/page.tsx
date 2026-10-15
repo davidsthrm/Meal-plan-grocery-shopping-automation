@@ -127,6 +127,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
             )}
             chosen={supermarkets}
             problem={one(params.fehler) ?? null}
+            reason={one(params.grund)?.slice(0, 300) ?? null}
           />
         </div>
 

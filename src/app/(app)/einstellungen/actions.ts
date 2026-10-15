@@ -115,10 +115,12 @@ async function findSupermarkets(household: Household, postalCode: string): Promi
   let search: Awaited<ReturnType<typeof searchSupermarkets>>;
   try {
     search = await searchSupermarkets(postalCode);
-  } catch {
-    // The postal code is kept: "Neu suchen" tries again.
+  } catch (error) {
+    // The postal code is kept: "Neu suchen" tries again. What went wrong is said on the page.
+    const reason = (error instanceof Error ? error.message : String(error)).slice(0, 300);
+    console.error(`supermarket search for ${postalCode}: ${reason}`);
     await storePostalCode(db, household.id, postalCode, household.placeName);
-    back("supermaerkte", { fehler: "suche" });
+    back("supermaerkte", { fehler: "suche", grund: reason });
   }
   if (!search) back("supermaerkte", { fehler: "plz" });
   await storePostalCode(db, household.id, postalCode, search.place);

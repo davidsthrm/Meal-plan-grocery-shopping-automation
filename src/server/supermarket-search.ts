@@ -15,17 +15,51 @@ import {
  * or searches again.
  */
 
-const WHO = "Essensplan (private household meal planner)";
+const WHO =
+  "Essensplan/1.0 (private household meal planner; https://github.com/dazzlingdolphin/Meal-plan-grocery-shopping-automation)";
 
-async function getJson(url: string, init: RequestInit = {}): Promise<unknown> {
-  const response = await fetch(url, {
-    ...init,
-    headers: { "User-Agent": WHO, Accept: "application/json", ...init.headers },
-    signal: AbortSignal.timeout(20_000),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`${new URL(url).host} answered ${response.status}`);
-  return response.json();
+/**
+ * Overpass servers, tried in this order. The main one is often busy and then answers 429 or
+ * 504, or not in time; the others carry the same map.
+ */
+const OVERPASS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+];
+
+/** What went wrong with one request, in a few words: "overpass-api.de: 504". */
+function why(url: string, error: unknown): string {
+  const host = new URL(url).host;
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+    return `${host}: keine Antwort`;
+  }
+  // Node's fetch says only "fetch failed"; the cause says why (ENOTFOUND, a certificate).
+  const cause =
+    error instanceof Error ? (error.cause as { code?: string; message?: string }) : null;
+  const detail = cause?.code ?? cause?.message;
+  const message = error instanceof Error ? error.message : String(error);
+  return `${host}: ${detail ? `${message} (${detail})` : message}`;
+}
+
+async function getJson(url: string, init: RequestInit = {}, seconds = 20): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: { "User-Agent": WHO, Accept: "application/json", ...init.headers },
+      signal: AbortSignal.timeout(seconds * 1000),
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw new Error(why(url, error));
+  }
+  if (!response.ok) throw new Error(`${new URL(url).host}: ${response.status}`);
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(`${new URL(url).host}: keine Daten`);
+  }
 }
 
 export interface SupermarketSearch {
@@ -36,31 +70,54 @@ export interface SupermarketSearch {
 
 /**
  * The supermarkets in a postal code's area, nearest first, with their logos where Wikidata
- * knows them. Null when the postal code was not found. Throws when a service cannot be
- * reached.
+ * knows them. Null when the postal code was not found. Throws, with what went wrong, when no
+ * service could be reached. `log` hears every step, for the command line.
  */
-export async function searchSupermarkets(postalCode: string): Promise<SupermarketSearch | null> {
-  const area = readPostalArea(
-    await getJson(
-      `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
-        postalcode: postalCode,
-        country: "de",
-        format: "json",
-        addressdetails: "1",
-        limit: "1",
-      })}`,
-    ),
-  );
-  if (!area) return null;
+export async function searchSupermarkets(
+  postalCode: string,
+  log: (step: string) => void = () => {},
+): Promise<SupermarketSearch | null> {
+  const lookup = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
+    postalcode: postalCode,
+    countrycodes: "de",
+    format: "json",
+    addressdetails: "1",
+    limit: "1",
+  })}`;
+  log(`Postleitzahl nachschlagen: ${lookup}`);
+  const area = readPostalArea(await getJson(lookup));
+  if (!area) {
+    log("Nominatim kennt die Postleitzahl nicht.");
+    return null;
+  }
+  log(`Gefunden: ${area.place ?? "ohne Ortsnamen"}, Mitte ${area.center.lat}, ${area.center.lon}`);
 
   const [south, west, north, east] = area.box;
-  const query = `[out:json][timeout:25];nwr["shop"="supermarket"](${south},${west},${north},${east});out center tags;`;
-  const answer = (await getJson("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ data: query }).toString(),
-  })) as { elements?: OverpassElement[] };
-  const found = pickSupermarkets(answer.elements ?? [], area.center);
+  const query = `[out:json][timeout:30];nwr["shop"="supermarket"](${south},${west},${north},${east});out center tags;`;
+  let elements: OverpassElement[] | null = null;
+  const failures: string[] = [];
+  for (const server of OVERPASS) {
+    log(`Supermärkte suchen: ${server}`);
+    try {
+      const answer = (await getJson(
+        server,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ data: query }).toString(),
+        },
+        45,
+      )) as { elements?: OverpassElement[] };
+      elements = answer.elements ?? [];
+      break;
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+      log(`  ging nicht: ${failures[failures.length - 1]}`);
+    }
+  }
+  if (elements === null) throw new Error(failures.join("; "));
+  log(`${elements.length} Supermärkte im Gebiet`);
+  const found = pickSupermarkets(elements, area.center);
 
   // A missing logo is no reason to fail: the tile shows the name's first letter instead.
   const brands = [...new Set(found.flatMap((shop) => shop.brandWikidata ?? []))];
@@ -77,8 +134,8 @@ export async function searchSupermarkets(postalCode: string): Promise<Supermarke
           })}`,
         ),
       );
-    } catch {
-      logos = new Map();
+    } catch (error) {
+      log(`Logos: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   return {

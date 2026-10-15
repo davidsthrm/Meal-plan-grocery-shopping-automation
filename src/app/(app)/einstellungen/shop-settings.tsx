@@ -25,6 +25,7 @@ export function SupermarketsCard({
   found,
   chosen,
   problem,
+  reason,
 }: {
   postalCode: string | null;
   placeName: string | null;
@@ -34,6 +35,8 @@ export function SupermarketsCard({
   chosen: Shop[];
   /** What went wrong the last time, if anything (`PROBLEM`). */
   problem: string | null;
+  /** Why the search failed, as the services said it: "overpass-api.de: 504". */
+  reason?: string | null;
 }) {
   // The chosen ones first, then the rest of what was found near the postal code.
   const tiles = [...chosen, ...found.filter((shop) => !chosen.some((each) => each.id === shop.id))];
@@ -65,6 +68,9 @@ export function SupermarketsCard({
       {problem && PROBLEM[problem] && (
         <p role="alert" className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
           {PROBLEM[problem]}
+          {problem === "suche" && reason && (
+            <span className="mt-1 block text-sm opacity-80">Grund: {reason}</span>
+          )}
         </p>
       )}
 

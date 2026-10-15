@@ -14,7 +14,7 @@ import {
 import { findIngredient } from "@/domain/catalog";
 import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/planned";
 import { today } from "@/lib/today";
-import { allRows, loadCatalogIndex, must, type Db } from "../catalog";
+import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned
@@ -255,7 +255,7 @@ export async function writeSlot(
   content: SlotContent | null,
 ): Promise<string | null> {
   const planId = await ensureWeek(db, householdId, weekStart);
-  const existing = must(
+  const existing = maybe(
     await db
       .from("plan_slot")
       .select("id")
@@ -428,7 +428,7 @@ export async function setExtraPortions(
   leftoversOn: { date: IsoDate; meal: Meal } | null = null,
 ): Promise<void> {
   const planId = await ensureWeek(db, householdId, weekStart);
-  const cooked = must(
+  const cooked = maybe(
     await db
       .from("plan_slot")
       .update({ extra_servings: extra })

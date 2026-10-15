@@ -40,6 +40,7 @@ is easier than pen and paper.
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
 | Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
+| Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`         |
 | Regenerate the database types after a migration                           | `npm run db:types`                             |
 | Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
 

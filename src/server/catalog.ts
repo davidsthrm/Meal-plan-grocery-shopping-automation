@@ -24,6 +24,18 @@ export function must<T>(
   return result.data;
 }
 
+/**
+ * Like `must`, for a question whose answer may be nothing: a row that `maybeSingle` did not
+ * find is null, not an error.
+ */
+export function maybe<T>(
+  result: { data: T; error: { message: string } | null },
+  what: string,
+): NonNullable<T> | null {
+  if (result.error) throw new Error(`${what}: ${result.error.message}`);
+  return result.data ?? null;
+}
+
 /** The API returns at most this many rows per request, whatever is asked for. */
 const PAGE = 1000;
 
