@@ -3,7 +3,10 @@ import Link from "next/link";
 import { RecipeBadge, RecipeFacts } from "@/components/recipe-card";
 import {
   CHECKED_FIELDS,
+  commonServingsUnits,
   PROTEIN_NAME,
+  servingsChoices,
+  servingsChoiceText,
   suggestionText,
   type CheckedField,
   type Finding,
@@ -11,6 +14,7 @@ import {
 } from "@/domain/library/quality";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
 import { EFFORT_NAME, EFFORTS } from "@/domain/library/tags";
+import { fromFieldChecks } from "@/lib/origin";
 import { sourceText } from "@/lib/recipe-text";
 import { requireHousehold } from "@/server/auth";
 import { categoryNamer, loadLibraryChecks, recipeChecks } from "@/server/quality";
@@ -50,6 +54,9 @@ export default async function FieldChecksPage(props: PageProps<"/import/pruefen/
   const library = await loadLibraryChecks(await createSessionClient());
   const all = recipeChecks(library);
   const categoryName = categoryNamer(library.categories);
+  const servingsUnits = commonServingsUnits(
+    [...library.recipes.values()].map((recipe) => recipe.summary.servings),
+  );
   const counts = new Map(
     CHECKED_FIELDS.map((field) => [
       field,
@@ -84,6 +91,10 @@ export default async function FieldChecksPage(props: PageProps<"/import/pruefen/
         war, ist nicht gespeichert. Darum wird verglichen, was eingetragen ist, mit Zutaten und
         Titel: ein Fischrezept ohne Fisch, eine Suppe als Hauptgericht. Was am wenigsten passt,
         steht oben.
+      </p>
+      <p className="mt-2 text-muted">
+        „Übernehmen“ und eine Auswahl ändern das Rezept. „Stimmt so“ ändert nichts: Der Hinweis
+        verschwindet und kommt für diese Angabe nicht wieder.
       </p>
 
       <nav className="mt-4 flex flex-wrap gap-2" aria-label="Nach Angabe">
@@ -136,6 +147,7 @@ export default async function FieldChecksPage(props: PageProps<"/import/pruefen/
                 filter={filter}
                 categories={library.categories}
                 categoryName={categoryName}
+                servingsUnits={servingsUnits}
               />
             ))}
           </ul>
@@ -216,12 +228,14 @@ function RecipeRow({
   filter,
   categories,
   categoryName,
+  servingsUnits,
 }: {
   check: RecipeCheck;
   summary: RecipeSummary | undefined;
   filter: CheckedField | null;
   categories: Category[];
   categoryName: (key: string) => string;
+  servingsUnits: string[];
 }) {
   const { recipe } = check;
   const facts = [
@@ -232,17 +246,10 @@ function RecipeRow({
   return (
     <li id={`r-${recipe.id}`} className="card p-4">
       <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          form="sammel"
-          name="rezept"
-          value={recipe.id}
-          className="mt-2.5 h-5 w-5 shrink-0 accent-accent"
-          aria-label={`${recipe.title} ankreuzen`}
-        />
+        <SelectBox recipeId={recipe.id} title={recipe.title} />
         {summary && <RecipeBadge recipe={summary} />}
         <div className="min-w-0 flex-1">
-          <Link href={`/rezepte/${recipe.id}`} className="font-semibold">
+          <Link href={`/rezepte/${recipe.id}${fromFieldChecks(filter)}`} className="font-semibold">
             {recipe.title}
           </Link>
           <p className="text-sm text-muted">{facts.join(" · ")}</p>
@@ -256,6 +263,7 @@ function RecipeRow({
                 filter={filter}
                 categories={categories}
                 categoryName={categoryName}
+                servingsUnits={servingsUnits}
               />
             ))}
           </ul>
@@ -290,12 +298,14 @@ function FindingRow({
   filter,
   categories,
   categoryName,
+  servingsUnits,
 }: {
   check: RecipeCheck;
   finding: Finding;
   filter: CheckedField | null;
   categories: Category[];
   categoryName: (key: string) => string;
+  servingsUnits: string[];
 }) {
   const { recipe } = check;
   const suggested = suggestionText(finding, categoryName);
@@ -318,6 +328,16 @@ function FindingRow({
             <button className="btn btn-small btn-primary">Übernehmen: {suggested}</button>
           </form>
         )}
+        {finding.field === "servings" &&
+          servingsChoices(recipe.servings, servingsUnits).map((choice) => (
+            <form key={choice.unit} action={correctField}>
+              {hidden}
+              <input type="hidden" name="von" value={choice.min} />
+              <input type="hidden" name="bis" value={choice.max} />
+              <input type="hidden" name="einheit" value={choice.unit} />
+              <button className="btn btn-small">{servingsChoiceText(choice)}</button>
+            </form>
+          ))}
         <form action={confirmField}>
           {hidden}
           <button className="btn btn-small">Stimmt so</button>
@@ -463,5 +483,36 @@ function FieldEditor({
         />
       </span>
     </>
+  );
+}
+
+/**
+ * The box to tick a recipe for a change of several at once. It belongs to the form above the
+ * list (`form="sammel"`) and is drawn by the stylesheet, at the size of a thumb.
+ */
+function SelectBox({ recipeId, title }: { recipeId: string; title: string }) {
+  return (
+    <label className="relative -mt-1 -ml-2 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center">
+      <input
+        type="checkbox"
+        form="sammel"
+        name="rezept"
+        value={recipeId}
+        aria-label={`${title} ankreuzen`}
+        className="peer h-6 w-6 cursor-pointer appearance-none rounded-md border-2 border-muted bg-surface checked:border-accent checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      />
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="pointer-events-none absolute hidden h-4 w-4 text-accent-ink peer-checked:block"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    </label>
   );
 }

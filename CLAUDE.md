@@ -811,10 +811,19 @@ Import
   persons, a cake counted in persons. Each finding has a weight; the least trustworthy
   recipes come first. A finding is taken as suggested, set by hand or confirmed ("Stimmt
   so"), one by one or for several ticked recipes at once. A field a person set or confirmed
-  is stored in `recipe.checked_fields` and not checked again.
+  is stored in `recipe.checked_fields` and not checked again. A finding about servings offers
+  one tin or tray of the units the library uses most and of what baking usually makes
+  (`servingsChoices`). Meat and fish are told by word lists; a word found inside another
+  misleads ("mett" in "Limette" made lime juice meat), so such a word is anchored to the
+  start of a word. A recipe opened from either page leads back there (`?von=angaben`,
+  `?von=doppelt`).
 - Duplicates (`findDuplicates`, `src/domain/library/duplicates.ts`) need a similar title and
-  shared ingredients, pantry staples left out; the same book and page is enough with a
-  similar title. A pair is shown side by side: "Dieses behalten" asks once more, then
+  shared ingredients, pantry staples left out. The same book and page is no reason: one
+  page often holds several recipes, and "Tunfisch und Zwiebeln" and "Zwiebeln und Cheddar"
+  of page 111 were offered as one. A title that names an ingredient only its own recipe has
+  ("mit Garnelen", "mit Kichererbsen") makes a variant, unless almost all ingredients are
+  the same. "Dieses behalten" is marked only where something speaks for it (planned more
+  often, a favourite, `keepReason`). A pair is shown side by side: "Dieses behalten" asks once more, then
   `merge_recipes` (one transaction, the caller's rights) moves meals and extras to the kept
   recipe, carries over favourite, wish, the household's own tags and a missing category,
   marks the duplicate's import job as discarded and deletes the duplicate. "Beide behalten"

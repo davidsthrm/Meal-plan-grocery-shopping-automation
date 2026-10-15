@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { RecipeBadge, RecipeFacts } from "@/components/recipe-card";
 import { HeartIcon, WishIcon } from "@/components/icons";
-import { pairKey, preferredToKeep, type DuplicatePair } from "@/domain/library/duplicates";
+import { keepReason, pairKey, type DuplicatePair } from "@/domain/library/duplicates";
 import { PROTEIN_NAME } from "@/domain/library/quality";
+import { FROM_DUPLICATES } from "@/lib/origin";
 import { sourceText } from "@/lib/recipe-text";
 import { requireHousehold } from "@/server/auth";
 import {
@@ -111,18 +112,17 @@ function PairCard({
     id: side.summary.id,
     isFavorite: side.summary.isFavorite,
     planned: planned.get(side.summary.id) ?? 0,
-    lines: side.lines.length,
-    addedOn: side.summary.addedOn,
   });
-  const suggested = preferredToKeep(sideOf(a), sideOf(b));
+  // Marked only where something speaks for one: planned more often, or a favourite.
+  const suggested = keepReason(sideOf(a), sideOf(b));
   const keysA = new Set(a.lines.map((line) => line.key));
   const keysB = new Set(b.lines.map((line) => line.key));
-  const why = pair.samePage
-    ? "Gleiches Buch, gleiche Seite: wohl zweimal eingelesen."
-    : `Titel ${percent(pair.title)} ähnlich` +
-      (pair.ingredients === null
-        ? ", zu wenige Zutaten zum Vergleichen."
-        : `, ${percent(pair.ingredients)} gleiche Zutaten.`);
+  const why =
+    `Titel ${percent(pair.title)} ähnlich` +
+    (pair.ingredients === null
+      ? ", zu wenige Zutaten zum Vergleichen"
+      : `, ${percent(pair.ingredients)} gleiche Zutaten`) +
+    (pair.samePage ? ", gleiche Seite im selben Buch." : ".");
   const kept = confirm && sides.find((side) => side.summary.id === confirm.keep);
   const dropped = confirm && sides.find((side) => side.summary.id === confirm.drop);
 
@@ -135,11 +135,14 @@ function PairCard({
           const shared = side === a ? keysB : keysA;
           const times = planned.get(side.summary.id) ?? 0;
           return (
-            <section key={side.summary.id} className="min-w-0">
+            <section key={side.summary.id} className="flex min-w-0 flex-col">
               <div className="flex items-start gap-3">
                 <RecipeBadge recipe={side.summary} />
                 <div className="min-w-0">
-                  <Link href={`/rezepte/${side.summary.id}`} className="font-semibold">
+                  <Link
+                    href={`/rezepte/${side.summary.id}${FROM_DUPLICATES}`}
+                    className="font-semibold"
+                  >
                     {side.summary.title}
                   </Link>
                   <p className="text-sm text-muted">
@@ -180,12 +183,17 @@ function PairCard({
                 {side.lines.length === 0 && <li className="text-muted">Keine Zutaten</li>}
               </ul>
               {!confirm && (
-                <Link
-                  href={`/import/pruefen/doppelt?behalten=${side.summary.id}&weg=${other.summary.id}#${id}`}
-                  className={`btn btn-small mt-3 w-full ${side.summary.id === suggested ? "btn-primary" : ""}`}
-                >
-                  Dieses behalten
-                </Link>
+                <div className="mt-auto pt-3">
+                  <Link
+                    href={`/import/pruefen/doppelt?behalten=${side.summary.id}&weg=${other.summary.id}#${id}`}
+                    className={`btn btn-small w-full ${suggested?.id === side.summary.id ? "btn-primary" : ""}`}
+                  >
+                    Dieses behalten
+                    {suggested?.id === side.summary.id && (
+                      <span className="font-normal">· {suggested.reason}</span>
+                    )}
+                  </Link>
+                </div>
               )}
             </section>
           );
