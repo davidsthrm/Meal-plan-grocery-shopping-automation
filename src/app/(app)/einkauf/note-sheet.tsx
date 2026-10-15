@@ -11,7 +11,12 @@ import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-l
 import { lineOnNote } from "@/domain/shopping-list/duplicates";
 import { formatPurchase } from "@/domain/shopping-list/format";
 import type { ViewLine } from "@/domain/shopping-list/present";
-import { sectionsByShop, supermarketOf } from "@/domain/shopping-list/supermarkets";
+import {
+  marketsOfNote,
+  namesText,
+  sectionsByShop,
+  supermarketOf,
+} from "@/domain/shopping-list/supermarkets";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import type { Unit } from "@/domain/units";
 import {
@@ -46,24 +51,26 @@ import {
 export function NoteHead({
   note,
   today: now,
-  market,
+  markets = [],
 }: {
   note: NoteList;
   today?: IsoDate;
   /**
-   * The household's main supermarket, on a supermarket note: its logo and name stand there
-   * instead of the cart and "Supermarkt".
+   * The supermarkets a supermarket note is taken to, the main one first (`marketsOfNote`):
+   * their logos and names stand there instead of the cart and "Supermarkt", "Aldi & Rewe".
    */
-  market?: Shop;
+  markets?: Shop[];
 }) {
   const { trip } = note;
   const look = PLACE_LOOK[trip.place];
-  const shop = trip.place === "supermarket" ? market : undefined;
+  const shops = trip.place === "supermarket" ? markets : [];
   return (
     <span className={`flex items-center gap-3 ${look.tone}`}>
-      {shop ? (
-        <span className="print:hidden">
-          <ShopLogo shop={shop} />
+      {shops.length > 0 ? (
+        <span className="flex shrink-0 -space-x-2 print:hidden">
+          {shops.slice(0, 3).map((shop) => (
+            <ShopLogo key={shop.id} shop={shop} size={shops.length > 1 ? 36 : 44} />
+          ))}
         </span>
       ) : (
         <span className="badge size-11 print:hidden">
@@ -71,8 +78,8 @@ export function NoteHead({
         </span>
       )}
       <span className="min-w-0">
-        <span className="block truncate text-lg leading-tight font-bold tracking-tight">
-          {shop?.name ?? PLACE_NAME[trip.place]}
+        <span className="block text-lg leading-tight font-bold tracking-tight">
+          {shops.length > 0 ? namesText(shops.map((shop) => shop.name)) : PLACE_NAME[trip.place]}
         </span>
         <span className="block text-sm font-normal text-muted print:text-black">
           {now && trip.date === now ? "Heute" : whenText(trip)}
@@ -156,7 +163,7 @@ export function NoteSheet({
       <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h1>
-            <NoteHead note={note} market={supermarkets[0]} />
+            <NoteHead note={note} markets={marketsOfNote(view, favourites)} />
           </h1>
           {note.open + note.done > 0 && (
             <p className="text-sm text-muted tabular-nums print:hidden">

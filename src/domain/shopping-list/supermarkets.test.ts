@@ -4,6 +4,8 @@ import { buildShoppingList } from "./build";
 import { presentByAisle } from "./present";
 import {
   favouriteSupermarkets,
+  marketsOfNote,
+  namesText,
   sectionsByShop,
   withAdded,
   withMain,
@@ -124,5 +126,34 @@ describe("the order of the supermarkets", () => {
 
   it("removes one, and the next becomes the main one", () => {
     expect(without(["aldi", "rewe", "lidl"], "aldi")).toEqual(["rewe", "lidl"]);
+  });
+});
+
+describe("the title of a supermarket note", () => {
+  const view = (states: Record<string, LineState>) => presentByAisle(lines, states, testIndex);
+  const title = (states: Record<string, LineState>, favourites: Shop[]) =>
+    namesText(marketsOfNote(view(states), favourites).map((shop) => shop.name));
+
+  it("names every supermarket with a section on the note, the main one first", () => {
+    expect(title({}, [ALDI, REWE, LIDL])).toBe("Aldi");
+    expect(title({ "sahne@main": { shopId: "rewe" } }, [ALDI, REWE, LIDL])).toBe("Aldi & Rewe");
+    expect(
+      title({ "sahne@main": { shopId: "rewe" }, "milch@main": { shopId: "lidl" } }, [
+        ALDI,
+        REWE,
+        LIDL,
+      ]),
+    ).toBe("Aldi, Rewe & Lidl");
+  });
+
+  it("names the main supermarket on an empty note, and none while there is none", () => {
+    expect(marketsOfNote({ groups: [], atHome: [] }, [ALDI, REWE])).toEqual([ALDI]);
+    expect(marketsOfNote(view({}), [])).toEqual([]);
+  });
+
+  it("joins names as one says them", () => {
+    expect(namesText([])).toBe("");
+    expect(namesText(["Aldi"])).toBe("Aldi");
+    expect(namesText(["Aldi", "Rewe", "Botzenhardt"])).toBe("Aldi, Rewe & Botzenhardt");
   });
 });

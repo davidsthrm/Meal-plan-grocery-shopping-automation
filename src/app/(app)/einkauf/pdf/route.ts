@@ -1,5 +1,5 @@
 import { isIsoDate, mondayOf, planningWeek, weekRange } from "@/domain/dates";
-import { sectionsByShop } from "@/domain/shopping-list/supermarkets";
+import { marketsOfNote, namesText, sectionsByShop } from "@/domain/shopping-list/supermarkets";
 import { coversText, PLACE_NAME, whenText } from "@/lib/list-text";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
@@ -31,8 +31,9 @@ export async function GET(request: Request): Promise<Response> {
     const named = parts.some((part) => part.shop && part.shop !== favourites[0]);
     return [
       {
-        // A supermarket note is the main supermarket's: "Kaufland: Montag, 12. Oktober".
-        title: `${(trip.place === "supermarket" && supermarkets[0]?.name) || PLACE_NAME[trip.place]}: ${whenText(trip)}`,
+        // A supermarket note is named after the markets it is taken to: "Aldi & Rewe: Montag,
+        // 12. Oktober".
+        title: `${namesText(marketsOfNote(view, favourites).map((shop) => shop.name)) || PLACE_NAME[trip.place]}: ${whenText(trip)}`,
         subtitle: coversText(view),
       },
       ...parts.flatMap((part) =>

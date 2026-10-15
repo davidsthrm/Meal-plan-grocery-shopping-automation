@@ -575,8 +575,9 @@ Shopping list
   note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
   the catalog buys a thing (`preferredShopId`) does not decide the section. The logos stand
   wherever a supermarket is named (`ShopLogo`, the name's first letter without one): the
-  main one in place of the cart on its notes, whose PDF is titled with its name, each
-  further one at its section and on its button "Bei EDEKA kaufen", a button like "Haben wir
+  supermarket note is named after the markets it is taken to, the main one first, and shows
+  their logos in place of the cart: "Aldi & Rewe", "Aldi, Rewe & Botzenhardt"
+  (`marketsOfNote`, `namesText`), its PDF too; each further one has its logo at its section and on its button "Bei EDEKA kaufen", a button like "Haben wir
   schon". A logo's size is set in pixels on the element, never by a class: with a size class
   the stylesheet lacked, the 128-pixel picture filled half the note.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one

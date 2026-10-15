@@ -65,3 +65,20 @@ export function withAdded(ranked: readonly string[], id: string): string[] {
 export function without(ranked: readonly string[], id: string): string[] {
   return ranked.filter((each) => each !== id);
 }
+
+/**
+ * The supermarkets a note is taken to: those with a section on it, the main one first, or the
+ * main one alone while nothing is on it. Empty while the household has named none.
+ */
+export function marketsOfNote(view: AisleView, favourites: readonly Shop[]): Shop[] {
+  const onNote = sectionsByShop(view, favourites).flatMap((section) =>
+    section.shop ? [section.shop] : [],
+  );
+  return onNote.length > 0 ? onNote : favourites.slice(0, 1);
+}
+
+/** Names as one says them: "Aldi", "Aldi & Rewe", "Aldi, Rewe & Botzenhardt". */
+export function namesText(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+}
