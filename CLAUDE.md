@@ -132,7 +132,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
   month by month), `/rezepte` (browse and search, called "Entdecken"), `/favoriten`,
   `/rezepte/[id]`, `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
-  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/einkauf` (the shopping notes of
+  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/import/pruefen/angaben` (assigned
+  fields that do not fit; `?feld=` one of them) and `/import/pruefen/doppelt` (duplicates;
+  `?behalten=<id>&weg=<id>` asks before a merge), `/einkauf` (the shopping notes of
   a week as tiles; `?zettel=<date>.<place>` shows one of them picked up) with `/einkauf/pdf`
   (all notes, or with `zettel` one, as a PDF), `/merkzettel` (what ran out at home, as a
   page; the header pulls the same note down over any page), `/einstellungen` with `/einstellungen/vorrat` (what is usually at home), `/import`
@@ -800,6 +802,23 @@ Import
   Asked about one photo alone it was 19 of 20 and 60 of 64, and one stored page ended up on
   its head. The library's 492 pages: 67 turned upright, 602 of the 629 recipes that share a
   page got a view of their own.
+- Beside the review of new imports, "Prüfen" on the import page checks the whole library.
+  No confidence of the model is stored, so the fields it assigned are compared with the rest
+  of the recipe (`checkRecipe` in `src/domain/library/quality.ts`): a kind that the
+  ingredients contradict (fish without fish, vegetarian with bacon; a stock only hints), a
+  category the title or ingredients contradict (a soup as a main dish, a cake with bacon), a
+  quick effort with a long printed time or a time that cannot be right, more than twelve
+  persons, a cake counted in persons. Each finding has a weight; the least trustworthy
+  recipes come first. A finding is taken as suggested, set by hand or confirmed ("Stimmt
+  so"), one by one or for several ticked recipes at once. A field a person set or confirmed
+  is stored in `recipe.checked_fields` and not checked again.
+- Duplicates (`findDuplicates`, `src/domain/library/duplicates.ts`) need a similar title and
+  shared ingredients, pantry staples left out; the same book and page is enough with a
+  similar title. A pair is shown side by side: "Dieses behalten" asks once more, then
+  `merge_recipes` (one transaction, the caller's rights) moves meals and extras to the kept
+  recipe, carries over favourite, wish, the household's own tags and a missing category,
+  marks the duplicate's import job as discarded and deletes the duplicate. "Beide behalten"
+  is stored in `recipe_pair_kept`.
 - Review (`/import/pruefen`) shows photo and fields side by side. Everything typed is checked
   again on the server by `readReview`. Approving replaces the recipe's lines.
 - Model instructions live in `src/server/import/prompt.ts`. Their examples must not come from
@@ -828,6 +847,10 @@ Import
 - Which days count as workdays is fixed: Monday to Friday. A holiday is planned by hand.
 - A printed time often counts only the work at the stove. The tag suggestion knows that;
   the rule for recipes without a tag (`effortOf`) does not.
+- The checks of assigned fields and the duplicate rules were tried on made-up recipes and
+  the seed only, not on the household's 880 recipes. Watch for false alarms (a word list
+  decides what is meat or fish) and tune the lists in `quality.ts`.
+- Editing a recipe on `/rezepte/[id]/bearbeiten` does not mark its fields as checked.
 - The live search loads the whole library into the browser, about 880 recipes today. Watch
   how long that takes as the library grows.
 - A recipe's own view of its page can miss the end of its steps where the text runs on in

@@ -73,7 +73,20 @@ export async function updateTypedRecipe(
     .eq("id", recipeId);
   if (kind.error) throw new Error(`update recipe kind: ${kind.error.message}`);
 
-  // A recipe has at most one category: the old one goes, the chosen one comes.
+  await setCategory(db, householdId, [recipeId], recipe.dishType);
+}
+
+/**
+ * Gives recipes a category, by its key. A recipe has at most one: the old one goes, the
+ * chosen one comes. A key that is no category leaves them without one.
+ */
+export async function setCategory(
+  db: Db,
+  householdId: string,
+  recipeIds: readonly string[],
+  key: string | null,
+): Promise<void> {
+  if (recipeIds.length === 0) return;
   const categories = must(
     await db.from("tag").select("id, key").eq("group_name", "Kategorie"),
     "load categories",
@@ -81,17 +94,19 @@ export async function updateTypedRecipe(
   const removed = await db
     .from("recipe_tag")
     .delete()
-    .eq("recipe_id", recipeId)
+    .in("recipe_id", recipeIds)
     .in(
       "tag_id",
       categories.map((tag) => tag.id),
     );
   if (removed.error) throw new Error(`clear category: ${removed.error.message}`);
-  const chosen = categories.find((tag) => tag.key === recipe.dishType);
+  const chosen = categories.find((tag) => tag.key === key);
   if (chosen) {
     const linked = await db
       .from("recipe_tag")
-      .insert({ household_id: householdId, recipe_id: recipeId, tag_id: chosen.id });
+      .insert(
+        recipeIds.map((recipe_id) => ({ household_id: householdId, recipe_id, tag_id: chosen.id })),
+      );
     if (linked.error) throw new Error(`set category: ${linked.error.message}`);
   }
 }
