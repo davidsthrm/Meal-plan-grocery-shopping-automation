@@ -67,33 +67,40 @@ describe("pickSupermarkets", () => {
     tags: { shop: "supermarket", ...(name ? { name } : {}), ...extra },
   });
 
-  it("offers the nearest five, each name once, nearest first", () => {
+  it("offers each name once, the chains first, each nearest first", () => {
+    const chain = (name: string, lat: number, id = "Q1") =>
+      shop(name, lat, { "brand:wikidata": id });
     const found = pickSupermarkets(
       [
-        shop("Lidl", 48.239, {
-          "brand:wikidata": "Q151954",
-          "addr:street": "Ulmer Straße",
-          "addr:housenumber": "3",
-        }),
+        chain("Lidl", 48.239, "Q151954"),
         shop("Lidl", 48.231),
-        shop("EDEKA Kohler", 48.25),
-        shop("ALDI SÜD", 48.228),
-        shop("Kaufland", 48.26),
-        shop("REWE", 48.27),
-        shop("Netto Marken-Discount", 48.3),
+        chain("Kaufland", 48.238),
+        chain("NORMA", 48.238),
+        chain("REWE", 48.238),
+        chain("E-Center", 48.24),
+        // Nearer, but no chain: after them.
+        shop("Echt Bio Markt", 48.23),
+        chain("ALDI SÜD", 48.26),
         shop(undefined, 48.229),
       ],
       center,
     );
     expect(found.map((each) => each.name)).toEqual([
-      "ALDI SÜD",
       "Lidl",
-      "EDEKA Kohler",
       "Kaufland",
+      "NORMA",
       "REWE",
+      "E-Center",
+      "ALDI SÜD",
+      "Echt Bio Markt",
     ]);
-    // The nearer Lidl is the one offered; it has no street on the map.
-    expect(found[1]).toMatchObject({ address: null, brandWikidata: null });
+    // The nearer Lidl has no brand on the map; the other one's says it is the chain.
+    expect(found[0]).toMatchObject({ brandWikidata: "Q151954" });
+  });
+
+  it("keeps at most fifteen", () => {
+    const many = Array.from({ length: 20 }, (_, at) => shop(`Markt ${at}`, 48.23 + at / 1000));
+    expect(pickSupermarkets(many, center)).toHaveLength(15);
   });
 
   it("takes the brand where a shop has no name, and a building by its middle", () => {

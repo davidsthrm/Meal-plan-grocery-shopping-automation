@@ -126,7 +126,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
 - Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
-  its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for), `/woche/auswahl`
+  its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for, `?mehr=<date>.<meal>`
+  the meal "Mehr kochen" is open under), `/woche/auswahl`
   (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
   month by month), `/rezepte` (browse and search, called "Entdecken"), `/favoriten`,
@@ -441,8 +442,10 @@ Week plan
   (`writeSlot` updates in place), so the link holds.
 - A planned meal's actions are signs in one row, each with its words as label and title:
   a pen to change it, a plus for a side, a bin to empty it; "Mehr kochen" is the one word
-  among them. The household found the row of words, and "Mehr kochen" on a line of its
-  own, took too much room in the plan.
+  among them, a small button that opens its form under the row (`?mehr=<date>.<meal>`,
+  "Übernehmen" or "Abbrechen"), the way a suggestion is asked for. The household found the
+  row of words, and "Mehr kochen" on a line of its own, took too much room in the plan;
+  folded open inside the row it stood beside the signs in Safari.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
   for the month most of its days are in. The week being planned is always listed.
@@ -554,8 +557,10 @@ Shopping list
 - The household's supermarkets are found by its postal code (`household.postal_code`,
   `place_name`; empty for a new household, and until it is entered no market can be
   chosen). The server looks the code up on OpenStreetMap (Nominatim), asks Overpass for the
-  supermarkets inside its area and offers the nearest five, each name once, with the
-  chain's logo from Wikidata and Wikimedia Commons (`src/server/supermarket-search.ts`,
+  supermarkets inside its area and offers all of them, each name once (two shops of one name
+  are one chain), with the chain's logo from Wikidata and Wikimedia Commons. Showing only
+  the nearest five left out Aldi and Lidl in Laupheim. Chosen ones stand first, then the
+  chains and the rest by name (`src/server/supermarket-search.ts`,
   `pickSupermarkets`). They are kept as shops (`shop.found_near`, `logo_url`, `address`).
   None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app. One
   is marked as the main market, others as further markets (`shop.supermarket_rank`, 1 the

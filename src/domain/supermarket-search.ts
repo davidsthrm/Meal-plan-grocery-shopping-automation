@@ -7,8 +7,11 @@ import { normalizeName } from "./catalog";
  * reads their answers; `src/server/supermarket-search.ts` asks.
  */
 
-/** How many supermarkets are offered to choose from. */
-export const SUPERMARKETS_FOUND = 5;
+/** How many supermarkets are shown first; the others found stand folded away below them. */
+export const SUPERMARKETS_SHOWN = 5;
+
+/** How many supermarkets of an area are kept at most. */
+export const SUPERMARKETS_FOUND = 15;
 
 /** A German postal code as typed, tidied, or null for anything else. */
 export function readPostalCode(text: string): string | null {
@@ -87,7 +90,9 @@ export function distanceKm(a: Point, b: Point): number {
 
 /**
  * The supermarkets of an Overpass answer worth offering: each name once, the nearest of
- * its kind, nearest first, at most `limit`. A shop without a name is left out.
+ * its kind; the chains first (a shop the map knows a brand for: Aldi, Lidl, Rewe), then the
+ * rest, each nearest first; at most `limit`. A shop without a name is left out. Showing
+ * only the nearest five left out Aldi and Lidl in Laupheim, a kilometre further away.
  */
 export function pickSupermarkets(
   elements: readonly OverpassElement[],
@@ -114,9 +119,22 @@ export function pickSupermarkets(
     };
     const key = normalizeName(name);
     const known = nearest.get(key);
-    if (!known || found.distanceKm < known.distanceKm) nearest.set(key, found);
+    // Two shops of one name are one chain: the nearer is offered, with what either knows.
+    const [near, far] =
+      !known || found.distanceKm < known.distanceKm ? [found, known] : [known, found];
+    nearest.set(key, {
+      ...near,
+      address: near.address ?? far?.address ?? null,
+      brandWikidata: near.brandWikidata ?? far?.brandWikidata ?? null,
+    });
   }
-  return [...nearest.values()].sort((a, b) => a.distanceKm - b.distanceKm).slice(0, limit);
+  return [...nearest.values()]
+    .sort(
+      (a, b) =>
+        Number(a.brandWikidata === null) - Number(b.brandWikidata === null) ||
+        a.distanceKm - b.distanceKm,
+    )
+    .slice(0, limit);
 }
 
 /**

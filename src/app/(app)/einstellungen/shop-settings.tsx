@@ -38,8 +38,12 @@ export function SupermarketsCard({
   /** Why the search failed, as the services said it: "overpass-api.de: 504". */
   reason?: string | null;
 }) {
-  // The chosen ones first, then the rest of what was found near the postal code.
-  const tiles = [...chosen, ...found.filter((shop) => !chosen.some((each) => each.id === shop.id))];
+  // The chosen ones first, then the rest of what was found near the postal code: the chains,
+  // whose logo is known, before the others, each by name, so that a market is easy to find.
+  const rest = found
+    .filter((shop) => !chosen.some((each) => each.id === shop.id))
+    .sort((a, b) => Number(!a.logoUrl) - Number(!b.logoUrl) || a.name.localeCompare(b.name, "de"));
+  const tiles = [...chosen, ...rest];
   return (
     <section className="card scroll-mt-4 p-4" aria-labelledby="supermaerkte">
       <h2 id="supermaerkte" className="text-lg font-bold tracking-tight">
@@ -78,8 +82,8 @@ export function SupermarketsCard({
         <div className="mt-4 flex items-start gap-3 rounded-lg border border-dashed border-line p-4 text-muted">
           <LockIcon />
           <p className="text-sm">
-            Mit eurer Postleitzahl sucht die App fünf Supermärkte in eurer Nähe. Bis dahin lässt
-            sich kein Markt auswählen.
+            Mit eurer Postleitzahl sucht die App die Supermärkte in eurer Nähe. Bis dahin lässt sich
+            kein Markt auswählen.
           </p>
         </div>
       ) : (

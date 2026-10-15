@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import { weekdayShort, type IsoDate } from "@/domain/dates";
 import type { Meal } from "@/domain/plan";
@@ -22,8 +23,9 @@ const mealText = (slot: { date: IsoDate; meal: Meal }) =>
 /**
  * "Mehr kochen": a meal cooked with extra portions for leftovers. The portions are bought
  * with it, and the leftovers are planned for a later meal that is still open, which the
- * household picks. A text button in the row of the meal's actions; open, it takes the
- * row's whole width.
+ * household picks. The button in the meal's row of actions opens this under the row
+ * (`?mehr=<date>.<meal>`), the way "Hast du einen Vorschlag?" opens a suggestion: the
+ * household found it squeezed into the row of signs.
  */
 export function CookMore({
   week,
@@ -31,7 +33,7 @@ export function CookMore({
   meal,
   servings,
   later,
-  what,
+  close,
 }: {
   week: IsoDate;
   date: IsoDate;
@@ -40,24 +42,19 @@ export function CookMore({
   servings: number;
   /** The open meals the leftovers can be eaten at, in order. */
   later: { date: IsoDate; meal: Meal }[];
-  /** The meal in words, for the labels: "Montag Mittag". */
-  what: string;
+  /** Where "Abbrechen" leads: the week, at this day. */
+  close: string;
 }) {
   return (
-    <details className="open:basis-full">
-      <summary
-        className="link inline-flex min-h-10 cursor-pointer items-center text-sm"
-        aria-label={`${what}: mehr kochen`}
-      >
-        Mehr kochen
-      </summary>
-      <form
-        action={cookMoreOfMeal}
-        className="mt-1 grid grid-cols-[3.5rem_minmax(0,1fr)] items-end gap-2 rounded-lg bg-accent-soft/50 p-3 text-sm"
-      >
-        <Where week={week} date={date} meal={meal} />
-        <label>
-          <span className="label">Extra</span>
+    <form
+      action={cookMoreOfMeal}
+      className="mt-2 rounded-lg border border-accent/30 bg-accent-soft/40 p-3"
+    >
+      <Where week={week} date={date} meal={meal} />
+      <p className="text-sm font-semibold">Mehr kochen für Reste</p>
+      <div className="mt-2 flex flex-wrap items-end gap-3">
+        <label className="w-28">
+          <span className="label">Extra-Portionen</span>
           <input
             name="extra"
             type="number"
@@ -66,10 +63,9 @@ export function CookMore({
             max={20}
             defaultValue={servings}
             className="field"
-            aria-label="Extra-Portionen"
           />
         </label>
-        <label className="min-w-0">
+        <label className="min-w-36 flex-1">
           <span className="label">Reste am</span>
           <select name="reste" defaultValue={later[0] ? slotValue(later[0]) : ""} className="field">
             {later.map((option) => (
@@ -80,11 +76,14 @@ export function CookMore({
             <option value="">Später entscheiden</option>
           </select>
         </label>
-        <span className="col-span-2">
-          <SubmitButton className="btn btn-primary btn-small">Mehr kochen</SubmitButton>
-        </span>
-      </form>
-    </details>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <SubmitButton className="btn btn-primary btn-small">Übernehmen</SubmitButton>
+        <Link href={close} scroll={false} className="link text-sm">
+          Abbrechen
+        </Link>
+      </div>
+    </form>
   );
 }
 
