@@ -155,7 +155,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request and cuts a longer answer off without saying
   so. Anything that can grow beyond that is read with `allRows` (`src/server/catalog.ts`):
-  recipes, recipe tags, ingredient lines, import jobs, and the catalog itself. The catalog
+  recipes, recipe tags, ingredient lines, import jobs, and the catalog itself. A table longer
+  than a page is read four pages at a time (`readPages`), so its query needs a unique order:
+  the ingredient lines of 880 recipes are eleven pages, and one after the other they kept
+  the import page waiting for seconds. The catalog
   was read in one request until it had 1024 ingredients; Zucker and Zwiebeln then did not
   exist for the app. `tests/paging.test.ts` scans the source for reads of growing tables that
   are neither narrowed nor paged.
@@ -803,6 +806,8 @@ Import
   its head. The library's 492 pages: 67 turned upright, 602 of the 629 recipes that share a
   page got a view of their own.
 - Beside the review of new imports, "Prüfen" on the import page checks the whole library.
+  Its two tiles stand at once and say "Wird gezählt …" until the library is read and
+  checked (`CheckTilesWithLibrary` in a `Suspense`); the upload never waits for them.
   No confidence of the model is stored, so the fields it assigned are compared with the rest
   of the recipe (`checkRecipe` in `src/domain/library/quality.ts`): a kind that the
   ingredients contradict (fish without fish, vegetarian with bacon; a stock only hints), a
