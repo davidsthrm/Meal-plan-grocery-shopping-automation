@@ -211,10 +211,13 @@ export function findDuplicates(
         one.recipe.sourceBook === other.recipe.sourceBook &&
         one.recipe.sourcePage !== null &&
         one.recipe.sourcePage === other.recipe.sourcePage;
+      // Whether the titles name ingredients is the slow part: asked only of the few pairs
+      // that are duplicates otherwise.
+      if (!isDuplicate(title, ingredients, false)) continue;
       const variant =
         namesOwnIngredient(one.titleWords, one.nameWords, other.titleWords, other.nameWords) ||
         namesOwnIngredient(other.titleWords, other.nameWords, one.titleWords, one.nameWords);
-      if (!isDuplicate(title, ingredients, variant)) continue;
+      if (variant && !isDuplicate(title, ingredients, true)) continue;
       const [a, b] = orderedPair(one.recipe.id, other.recipe.id);
       if (kept.has(pairKey(a, b))) continue;
       found.push({
