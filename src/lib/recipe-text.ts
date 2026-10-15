@@ -1,15 +1,9 @@
 import { dayAndMonth, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
-import { effortOf, type Effort } from "@/domain/library/tags";
+import { EFFORT_NAME, effortOf } from "@/domain/library/tags";
 import { nameForOne, type Ingredient } from "@/domain/catalog";
 import { formatAmount, formatNumber } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
-
-const EFFORT_NAME: Record<Effort, string> = {
-  schnell: "Schnell",
-  alltag: "Alltagsküche",
-  aufwendig: "Braucht Zeit",
-};
 
 /**
  * How long a recipe takes, as a card says it: the printed minutes, or where the cookbook

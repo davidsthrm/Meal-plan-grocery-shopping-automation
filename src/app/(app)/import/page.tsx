@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { isIsoDate, mondayOf, weekdayLong } from "@/domain/dates";
 import { MEAL_NAME } from "@/lib/plan-text";
 import { allRows, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
+import { CheckTiles, CheckTilesWithLibrary } from "./library-checks";
 import { NewBatchForm } from "./new-batch-form";
 
 export const metadata: Metadata = { title: "Import" };
@@ -60,26 +62,9 @@ export default async function ImportPage(props: PageProps<"/import">) {
         </Link>
       </p>
 
-      {(waiting > 0 || open > 0) && (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          {waiting > 0 && (
-            <Link
-              href="/import/pruefen"
-              className="rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn"
-            >
-              {waiting === 1 ? "1 Rezept prüfen" : `${waiting} Rezepte prüfen`}
-            </Link>
-          )}
-          {open > 0 && (
-            <Link
-              href="/import/vorschlaege"
-              className="rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn"
-            >
-              {open === 1 ? "1 neue Zutat zuordnen" : `${open} neue Zutaten zuordnen`}
-            </Link>
-          )}
-        </div>
-      )}
+      <Suspense fallback={<CheckTiles waiting={waiting} proposals={open} />}>
+        <CheckTilesWithLibrary waiting={waiting} proposals={open} />
+      </Suspense>
 
       {forMeal ? (
         <div className="mt-6 mb-3 rounded-xl bg-accent-soft px-4 py-3">

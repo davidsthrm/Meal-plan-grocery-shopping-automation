@@ -10,6 +10,7 @@ import {
 } from "@/domain/catalog";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import type { GramsPer } from "@/domain/units";
+import { readPages } from "@/lib/paging";
 import type { Database } from "./supabase/database.types";
 
 export type Db = SupabaseClient<Database>;
@@ -36,14 +37,12 @@ export function maybe<T>(
   return result.data ?? null;
 }
 
-/** The API returns at most this many rows per request, whatever is asked for. */
-const PAGE = 1000;
-
 /**
- * Loads every row of a query, page by page. Anything that can grow past a thousand rows has
- * to be read this way: the API cuts a longer answer off without saying so. The catalog was
- * read in one request until it had 1024 ingredients, and the last 24 of the alphabet, sugar
- * and onions among them, silently stopped existing for the app.
+ * Loads every row of a query, page by page (`readPages`, several at a time). Anything that
+ * can grow past a thousand rows has to be read this way: the API cuts a longer answer off
+ * without saying so. The catalog was read in one request until it had 1024 ingredients,
+ * and the last 24 of the alphabet, sugar and onions among them, silently stopped existing
+ * for the app. The query must have a stable order, or pages read side by side overlap.
  */
 export async function allRows<T>(
   page: (
@@ -52,12 +51,7 @@ export async function allRows<T>(
   ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   what: string,
 ): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const loaded = must(await page(from, from + PAGE - 1), what);
-    rows.push(...loaded);
-    if (loaded.length < PAGE) return rows;
-  }
+  return readPages(async (from, to) => must(await page(from, to), what));
 }
 
 /** Every ingredient of the catalog with its names, for lists to choose from and to search. */

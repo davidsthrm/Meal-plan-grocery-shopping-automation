@@ -40,6 +40,13 @@ export function groupTags(tags: readonly Tag[]): TagGroup[] {
 export const EFFORTS = ["schnell", "alltag", "aufwendig"] as const;
 export type Effort = (typeof EFFORTS)[number];
 
+/** An effort as the household reads it. */
+export const EFFORT_NAME: Record<Effort, string> = {
+  schnell: "Schnell",
+  alltag: "Alltagsküche",
+  aufwendig: "Braucht Zeit",
+};
+
 const QUICK_MINUTES = 30;
 const EVERYDAY_MINUTES = 60;
 

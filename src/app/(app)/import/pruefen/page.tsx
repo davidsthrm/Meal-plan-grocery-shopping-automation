@@ -25,10 +25,18 @@ export default async function ReviewQueuePage() {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold">Alles geprüft</h1>
-      <p className="mt-2 text-muted">Im Moment wartet kein Rezept auf dich.</p>
-      <Link href="/import" className="btn mt-4">
-        Zurück zum Import
-      </Link>
+      <p className="mt-2 text-muted">Im Moment wartet kein eingelesenes Rezept auf dich.</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link href="/import/pruefen/angaben" className="btn">
+          Angaben der Bibliothek prüfen
+        </Link>
+        <Link href="/import/pruefen/doppelt" className="btn">
+          Doppelte Rezepte
+        </Link>
+        <Link href="/import" className="btn">
+          Zurück zum Import
+        </Link>
+      </div>
     </div>
   );
 }

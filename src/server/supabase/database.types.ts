@@ -769,6 +769,7 @@ export type Database = {
       }
       recipe: {
         Row: {
+          checked_fields: string[]
           created_at: string
           household_id: string
           id: string
@@ -790,6 +791,7 @@ export type Database = {
           wanted_at: string | null
         }
         Insert: {
+          checked_fields?: string[]
           created_at?: string
           household_id: string
           id?: string
@@ -811,6 +813,7 @@ export type Database = {
           wanted_at?: string | null
         }
         Update: {
+          checked_fields?: string[]
           created_at?: string
           household_id?: string
           id?: string
@@ -933,6 +936,49 @@ export type Database = {
             columns: ["household_id", "proposal_id"]
             isOneToOne: false
             referencedRelation: "ingredient_proposal"
+            referencedColumns: ["household_id", "id"]
+          },
+        ]
+      }
+      recipe_pair_kept: {
+        Row: {
+          created_at: string
+          household_id: string
+          recipe_a: string
+          recipe_b: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          recipe_a: string
+          recipe_b: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          recipe_a?: string
+          recipe_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_pair_kept_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_pair_kept_household_id_recipe_a_fkey"
+            columns: ["household_id", "recipe_a"]
+            isOneToOne: false
+            referencedRelation: "recipe"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "recipe_pair_kept_household_id_recipe_b_fkey"
+            columns: ["household_id", "recipe_b"]
+            isOneToOne: false
+            referencedRelation: "recipe"
             referencedColumns: ["household_id", "id"]
           },
         ]
@@ -1598,7 +1644,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      merge_recipes: {
+        Args: { drop_id: string; keep_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       buying_mode: "count" | "weight" | "pack" | "none"
