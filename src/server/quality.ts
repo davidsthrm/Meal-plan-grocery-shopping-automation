@@ -171,6 +171,7 @@ export async function duplicatePairs(db: Db, checks: LibraryChecks): Promise<Dup
       sourceBook: recipe.summary.sourceBook,
       sourcePage: recipe.summary.sourcePage,
       ingredients: recipe.comparable,
+      names: recipe.ingredients,
     })),
     new Set(kept.map((pair) => pairKey(pair.recipe_a, pair.recipe_b))),
   );

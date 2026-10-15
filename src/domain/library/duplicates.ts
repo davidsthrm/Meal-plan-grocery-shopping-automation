@@ -17,6 +17,8 @@ export interface DuplicateCandidate {
    * catalog does not know. Pantry staples are left out where enough else is left.
    */
   ingredients: readonly string[];
+  /** The names of its ingredients, to tell which words of its title name one of them. */
+  names: readonly string[];
 }
 
 export interface DuplicatePair {
@@ -27,7 +29,7 @@ export interface DuplicatePair {
   title: number;
   /** 0 to 1: the share of ingredients both have. Null when one of them has too few to tell. */
   ingredients: number | null;
-  /** The same book and page: imported twice. */
+  /** The same book and page. Said, but no reason by itself: one page often holds several. */
   samePage: boolean;
   /** 0 to 1, for the order they are shown in. */
   score: number;
@@ -71,10 +73,43 @@ function words(title: string): string[] {
 
 /** Pairs of neighbouring letters: "Pestonudeln" and "Pesto-Nudeln" share all of them. */
 function letterPairs(title: string): Set<string> {
-  const joined = words(title).join("");
+  return pairsOf(words(title).join(""));
+}
+
+function pairsOf(text: string): Set<string> {
   const pairs = new Set<string>();
-  for (let at = 0; at < joined.length - 1; at++) pairs.add(joined.slice(at, at + 2));
+  for (let at = 0; at < text.length - 1; at++) pairs.add(text.slice(at, at + 2));
   return pairs;
+}
+
+/**
+ * Whether two words of titles or ingredients are one: the same, one part of the other
+ * ("kichererbsen" in "kichererbsencurry"), or nearly the same letters ("nudel", "nudeln").
+ */
+function sameWord(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  if (short.length < 4) return false;
+  return long.includes(short) || dice(pairsOf(a), pairsOf(b)) >= 0.8;
+}
+
+/**
+ * Whether the title of one recipe names an ingredient the other does not have: "mit
+ * Garnelen" and "mit Kichererbsen" are two dishes, however much else they share. A word that
+ * names no ingredient, such as "rustikal", does not count.
+ */
+function namesOwnIngredient(
+  title: readonly string[],
+  ownNames: readonly string[],
+  otherTitle: readonly string[],
+  otherNames: readonly string[],
+): boolean {
+  return title.some(
+    (word) =>
+      !otherTitle.some((other) => sameWord(word, other)) &&
+      ownNames.some((name) => sameWord(word, name)) &&
+      !otherNames.some((name) => sameWord(word, name)),
+  );
 }
 
 function shared<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): number {
@@ -130,11 +165,12 @@ export function orderedPair(a: string, b: string): [string, string] {
  * - nearly the same title and some ingredients in common,
  * - a similar title and most ingredients in common,
  * - almost all of many ingredients in common and a title that is at least related,
- * - the same title and too few ingredients to tell,
- * - the same book and page and a similar title: one page imported twice.
+ * - the same title and too few ingredients to tell.
+ * A title that names an ingredient only its own recipe has makes a variant, not a
+ * duplicate, unless almost all ingredients are the same.
  */
-function isDuplicate(title: number, ingredients: number | null, samePage: boolean): boolean {
-  if (samePage && title >= 0.5) return true;
+function isDuplicate(title: number, ingredients: number | null, variant: boolean): boolean {
+  if (variant && (ingredients === null || ingredients < 0.85)) return false;
   if (ingredients === null) return title >= 0.95;
   if (title >= 0.8 && ingredients >= 0.3) return true;
   if (title >= 0.5 && ingredients >= 0.6) return true;
@@ -152,6 +188,8 @@ export function findDuplicates(
   const prepared = recipes.map((recipe) => ({
     recipe,
     words: new Set(words(recipe.title)),
+    titleWords: words(recipe.title),
+    nameWords: recipe.names.flatMap(words),
     pairs: letterPairs(recipe.title),
     ingredients: new Set(recipe.ingredients),
   }));
@@ -173,7 +211,10 @@ export function findDuplicates(
         one.recipe.sourceBook === other.recipe.sourceBook &&
         one.recipe.sourcePage !== null &&
         one.recipe.sourcePage === other.recipe.sourcePage;
-      if (!isDuplicate(title, ingredients, samePage)) continue;
+      const variant =
+        namesOwnIngredient(one.titleWords, one.nameWords, other.titleWords, other.nameWords) ||
+        namesOwnIngredient(other.titleWords, other.nameWords, one.titleWords, one.nameWords);
+      if (!isDuplicate(title, ingredients, variant)) continue;
       const [a, b] = orderedPair(one.recipe.id, other.recipe.id);
       if (kept.has(pairKey(a, b))) continue;
       found.push({
@@ -182,7 +223,7 @@ export function findDuplicates(
         title,
         ingredients,
         samePage,
-        score: samePage ? 1 : ingredients === null ? title * 0.9 : (title + ingredients) / 2,
+        score: ingredients === null ? title * 0.9 : (title + ingredients) / 2,
       });
     }
   }
@@ -208,19 +249,21 @@ export interface MergeSide {
   isFavorite: boolean;
   /** How often it was on a plan. */
   planned: number;
-  lines: number;
-  addedOn: string;
 }
 
 /**
- * Which of two duplicates to keep when nothing else decides: the one that was planned more
- * often, then a favourite, then the one with more ingredient lines, then the older one.
+ * Which of two duplicates to keep, where something speaks for one: it was planned more
+ * often, or it is a favourite. Null where nothing does; the household decides.
  */
-export function preferredToKeep(one: MergeSide, other: MergeSide): string {
-  const order =
-    other.planned - one.planned ||
-    Number(other.isFavorite) - Number(one.isFavorite) ||
-    other.lines - one.lines ||
-    one.addedOn.localeCompare(other.addedOn);
-  return order > 0 ? other.id : one.id;
+export function keepReason(
+  one: MergeSide,
+  other: MergeSide,
+): { id: string; reason: string } | null {
+  if (one.planned !== other.planned) {
+    return { id: one.planned > other.planned ? one.id : other.id, reason: "Öfter geplant" };
+  }
+  if (one.isFavorite !== other.isFavorite) {
+    return { id: one.isFavorite ? one.id : other.id, reason: "Favorit" };
+  }
+  return null;
 }

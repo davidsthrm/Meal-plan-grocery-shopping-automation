@@ -3,8 +3,8 @@ import {
   comparableIngredients,
   findDuplicates,
   ingredientOverlap,
+  keepReason,
   pairKey,
-  preferredToKeep,
   titleSimilarity,
   type DuplicateCandidate,
 } from "./duplicates";
@@ -16,6 +16,7 @@ function candidate(id: string, patch: Partial<DuplicateCandidate> = {}): Duplica
     sourceBook: null,
     sourcePage: null,
     ingredients: [],
+    names: [],
     ...patch,
   };
 }
@@ -88,14 +89,60 @@ describe("findDuplicates", () => {
     expect(pairs.map((pair) => pairKey(pair.a, pair.b))).toEqual(["a|b"]);
   });
 
-  it("finds one page imported twice first", () => {
+  it("does not take two recipes of one page for one: a page often holds several", () => {
+    // Both from page 111 of the same folder.
+    expect(
+      findDuplicates([
+        candidate("a", {
+          title: "Tunfisch und Zwiebeln",
+          sourceBook: "bunter Ordner",
+          sourcePage: 111,
+          ingredients: ["blaetterteig", "chili", "thymian", "tunfisch", "kapern"],
+          names: ["TK-Blätterteig", "Chilischoten", "Thymian", "Tunfischfilet", "Kapern"],
+        }),
+        candidate("b", {
+          title: "Zwiebeln und Cheddar",
+          sourceBook: "bunter Ordner",
+          sourcePage: 111,
+          ingredients: ["blaetterteig", "zwiebeln", "majoran", "aepfel", "cheddar"],
+          names: ["TK-Blätterteig", "Zwiebeln", "Majoran", "Äpfel", "Cheddar"],
+        }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("finds one page imported twice: same title, same ingredients", () => {
+    const salad = ["linsen", "oliven", "salami", "mozzarella", "tomaten"];
     const pairs = findDuplicates([
-      candidate("a", { title: "Linsensalat", sourceBook: "B", sourcePage: 88 }),
-      candidate("b", { title: "Rustikaler Linsensalat", sourceBook: "B", sourcePage: 88 }),
-      candidate("c", { title: "Linsensalat" }),
+      candidate("a", { title: "Linsensalat", sourceBook: "B", sourcePage: 88, ingredients: salad }),
+      candidate("b", {
+        title: "Rustikaler Linsensalat",
+        sourceBook: "B",
+        sourcePage: 88,
+        ingredients: salad,
+      }),
     ]);
-    expect(pairs[0]).toMatchObject({ a: "a", b: "b", samePage: true, score: 1 });
-    expect(pairs.map((pair) => pairKey(pair.a, pair.b))).toContain("a|c");
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]).toMatchObject({ a: "a", b: "b", samePage: true });
+  });
+
+  it("keeps variants apart whose titles name an ingredient only one has", () => {
+    const base = ["couscous", "bruehe", "zwiebeln", "paprika", "gurke", "minze"];
+    const names = ["Instant-Couscous", "Gemüsebrühe", "rote Zwiebeln", "Paprika", "Gurke", "Minze"];
+    expect(
+      findDuplicates([
+        candidate("a", {
+          title: "Couscoussalat mit Chili-Garnelen",
+          ingredients: [...base, "garnelen"],
+          names: [...names, "Garnelen"],
+        }),
+        candidate("b", {
+          title: "Couscoussalat mit Kichererbsen",
+          ingredients: [...base, "kichererbsen"],
+          names: [...names, "Kichererbsen"],
+        }),
+      ]),
+    ).toEqual([]);
   });
 
   it("leaves out pairs the household keeps both of", () => {
@@ -108,15 +155,21 @@ describe("findDuplicates", () => {
   });
 });
 
-describe("preferredToKeep", () => {
-  const side = { isFavorite: false, planned: 0, lines: 5, addedOn: "2026-10-01" };
+describe("keepReason", () => {
+  const side = { isFavorite: false, planned: 0 };
 
-  it("keeps the one that was planned, then the favourite, then the fuller one, then the older", () => {
-    expect(preferredToKeep({ ...side, id: "a" }, { ...side, id: "b", planned: 2 })).toBe("b");
-    expect(preferredToKeep({ ...side, id: "a", isFavorite: true }, { ...side, id: "b" })).toBe("a");
-    expect(preferredToKeep({ ...side, id: "a" }, { ...side, id: "b", lines: 9 })).toBe("b");
-    expect(preferredToKeep({ ...side, id: "a", addedOn: "2026-10-05" }, { ...side, id: "b" })).toBe(
-      "b",
-    );
+  it("names the one that was planned more often, then the favourite", () => {
+    expect(keepReason({ ...side, id: "a" }, { ...side, id: "b", planned: 2 })).toEqual({
+      id: "b",
+      reason: "Öfter geplant",
+    });
+    expect(keepReason({ ...side, id: "a", isFavorite: true }, { ...side, id: "b" })).toEqual({
+      id: "a",
+      reason: "Favorit",
+    });
+  });
+
+  it("names none where nothing speaks for one", () => {
+    expect(keepReason({ ...side, id: "a" }, { ...side, id: "b" })).toBeNull();
   });
 });
