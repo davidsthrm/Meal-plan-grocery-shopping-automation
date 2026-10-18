@@ -1665,10 +1665,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      leave_household: { Args: never; Returns: undefined }
       merge_recipes: {
         Args: { drop_id: string; keep_id: string }
         Returns: undefined
       }
+      remove_household_member: { Args: { member: string }; Returns: undefined }
       tick_shopping_line: {
         Args: {
           list_id: string

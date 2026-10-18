@@ -3,8 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Runs before every page: keeps the login session fresh and sends anyone who is not signed
- * in to the login page. Nothing in this app is public except that page and the page an
- * invitation link leads to, which shows nothing without the secret in its address.
+ * in to the login page. Nothing in this app is public except that page, the page an
+ * invitation link leads to, which shows nothing without the secret in its address, and the
+ * two pages of a forgotten password, which show nothing of a household.
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -33,10 +34,13 @@ export async function proxy(request: NextRequest) {
   // Verifies the session token. The cookie alone proves nothing: anyone can forge one.
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims);
-  const onLoginPage = request.nextUrl.pathname === "/login";
-  const onInvitation = request.nextUrl.pathname.startsWith("/einladung/");
+  const path = request.nextUrl.pathname;
+  const onLoginPage = path === "/login";
+  const onInvitation = path.startsWith("/einladung/");
+  // Asking for a new password, and the link from that e-mail, which signs in.
+  const onPasswordReset = path === "/passwort-vergessen" || path === "/auth/bestaetigen";
 
-  if (!signedIn && !onLoginPage && !onInvitation) {
+  if (!signedIn && !onLoginPage && !onInvitation && !onPasswordReset) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

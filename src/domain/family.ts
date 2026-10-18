@@ -37,13 +37,45 @@ export function readJoin(input: Record<keyof JoinInput, string>): {
   };
   const errors: JoinErrors = {};
   if (value.name === "") errors.name = "Bitte einen Namen eingeben.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) {
-    errors.email = "Das ist keine E-Mail-Adresse.";
-  }
+  if (readEmail(value.email) === null) errors.email = "Das ist keine E-Mail-Adresse.";
   if (value.password.length < PASSWORD_LENGTH) {
     errors.password = `Das Passwort braucht mindestens ${PASSWORD_LENGTH} Zeichen.`;
   }
   return { value: Object.keys(errors).length === 0 ? value : null, errors };
+}
+
+/**
+ * A new password as it is typed twice, or what is wrong with it: the messages the form
+ * shows. Used when a member changes their password and after "Passwort vergessen".
+ */
+export function readNewPassword(password: string, repeated: string): string | null {
+  if (password.length < PASSWORD_LENGTH) {
+    return `Das neue Passwort braucht mindestens ${PASSWORD_LENGTH} Zeichen.`;
+  }
+  if (password !== repeated) return "Die beiden Passwörter sind nicht gleich.";
+  return null;
+}
+
+/** An e-mail address as it is typed into a form, or null for anything that is none. */
+export function readEmail(text: string): string | null {
+  const email = text.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
+
+/** A household has one admin, whoever made it. Everyone else is a member. */
+export type Role = "admin" | "member";
+
+/**
+ * Whether someone can leave their household: everyone but the admin, who would leave nobody
+ * behind to look after the members.
+ */
+export function canLeave(role: Role): boolean {
+  return role === "member";
+}
+
+/** Whether the one looking at the family can remove a member of it: the admin, anyone else. */
+export function canRemove(viewer: Role, member: { isSelf: boolean }): boolean {
+  return viewer === "admin" && !member.isSelf;
 }
 
 /** Whether an invitation still works on a day: not used, and not older than it may be. */

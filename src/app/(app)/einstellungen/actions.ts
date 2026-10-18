@@ -3,12 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { readName } from "@/domain/family";
+import { readName, readNewPassword } from "@/domain/family";
 import { withAdded, withMain, without } from "@/domain/shopping-list/supermarkets";
 import { readPostalCode } from "@/domain/supermarket-search";
 import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
 import { requireHousehold, type Household } from "@/server/auth";
-import { createInvite, renameSelf, withdrawInvite } from "@/server/family";
+import {
+  createInvite,
+  leaveHousehold,
+  removeMember,
+  renameSelf,
+  withdrawInvite,
+} from "@/server/family";
+import { changePassword } from "@/server/password";
 import { loadSupermarkets } from "@/server/catalog";
 import {
   renameHousehold,
@@ -84,6 +91,48 @@ export async function withdrawInvitation(form: FormData): Promise<void> {
   await requireHousehold();
   await withdrawInvite(await createSessionClient(), id);
   back("familie");
+}
+
+/**
+ * The admin removes a member. The account stays; it no longer sees anything of the
+ * household. The database checks that the one asking is the admin.
+ */
+export async function removeFamilyMember(form: FormData): Promise<void> {
+  const id = z.guid().parse(form.get("id"));
+  await requireHousehold();
+  await removeMember(await createSessionClient(), id);
+  back("familie");
+}
+
+/**
+ * The signed-in member leaves the household and is signed out: the account has nothing to
+ * show any more. The form is marked as a sign-out, so the device forgets the notes kept
+ * for the shop and the ticks not sent yet.
+ */
+export async function leaveFamily(): Promise<void> {
+  await requireHousehold();
+  const db = await createSessionClient();
+  await leaveHousehold(db);
+  await db.auth.signOut();
+  redirect("/login?verlassen=1");
+}
+
+export interface PasswordChange {
+  error: string | null;
+  done: boolean;
+}
+
+/** Changes the signed-in member's password, once the one they have now is right. */
+export async function changeOwnPassword(
+  _previous: PasswordChange,
+  form: FormData,
+): Promise<PasswordChange> {
+  await requireHousehold();
+  const next = String(form.get("password") ?? "");
+  const wrong = readNewPassword(next, String(form.get("repeated") ?? ""));
+  if (wrong) return { error: wrong, done: false };
+  const failed = await changePassword(String(form.get("current") ?? ""), next);
+  return { error: failed, done: failed === null };
 }
 
 /** Back to the page of what is usually at home, with the search that was open. */

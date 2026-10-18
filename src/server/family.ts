@@ -1,9 +1,18 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import { INVITE_DAYS, inviteIsOpen, type JoinErrors, type JoinInput } from "@/domain/family";
+import {
+  INVITE_DAYS,
+  inviteIsOpen,
+  type JoinErrors,
+  type JoinInput,
+  type Role,
+} from "@/domain/family";
 import type { Household } from "./auth";
 import { must, type Db } from "./catalog";
+import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "./supabase/admin";
+import type { Database } from "./supabase/database.types";
+import { supabasePublishableKey, supabaseUrl } from "./supabase/env";
 
 /**
  * The people of a household, and the invitations that bring in more of them. Accounts are
@@ -15,6 +24,7 @@ export interface Member {
   userId: string;
   /** How the household calls them. Null until they said. */
   name: string | null;
+  role: Role;
   isSelf: boolean;
 }
 
@@ -27,15 +37,31 @@ export async function loadMembers(db: Db, household: Pick<Household, "userId">):
   const rows = must(
     await db
       .from("household_member")
-      .select("user_id, display_name, created_at")
+      .select("user_id, display_name, role, created_at")
       .order("created_at"),
     "load members",
   );
   return rows.map((row) => ({
     userId: row.user_id,
     name: row.display_name,
+    role: row.role,
     isSelf: row.user_id === household.userId,
   }));
+}
+
+/**
+ * The signed-in member leaves the household. Only the membership goes: the account stays and
+ * sees nothing any more. The database refuses the admin (`leave_household`).
+ */
+export async function leaveHousehold(db: Db): Promise<void> {
+  const left = await db.rpc("leave_household");
+  if (left.error) throw new Error(`leave household: ${left.error.message}`);
+}
+
+/** The admin removes another member from the household (`remove_household_member`). */
+export async function removeMember(db: Db, userId: string): Promise<void> {
+  const removed = await db.rpc("remove_household_member", { member: userId });
+  if (removed.error) throw new Error(`remove member: ${removed.error.message}`);
 }
 
 /**
@@ -125,8 +151,9 @@ export async function findInvite(
 
 /**
  * Uses an invitation: makes an account for whoever holds it and puts it into the household.
- * The invitation is taken first, so that it works once however many requests arrive, and is
- * given back if the account cannot be made.
+ * An account that belongs to no household (it left one, or was removed) joins with its own
+ * password instead. The invitation is taken first, so that it works once however many
+ * requests arrive, and is given back if nobody joins.
  */
 export async function acceptInvite(token: string, input: JoinInput): Promise<JoinErrors | null> {
   const invite = await findInvite(token);
@@ -142,6 +169,9 @@ export async function acceptInvite(token: string, input: JoinInput): Promise<Joi
   if (taken.error || taken.data.length === 0) return gone;
   const giveBack = () =>
     admin.from("household_invite").update({ used_at: null }).eq("id", invite.id);
+  const failed = {
+    invite: "Das Konto konnte nicht angelegt werden. Bitte versuche es noch einmal.",
+  };
 
   const created = await admin.auth.admin.createUser({
     email: input.email,
@@ -150,14 +180,19 @@ export async function acceptInvite(token: string, input: JoinInput): Promise<Joi
     email_confirm: true,
     user_metadata: { name: input.name },
   });
-  if (created.error || !created.data.user) {
+  let userId = created.data.user?.id ?? null;
+  const known = created.error?.code === "email_exists" || created.error?.status === 422;
+  if (!userId && known) {
+    const existing = await accountWithoutHousehold(input);
+    if (typeof existing !== "string") {
+      await giveBack();
+      return existing;
+    }
+    userId = existing;
+  } else if (!userId) {
     await giveBack();
-    const known = created.error?.code === "email_exists" || created.error?.status === 422;
-    return known
-      ? { email: "Für diese E-Mail gibt es schon ein Konto. Melde dich damit an." }
-      : { invite: "Das Konto konnte nicht angelegt werden. Bitte versuche es noch einmal." };
+    return failed;
   }
-  const userId = created.data.user.id;
   const joined = await admin.from("household_member").insert({
     household_id: invite.householdId,
     user_id: userId,
@@ -165,11 +200,42 @@ export async function acceptInvite(token: string, input: JoinInput): Promise<Joi
     display_name: input.name,
   });
   if (joined.error) {
-    // No account without a household: it could sign in and would see nothing.
-    await admin.auth.admin.deleteUser(userId);
+    // No new account without a household: it could sign in and would see nothing.
+    if (!known) await admin.auth.admin.deleteUser(userId);
     await giveBack();
-    return { invite: "Das Konto konnte nicht angelegt werden. Bitte versuche es noch einmal." };
+    return failed;
   }
   await admin.from("household_invite").update({ used_by: userId }).eq("id", invite.id);
   return null;
+}
+
+/**
+ * The account of an address that has one, when the password is its own and it belongs to
+ * no household: it may use the invitation. Answers its id, or what the form says instead.
+ * The password is checked by signing in on a client of its own, which keeps no session.
+ */
+async function accountWithoutHousehold(input: JoinInput): Promise<string | JoinErrors> {
+  const check = createClient<Database>(supabaseUrl(), supabasePublishableKey(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const signedIn = await check.auth.signInWithPassword({
+    email: input.email,
+    password: input.password,
+  });
+  const userId = signedIn.data.user?.id;
+  if (!userId) {
+    return {
+      email:
+        "Für diese E-Mail gibt es schon ein Konto. Gib sein Passwort ein, um damit dazuzukommen.",
+    };
+  }
+  // Only the session made for this check ends; the account's others stay.
+  await check.auth.signOut({ scope: "local" });
+  const { data: member } = await createAdminClient()
+    .from("household_member")
+    .select("household_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (member) return { email: "Dieses Konto gehört schon zu einem Haushalt. Melde dich damit an." };
+  return userId;
 }

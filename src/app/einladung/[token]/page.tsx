@@ -14,11 +14,13 @@ export const metadata: Metadata = { title: "Einladung", robots: { index: false }
  */
 export default async function InvitePage(props: PageProps<"/einladung/[token]">) {
   const { token } = await props.params;
-  const [invite, session] = await Promise.all([
+  const db = await createSessionClient();
+  const [invite, membership] = await Promise.all([
     findInvite(token),
-    (await createSessionClient()).auth.getClaims(),
+    db.from("household_member").select("household_id").limit(1),
   ]);
-  const signedIn = Boolean(session.data?.claims);
+  // Signed in and in a household. An account without one may use the invitation.
+  const signedIn = (membership.data ?? []).length > 0;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6">
@@ -30,7 +32,7 @@ export default async function InvitePage(props: PageProps<"/einladung/[token]">)
         <>
           <p className="mt-3 text-muted">
             Du bist schon angemeldet und gehörst zu einem Haushalt. Eine Einladung ist für jemanden,
-            der noch kein Konto hat.
+            der noch zu keinem gehört.
           </p>
           <Link href="/" className="btn btn-primary mt-6">
             Zum Wochenplan

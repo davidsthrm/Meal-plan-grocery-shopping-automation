@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { CopyLink } from "@/components/copy-link";
 import { DrugstoreDayField, ShoppingDaysFields } from "@/components/shopping-days-fields";
 import { SubmitButton } from "@/components/submit-button";
-import { INVITE_DAYS } from "@/domain/family";
+import { canLeave, canRemove, INVITE_DAYS } from "@/domain/family";
 import { BALANCE_GROUPS } from "@/domain/recommend/balance";
 import { PLACE_NAME } from "@/lib/list-text";
 import { GROUP_NAME, targetText } from "@/lib/plan-text";
@@ -12,15 +11,19 @@ import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import { requireHousehold } from "@/server/auth";
 import { loadCatalogIndex, must } from "@/server/catalog";
 import { loadInvites, loadMembers } from "@/server/family";
+import { requestOrigin } from "@/server/origin";
 import { createSessionClient } from "@/server/supabase/server";
 import {
   inviteMember,
+  leaveFamily,
+  removeFamilyMember,
   saveFreshPlaces,
   saveHouseholdName,
   saveName,
   saveShoppingDays,
   withdrawInvitation,
 } from "./actions";
+import { PasswordForm } from "./password-form";
 import { PantryTile, SupermarketsCard } from "./shop-settings";
 
 export const metadata: Metadata = { title: "Einstellungen" };
@@ -36,11 +39,11 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
   const params = await props.searchParams;
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const [groups, members, invites, address, index] = await Promise.all([
+  const [groups, members, invites, origin, index] = await Promise.all([
     db.from("aisle_group").select("id, name, fresh_place").order("sort_order"),
     loadMembers(db, household),
     loadInvites(db),
-    headers(),
+    requestOrigin(),
     loadCatalogIndex(db),
   ]);
   const supermarkets = favouriteSupermarkets(index.catalog.shops);
@@ -48,9 +51,13 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
   const aisles = must(groups, "load aisle groups");
   const said = one(params.ok);
   const token = one(params.einladung);
-  const host = address.get("x-forwarded-host") ?? address.get("host");
-  const origin = `${address.get("x-forwarded-proto") ?? "http"}://${host}`;
   const self = members.find((member) => member.isSelf);
+  const role = self?.role ?? "member";
+  // Asked before it is done: whom to remove, or whether to leave.
+  const removing = members.find(
+    (member) => member.userId === one(params.entfernen) && canRemove(role, member),
+  );
+  const leaving = one(params.verlassen) === "1" && canLeave(role);
   const fresh = (place: "market" | "butcher" | "bakery") =>
     aisles
       .filter((group) => group.fresh_place === place)
@@ -160,11 +167,48 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
             <ul className="mt-3 divide-y divide-line">
               {members.map((member) => (
                 <li key={member.userId} className="flex items-center justify-between gap-3 py-2">
-                  <span className="font-semibold">{member.name ?? "Ohne Namen"}</span>
-                  {member.isSelf && <span className="text-sm text-muted">das bist du</span>}
+                  <span>
+                    <span className="font-semibold">{member.name ?? "Ohne Namen"}</span>
+                    <span className="block text-sm text-muted">
+                      {[
+                        member.isSelf ? "das bist du" : null,
+                        member.role === "admin" ? "verwaltet den Haushalt" : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                  {canRemove(role, member) && (
+                    <Link
+                      href={`/einstellungen?entfernen=${member.userId}#familie`}
+                      className="link min-h-10 text-sm"
+                    >
+                      Entfernen
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
+            {removing && (
+              <div role="alertdialog" className="mt-2 rounded-lg bg-warn-soft p-3">
+                <p className="font-semibold text-warn">
+                  {removing.name ?? "Dieses Mitglied"} aus dem Haushalt entfernen?
+                </p>
+                <p className="mt-1 text-sm">
+                  Das Konto bleibt bestehen, sieht aber nichts mehr von Plan, Zetteln und Rezepten.
+                  Mit einer neuen Einladung kommt es wieder dazu.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <form action={removeFamilyMember}>
+                    <input type="hidden" name="id" value={removing.userId} />
+                    <SubmitButton className="btn btn-danger">Entfernen</SubmitButton>
+                  </form>
+                  <Link href="/einstellungen#familie" className="link">
+                    Abbrechen
+                  </Link>
+                </div>
+              </div>
+            )}
             <form action={saveName} className="mt-2 flex items-end gap-2">
               <label className="flex-1">
                 <span className="label">Dein Name</span>
@@ -209,6 +253,32 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
                   </li>
                 ))}
               </ul>
+            )}
+
+            <h3 className="mt-5 font-semibold">Dein Passwort</h3>
+            <PasswordForm />
+
+            {canLeave(role) && !leaving && (
+              <Link href="/einstellungen?verlassen=1#familie" className="link mt-5 inline-block">
+                Haushalt verlassen
+              </Link>
+            )}
+            {leaving && (
+              <div role="alertdialog" className="mt-5 rounded-lg bg-warn-soft p-3">
+                <p className="font-semibold text-warn">Den Haushalt verlassen?</p>
+                <p className="mt-1 text-sm">
+                  Du siehst danach nichts mehr von Plan, Zetteln und Rezepten und wirst abgemeldet.
+                  Mit einer neuen Einladung kommst du wieder dazu.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <form action={leaveFamily} data-sign-out>
+                    <SubmitButton className="btn btn-danger">Verlassen</SubmitButton>
+                  </form>
+                  <Link href="/einstellungen#familie" className="link">
+                    Abbrechen
+                  </Link>
+                </div>
+              </div>
             )}
           </section>
           <section className="card scroll-mt-4 p-4" aria-labelledby="frisch">
