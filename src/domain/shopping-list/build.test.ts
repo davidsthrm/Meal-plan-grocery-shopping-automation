@@ -788,6 +788,27 @@ describe("several errands", () => {
     expect(cream.contributions.map((part) => part.origin)).toEqual([monday, friday]);
   });
 
+  it("buys what was planned after an errand was done on the next one in time", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const shopped = Date.parse("2026-10-12T15:00:00Z");
+    const planned = (date: string, plannedAt: number): PlanSlot => ({
+      ...slot(date, "suppe"),
+      items: [{ recipeId: "suppe", servings: 4, plannedOn: MONDAY, plannedAt }],
+    });
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [soup],
+      // Wednesday's soup was planned before the shopping, Saturday's after it.
+      slots: [planned("2026-10-14", shopped - 1000), planned(SATURDAY, shopped + 1000)],
+      trips,
+      doneAt: new Map([[`${MONDAY}.supermarket`, shopped]]),
+    });
+    expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
+    expect(on(lines, `${FRIDAY}.supermarket`)).toEqual(["sahne@main"]);
+    const friday = lines.find((entry) => entry.shoppingDate === FRIDAY)!;
+    expect(friday.contributions[0].plannedAt).toBe(shopped + 1000);
+  });
+
   it("knows the notes the parts of a moved line came from", () => {
     const soup = recipe("suppe", [line("sahne", 200, "ml")]);
     const moves = new Map([

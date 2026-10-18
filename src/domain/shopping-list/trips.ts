@@ -217,6 +217,11 @@ export interface Need {
   date: IsoDate;
   /** The day it was put on the plan. An errand before that cannot have bought it. */
   plannedOn?: IsoDate | null;
+  /**
+   * The moment it was put on the plan, in milliseconds: an errand that was done before it,
+   * on that day too, has not bought it (`ErrandRules.doneAt`).
+   */
+  plannedAt?: number | null;
   /** Eaten at midday: an errand in the afternoon of that day comes too late for it. */
   lunch?: boolean;
   /** Where its kind of grocery is bought fresh. Null: at the supermarket. */
@@ -266,6 +271,7 @@ export function assignTrip(
   const known: Required<ErrandRules> = {
     onDemand: rules.onDemand ?? ON_DEMAND_PLACES,
     butcherDays: rules.butcherDays ?? [],
+    doneAt: rules.doneAt ?? new Map(),
   };
   if (beforeTheErrands(need)) {
     const earlier = trips.filter((trip) => trip.date < need.date);
@@ -284,6 +290,11 @@ export interface ErrandRules {
   onDemand?: readonly Place[];
   /** The weekdays the butcher is gone to on (`butcherWeekdays`). Without any: for each meal. */
   butcherDays?: readonly number[];
+  /**
+   * The errands that are done, by note (`noteId`), with the moment of their last tick in
+   * milliseconds. What was planned after that is not bought on them.
+   */
+  doneAt?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -293,20 +304,28 @@ export interface ErrandRules {
 function assignOn(
   need: Need,
   trips: readonly ShoppingTrip[],
-  { onDemand, butcherDays }: Required<ErrandRules>,
+  { onDemand, butcherDays, doneAt }: Required<ErrandRules>,
   strict: boolean,
 ): Assignment | null {
   const keeps = (trip: ShoppingTrip) =>
     need.shelfLifeDays === null || daysBetween(trip.date, need.date) <= need.shelfLifeDays;
   const before = (place: Place) =>
     trips.filter((trip) => trip.place === place && trip.date <= need.date);
+  // Done before the need was planned: that errand did not buy it.
+  const doneBefore = (trip: ShoppingTrip) => {
+    const done = doneAt.get(noteId(trip));
+    return done !== undefined && need.plannedAt != null && need.plannedAt > done;
+  };
   const inTime = (candidates: ShoppingTrip[]) =>
-    candidates.filter((trip) => !need.plannedOn || trip.date >= need.plannedOn);
+    candidates.filter(
+      (trip) => (!need.plannedOn || trip.date >= need.plannedOn) && !doneBefore(trip),
+    );
 
   const named = need.at && need.at !== "supermarket" ? need.at : null;
   const elsewhere = named ?? need.fresh;
   if (elsewhere && onDemand.includes(elsewhere)) {
-    const bundled = elsewhere === "butcher" ? butcherDay(need, butcherDays, strict) : null;
+    const day = elsewhere === "butcher" ? butcherDay(need, butcherDays, strict) : null;
+    const bundled = day && !doneBefore({ date: day, place: "butcher" }) ? day : null;
     if (strict && !bundled) return null;
     return { date: bundled ?? onDemandDay(need), place: elsewhere, trip: "main" };
   }

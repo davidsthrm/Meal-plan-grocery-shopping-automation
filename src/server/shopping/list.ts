@@ -18,6 +18,7 @@ import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import {
   completion,
   extrasToBuy,
+  notesOf,
   notesOfWeek,
   type LineTick,
 } from "@/domain/shopping-list/week-notes";
@@ -27,7 +28,7 @@ import {
   tripsBetween,
   type ShoppingTrip,
 } from "@/domain/shopping-list/trips";
-import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
+import type { LineState, ManualEntry, ShoppingLine } from "@/domain/shopping-list/types";
 import type { Amount } from "@/domain/units";
 import { today } from "@/lib/today";
 import type { Household } from "../auth";
@@ -312,7 +313,7 @@ export async function loadShoppingNotes(
           carriedOver(await earlierDrugstoreEntries(db, now), now),
         )
       : [...drugstore.values()];
-  const lines = [
+  const build = (doneAt?: ReadonlyMap<string, number>) => [
     ...buildShoppingList({
       index,
       recipes,
@@ -320,6 +321,7 @@ export async function loadShoppingNotes(
       extras,
       trips,
       butcherDays: butcherWeekdays(household.shoppingDays),
+      doneAt,
       // The week's first trip to the supermarket.
       extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
       manualEntries: entries,
@@ -329,8 +331,27 @@ export async function loadShoppingNotes(
       drugstoreLines(note.entries, note.trip, index.catalog.defaultShopId),
     ),
   ];
-  const linesOf = (trip: ShoppingTrip) =>
-    lines.filter((line) => line.shoppingDate === trip.date && line.place === trip.place);
+  const viewOf = (trip: ShoppingTrip, all: readonly ShoppingLine[]) => {
+    const own = all.filter((line) => line.shoppingDate === trip.date && line.place === trip.place);
+    const state = states.get(noteId(trip)) ?? {};
+    return trip.place === "drugstore"
+      ? presentDrugstore(own, state)
+      : presentByAisle(own, state, index);
+  };
+  const finishedOf = (trip: ShoppingTrip, view: AisleView) =>
+    completion(
+      view.groups.flatMap((group) => group.lines),
+      (key) => ticks.get(`${noteId(trip)}|${key}`),
+    );
+  // An errand that is done has not bought what was planned after it: the lines are worked
+  // out once more with that known, and such a meal goes to an errand still to come.
+  const first = build();
+  const doneAt = new Map<string, number>();
+  for (const trip of notesOf(first)) {
+    const finished = finishedOf(trip, viewOf(trip, first));
+    if (finished) doneAt.set(noteId(trip), finished.at);
+  }
+  const lines = doneAt.size > 0 ? build(doneAt) : first;
   const nameOf = new Map(
     must(memberRows, "load members").map((member) => [member.user_id, member.display_name]),
   );
@@ -338,14 +359,11 @@ export async function loadShoppingNotes(
   const atHome: WeekNotes["atHome"] = [];
   const notes = notesOfWeek(lines, trips, weekStart).map((trip): NoteList => {
     const id = noteId(trip);
-    const view =
-      trip.place === "drugstore"
-        ? presentDrugstore(linesOf(trip), states.get(id) ?? {})
-        : presentByAisle(linesOf(trip), states.get(id) ?? {}, index);
+    const view = viewOf(trip, lines);
     atHome.push(...view.atHome.map((line) => ({ trip, line })));
     const toBuy = view.groups.flatMap((group) => group.lines);
     const done = toBuy.filter((line) => line.checked).length;
-    const finished = completion(toBuy, (key) => ticks.get(`${id}|${key}`));
+    const finished = finishedOf(trip, view);
     return {
       trip,
       id,

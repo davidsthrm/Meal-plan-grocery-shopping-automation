@@ -1,7 +1,7 @@
 import type { CatalogIndex, Ingredient, Place } from "../catalog";
 import { nameForOne, normalizeName } from "../catalog";
 import type { IsoDate } from "../dates";
-import { cookedServings, type PlanExtra, type PlanSlot } from "../plan";
+import { cookedServings, type PlanExtra, type PlanSlot, type SlotItem } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
 import {
   baseUnitOf,
@@ -50,6 +50,9 @@ export interface BuildInput extends ErrandRules {
 export function partKey(lineKey: string): string {
   return lineKey.replace(/#\w+$/, "");
 }
+
+/** When something was put on the plan: the day, and the moment where that is known. */
+type Planned = Pick<SlotItem, "plannedOn" | "plannedAt">;
 
 /** How a moved line is looked up: by the note it would be on by itself, and its key. */
 export function moveKey(origin: ShoppingTrip, lineKey: string): string {
@@ -300,14 +303,15 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
   const errandFor = (
     ingredient: Ingredient | undefined,
     date: IsoDate,
-    plannedOn: IsoDate | null | undefined,
+    planned: Planned,
     lunch: boolean,
     shopId?: string | null,
   ): Assignment =>
     assignTrip(
       {
         date,
-        plannedOn,
+        plannedOn: planned.plannedOn,
+        plannedAt: planned.plannedAt,
         lunch,
         fresh: ingredient
           ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
@@ -317,7 +321,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         shelfLifeDays: ingredient?.shelfLifeDays ?? null,
       },
       trips,
-      { onDemand: input.onDemand, butcherDays: input.butcherDays },
+      { onDemand: input.onDemand, butcherDays: input.butcherDays, doneAt: input.doneAt },
     ) as Assignment;
 
   /** Where a line ends up: on its own note, or on the one the household moved it to. */
@@ -418,22 +422,24 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     servings: number,
     source: ContributionSource,
     date: IsoDate | null,
-    plannedOn?: IsoDate | null,
+    planned: Planned,
   ) => {
     const factor = scaleFactor(recipe.servings, servings);
+    const plannedAt = planned.plannedAt ?? null;
     for (const line of recipe.ingredients) {
       if (line.alternativeTo !== null) continue;
       const ingredient = line.ingredientId
         ? index.ingredientById.get(line.ingredientId)
         : undefined;
       const lunch = source.type === "recipe" && source.meal === "lunch";
-      const on = date ? errandFor(ingredient, date, plannedOn, lunch) : extrasOn;
+      const on = date ? errandFor(ingredient, date, planned, lunch) : extrasOn;
       if (!ingredient) {
         const contribution = {
           source,
           amount: null,
           originalText: line.originalText,
           optional: line.optional,
+          plannedAt,
         };
         addLoose(
           `unmapped:${normalizeName(line.originalText)}`,
@@ -448,6 +454,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         source,
         amount: base && { quantity: tidy(base.quantity * factor), unit: base.unit },
         originalText: line.originalText,
+        plannedAt,
         optional: line.optional,
       });
     }
@@ -468,7 +475,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         };
         // Extra portions for leftovers are bought with the meal ("Mehr kochen").
         const servings = cookedServings(item.servings, slot.extra, recipe.servings.unit === null);
-        addRecipe(recipe, servings, source, slot.date, item.plannedOn);
+        addRecipe(recipe, servings, source, slot.date, item);
       }
     }
     // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".
@@ -491,14 +498,9 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
               : null,
           originalText: food.label,
           optional: false,
+          plannedAt: food.plannedAt ?? null,
         };
-        const on = errandFor(
-          ingredient,
-          slot.date,
-          food.plannedOn,
-          slot.meal === "lunch",
-          food.shopId,
-        );
+        const on = errandFor(ingredient, slot.date, food, slot.meal === "lunch", food.shopId);
         if (ingredient) {
           add(ingredient, on, contribution, undefined, food.shopId);
         } else {
@@ -525,7 +527,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       date: extra.date ?? null,
     };
     // An extra for a day is bought for that day, exactly like a meal on it.
-    addRecipe(recipe, extra.servings, source, extra.date ?? null, extra.plannedOn);
+    addRecipe(recipe, extra.servings, source, extra.date ?? null, extra);
   }
 
   for (const entry of input.manualEntries ?? []) {

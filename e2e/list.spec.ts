@@ -174,6 +174,25 @@ test("the week becomes a note for every errand, to pick up and work through", as
   }
 });
 
+test("a meal planned after the shopping leaves the errand done", async ({ page }) => {
+  await page.goto(`/woche?w=${WEEK}`);
+  await plan(page, "Montag Abend", "Kartoffelsuppe");
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await tile(page, MONDAY).click();
+  await expect(sheet(page, MONDAY)).toContainText("Sahne");
+  await page.getByRole("button", { name: "Einkauf erledigt" }).click();
+  await expect(sheet(page, MONDAY).getByRole("status")).toContainText("Erledigt");
+  // Back home, the soup is planned for Wednesday too. Monday's errand has not bought its
+  // cream, and Monday stays done. The week lies ahead, so the Friday before it is still to
+  // come and buys it.
+  await page.goto(`/woche?w=${WEEK}`);
+  await plan(page, "Mittwoch Abend", "Kartoffelsuppe");
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await expect(tile(page, MONDAY)).toContainText("Erledigt");
+  await expect(tile(page, MONDAY)).toContainText("0 offen, 1 erledigt");
+  await expect(tile(page, "Supermarkt, Freitag, 26. Februar")).toContainText("Sahne");
+});
+
 test("the drugstore's note is written by hand: what, how many, for whom", async ({ page }) => {
   await page.goto(`/einkauf?w=${WEEK}`);
   await tile(page, DRUGSTORE).click();

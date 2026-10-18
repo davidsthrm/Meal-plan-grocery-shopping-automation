@@ -25,6 +25,16 @@ export function extrasToBuy(extras: {
   return [...dated(extras.before), ...extras.week, ...dated(extras.after)];
 }
 
+/** The notes lines are on, each once. */
+export function notesOf(lines: readonly ShoppingLine[]): ShoppingTrip[] {
+  const notes = new Map<string, ShoppingTrip>();
+  for (const line of lines) {
+    const trip = { date: line.shoppingDate, place: line.place };
+    notes.set(noteId(trip), trip);
+  }
+  return [...notes.values()];
+}
+
 /**
  * The notes a week shows, in order of day and place: the household's errands in the week,
  * every other day of the week something is bought on (the bakery for a cold supper, a note
@@ -59,18 +69,25 @@ export interface LineTick {
 }
 
 /**
- * Whether an errand is done: everything on its note is ticked. Then the tick made last says
- * who finished it. Null while something is open, and for a note with nothing to buy.
+ * Whether an errand is done: everything on its note is ticked, and then the tick made last
+ * says who finished it and when. What was planned after that moment cannot have been bought
+ * on it and leaves it done (`ErrandRules.doneAt`): a meal planned on a shopping day after
+ * the shopping. Null while anything else is open, and for a note with nothing to buy.
  */
 export function completion(
   toBuy: readonly ViewLine[],
   tickOf: (lineKey: string) => LineTick | undefined,
 ): LineTick | null {
-  if (toBuy.length === 0 || toBuy.some((view) => !view.checked)) return null;
-  const ticks = toBuy.flatMap((view) => tickOf(view.line.key) ?? []);
+  const ticks = toBuy.flatMap((view) => (view.checked ? (tickOf(view.line.key) ?? []) : []));
   const last = ticks.reduce<LineTick | null>(
     (latest, tick) => (latest === null || tick.at > latest.at ? tick : latest),
     null,
   );
-  return last ?? { at: 0, by: null };
+  const open = toBuy.filter((view) => !view.checked);
+  if (toBuy.length === 0 || open.length === toBuy.length) return null;
+  if (last === null) return open.length === 0 ? { at: 0, by: null } : null;
+  const plannedAfter = open.every((view) =>
+    view.line.contributions.every((part) => part.plannedAt != null && part.plannedAt > last.at),
+  );
+  return plannedAfter ? last : null;
 }

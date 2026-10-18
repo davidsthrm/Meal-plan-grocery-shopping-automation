@@ -316,6 +316,36 @@ describe("assignTrip", () => {
     expect(assignTrip(need(SUNDAY, { shelfLifeDays: 1 }), trips)).toEqual(shop(FRIDAY, "later"));
   });
 
+  describe("an errand that is done", () => {
+    // Monday's shopping was done at 17:00; a meal is planned on Monday evening.
+    const SHOPPED = Date.parse("2026-10-12T15:00:00Z");
+    const doneAt = new Map([[noteId({ date: MONDAY, place: "supermarket" }), SHOPPED]]);
+    const after = { plannedOn: MONDAY, plannedAt: SHOPPED + 60_000 };
+    const before = { plannedOn: MONDAY, plannedAt: SHOPPED - 60_000 };
+
+    it("did not buy what was planned after it was done", () => {
+      // Saturday's dinner: Friday's errand is still to come and buys it.
+      expect(assignTrip(need(SATURDAY, after), trips, { doneAt })).toEqual(shop(FRIDAY));
+      // Wednesday's: no errand is left before it, so it is bought shortly before.
+      expect(assignTrip(need(WEDNESDAY, after), trips, { doneAt })).toEqual(shop(MONDAY, "later"));
+    });
+
+    it("bought what was planned before, and what nobody knows the moment of", () => {
+      expect(assignTrip(need(WEDNESDAY, before), trips, { doneAt })).toEqual(shop(MONDAY));
+      expect(assignTrip(need(WEDNESDAY, { plannedOn: MONDAY }), trips, { doneAt })).toEqual(
+        shop(MONDAY),
+      );
+    });
+
+    it("leaves the butcher's visit that was done before the meal was planned", () => {
+      const meat = { fresh: "butcher" as const, ...after };
+      const butcherDone = new Map([[noteId({ date: MONDAY, place: "butcher" }), SHOPPED]]);
+      expect(
+        assignTrip(need(WEDNESDAY, meat), trips, { butcherDays: [1, 5, 6], doneAt: butcherDone }),
+      ).toEqual(butcher(WEDNESDAY));
+    });
+  });
+
   it("does not put on an errand what was planned after it", () => {
     // The week is planned on Sunday: Saturday's market is over.
     const fresh = { fresh: "market" as const, shelfLifeDays: 5, plannedOn: "2026-10-11" };

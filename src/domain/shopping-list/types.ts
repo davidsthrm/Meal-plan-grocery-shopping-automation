@@ -49,6 +49,11 @@ export interface Contribution {
   originalText: string;
   optional: boolean;
   /**
+   * The moment what asks for it was put on the plan, in milliseconds. Null where that is not
+   * known, and for a line typed onto a note.
+   */
+  plannedAt?: number | null;
+  /**
    * The note this would be on by itself: a place on a day. Where it differs from the note
    * of its line, the household moved it there.
    */

@@ -5,7 +5,7 @@ import { buildShoppingList } from "./build";
 import { resolveLine } from "./present";
 import { line, testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS, noteId, tripsBetween } from "./trips";
-import { completion, extrasToBuy, notesOfWeek } from "./week-notes";
+import { completion, extrasToBuy, notesOf, notesOfWeek } from "./week-notes";
 
 const SAT_BEFORE = "2026-10-10";
 const MONDAY = "2026-10-12";
@@ -101,6 +101,14 @@ describe("notesOfWeek", () => {
   });
 });
 
+describe("notesOf", () => {
+  it("names every note lines are on, once", () => {
+    const soup = recipe("suppe", line("sahne", 200, "ml"), line("milch", 500, "ml"));
+    const lines = build([soup], [dinner(MONDAY, "suppe"), dinner(SATURDAY, "suppe")]);
+    expect(notesOf(lines).map(noteId)).toEqual([`${MONDAY}.supermarket`, `${FRIDAY}.supermarket`]);
+  });
+});
+
 describe("completion", () => {
   const lines = build(
     [recipe("suppe", line("sahne", 200, "ml"), line("milch", 500, "ml"))],
@@ -114,6 +122,26 @@ describe("completion", () => {
   it("is done when every line is ticked, by whoever made the last tick", () => {
     const ticked = lines.map((entry) => resolveLine(entry, { checked: true }));
     expect(completion(ticked, (key) => ticks.get(key))).toEqual({ at: 2000, by: "david" });
+  });
+
+  it("stays done when what is open was planned after the last tick", () => {
+    const planned = (at: number) =>
+      lines.map((entry) => ({
+        ...entry,
+        contributions: entry.contributions.map((part) => ({ ...part, plannedAt: at })),
+      }));
+    const cream = (at: number) => [
+      resolveLine(planned(500)[1], { checked: true }),
+      resolveLine(planned(at)[0], { checked: false }),
+    ];
+    expect(completion(cream(3000), (key) => ticks.get(key))).toEqual({ at: 2000, by: "david" });
+    // Planned before the shopping, or at a moment nobody knows: still to buy.
+    expect(completion(cream(1500), (key) => ticks.get(key))).toBeNull();
+    expect(
+      completion([resolveLine(lines[0]), resolveLine(lines[1], { checked: true })], (key) =>
+        ticks.get(key),
+      ),
+    ).toBeNull();
   });
 
   it("is not done while a line is open, nor with nothing to buy", () => {

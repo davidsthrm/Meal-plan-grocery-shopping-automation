@@ -663,6 +663,7 @@ export type Database = {
           ingredient_id: string | null
           label: string
           plan_slot_id: string
+          planned_at: string | null
           planned_on: string | null
           position: number
           shop_id: string | null
@@ -673,6 +674,7 @@ export type Database = {
           ingredient_id?: string | null
           label: string
           plan_slot_id: string
+          planned_at?: string | null
           planned_on?: string | null
           position?: number
           shop_id?: string | null
@@ -683,6 +685,7 @@ export type Database = {
           ingredient_id?: string | null
           label?: string
           plan_slot_id?: string
+          planned_at?: string | null
           planned_on?: string | null
           position?: number
           shop_id?: string | null
@@ -723,6 +726,7 @@ export type Database = {
           household_id: string
           id: string
           plan_slot_id: string
+          planned_at: string | null
           planned_on: string | null
           position: number
           recipe_id: string
@@ -732,6 +736,7 @@ export type Database = {
           household_id: string
           id?: string
           plan_slot_id: string
+          planned_at?: string | null
           planned_on?: string | null
           position?: number
           recipe_id: string
@@ -741,6 +746,7 @@ export type Database = {
           household_id?: string
           id?: string
           plan_slot_id?: string
+          planned_at?: string | null
           planned_on?: string | null
           position?: number
           recipe_id?: string

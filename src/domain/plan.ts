@@ -18,6 +18,11 @@ export interface SlotItem {
    * for it. Not known for meals planned before this was recorded.
    */
   plannedOn?: IsoDate | null;
+  /**
+   * The moment it was put on the meal, in milliseconds: an errand done on that day before
+   * it has not bought for it either. Not known for meals planned before this was recorded.
+   */
+  plannedAt?: number | null;
 }
 
 /**
@@ -52,8 +57,9 @@ export interface SlotFood {
   ingredientId: string | null;
   /** Where it is bought for this meal. Null means where the catalog says. */
   shopId: string | null;
-  /** The day it was added to the meal, as for a recipe. */
+  /** The day and the moment it was added to the meal, as for a recipe. */
   plannedOn?: IsoDate | null;
+  plannedAt?: number | null;
 }
 
 /** A recipe the week needs outside its meals: two cakes for an invitation. */
@@ -67,8 +73,9 @@ export interface PlanExtra {
    * for no day in particular: bought on the week's first supermarket day.
    */
   date?: IsoDate | null;
-  /** The day it was added, as for a recipe on a meal. */
+  /** The day and the moment it was added, as for a recipe on a meal. */
   plannedOn?: IsoDate | null;
+  plannedAt?: number | null;
 }
 
 /**
