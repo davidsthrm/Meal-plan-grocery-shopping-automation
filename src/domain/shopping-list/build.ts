@@ -1,6 +1,6 @@
 import type { CatalogIndex, Ingredient, Place } from "../catalog";
 import { nameForOne, normalizeName } from "../catalog";
-import type { IsoDate } from "../dates";
+import { addDays, mondayOf, type IsoDate } from "../dates";
 import { cookedServings, type PlanExtra, type PlanSlot, type SlotItem } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
 import {
@@ -325,6 +325,28 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       { onDemand: input.onDemand, butcherDays: input.butcherDays, doneAt: input.doneAt },
     ) as Assignment;
 
+  /**
+   * The errand that buys an extra without a day: the week's first supermarket day, unless
+   * that errand was done before the extra was added. Then the week's next supermarket day
+   * that was not, or shortly before, as for a meal.
+   */
+  const extrasErrand = (planned: Planned): Assignment => {
+    const doneBefore = (trip: ShoppingTrip) => {
+      const done = input.doneAt?.get(noteId(trip));
+      return done !== undefined && planned.plannedAt != null && planned.plannedAt > done;
+    };
+    if (!doneBefore(extrasOn)) return extrasOn;
+    const weekEnd = addDays(mondayOf(extrasOn.date), 6);
+    const next = trips.find(
+      (trip) =>
+        trip.place === "supermarket" &&
+        trip.date > extrasOn.date &&
+        trip.date <= weekEnd &&
+        !doneBefore(trip),
+    );
+    return next ? { ...next, trip: "main" } : { ...extrasOn, trip: "later" };
+  };
+
   /** Where a line ends up: on its own note, or on the one the household moved it to. */
   const settle = (on: Assignment, lineKey: string): Assignment => {
     const target = input.moves?.get(moveKey(on, lineKey));
@@ -433,7 +455,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         ? index.ingredientById.get(line.ingredientId)
         : undefined;
       const lunch = source.type === "recipe" && source.meal === "lunch";
-      const on = date ? errandFor(ingredient, date, planned, lunch) : extrasOn;
+      const on = date ? errandFor(ingredient, date, planned, lunch) : extrasErrand(planned);
       if (!ingredient) {
         const contribution = {
           source,

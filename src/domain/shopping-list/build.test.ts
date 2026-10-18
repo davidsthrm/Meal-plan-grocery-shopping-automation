@@ -801,7 +801,10 @@ describe("several errands", () => {
     const soup = recipe("suppe", [line("sahne", 200, "ml")]);
     const shopped = Date.parse("2026-10-12T15:00:00Z");
     const planned = (date: string, plannedAt: number): PlanSlot => ({
-      ...slot(date, "suppe"),
+      id: date,
+      date,
+      meal: "dinner",
+      kind: "recipes",
       items: [{ recipeId: "suppe", servings: 4, plannedOn: MONDAY, plannedAt }],
     });
     const lines = buildShoppingList({
@@ -857,6 +860,23 @@ describe("several errands", () => {
       extrasDate: MONDAY,
     });
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["butter@main"]);
+  });
+
+  it("buys an extra without a day that came after the first errand on the next one", () => {
+    const cake = recipe("kuchen", [line("sahne", 200, "ml")]);
+    const shopped = Date.parse("2026-10-12T15:00:00Z");
+    const extra = (plannedAt: number) =>
+      buildShoppingList({
+        index: testIndex,
+        recipes: [cake],
+        slots: [],
+        extras: [{ recipeId: "kuchen", servings: 4, note: null, plannedOn: MONDAY, plannedAt }],
+        trips,
+        extrasDate: MONDAY,
+        doneAt: new Map([[`${MONDAY}.supermarket`, shopped]]),
+      }).map((entry) => `${entry.shoppingDate}.${entry.place}/${entry.trip}`);
+    expect(extra(shopped - 1000)).toEqual([`${MONDAY}.supermarket/main`]);
+    expect(extra(shopped + 1000)).toEqual([`${FRIDAY}.supermarket/main`]);
   });
 
   it("buys an extra for a day like a meal on that day", () => {
