@@ -315,3 +315,14 @@ test("what one device changes shows on another without reloading", async ({
   await expect(other.getByRole("list", { name: "Zettel" })).toContainText("Hefe");
   await context.close();
 });
+
+test("a note written next to a line stays with it", async ({ page }) => {
+  await page.goto(`/woche?w=${WEEK}`);
+  await plan(page, "Dienstag Abend", "Pfeffersteak");
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await sheet(page, MONDAY).getByText("200 ml Sahne").click();
+  await page.getByLabel("Notiz zu Sahne").fill("Angebot 1,29");
+  await page.getByRole("button", { name: "Merken" }).click();
+  // The note's own field was called like the field naming the note, and the page broke.
+  await expect(sheet(page, MONDAY)).toContainText("Angebot 1,29");
+});
