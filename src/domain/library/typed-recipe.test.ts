@@ -102,6 +102,15 @@ describe("readTypedRecipe", () => {
     expect(lines[3]).toMatchObject({ readName: "Topinambur", originalText: "200 g Topinambur" });
   });
 
+  it("finds an ingredient behind words that only describe it", () => {
+    const result = readTypedRecipe(
+      form({ lines: "1 kleines Bauernbrot\n2 frische Spaghetti\n100 g getrocknete Spaghetti" }),
+      index,
+    );
+    const lines = result.ok ? (result.recipe.lines ?? []) : [];
+    expect(lines.map((entry) => entry.ingredientId)).toEqual(["brot", "spaghetti", null]);
+  });
+
   it("reads several ingredients on one line as several ingredients", () => {
     const result = readTypedRecipe(
       form({ lines: "Salz, Pfeffer\nSalz und Zucker\n2 Zwiebeln, gewürfelt" }),

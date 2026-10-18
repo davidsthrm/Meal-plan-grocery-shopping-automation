@@ -57,7 +57,7 @@ describe("parseFreeEntry", () => {
     });
   });
 
-  it("finds an ingredient named after what describes it", () => {
+  it("finds an ingredient behind the words that only describe it", () => {
     expect(parseFreeEntry("grüne Trauben", testIndex)).toMatchObject({
       ingredient: { id: "weintrauben" },
       label: "Weintrauben",
@@ -75,11 +75,32 @@ describe("parseFreeEntry", () => {
     });
   });
 
-  it("keeps unknown text exactly as typed", () => {
+  it("does not take another product for the one it is made from", () => {
+    expect(parseFreeEntry("getrocknete Tomaten", testIndex).ingredient).toBeNull();
+  });
+
+  it("reads a number in front of unknown text as its amount", () => {
+    expect(parseFreeEntry("4 Ingwer-Shots", testIndex)).toEqual({
+      ingredient: null,
+      label: "Ingwer-Shots",
+      amount: { quantity: 4, unit: "Stück" },
+      note: null,
+    });
+    expect(parseFreeEntry("4x Ingwer-Shots", testIndex)).toMatchObject({
+      label: "Ingwer-Shots",
+      amount: { quantity: 4, unit: "Packung" },
+    });
+    expect(parseFreeEntry("2in1 Shampoo", testIndex)).toMatchObject({
+      label: "2in1 Shampoo",
+      amount: null,
+    });
+  });
+
+  it("keeps unknown text as typed", () => {
     expect(parseFreeEntry("  2 Dosen   Katzenfutter ", testIndex)).toEqual({
       ingredient: null,
-      label: "2 Dosen Katzenfutter",
-      amount: null,
+      label: "Katzenfutter",
+      amount: { quantity: 2, unit: "Dose" },
       note: null,
     });
     expect(parseFreeEntry("Geschenkpapier", testIndex).label).toBe("Geschenkpapier");

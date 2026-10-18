@@ -476,6 +476,9 @@ function Line({
   const origins = [...new Set(line.contributions.map((entry) => noteId(entry.origin ?? note)))];
   const needed = line.trip === "later" ? neededText(view) : "";
   const planned = line.purchase ? formatPurchase(line.purchase) : "ohne Menge";
+  // A line only written by hand has no plan behind it: its amount is what was written.
+  const written = typed.length > 0 && typed.length === line.contributions.length;
+  const origin = written ? "Geschrieben" : "Plan";
   // The amount can be written in the line's own unit and a few common ones.
   const units = [...new Set([...(view.purchase ? [view.purchase.unit] : []), ...AMOUNT_UNITS])];
   const boughtAt = supermarketOf(view, supermarkets);
@@ -496,7 +499,10 @@ function Line({
               {view.text}
               {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
               {view.edited && (
-                <span className="text-sm text-muted print:hidden"> (Plan: {planned})</span>
+                <span className="text-sm text-muted print:hidden">
+                  {" "}
+                  ({origin}: {planned})
+                </span>
               )}
             </span>
           </summary>
@@ -548,7 +554,9 @@ function Line({
                   <form action={amountLine}>
                     {where}
                     <input type="hidden" name="reset" value="1" />
-                    <SubmitButton className="link min-h-9">Wie geplant: {planned}</SubmitButton>
+                    <SubmitButton className="link min-h-9">
+                      {written ? "Wie geschrieben" : "Wie geplant"}: {planned}
+                    </SubmitButton>
                   </form>
                 )}
                 <form action={noteLine} className="flex gap-2">

@@ -3,7 +3,7 @@ import { findIngredient, type CatalogIndex } from "../catalog";
 import type { RecipeIngredient, Servings } from "../recipe";
 import { parseQuantity } from "../quantity";
 import { isUnit, type Unit } from "../units";
-import { mapToCatalog } from "./map-ingredient";
+import { mapDescribed, mapToCatalog } from "./map-ingredient";
 import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "./servings";
 import { readTypedSteps } from "./steps";
 
@@ -117,7 +117,10 @@ export function readReview(
 
     // The catalog name as typed, or the longest part of the printed line that the catalog knows.
     const ingredient =
-      findIngredient(index, name) ?? mapToCatalog(index, { raw: name, name }) ?? null;
+      findIngredient(index, name) ??
+      mapToCatalog(index, { raw: name, name }) ??
+      mapDescribed(index, name) ??
+      null;
     const secondary =
       line.secondary && isUnit(line.secondary.unit)
         ? { ...line.secondary, unit: line.secondary.unit as Unit }

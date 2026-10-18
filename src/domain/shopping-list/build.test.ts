@@ -417,6 +417,16 @@ describe("buildShoppingList", () => {
       });
       expect(lines.get("manual:m2")).toMatchObject({ shopId: "ec", aisleGroupId: "obst" });
     });
+
+    it("buys as many of a free line as the number in front says", () => {
+      const lines = build([], [], [{ id: "m1", text: "4 Ingwer-Shots" }]);
+      expect(lines.get("manual:m1")).toMatchObject({
+        label: "Ingwer-Shots",
+        purchase: { quantity: 4, unit: "Stück" },
+        amounts: [{ quantity: 4, unit: "Stück" }],
+        hasUnquantified: false,
+      });
+    });
   });
 
   it("lists a recipe line that is not mapped to the catalog under its printed text", () => {

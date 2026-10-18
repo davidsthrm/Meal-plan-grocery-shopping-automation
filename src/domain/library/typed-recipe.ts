@@ -1,6 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { DISH_TYPES, PROTEIN_TYPES } from "../import/extraction";
-import { mapToCatalog, splitJoinedName } from "../import/map-ingredient";
+import { mapDescribed, mapToCatalog, splitJoinedName } from "../import/map-ingredient";
 import type { ReviewedLine } from "../import/review-input";
 import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "../import/servings";
 import { readTypedSteps } from "../import/steps";
@@ -162,7 +162,12 @@ export function readTypedRecipe(
         continue;
       }
       lines.push({
-        ingredientId: mapToCatalog(index, { raw: line.name, name: line.name })?.id ?? null,
+        // "kleines Bauernbrot" is bread: words that only describe it are left out for finding.
+        ingredientId:
+          (
+            mapToCatalog(index, { raw: line.name, name: line.name }) ??
+            mapDescribed(index, line.name)
+          )?.id ?? null,
         quantity: line.quantity,
         quantityMax: line.quantityMax,
         unit: line.unit,
