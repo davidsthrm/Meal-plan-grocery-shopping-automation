@@ -194,3 +194,42 @@ test("steps read with a doubt are checked against the photo and taken over", asy
   await page.getByText("Arbeitsschritte · 2").click();
   await expect(page.getByText("Etwa 30 Minuten köcheln lassen.")).toBeVisible();
 });
+
+test("the Arbeitsschritte are changed on the recipe's page, and emptied mean none", async ({
+  page,
+}) => {
+  await page.goto("/rezepte?q=risotto");
+  await page.getByRole("link", { name: /Pilzrisotto/ }).click();
+  await page.getByText("Arbeitsschritte · 3").click();
+  await page.getByRole("link", { name: "Arbeitsschritte ändern" }).click();
+  const field = page.getByLabel("Arbeitsschritte, einer pro Zeile");
+  await expect(field).toHaveValue(/^Pilze putzen/);
+  await field.fill("Pilze putzen.\nReis rühren.");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  // Saved, the steps stand open as they are now.
+  await expect(page.getByText("Reis rühren.")).toBeVisible();
+  await expect(page.getByText("Arbeitsschritte · 2")).toBeVisible();
+  // The way back still leads where the recipe was opened from.
+  await expect(page.getByRole("link", { name: "← Entdecken" })).toBeVisible();
+
+  await page.getByRole("link", { name: "Arbeitsschritte ändern" }).click();
+  await page.getByLabel("Arbeitsschritte, einer pro Zeile").fill("");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("Keine Arbeitsschritte vorhanden.")).toBeVisible();
+
+  // A recipe without steps gets them where it says it has none.
+  await page.getByRole("link", { name: "Eintragen" }).click();
+  await page.getByLabel("Arbeitsschritte, einer pro Zeile").fill("Reis kochen.");
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("Reis kochen.")).toBeVisible();
+});
+
+test("steps that are not on the photo are put away with one tap", async ({ page }) => {
+  await page.goto("/import/pruefen/schritte");
+  await page.getByRole("button", { name: "Keine Arbeitsschritte" }).click();
+  await expect(page.getByText("Alle Arbeitsschritte sind geprüft.")).toBeVisible();
+
+  await page.goto("/rezepte?q=linsen");
+  await page.getByRole("link", { name: /Linsen-Eintopf/ }).click();
+  await expect(page.getByText("Keine Arbeitsschritte vorhanden.")).toBeVisible();
+});

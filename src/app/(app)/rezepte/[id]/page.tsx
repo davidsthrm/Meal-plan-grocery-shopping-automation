@@ -7,7 +7,7 @@ import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
 import type { ProteinType } from "@/domain/library/summary";
 import { weekdayLong } from "@/domain/dates";
-import { GAP } from "@/domain/import/steps";
+import { GAP, STEP_MAX_LENGTH, STEPS_MAX, typedSteps } from "@/domain/import/steps";
 import { TAG_GROUPS } from "@/domain/library/tags";
 import {
   amountText,
@@ -23,7 +23,7 @@ import { MEAL_NAME } from "@/lib/plan-text";
 import { today } from "@/lib/today";
 import { loadLastCooked, loadPlannedAt } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { setFavorite, setWanted } from "../actions";
+import { saveSteps, setFavorite, setWanted } from "../actions";
 
 export const metadata: Metadata = { title: "Rezept" };
 
@@ -82,6 +82,21 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   );
   const source = sourceText(recipe.source_book, recipe.source_page);
   const steps = recipe.prep_steps ?? [];
+  // The address this page was opened with, so that changing the steps keeps the way back.
+  const pageQuery = (extra: Record<string, string> = {}) => {
+    const kept = Object.fromEntries(
+      (["von", "w", "feld"] as const).flatMap((key) => {
+        const value = one(query[key]);
+        return value ? [[key, value]] : [];
+      }),
+    );
+    const search = new URLSearchParams({ ...kept, ...extra }).toString();
+    return search ? `?${search}` : "";
+  };
+  const canEditSteps = recipe.status === "approved";
+  const editingSteps = canEditSteps && one(query.schritte) === "bearbeiten";
+  const stepsFailed = one(query.fehler) === "schritte";
+  const editStepsHref = `/rezepte/${recipe.id}${pageQuery({ schritte: "bearbeiten" })}#arbeitsschritte`;
 
   return (
     <article className="mx-auto max-w-3xl">
@@ -205,10 +220,47 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
         })}
       </ul>
 
-      {(steps.length > 0 || recipe.prep_steps_doubts.length > 0) && (
+      {editingSteps ? (
+        // Changed in place, one step per line. An emptied field says the recipe has none.
+        <form
+          id="arbeitsschritte"
+          action={saveSteps}
+          className="card mt-6 flex scroll-mt-4 flex-col gap-3 p-4"
+        >
+          <input type="hidden" name="rezept" value={recipe.id} />
+          <input type="hidden" name="zurueck" value={pageQuery()} />
+          <label className="font-semibold" htmlFor="schritte">
+            Arbeitsschritte, einer pro Zeile
+          </label>
+          {recipe.prep_steps_doubts.length > 0 && <StepDoubts doubts={recipe.prep_steps_doubts} />}
+          <textarea
+            id="schritte"
+            name="schritte"
+            className={`field leading-relaxed ${stepsFailed ? "field-problem" : ""}`}
+            rows={Math.min(18, Math.max(5, steps.length * 3))}
+            defaultValue={typedSteps(steps)}
+            placeholder="Leer lassen, wenn das Rezept keine Arbeitsschritte hat."
+          />
+          {stepsFailed && (
+            <p role="alert" className="text-sm font-semibold text-warn">
+              Höchstens {STEPS_MAX} Schritte und {STEP_MAX_LENGTH} Zeichen pro Schritt.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
+            <Link href={`/rezepte/${recipe.id}${pageQuery()}`} className="btn">
+              Abbrechen
+            </Link>
+          </div>
+        </form>
+      ) : steps.length > 0 || recipe.prep_steps_doubts.length > 0 ? (
         // Folded away like the photo: the household cooks from the book on the shelf. The
         // steps are there to look something up, and for a recipe that came in as text.
-        <details className="group card mt-6">
+        <details
+          id="arbeitsschritte"
+          className="group card mt-6 scroll-mt-4"
+          open={one(query.schritte) === "offen"}
+        >
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
             <span>
               Arbeitsschritte
@@ -226,13 +278,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           </summary>
           <div className="border-t border-line">
             {recipe.prep_steps_doubts.length > 0 && (
-              <div role="note" className="m-4 rounded-lg bg-warn-soft px-4 py-3 text-warn">
-                <p className="font-semibold">Bitte mit dem Originalfoto vergleichen.</p>
-                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
-                  {recipe.prep_steps_doubts.map((doubt) => (
-                    <li key={doubt}>{doubt}</li>
-                  ))}
-                </ul>
+              <div className="m-4">
+                <StepDoubts doubts={recipe.prep_steps_doubts} />
               </div>
             )}
             {steps.length > 0 && (
@@ -258,12 +305,31 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
                 ))}
               </ol>
             )}
+            {canEditSteps && (
+              <div className="border-t border-line px-4 py-2">
+                <Link
+                  href={editStepsHref}
+                  className="link inline-flex min-h-10 items-center gap-1.5"
+                >
+                  <PenIcon />
+                  Arbeitsschritte ändern
+                </Link>
+              </div>
+            )}
           </div>
         </details>
-      )}
-      {steps.length === 0 && recipe.prep_steps_doubts.length === 0 && !recipe.source_text && (
-        // A pasted recipe from before steps were stored has them in its text below.
-        <p className="mt-6 text-muted">Keine Arbeitsschritte vorhanden.</p>
+      ) : (
+        !recipe.source_text && (
+          // A pasted recipe from before steps were stored has them in its text below.
+          <p id="arbeitsschritte" className="mt-6 flex flex-wrap items-center gap-x-3 text-muted">
+            Keine Arbeitsschritte vorhanden.
+            {canEditSteps && (
+              <Link href={editStepsHref} className="link inline-flex min-h-10 items-center">
+                Eintragen
+              </Link>
+            )}
+          </p>
+        )
       )}
 
       {recipe.source_text && (
@@ -317,5 +383,19 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
         </details>
       )}
     </article>
+  );
+}
+
+/** What was not read with certainty in the steps, to compare with the photo. */
+function StepDoubts({ doubts }: { doubts: string[] }) {
+  return (
+    <div role="note" className="rounded-lg bg-warn-soft px-4 py-3 text-warn">
+      <p className="font-semibold">Bitte mit dem Originalfoto vergleichen.</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
+        {doubts.map((doubt) => (
+          <li key={doubt}>{doubt}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

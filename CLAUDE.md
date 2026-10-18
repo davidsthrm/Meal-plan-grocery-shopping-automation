@@ -569,7 +569,11 @@ Library
   "Keine Arbeitsschritte vorhanden". A part the
   model could not read is "[…]", never a guess. Steps are typed and corrected one per line,
   on the review screen, on `/rezepte/[id]/bearbeiten` and in the form for a typed or pasted
-  recipe (`readTypedSteps`); nothing typed keeps them unknown. The old column `recipe.steps`
+  recipe (`readTypedSteps`); nothing typed there keeps them unknown. On the recipe's page
+  they are changed in place ("Arbeitsschritte ändern", or "Eintragen" next to "Keine
+  Arbeitsschritte vorhanden"; `?schritte=bearbeiten`, saved by `saveSteps` and shown open
+  with `?schritte=offen`), and there an emptied field means none (`savedSteps`), so they are
+  not read from the photo again. The old column `recipe.steps`
   was never written and is not read.
 - Recipes imported before steps were read get them from their stored page photos with
   `npm run import:fill-steps`, one cookbook at a time: a reading of the steps alone
@@ -579,7 +583,8 @@ Library
   doubts in German (`prep_steps_doubts`, `settleSteps`). The recipe page shows them above the
   steps, and "Arbeitsschritte prüfen" (a third tile under "Prüfen", `/import/pruefen/schritte`)
   lists such recipes with photo and steps side by side: "Stimmt so, übernehmen" stores the
-  steps as they stand in the field and clears the doubts. Saving the recipe's form does too. Steps a person saved are
+  steps as they stand in the field and clears the doubts, "Keine Arbeitsschritte" stores none
+  for a page whose steps are not on the photo. Saving the recipe's form does too. Steps a person saved are
   never overwritten. Without --write the script only counts and estimates.
 - The recipe page shows the photographed page folded away (`<details>`): what is cooked from
   are the ingredients above it. Opened, it shows the recipe's own part of the page where it
@@ -965,10 +970,9 @@ Import
   the seed only, not on the household's 880 recipes. Watch for false alarms (a word list
   decides what is meat or fish) and tune the lists in `quality.ts`.
 - Editing a recipe on `/rezepte/[id]/bearbeiten` does not mark its fields as checked.
-- The steps of the 875 recipes imported before steps were read are not filled in yet:
-  `npm run import:fill-steps -- "Stührmann" --write --all`, estimated at about $2.20. Tried
-  on three recipes of "bunter Ordner": one read without doubt, a handwritten one with its
-  unclear words named, and one the check caught with steps missing.
+- The steps of the 875 recipes with a photo were filled in on 18 October 2026: 810 read
+  without doubt, 57 with doubts to check (46 of them from the handwritten "bunter Ordner"),
+  7 without steps on the photo, 1 not read.
 - The check of steps let a paragraph pass that the reading had split in two (one run of
   five). The text was complete, so nothing is lost for the cook.
 - The reading sometimes writes a word the way it is usually spelled rather than as printed.

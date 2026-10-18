@@ -112,7 +112,13 @@ function StepCheckCard({ recipe, failed }: { recipe: StepCheck; failed: boolean 
               Höchstens 40 Schritte und 2000 Zeichen pro Schritt.
             </p>
           )}
-          <SubmitButton className="btn btn-primary self-start">Stimmt so, übernehmen</SubmitButton>
+          <div className="flex flex-wrap gap-2">
+            <SubmitButton className="btn btn-primary">Stimmt so, übernehmen</SubmitButton>
+            {/* For a page whose steps are not on the photo, or not worth keeping. */}
+            <SubmitButton className="btn" name="aktion" value="keine">
+              Keine Arbeitsschritte
+            </SubmitButton>
+          </div>
         </form>
       </div>
     </li>
