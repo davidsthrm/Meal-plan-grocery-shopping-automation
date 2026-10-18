@@ -1353,6 +1353,7 @@ export type Database = {
           at_home: boolean | null
           checked_at: string | null
           checked_by: string | null
+          checked_changed_at: string | null
           household_id: string
           line_key: string
           moved_date: string | null
@@ -1370,6 +1371,7 @@ export type Database = {
           at_home?: boolean | null
           checked_at?: string | null
           checked_by?: string | null
+          checked_changed_at?: string | null
           household_id: string
           line_key: string
           moved_date?: string | null
@@ -1387,6 +1389,7 @@ export type Database = {
           at_home?: boolean | null
           checked_at?: string | null
           checked_by?: string | null
+          checked_changed_at?: string | null
           household_id?: string
           line_key?: string
           moved_date?: string | null
@@ -1653,6 +1656,15 @@ export type Database = {
       merge_recipes: {
         Args: { drop_id: string; keep_id: string }
         Returns: undefined
+      }
+      tick_shopping_line: {
+        Args: {
+          list_id: string
+          tick_checked: boolean
+          tick_key: string
+          ticked_at: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
