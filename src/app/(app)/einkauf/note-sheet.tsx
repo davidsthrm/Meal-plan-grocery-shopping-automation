@@ -159,7 +159,10 @@ export function NoteSheet({
   const lines = view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
   const days = [-3, -2, -1, 1, 2, 3]
     .map((offset) => addDays(trip.date, offset))
-    .map((day) => ({ day, problems: dayProblems(lines, day, now, index) }));
+    .map((day) => ({
+      day,
+      problems: dayProblems(lines, { date: day, place: trip.place }, now, index),
+    }));
   // A supermarket note has a section per supermarket where the household moved something
   // to another one. Everything else is one walk through one shop.
   const favourites = trip.place === "supermarket" ? supermarkets : [];
@@ -195,7 +198,7 @@ export function NoteSheet({
   const elsewhere = (entry: ViewLine): Elsewhere[] =>
     (alsoOn.get(lineOnNote(trip, entry.line.key)) ?? []).map((other) => ({
       trip: other,
-      movable: dayProblems([entry.line], other.date, now, index).length === 0,
+      movable: dayProblems([entry.line], other, now, index).length === 0,
     }));
 
   return (

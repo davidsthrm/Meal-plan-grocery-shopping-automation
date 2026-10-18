@@ -266,8 +266,8 @@ export async function changeNoteDay(form: FormData): Promise<void> {
   const note = notes.find((entry) => entry.id === input.note);
   if (!note) backToList(input);
   const lines = note.view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
-  if (dayProblems(lines, input.day, today(), index).length > 0) backToList(input);
   const target = { date: input.day, place: note.trip.place };
+  if (dayProblems(lines, target, today(), index).length > 0) backToList(input);
   await moveLines(
     db,
     household,
