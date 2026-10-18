@@ -1,4 +1,5 @@
 import { findIngredient, type CatalogIndex, type Ingredient } from "../catalog";
+import { nameVariants } from "../import/map-ingredient";
 import { parseUnit, type Amount, type Unit } from "../units";
 
 /** A hand-typed line, split into what the catalog knows and what stays free text. */
@@ -18,7 +19,11 @@ const LEADING_QUANTITY = /^(\d+(?:[.,]\d+)?)\s*(.*)$/;
  * "2x Garnelen", "kl. Tomaten".
  *
  * The longest leading run of words that names a catalog ingredient wins, and the rest
- * becomes the note. Text that names no ingredient is kept exactly as typed.
+ * becomes the note. Where the ingredient is named after what describes it ("grüne
+ * Trauben", "frische Petersilie"), the longest run of words anywhere that names one wins, in
+ * the singular or the plural too, and the other words are the note: the grapes are fruit
+ * and add up with what the recipes need. Text that names no ingredient is kept exactly as
+ * typed.
  */
 export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
   const typed = text.trim().replace(/\s+/g, " ");
@@ -51,6 +56,23 @@ export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
         amount: quantity !== null && unit !== null ? { quantity, unit } : null,
         note: words.slice(count).join(" ") || null,
       };
+    }
+  }
+  for (let count = words.length; count >= 1; count--) {
+    for (let start = 1; start + count <= words.length; start++) {
+      const run = words.slice(start, start + count).join(" ");
+      const ingredient = nameVariants(run)
+        .map((variant) => findIngredient(index, variant))
+        .find((found) => found !== undefined);
+      if (ingredient) {
+        const others = [...words.slice(0, start), ...words.slice(start + count)];
+        return {
+          ingredient,
+          label: ingredient.name,
+          amount: quantity !== null && unit !== null ? { quantity, unit } : null,
+          note: others.join(" ") || null,
+        };
+      }
     }
   }
   return { ingredient: null, label: typed, amount: null, note: null };

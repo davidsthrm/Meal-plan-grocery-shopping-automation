@@ -12,7 +12,7 @@ import {
   TickRefresh,
   type NotePage,
 } from "@/components/ticks";
-import type { CatalogIndex, Shop } from "@/domain/catalog";
+import type { AisleGroup, CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { quantityText } from "@/domain/quantity";
 import { dayProblems } from "@/domain/shopping-list/change-day";
@@ -51,6 +51,7 @@ import {
   markAtHome,
   moveListLine,
   noteLine,
+  kindOfEntry,
   removeListEntry,
 } from "./actions";
 
@@ -151,6 +152,8 @@ export function NoteSheet({
     .map((entry) => ({ key: entry.line.key, checked: entry.checked }));
   const drugstore = trip.place === "drugstore";
   const covers = coversText(view);
+  // The kinds of grocery a typed line the catalog does not know can be put under.
+  const kinds = [...index.aisleGroupById.values()].sort((a, b) => a.sortOrder - b.sortOrder);
   // The errand on another day: which of the days around it would work, and why the others
   // would not.
   const lines = view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
@@ -272,6 +275,7 @@ export function NoteSheet({
                         drugstore={drugstore}
                         elsewhere={elsewhere(line)}
                         supermarkets={favourites}
+                        kinds={kinds}
                       />
                     ))}
                   </ul>
@@ -438,6 +442,7 @@ function Line({
   drugstore,
   elsewhere,
   supermarkets,
+  kinds,
 }: {
   view: ViewLine;
   week: IsoDate;
@@ -452,6 +457,8 @@ function Line({
   elsewhere: Elsewhere[];
   /** The supermarkets the line can be bought at, the main one first. Empty elsewhere. */
   supermarkets: Shop[];
+  /** The kinds of grocery, in the order of a walk through the shop. */
+  kinds: AisleGroup[];
 }) {
   const { line } = view;
   const here = noteId(note);
@@ -559,6 +566,25 @@ function Line({
                   </label>
                   <SubmitButton className="btn btn-small">Merken</SubmitButton>
                 </form>
+                {/* Typed, and unknown to the catalog: it stood under "Sonstiges" until the
+                    household said what it is. The same text written again goes there too. */}
+                {line.ingredientId === null && typed.length > 0 && (
+                  <form action={kindOfEntry} className="flex gap-2">
+                    {where}
+                    <input type="hidden" name="entry" value={typed[0].id} />
+                    <label className="flex flex-1 items-center gap-2">
+                      <span className="shrink-0 text-muted">Gehört zu</span>
+                      <select name="kind" defaultValue={line.aisleGroupId} className="field">
+                        {kinds.map((kind) => (
+                          <option key={kind.id} value={kind.id}>
+                            {kind.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <SubmitButton className="btn btn-small">Einordnen</SubmitButton>
+                  </form>
+                )}
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 sm:col-span-2">

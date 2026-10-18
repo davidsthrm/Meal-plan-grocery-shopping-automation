@@ -833,7 +833,13 @@ Shopping list
   catalog (`searchCatalog`), to take each out or put it in with one tap. The household found
   the 180 staples as chips on the settings page unstructured.
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
-  the rest as a note. Text that matches nothing stays a free line.
+  the rest as a note. Where the ingredient is named after what describes it ("grüne
+  Trauben"), the longest run of words anywhere that names one wins, in the singular or the
+  plural too, and the other words are the note: the grapes are fruit (`parseFreeEntry`).
+  Text that matches nothing stays a free line under "Sonstiges", until the household puts
+  it under a kind of grocery on the opened line ("Gehört zu", `kindOfEntry`,
+  `shopping_manual_entry.aisle_group_id`). Every entry of the same text goes with it, and
+  the same text written again later takes that kind by itself (`rememberedKind`).
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`), which is unique on one note. Notes, shop overrides, at-home marks
   and check-offs belong to the note and the key and survive. A meal moved to another

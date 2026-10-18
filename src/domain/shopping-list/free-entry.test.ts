@@ -57,6 +57,24 @@ describe("parseFreeEntry", () => {
     });
   });
 
+  it("finds an ingredient named after what describes it", () => {
+    expect(parseFreeEntry("grüne Trauben", testIndex)).toMatchObject({
+      ingredient: { id: "weintrauben" },
+      label: "Weintrauben",
+      amount: null,
+      note: "grüne",
+    });
+    expect(parseFreeEntry("500 g kernlose grüne Traube", testIndex)).toMatchObject({
+      ingredient: { id: "weintrauben" },
+      amount: { quantity: 500, unit: "g" },
+      note: "kernlose grüne",
+    });
+    expect(parseFreeEntry("Bio Karotten vom Hof", testIndex)).toMatchObject({
+      ingredient: { id: "karotten" },
+      note: "Bio vom Hof",
+    });
+  });
+
   it("keeps unknown text exactly as typed", () => {
     expect(parseFreeEntry("  2 Dosen   Katzenfutter ", testIndex)).toEqual({
       ingredient: null,
