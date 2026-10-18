@@ -156,19 +156,38 @@ export function suggest(
 
 /**
  * One suggestion for every open meal of a week, so that the suggestions add up to a balanced
- * week: each one is chosen as if the ones before it had been accepted. Returns them in the
- * order of the slots; a slot nothing is left for is missing.
+ * week: each one is chosen as if the ones before it had been accepted. The meal with the
+ * fewest suitable recipes left is chosen for first, so that a workday evening, which takes
+ * only what is light and quick, is not left with nothing but a third meat dish after the
+ * lunches took the salad and the fish. Returns them in the order of the slots; a slot
+ * nothing is left for is missing. What each one says for itself is said of the week as it is
+ * planned (`context`), not of the order they were chosen in: asked about an empty week, a
+ * vegetarian dish fills a gap wherever it stands.
  */
 export function suggestWeek(
   recipes: readonly RecipeSummary[],
   open: readonly OpenSlot[],
   context: SuggestContext,
 ): (OpenSlot & { suggestion: Suggestion })[] {
-  const result: (OpenSlot & { suggestion: Suggestion })[] = [];
   let balance = context.balance;
   const planned = new Set(context.planned);
   const slots = [...open].sort(byDayAndMeal);
-  for (const slot of slots) {
+  const chosen = new Map<OpenSlot, Suggestion>();
+  const choices = (slot: OpenSlot) =>
+    recipes.filter(
+      (recipe) => suitsMeal(recipe, slot.meal) && suitsDay(recipe, slot) && !planned.has(recipe.id),
+    ).length;
+
+  const waiting = [...slots];
+  while (waiting.length > 0) {
+    // The tightest meal first; between equally tight ones, the earlier.
+    let at = 0;
+    let least = choices(waiting[0]);
+    for (let i = 1; i < waiting.length && least > 0; i++) {
+      const left = choices(waiting[i]);
+      if (left < least) [at, least] = [i, left];
+    }
+    const [slot] = waiting.splice(at, 1);
     // Each slot draws its own order, or two slots with the same needs would get the same dish.
     const [suggestion] = suggest(
       recipes,
@@ -177,9 +196,12 @@ export function suggestWeek(
       1,
     );
     if (!suggestion) continue;
-    result.push({ ...slot, suggestion });
+    chosen.set(slot, scoreRecipe(suggestion.recipe, context));
     planned.add(suggestion.recipe.id);
     balance = withMeal(balance, groupOf(suggestion.recipe.proteinType));
   }
-  return result;
+  return slots.flatMap((slot) => {
+    const suggestion = chosen.get(slot);
+    return suggestion ? [{ ...slot, suggestion }] : [];
+  });
 }

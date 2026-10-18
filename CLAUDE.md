@@ -420,7 +420,10 @@ Week plan
 - "Plan vervollständigen" plans every open meal that is still to come at once. Those
   suggestions are chosen one after the other as if the earlier ones were accepted
   (`suggestWeek`), so that the completed week meets the targets. Nothing is suggested twice
-  in a week.
+  in a week. The meal with the fewest suitable recipes left is chosen for first: filled from
+  Monday on, the lunches took the salad and the fish of a small cookbook, and Thursday
+  evening, which takes only what is light and quick, got a third meat dish. What a pick says
+  for itself is said of the week as planned, not of the order it was chosen in.
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
 - The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is
