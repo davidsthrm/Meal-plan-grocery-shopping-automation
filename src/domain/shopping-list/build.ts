@@ -58,13 +58,20 @@ export function moveKey(origin: ShoppingTrip, lineKey: string): string {
 
 /**
  * Converts an amount to the ingredient's default unit, or returns null if there is no path.
- * For an ingredient bought in packs, "2 Packungen" and a bare "2" both mean two packs.
+ * For an ingredient bought in packs, "2 Packungen" means two packs. A bare "2" means two
+ * packs only where it was typed onto a note (`typed`): "2x Garnelen". In a recipe it counts
+ * pieces, and "4 Riesengarnelen" are four prawns, not four packs of 225 g.
  */
-export function toDefaultUnit(ingredient: Ingredient, amount: Amount): number | null {
+export function toDefaultUnit(
+  ingredient: Ingredient,
+  amount: Amount,
+  typed = false,
+): number | null {
   const direct = convert(amount.quantity, amount.unit, ingredient.defaultUnit, ingredient.gramsPer);
   if (direct !== null) return direct;
   const meansPacks =
-    ingredient.buyingMode === "pack" && (amount.unit === "Packung" || amount.unit === "Stück");
+    ingredient.buyingMode === "pack" &&
+    (amount.unit === "Packung" || (typed && amount.unit === "Stück"));
   return meansPacks && ingredient.packSize ? amount.quantity * ingredient.packSize : null;
 }
 
@@ -134,7 +141,11 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       continue;
     }
     const spoonful = SPOONFULS.has(contribution.amount.unit);
-    const inDefault = toDefaultUnit(ingredient, contribution.amount);
+    const inDefault = toDefaultUnit(
+      ingredient,
+      contribution.amount,
+      contribution.source.type === "manual",
+    );
     if (inDefault !== null) {
       primarySum += inDefault;
       hasSum = true;

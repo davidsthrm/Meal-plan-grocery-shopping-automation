@@ -822,7 +822,10 @@ Shopping list
   be on (`groupAtHome`). "Doch kaufen" puts every line it stands for back on its note while
   that errand is still to come, and otherwise on the next note from today on that sells it
   (`noteToBuyOn`), where it is not at home either.
-- For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
+- For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs. Only typed:
+  in a recipe a number counts pieces, and "4 Riesengarnelen" are four prawns, a line of
+  their own beside any grams other recipes need, not four packs of 225 g. A prawn's weight
+  varies too much to guess one from a count.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked. The staples are the household's to change: a tile in the settings
   opens `/einstellungen/vorrat` (`ingredient.is_pantry_staple`), the staples by kind of
