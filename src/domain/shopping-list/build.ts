@@ -17,7 +17,7 @@ import { labelFor } from "./format";
 import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
 import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
 import {
-  dayOf,
+  daysOf,
   type Contribution,
   type ContributionSource,
   type ManualEntry,
@@ -50,10 +50,17 @@ export interface BuildInput {
   moves?: ReadonlyMap<string, ShoppingTrip>;
 }
 
+/**
+ * A line's key without the dimension of an amount that could not be merged: the lines
+ * "steak@main" and "steak@main#count" are one thing to move.
+ */
+export function partKey(lineKey: string): string {
+  return lineKey.replace(/#\w+$/, "");
+}
+
 /** How a moved line is looked up: by the note it would be on by itself, and its key. */
 export function moveKey(origin: ShoppingTrip, lineKey: string): string {
-  // Amounts that could not be merged are lines of their own, but move together.
-  return `${noteId(origin)}|${lineKey.replace(/#\w+$/, "")}`;
+  return `${noteId(origin)}|${partKey(lineKey)}`;
 }
 
 /**
@@ -108,8 +115,7 @@ interface Bucket {
 }
 
 function neededBy(contributions: Contribution[]): IsoDate | null {
-  const dates = contributions.flatMap((c) => dayOf(c.source) ?? []);
-  return dates.length > 0 ? dates.reduce((a, b) => (a < b ? a : b)) : null;
+  return daysOf(contributions)[0] ?? null;
 }
 
 function isOptional(contributions: Contribution[]): boolean {

@@ -1,6 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { daysBetween, type IsoDate } from "../dates";
-import { dayOf, type ShoppingLine } from "./types";
+import { daysOf, type ShoppingLine } from "./types";
 
 /**
  * Doing an errand on another day: whether that works for everything on its note, and if
@@ -14,11 +14,6 @@ export type DayProblem =
   | { kind: "too-late"; label: string; neededOn: IsoDate }
   /** Something would not keep from that day until it is needed. */
   | { kind: "does-not-keep"; label: string; neededOn: IsoDate; shelfLifeDays: number };
-
-/** The days the meals behind a line are on. Empty for what belongs to no meal. */
-function neededOn(line: ShoppingLine): IsoDate[] {
-  return line.contributions.flatMap(({ source }) => dayOf(source) ?? []).sort();
-}
 
 /**
  * What stands in the way of buying the lines of a note on `target` instead. Nothing does
@@ -34,7 +29,7 @@ export function dayProblems(
   if (target < today) return [{ kind: "past" }];
   const problems: DayProblem[] = [];
   for (const line of lines) {
-    const days = neededOn(line);
+    const days = daysOf(line.contributions);
     if (line.trip === "later" || days.length === 0) continue;
     const first = days[0];
     const last = days[days.length - 1];

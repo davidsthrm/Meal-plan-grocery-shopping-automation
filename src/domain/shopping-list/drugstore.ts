@@ -1,7 +1,7 @@
 import { normalizeName, type AisleGroup } from "../catalog";
 import type { IsoDate } from "../dates";
 import type { AisleView, ViewLine } from "./present";
-import { resolveLine } from "./present";
+import { byLabel, resolveLine } from "./present";
 import type { ShoppingTrip } from "./trips";
 import type { LineState, ShoppingLine } from "./types";
 
@@ -286,7 +286,6 @@ export function presentDrugstore(
   states: Record<string, LineState>,
 ): AisleView {
   const resolved = lines.map((line) => resolveLine(line, states[line.key]));
-  const byLabel = (a: ViewLine, b: ViewLine) => a.line.label.localeCompare(b.line.label, "de");
   return {
     groups: DRUGSTORE_SECTIONS.map(
       (section, at): { aisleGroup: AisleGroup; lines: ViewLine[] } => ({

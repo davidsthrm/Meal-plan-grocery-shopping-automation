@@ -47,7 +47,8 @@ export function resolveLine(line: ShoppingLine, state: LineState = {}): ViewLine
   };
 }
 
-const byLabel = (a: ViewLine, b: ViewLine) => a.line.label.localeCompare(b.line.label, "de");
+/** Lines in the order of their names, as a German reader expects them. */
+export const byLabel = (a: ViewLine, b: ViewLine) => a.line.label.localeCompare(b.line.label, "de");
 
 /**
  * Turns the generated lines and the household's changes into the list as it is shown and

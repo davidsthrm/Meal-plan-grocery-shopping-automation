@@ -2,7 +2,7 @@ import "server-only";
 import { PLACES, type CatalogIndex, type Place, type Shop } from "@/domain/catalog";
 import { addDays, isIsoDate, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
-import { buildShoppingList, moveKey } from "@/domain/shopping-list/build";
+import { buildShoppingList, moveKey, partKey } from "@/domain/shopping-list/build";
 import {
   carriedOver,
   drugstoreLines,
@@ -458,7 +458,6 @@ async function rememberedKind(db: Db, text: string): Promise<string | null> {
   return earlier.data?.aisle_group_id ?? null;
 }
 
-/**
 /** A text as a pattern that finds it written the same way, in any case: no wildcards. */
 function sameText(text: string): string {
   return text.trim().replace(/[\\%_]/g, (char) => `\\${char}`);
@@ -583,7 +582,7 @@ export async function moveLines(
   const rows = [];
   for (const line of lines) {
     // Amounts that could not be merged are lines of their own, but move together.
-    const key = line.key.replace(/#\w+$/, "");
+    const key = partKey(line.key);
     for (const origin of line.origins) {
       const id = noteId(origin);
       if (!listOf.has(id)) listOf.set(id, await ensureList(db, household.id, origin));

@@ -35,6 +35,11 @@ export function dayOf(source: ContributionSource): IsoDate | null {
   return source.type === "manual" ? null : source.date;
 }
 
+/** The days the parts of a line are needed on, the first first. Empty for what has none. */
+export function daysOf(contributions: readonly Pick<Contribution, "source">[]): IsoDate[] {
+  return contributions.flatMap(({ source }) => dayOf(source) ?? []).sort();
+}
+
 /** One reason an ingredient is on the list, with the amount that reason asks for. */
 export interface Contribution {
   source: ContributionSource;
