@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     // On a phone the sections float above the bottom of the screen: the page leaves room for
     // them and for the bar the phone itself keeps there.
-    <div className="min-h-dvh px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
+    <div className="min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
       {/* Paper gets the content only: no header, no navigation. */}
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 py-4 print:hidden">
         <Link href="/" aria-label="Essensplan, zum Wochenplan">

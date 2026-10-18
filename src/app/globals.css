@@ -328,12 +328,14 @@ body {
 
   /*
    * The sections on a phone: a bar floating above the lower edge, clear of the bar the
-   * iPhone keeps there (`env(safe-area-inset-bottom)`, which needs `viewport-fit=cover`).
+   * iPhone keeps there. The safe area (`env(safe-area-inset-bottom)`, which needs
+   * `viewport-fit=cover`) is 34px, more than that bar needs: above the whole inset the
+   * sections floated too high, so they reach half a rem into it.
    */
   .tabbar {
     position: fixed;
     right: max(0.75rem, env(safe-area-inset-right));
-    bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+    bottom: max(1rem, calc(env(safe-area-inset-bottom) - 0.5rem));
     left: max(0.75rem, env(safe-area-inset-left));
     z-index: 10;
     max-width: 30rem;
@@ -391,7 +393,7 @@ body {
   .offline-bar {
     position: fixed;
     left: 50%;
-    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
     z-index: 20;
     width: max-content;
     max-width: calc(100vw - 2rem);

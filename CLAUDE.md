@@ -278,8 +278,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   the bottom of the screen (`.tabbar`), with a sign above each name and the open section on
   the green's pastel. It keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
   `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
-  phone's gestures. Next to the Merkzettel stands the first letter of whoever is signed in
-  on the green (`.account`, `initialOf`), the way to the settings, on every screen size.
+  phone's gestures. It reaches half a rem into that inset: above the whole of it, the bar
+  floated too high (October 2026). Next to the Merkzettel stands the first letter of
+  whoever is signed in on the green (`.account`, `initialOf`), the way to the settings, on
+  every screen size.
 - In the view for the shop the tick sits inside its box (`.tickbox-large`); on the note it
   runs past the box like a pen's. The view shows the supermarkets' logos as the note does,
   and the service worker keeps them for the shop: its own Content-Security-Policy (in
