@@ -1,4 +1,5 @@
 import "server-only";
+import { productName } from "@/domain/import/tidy-proposals";
 import { sourceLabel } from "@/domain/library/source";
 import { similarTag } from "@/domain/library/tag-admin";
 import { chosenTags, OWN_GROUP, TAG_GROUPS } from "@/domain/library/tags";
@@ -218,7 +219,7 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
     db
       .from("recipe_ingredient")
       .select(
-        "id, position, ingredient_id, quantity, quantity_max, unit, is_optional, is_approximate, alternative_to, original_text, note, secondary_quantity, secondary_unit, secondary_scope",
+        "id, position, ingredient_id, proposal_id, quantity, quantity_max, unit, is_optional, is_approximate, alternative_to, original_text, note, secondary_quantity, secondary_unit, secondary_scope",
       )
       .eq("recipe_id", recipeId)
       .order("position"),
@@ -232,6 +233,17 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
   const names = new Map(ingredients.map((ingredient) => [ingredient.id, ingredient.name]));
   const rows = must(lines, "load lines");
   const positionOf = new Map(rows.map((row, at) => [row.id, at]));
+  // A line the catalog does not know yet waits under the name it was proposed with. The
+  // printed line instead ("200 g Belugalinsen") would be proposed again as a second product.
+  const proposalIds = rows.flatMap((row) => (row.proposal_id ? [row.proposal_id] : []));
+  const proposed =
+    proposalIds.length === 0
+      ? []
+      : must(
+          await db.from("ingredient_proposal").select("id, name").in("id", proposalIds),
+          "load proposed names",
+        );
+  const proposedName = new Map(proposed.map((proposal) => [proposal.id, proposal.name]));
   return {
     title: recipe.title,
     category: category?.key ?? "",
@@ -249,7 +261,10 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
       .map((tag) => tag.key ?? tag.id),
     lines: rows.map((row) => ({
       // A line the catalog does not know shows as it was printed, to be corrected or kept.
-      ingredient: row.ingredient_id ? (names.get(row.ingredient_id) ?? "") : row.original_text,
+      ingredient: row.ingredient_id
+        ? (names.get(row.ingredient_id) ?? "")
+        : ((row.proposal_id && proposedName.get(row.proposal_id)) ??
+          productName(row.original_text)),
       known: row.ingredient_id !== null,
       quantity: row.quantity,
       quantityMax: row.quantity_max,

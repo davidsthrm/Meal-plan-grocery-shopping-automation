@@ -934,6 +934,14 @@ Import
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
   lines stay as printed text.
+- Before "Neue Zutaten" is shown, the open proposals are put in order (`tidyProposals`):
+  a name loses an amount in front and a note after a comma ("200 g Belugalinsen" is
+  "Belugalinsen"), two proposals for one product become one with all their recipe lines,
+  one the catalog can answer by now is answered, also behind words that only describe a
+  product (`mapDescribed`: "kleines Bauernbrot" is Brot; size, freshness, ripeness, organic,
+  seedless, green), and one no recipe waits for any more is not shown. A recipe's form
+  shows an unknown line under its proposed name, not as printed: saved as printed, it was
+  proposed a second time.
 - Singular, plural and a leading "Bio-" are the same product ("Lachsfilets", "Bio-Gurke").
   The import maps them by itself, and proposals the catalog can answer by now are closed
   before the list is shown. Short words get no such variants: "Ei" is not "Eis".
