@@ -13,7 +13,12 @@ import {
 import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
-import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import {
+  butcherWeekdays,
+  noteId,
+  tripsBetween,
+  type ShoppingTrip,
+} from "@/domain/shopping-list/trips";
 import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
 import type { Amount } from "@/domain/units";
 import { today } from "@/lib/today";
@@ -306,6 +311,7 @@ export async function loadShoppingNotes(
       slots,
       extras,
       trips,
+      butcherDays: butcherWeekdays(household.shoppingDays),
       // The week's first trip to the supermarket.
       extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
       manualEntries: entries,

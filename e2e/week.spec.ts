@@ -172,6 +172,34 @@ test("the household sets its shopping days, and the notes follow", async ({ page
   );
 });
 
+test("the meat of several meals is one visit to the butcher, on the household's day", async ({
+  page,
+}) => {
+  // Without a butcher day of its own, the household goes there when it shops anyway.
+  await page.goto("/woche?w=2027-03-01");
+  await plan(page, "Montag Mittag", "Pfeffersteak");
+  await plan(page, "Dienstag Mittag", "Pfeffersteak");
+  await page.goto("/einkauf?w=2027-03-01");
+  const notes = page.getByRole("list", { name: "Zettel" });
+  const butcher = notes.getByRole("link", { name: /^Metzger, / });
+  await expect(butcher).toHaveCount(1);
+  await expect(butcher).toHaveAccessibleName(/^Metzger, Montag, 1\. März/);
+  await expect(butcher).toContainText("8x Rindersteaks");
+
+  // Saturday morning at the butcher: the steaks for Monday and Tuesday are bought then.
+  await page.goto("/einstellungen");
+  await setDay(page, "Metzger am Samstag", true);
+  await page
+    .getByRole("region", { name: "Einkaufstage" })
+    .getByRole("button", { name: "Speichern" })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Gespeichert");
+  await page.goto("/einkauf?w=2027-03-01");
+  await expect(butcher).toHaveCount(1);
+  await expect(butcher).toHaveAccessibleName(/^Metzger, Samstag, 27\. Februar/);
+  await expect(butcher).toContainText("8x Rindersteaks");
+});
+
 test("what comes from the market is the household's to say", async ({ page }) => {
   await page.goto("/einstellungen");
   const fresh = page.getByRole("region", { name: "Frisch vom Markt und vom Metzger" });

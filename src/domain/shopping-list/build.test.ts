@@ -4,6 +4,7 @@ import type { Recipe, RecipeIngredient, Servings } from "../recipe";
 import { buildShoppingList, moveKey, toDefaultUnit } from "./build";
 import { line, testIndex } from "./test-catalog";
 import {
+  butcherWeekdays,
   DEFAULT_SHOPPING_DAYS,
   noteId,
   singleTrip,
@@ -626,6 +627,25 @@ describe("several errands", () => {
     expect(on(lines, `${SATURDAY}.butcher`)).toEqual(["steak@main"]);
     expect(on(lines, `${TUESDAY}.butcher`)).toEqual(["steak@main"]);
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual([]);
+  });
+
+  it("bundles the meat of several meals into one visit on a butcher day", () => {
+    // The household names no butcher days: it goes there when it shops anyway, Monday,
+    // Friday and Saturday. Meat for Monday, Wednesday and Thursday is one visit on Monday.
+    const steaks = recipe("steaks", [line("steak", 4, "Stück")]);
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [steaks],
+      slots: [MONDAY, "2026-10-14", THURSDAY, FRIDAY, SUNDAY].map((date) => slot(date, "steaks")),
+      trips,
+      butcherDays: butcherWeekdays(DEFAULT_SHOPPING_DAYS),
+    });
+    const butcher = lines.filter((entry) => entry.place === "butcher");
+    expect(butcher.map((entry) => [entry.shoppingDate, entry.purchase?.quantity])).toEqual([
+      [MONDAY, 12],
+      [FRIDAY, 4],
+      [SATURDAY, 4],
+    ]);
   });
 
   it("leaves a market day that is over out of a meal planned after it", () => {

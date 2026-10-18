@@ -1,4 +1,9 @@
-import { DAY_PLACES, drugstoreWeekday, type ShoppingDay } from "@/domain/shopping-list/trips";
+import {
+  BUTCHER_REACH_DAYS,
+  drugstoreWeekday,
+  WEEKDAY_PLACES,
+  type ShoppingDay,
+} from "@/domain/shopping-list/trips";
 import { PLACE_NAME } from "@/lib/list-text";
 
 const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] as const;
@@ -46,13 +51,13 @@ export function DrugstoreDayField({ days }: { days: readonly ShoppingDay[] }) {
 }
 
 /**
- * The fields for the days a household shops on: a row per place, a box per weekday. They
- * are read back with `readDaysForm`.
+ * The fields for the days a household shops on: a row per place, a box per weekday, the
+ * butcher's days last. They are read back with `readDaysForm`.
  */
 export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
   return (
     <div className="space-y-3">
-      {DAY_PLACES.map((place) => (
+      {WEEKDAY_PLACES.map((place) => (
         <fieldset key={place}>
           <legend className="label">{PLACE_NAME[place]}</legend>
           <div className="flex flex-wrap gap-1.5">
@@ -72,6 +77,13 @@ export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
               </label>
             ))}
           </div>
+          {place === "butcher" && (
+            <p className="mt-1.5 text-sm text-muted">
+              Nur wenn ein Essen Fleisch braucht. Ein Besuch kauft das Fleisch bis{" "}
+              {BUTCHER_REACH_DAYS} Tage im Voraus, Montag also bis Donnerstag. Ohne Haken an den
+              Tagen von Supermarkt und Markt.
+            </p>
+          )}
         </fieldset>
       ))}
     </div>
