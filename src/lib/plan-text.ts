@@ -67,7 +67,7 @@ export function kindMark(
 }
 
 /** Categories that are sweet: a cake is not shown as a vegetarian meal. */
-const SWEET = new Set(["kuchen", "dessert"]);
+const SWEET = new Set(["kuchen", "plaetzchen", "dessert"]);
 
 /**
  * How a recipe is coloured and labelled wherever it shows: by the kind of meal the week

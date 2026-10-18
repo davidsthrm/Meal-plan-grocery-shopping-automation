@@ -19,6 +19,7 @@ export const DISH_TYPES = [
   "snack",
   "dessert",
   "kuchen",
+  "plaetzchen",
   "fruehstueck",
   "getraenk",
   "grundrezept",

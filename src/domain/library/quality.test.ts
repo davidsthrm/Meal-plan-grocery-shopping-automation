@@ -144,13 +144,28 @@ describe("the kind of a recipe", () => {
       fields(
         recipe({
           title: "Beeren-Kokos-Smoothie",
-          category: "dessert",
+          category: "getraenk",
           proteinType: "vegan",
           servings: { min: 2, max: 2, unit: "Gläser" },
           ingredients: ["Himbeeren", "Kokosmilch", "Banane", "Limettensaft", "Agavendicksaft"],
         }),
       ),
     ).toEqual([]);
+  });
+
+  it("finds drinks and cookies by their titles", () => {
+    const category = (title: string, filed: string) =>
+      checkRecipe(recipe({ title, category: filed }))
+        .findings.filter((finding) => finding.field === "category")
+        .map((finding) => finding.suggestion);
+    expect(category("Erdbeer-Holunder-Bowle", "dessert")).toEqual(["getraenk"]);
+    expect(category("Vanillekipferl", "kuchen")).toEqual(["plaetzchen"]);
+    expect(category("Schokoladen-Cookies", "hauptgericht")).toEqual(["plaetzchen"]);
+    expect(category("Marmorkuchen", "kuchen")).toEqual([]);
+    // The last part of the name says what the dish is.
+    expect(category("Lebkuchen-Mousse", "dessert")).toEqual([]);
+    expect(category("Chai-Latte-Overnight-Oats", "fruehstueck")).toEqual([]);
+    expect(category("Krabbencocktail", "salat")).toEqual([]);
   });
 
   it("accepts what fits, and says nothing without ingredients", () => {

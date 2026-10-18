@@ -15,39 +15,40 @@ is easier than pen and paper.
 
 ## Commands
 
-| Task                                                                      | Command                                        |
-| ------------------------------------------------------------------------- | ---------------------------------------------- |
-| Dev server                                                                | `npm run dev`                                  |
-| Unit tests (domain, schema, acceptance)                                   | `npm test`                                     |
-| One test file                                                             | `npx vitest run src/domain/units.test.ts`      |
-| Typecheck                                                                 | `npm run typecheck`                            |
-| Lint                                                                      | `npm run lint`                                 |
-| Format                                                                    | `npm run format`                               |
-| Print the sample week list and compare with the handwritten one           | `npm run sample-week`                          |
-| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`                  | `npm run seed:build`                           |
-| Check the Supabase project in `.env.local`                                | `npm run db:check`                             |
-| Measure a model on the five sample recipe photos (calls the API)          | `npm run import:eval`                          |
-| Measure the second check pass with planted mistakes (calls the API)       | `npm run import:eval-verify`                   |
-| Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
-| The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
-| Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
-| Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                          |
-| Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                          |
-| The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
-| Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
-| Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                           |
-| Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
-| A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
-| Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
-| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`    |
-| Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
-| Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
-| Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
-| Measure reading steps alone on the five sample photos (calls the API)     | `npm run import:eval-steps`                    |
-| Steps for imported recipes: dry run with the cost, then per cookbook      | `npm run import:fill-steps -- "<name>"`        |
-| Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`         |
-| Regenerate the database types after a migration                           | `npm run db:types`                             |
-| Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
+| Task                                                                      | Command                                         |
+| ------------------------------------------------------------------------- | ----------------------------------------------- |
+| Dev server                                                                | `npm run dev`                                   |
+| Unit tests (domain, schema, acceptance)                                   | `npm test`                                      |
+| One test file                                                             | `npx vitest run src/domain/units.test.ts`       |
+| Typecheck                                                                 | `npm run typecheck`                             |
+| Lint                                                                      | `npm run lint`                                  |
+| Format                                                                    | `npm run format`                                |
+| Print the sample week list and compare with the handwritten one           | `npm run sample-week`                           |
+| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`                  | `npm run seed:build`                            |
+| Check the Supabase project in `.env.local`                                | `npm run db:check`                              |
+| Measure a model on the five sample recipe photos (calls the API)          | `npm run import:eval`                           |
+| Measure the second check pass with planted mistakes (calls the API)       | `npm run import:eval-verify`                    |
+| Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."`  |
+| The same for the five sample recipes                                      | `npm run import:photo -- --samples`             |
+| Browser tests against the separate test household (free)                  | `npm run e2e`                                   |
+| Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                           |
+| Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                           |
+| The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                     |
+| Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`     |
+| Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                            |
+| Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                              |
+| A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                 |
+| Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`     |
+| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`     |
+| File drinks and cookies by their titles (dry run, then `--apply`)         | `npm run library:assign-categories -- "<name>"` |
+| Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`       |
+| Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                     |
+| Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`        |
+| Measure reading steps alone on the five sample photos (calls the API)     | `npm run import:eval-steps`                     |
+| Steps for imported recipes: dry run with the cost, then per cookbook      | `npm run import:fill-steps -- "<name>"`         |
+| Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`          |
+| Regenerate the database types after a migration                           | `npm run db:types`                              |
+| Apply new migrations to the linked Supabase project                       | `npx supabase db push`                          |
 
 Docker is not required for tests. Migrations, seed and RLS run against an embedded Postgres
 (PGlite) in `supabase/tests/`.
@@ -389,6 +390,9 @@ Recipes
 
 - Scale by slot servings / base servings. Base servings can be a range such as 4 to 6. If the
   slot servings fall inside the range, the recipe is cooked as written.
+- A drink or a syrup makes a volume ("Für 2,25 l"). Servings are whole numbers, so a volume
+  is kept in millilitres (2250 "ml", `VOLUME_UNIT`), read from a printed line and from "2,25"
+  "Liter" in the forms (`volumeYield`), and shown in litres from one litre on.
 - Base servings count persons unless the recipe has a servings unit. Baking and finger food
   count what they make: 1 "Springform (Ø 26 cm)", 1 "Backblech", 40 "Stück". The unit is free
   text as printed, null for persons (`recipe.servings_unit`, `Servings.unit`).
@@ -398,8 +402,10 @@ Recipes
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
 - A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
-  Snack & Fingerfood, Dessert & Süßspeise, Kuchen & Gebäck, Frühstück, Getränk, or Soße, Dip &
-  Grundrezept. A category is a tag of the group "Kategorie" with a stable `key`. The import's
+  Snack & Fingerfood, Dessert & Süßspeise, Kuchen & Gebäck, Plätzchen & Kekse, Frühstück,
+  Getränk, or Soße, Dip & Grundrezept. Plätzchen are sweet like cakes (Sunday's coffee, the
+  colour); the check of the library knows drinks and cookies by the last part of a title
+  ("Erdbeer-Holunder-Bowle", "Lebkuchen-Kipferl"; "Lebkuchen-Mousse" is a mousse). A category is a tag of the group "Kategorie" with a stable `key`. The import's
   `dishType` is that key. Find such tags by key, never by name: the household may rename them.
   A new category needs a migration that adds its tag to every household, an entry in
   `DISH_TYPES` and a line in the reading instructions.

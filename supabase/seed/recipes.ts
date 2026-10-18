@@ -38,6 +38,7 @@ export const tags: SeedTag[] = [
   { id: "snack", name: "Snack & Fingerfood", group: "Kategorie" },
   { id: "dessert", name: "Dessert & Süßspeise", group: "Kategorie" },
   { id: "kuchen", name: "Kuchen & Gebäck", group: "Kategorie" },
+  { id: "plaetzchen", name: "Plätzchen & Kekse", group: "Kategorie" },
   { id: "fruehstueck", name: "Frühstück", group: "Kategorie" },
   { id: "getraenk", name: "Getränk", group: "Kategorie" },
   { id: "grundrezept", name: "Soße, Dip & Grundrezept", group: "Kategorie" },
