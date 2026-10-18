@@ -161,13 +161,36 @@ export default async function ImportPage(props: PageProps<"/import">) {
                       </span>
                     </summary>
                     <ul className="divide-y divide-line border-t border-line bg-paper">
-                      {entry.editions.flatMap((edition) =>
-                        edition.batches.map((batch) => (
-                          <li key={batch.id} className="pl-8">
-                            <BatchLink batch={batch} name={edition.edition ?? entry.book} />
+                      {entry.editions.map((edition) => {
+                        const name = edition.edition ?? entry.book;
+                        // One upload is the edition itself; several are listed under it once.
+                        if (edition.batches.length === 1) {
+                          return (
+                            <li key={edition.batches[0].id} className="pl-8">
+                              <BatchLink batch={edition.batches[0]} name={name} />
+                            </li>
+                          );
+                        }
+                        const recipes = edition.batches.reduce((sum, b) => sum + b.recipes, 0);
+                        return (
+                          <li key={name} className="pl-8">
+                            <p className="px-4 pt-3 font-semibold">
+                              {name}
+                              <span className="block text-sm font-normal text-muted">
+                                {edition.batches.length} Stapel ·{" "}
+                                {countText(recipes, "Rezept", "Rezepte")}
+                              </span>
+                            </p>
+                            <ul className="pl-4">
+                              {edition.batches.map((batch) => (
+                                <li key={batch.id}>
+                                  <BatchLink batch={batch} name="Stapel" />
+                                </li>
+                              ))}
+                            </ul>
                           </li>
-                        )),
-                      )}
+                        );
+                      })}
                     </ul>
                   </details>
                 </li>
