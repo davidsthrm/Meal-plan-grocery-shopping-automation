@@ -1,4 +1,5 @@
 import "server-only";
+import { sourceLabel } from "@/domain/library/source";
 import type { ImportIssue } from "@/domain/import/checks";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
 import {
@@ -225,7 +226,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
     db
       .from("recipe")
       .select(
-        "title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, prep_steps",
+        "title, source_book, source_edition, source_page, servings_min, servings_max, servings_unit, prep_minutes, prep_steps",
       )
       .eq("id", job.recipe_id)
       .single(),
@@ -259,7 +260,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
     batchId: job.batch_id,
     title: r.title,
     hasTitle: !issues.some((issue) => issue.code === "title_missing"),
-    sourceBook: r.source_book ?? "",
+    sourceBook: sourceLabel(r.source_book, r.source_edition),
     sourcePage: r.source_page,
     servingsMin: r.servings_min,
     servingsMax: r.servings_max,

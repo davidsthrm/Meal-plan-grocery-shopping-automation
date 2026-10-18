@@ -7,6 +7,7 @@ import {
   type SearchResult,
 } from "@/domain/library/search";
 import { ingredientKeys, type SearchIndex } from "@/domain/library/search-index";
+import { knownSources, type KnownSource } from "@/domain/library/source";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
 import { groupTags, TAG_GROUPS, type Tag, type TagGroup } from "@/domain/library/tags";
 import { allRows, loadIngredientNames, must, type Db } from "./catalog";
@@ -22,6 +23,8 @@ export interface Library {
   /** The household's categories, in their order. */
   categories: Category[];
   books: string[];
+  /** Every book with its editions; a cookbook has none. */
+  sources: KnownSource[];
   /** What else recipes are described by, in groups: effort, kind of dish, cuisine and so on. */
   tagGroups: TagGroup[];
 }
@@ -43,7 +46,7 @@ export async function loadLibrary(db: Db): Promise<Library> {
         db
           .from("recipe")
           .select(
-            "id, title, kind, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, is_favorite, wanted_at, created_at",
+            "id, title, kind, source_book, source_edition, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, is_favorite, wanted_at, created_at",
           )
           .eq("status", "approved")
           .order("id")
@@ -93,6 +96,7 @@ export async function loadLibrary(db: Db): Promise<Library> {
     prepMinutes: row.prep_minutes,
     isFavorite: row.is_favorite,
     sourceBook: row.source_book,
+    sourceEdition: row.source_edition,
     sourcePage: row.source_page,
     servings:
       row.servings_min !== null && row.servings_max !== null
@@ -105,6 +109,9 @@ export async function loadLibrary(db: Db): Promise<Library> {
   return {
     recipes,
     categories: categoryTags.map((tag) => ({ key: tag.key as string, name: tag.name })),
+    sources: knownSources(
+      recipes.map((recipe) => ({ book: recipe.sourceBook, edition: recipe.sourceEdition })),
+    ),
     books: [...new Set(recipes.flatMap((recipe) => recipe.sourceBook ?? []))].sort((a, b) =>
       a.localeCompare(b, "de"),
     ),

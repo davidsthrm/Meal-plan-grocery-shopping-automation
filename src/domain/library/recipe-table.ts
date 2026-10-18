@@ -125,7 +125,8 @@ function valueOf(row: TableRow, sort: TableSort, context: SortContext): Value | 
     case "titel":
       return recipe.title;
     case "buch":
-      return [recipe.sourceBook, recipe.sourcePage];
+      // A magazine by its editions, each by its pages.
+      return [recipe.sourceBook, recipe.sourceEdition, recipe.sourcePage];
     case "kategorie": {
       const at = recipe.category ? context.categories.indexOf(recipe.category) : -1;
       return at < 0 ? null : at;

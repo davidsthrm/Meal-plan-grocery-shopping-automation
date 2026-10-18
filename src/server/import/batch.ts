@@ -1,4 +1,5 @@
 import "server-only";
+import { sourceLabel } from "@/domain/library/source";
 import sharp from "sharp";
 import type { IsoDate } from "@/domain/dates";
 import type { RecipeDraft } from "@/domain/import/draft";
@@ -13,6 +14,7 @@ import { importFromImages } from "./import-recipe";
 import { importModels } from "./models";
 import { normalizeImage, prepareForModel, type PreparedImage } from "./normalize-image";
 import { RecipeReadError } from "./read-recipe";
+import { resolveSource } from "../sources";
 import { tagRecipes } from "../tagging";
 import { saveImportedRecipe, StoreError, type StoredRecipe } from "./save-recipe";
 import {
@@ -55,13 +57,16 @@ export async function createBatch(
   sourceBook: string | null,
   forMeal: { date: IsoDate; meal: Meal } | null = null,
 ): Promise<string> {
+  // A magazine's edition, typed with its name or found in a folder's, is kept apart.
+  const source = await resolveSource(db, sourceBook);
   const batch = must(
     await db
       .from("import_batch")
       .insert({
         household_id: householdId,
         created_by: userId,
-        source_book: sourceBook,
+        source_book: source.book || null,
+        source_edition: source.edition,
         for_date: forMeal?.date ?? null,
         for_meal: forMeal?.meal ?? null,
       })
@@ -368,7 +373,7 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
 
   try {
     const [batch, pages, index] = await Promise.all([
-      db.from("import_batch").select("source_book").eq("id", job.batch_id).single(),
+      db.from("import_batch").select("source_book, source_edition").eq("id", job.batch_id).single(),
       db.from("import_page").select("id, printed_page, full_path, survey").in("id", job.page_ids),
       loadCatalogIndex(db),
     ]);
@@ -407,7 +412,12 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
       images,
       {
         title: job.provided_title,
-        book: must(batch, "load batch").source_book,
+        // The edition of a magazine rides along in the name; saving splits it again.
+        book:
+          sourceLabel(
+            must(batch, "load batch").source_book,
+            must(batch, "load batch").source_edition,
+          ) || null,
         // Without a page from the first look, the reader's own reading of it is used.
         page: job.provided_page ?? ownPage ?? null,
         // The first look noted whether the photos show steps: none read then needs a person.

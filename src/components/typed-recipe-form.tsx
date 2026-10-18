@@ -162,13 +162,22 @@ export function TypedRecipeForm({ initial, categories, extra = {}, submitLabel }
       </div>
 
       <details className="group" open={values.book !== "" || values.page !== ""}>
-        <summary className="link inline-flex min-h-10 items-center">Aus einem Kochbuch?</summary>
+        <summary className="link inline-flex min-h-10 items-center">
+          Aus einem Kochbuch oder Heft?
+        </summary>
         <div className="mt-2 grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <label className="label" htmlFor="book">
-              Kochbuch
+              Kochbuch oder Heft
             </label>
-            <input id="book" name="book" className="field" defaultValue={values.book} />
+            {/* A magazine with its edition: the app keeps every edition in one stack. */}
+            <input
+              id="book"
+              name="book"
+              className="field"
+              defaultValue={values.book}
+              placeholder="z. B. Einfach Hausgemacht 06/2020"
+            />
           </div>
           <div>
             <label className="label" htmlFor="page">

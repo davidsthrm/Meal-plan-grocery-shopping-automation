@@ -8,6 +8,7 @@ import {
   type RecipeFilter,
 } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
+import type { KnownSource } from "@/domain/library/source";
 import type { Category } from "@/domain/library/summary";
 import type { TagGroup } from "@/domain/library/tags";
 import { DIET_NAME } from "@/lib/plan-text";
@@ -21,6 +22,8 @@ interface Props {
   filter: RecipeFilter;
   categories: Category[];
   books: string[];
+  /** The books with their editions: a magazine's are offered once it is chosen. */
+  sources?: readonly KnownSource[];
   tagGroups: TagGroup[];
   /** Parameters of the page that are not part of the filter and have to survive it. */
   keep?: Record<string, string>;
@@ -43,6 +46,7 @@ export function RecipeFilterBar({
   filter,
   categories,
   books,
+  sources = [],
   tagGroups,
   keep = {},
   plan,
@@ -54,6 +58,8 @@ export function RecipeFilterBar({
   const chip = (on: boolean) => `chip ${on ? "chip-on" : ""}`;
   // The search field sends the text itself; everything else rides along hidden.
   const others = filterParams({ ...filter, text: "" });
+  // A magazine chosen offers its editions.
+  const editions = sources.find((source) => source.book === filter.book)?.editions ?? [];
   const narrowed = filter.category !== null || filter.book !== null || filter.tags.length > 0;
   const toggled = (ref: string) =>
     filter.tags.includes(ref) ? filter.tags.filter((tag) => tag !== ref) : [...filter.tags, ref];
@@ -146,7 +152,7 @@ export function RecipeFilterBar({
             {books.map((book) => (
               <Link
                 key={book}
-                href={href({ book: filter.book === book ? null : book })}
+                href={href({ book: filter.book === book ? null : book, edition: null })}
                 className={chip(filter.book === book)}
                 aria-pressed={filter.book === book}
               >
@@ -155,6 +161,20 @@ export function RecipeFilterBar({
               </Link>
             ))}
           </Chips>
+          {editions.length > 0 && (
+            <Chips label="Ausgabe">
+              {editions.map((edition) => (
+                <Link
+                  key={edition}
+                  href={href({ edition: filter.edition === edition ? null : edition })}
+                  className={chip(filter.edition === edition)}
+                  aria-pressed={filter.edition === edition}
+                >
+                  {edition}
+                </Link>
+              ))}
+            </Chips>
+          )}
         </div>
       </details>
 

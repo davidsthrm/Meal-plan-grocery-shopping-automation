@@ -7,6 +7,8 @@ import { allRows, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { CheckTiles, CheckTilesWithLibrary } from "./library-checks";
+import { sourceLabel } from "@/domain/library/source";
+import { loadSources } from "@/server/sources";
 import { NewBatchForm } from "./new-batch-form";
 
 export const metadata: Metadata = { title: "Import" };
@@ -33,7 +35,7 @@ export default async function ImportPage(props: PageProps<"/import">) {
   const [batches, jobs, proposals] = await Promise.all([
     db
       .from("import_batch")
-      .select("id, source_book, created_at")
+      .select("id, source_book, source_edition, created_at")
       .order("created_at", { ascending: false }),
     allRows(
       (from, to) => db.from("import_job").select("batch_id, status").order("id").range(from, to),
@@ -45,9 +47,8 @@ export default async function ImportPage(props: PageProps<"/import">) {
   const jobRows = jobs;
   const waiting = jobRows.filter((job) => job.status === "needs_review").length;
   const open = must(proposals, "load proposals").length;
-  const books = [
-    ...new Set(batchRows.map((b) => b.source_book).filter((b): b is string => Boolean(b))),
-  ];
+  // Every cookbook and magazine of the library, with its editions, to offer and to place.
+  const sources = await loadSources(db);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -83,7 +84,7 @@ export default async function ImportPage(props: PageProps<"/import">) {
         <h2 className="mt-6 mb-2 text-lg font-semibold">Neuer Stapel</h2>
       )}
       <NewBatchForm
-        knownBooks={books}
+        sources={sources}
         forMeal={forMeal && { date: forMeal.date, meal: forMeal.meal }}
       />
 
@@ -101,7 +102,7 @@ export default async function ImportPage(props: PageProps<"/import">) {
                     className="block px-4 py-3 hover:bg-accent-soft"
                   >
                     <span className="block font-semibold">
-                      {batch.source_book ?? "Ohne Kochbuch"}
+                      {sourceLabel(batch.source_book, batch.source_edition) || "Ohne Kochbuch"}
                     </span>
                     <span className="block text-sm text-muted">
                       {day.format(new Date(batch.created_at))} · {own.length} Rezepte

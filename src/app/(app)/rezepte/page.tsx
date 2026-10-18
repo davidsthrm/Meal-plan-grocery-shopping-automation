@@ -86,6 +86,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
             filter={filter}
             categories={categories}
             books={books}
+            sources={library.sources}
             tagGroups={tagGroups}
             favorites="none"
           />

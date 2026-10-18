@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FavoriteHeart } from "@/components/favorite-heart";
@@ -39,7 +40,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, status, is_favorite, wanted_at, source_text, prep_steps, prep_steps_doubts",
+      "id, title, source_title, source_book, source_edition, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, status, is_favorite, wanted_at, source_text, prep_steps, prep_steps_doubts",
     )
     .eq("id", id)
     .maybeSingle();
@@ -86,7 +87,10 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       ...(photo.crop_path ? [photo.crop_path] : []),
     ]),
   );
-  const source = sourceText(recipe.source_book, recipe.source_page);
+  const source = sourceText(
+    sourceLabel(recipe.source_book, recipe.source_edition) || null,
+    recipe.source_page,
+  );
   const steps = recipe.prep_steps ?? [];
   // The address this page was opened with, so that changing the steps keeps the way back.
   const pageQuery = (extra: Record<string, string> = {}) => {

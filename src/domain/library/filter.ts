@@ -20,6 +20,8 @@ export interface RecipeFilter {
   /** Ready in at most this many minutes. */
   maxMinutes: number | null;
   book: string | null;
+  /** An edition of that book, when it is a magazine. */
+  edition: string | null;
   favorites: boolean;
   /** Tags the recipe must all have, as the app refers to them. */
   tags: string[];
@@ -34,6 +36,7 @@ export const NO_FILTER: RecipeFilter = {
   diet: null,
   maxMinutes: null,
   book: null,
+  edition: null,
   favorites: false,
   tags: [],
 };
@@ -69,6 +72,8 @@ export function readFilter(params: Params): RecipeFilter {
     diet: (DIETS as readonly string[]).includes(diet) ? (diet as Diet) : null,
     maxMinutes: (TIME_LIMITS as readonly number[]).includes(minutes) ? minutes : null,
     book: one(params.buch) || null,
+    // An edition only counts within its book.
+    edition: (one(params.buch) && one(params.ausgabe).slice(0, 60)) || null,
     favorites: one(params.favoriten) === "1",
     tags: [
       ...new Set(
@@ -89,6 +94,7 @@ export function filterParams(filter: RecipeFilter): Record<string, string> {
   if (filter.diet) params.kost = filter.diet;
   if (filter.maxMinutes !== null) params.zeit = String(filter.maxMinutes);
   if (filter.book) params.buch = filter.book;
+  if (filter.book && filter.edition) params.ausgabe = filter.edition;
   if (filter.favorites) params.favoriten = "1";
   if (filter.tags.length > 0) params.tag = filter.tags.join(",");
   return params;
@@ -106,6 +112,7 @@ export function matchesFilter(recipe: RecipeSummary, filter: RecipeFilter): bool
   if (filter.favorites && !recipe.isFavorite) return false;
   if (filter.category && recipe.category !== filter.category) return false;
   if (filter.book && recipe.sourceBook !== filter.book) return false;
+  if (filter.edition && recipe.sourceEdition !== filter.edition) return false;
   if (!filter.tags.every((tag) => recipe.tags.includes(tag))) return false;
   if (filter.diet) {
     if (!recipe.proteinType || !DIET_TYPES[filter.diet].includes(recipe.proteinType)) return false;

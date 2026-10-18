@@ -1,4 +1,5 @@
 import "server-only";
+import { sourceLabel } from "@/domain/library/source";
 import { similarTag } from "@/domain/library/tag-admin";
 import { chosenTags, OWN_GROUP, TAG_GROUPS } from "@/domain/library/tags";
 import type { TypedRecipe } from "@/domain/library/typed-recipe";
@@ -8,12 +9,19 @@ import { importModels } from "./import/models";
 import { saveImportedRecipe, saveReviewedRecipe } from "./import/save-recipe";
 import { removePhotos } from "./import/storage";
 import { loadRecipePlaces, type PlanPlace } from "./planning/week";
+import { resolveSource } from "./sources";
 
 /**
  * Recipes the household types in or corrects by hand. They go the same way into the library
  * as imported ones: lines are mapped to the catalog, and an ingredient the catalog does not
  * know becomes a proposal instead of a silent new entry.
  */
+
+/** A source as typed, stored as the stack and its edition. */
+async function sourceColumns(db: Db, typed: string | null) {
+  const source = await resolveSource(db, typed);
+  return { source_book: source.book || null, source_edition: source.edition };
+}
 
 /** Stores a typed recipe, approved at once: the household wrote it. Returns its id. */
 export async function createTypedRecipe(
@@ -59,7 +67,7 @@ export async function updateTypedRecipe(
       .from("recipe")
       .update({
         title: recipe.title,
-        source_book: recipe.sourceBook,
+        ...(await sourceColumns(db, recipe.sourceBook)),
         source_page: recipe.sourcePage,
         servings_min: recipe.servings.min,
         servings_max: recipe.servings.max,
@@ -201,7 +209,7 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, prep_steps, prep_steps_doubts",
+      "id, title, source_book, source_edition, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, prep_steps, prep_steps_doubts",
     )
     .eq("id", recipeId)
     .maybeSingle();
@@ -228,7 +236,7 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
     title: recipe.title,
     category: category?.key ?? "",
     protein: recipe.protein_type ?? "",
-    sourceBook: recipe.source_book ?? "",
+    sourceBook: sourceLabel(recipe.source_book, recipe.source_edition),
     sourcePage: recipe.source_page,
     servingsMin: recipe.servings_min,
     servingsMax: recipe.servings_max,

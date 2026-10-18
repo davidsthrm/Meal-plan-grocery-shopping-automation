@@ -147,7 +147,13 @@ export function searchRecipes(
     const category = recipe.category ? (context.categoryName?.(recipe.category) ?? "") : "";
     const diets = recipe.proteinType ? DIET_WORDS[recipe.proteinType] : [];
     const tags = recipe.tags.map((ref) => context.tagName?.(ref) ?? "");
-    const keywords = [category, recipe.sourceBook ?? "", ...diets, ...tags]
+    const keywords = [
+      category,
+      recipe.sourceBook ?? "",
+      recipe.sourceEdition ?? "",
+      ...diets,
+      ...tags,
+    ]
       .flatMap((text) => text.split(/[^\p{L}\p{N}]+/u))
       .map(searchKey)
       .filter(Boolean);

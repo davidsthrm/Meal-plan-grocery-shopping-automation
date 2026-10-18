@@ -268,6 +268,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
             filter={filter}
             categories={categories}
             books={books}
+            sources={library.sources}
             tagGroups={tagGroups}
             keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
             plan={{

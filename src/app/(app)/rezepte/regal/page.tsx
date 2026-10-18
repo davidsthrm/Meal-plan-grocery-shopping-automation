@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FavoriteHeart } from "@/components/favorite-heart";
@@ -121,6 +122,7 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
           filter={filter}
           categories={categories}
           books={books}
+          sources={library.sources}
           tagGroups={tagGroups}
           keep={tableParams({ ...view, page: 1 })}
         />
@@ -438,7 +440,10 @@ function ShelfRow({
   const kind = kindLabel(recipe);
   const effort = effortText(recipe);
   const described = shownTags(recipe, tags);
-  const source = [recipe.sourceBook, recipe.sourcePage !== null ? `S. ${recipe.sourcePage}` : null]
+  const source = [
+    sourceLabel(recipe.sourceBook, recipe.sourceEdition),
+    recipe.sourcePage !== null ? `S. ${recipe.sourcePage}` : null,
+  ]
     .filter(Boolean)
     .join(", ");
   const servings = recipe.servings
@@ -547,7 +552,10 @@ function ShelfRow({
             </div>
           </div>
         </td>
-        <td className="hidden px-2 py-2.5 text-sm xl:table-cell">{recipe.sourceBook ?? "–"}</td>
+        <td className="hidden px-2 py-2.5 text-sm xl:table-cell">
+          {recipe.sourceBook ?? "–"}
+          {recipe.sourceEdition && <span className="block text-muted">{recipe.sourceEdition}</span>}
+        </td>
         <td className="hidden px-2 py-2.5 text-sm tabular-nums xl:table-cell">
           {recipe.sourcePage ?? ""}
         </td>

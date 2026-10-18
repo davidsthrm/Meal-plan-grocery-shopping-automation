@@ -149,3 +149,36 @@ test("tags are changed in place on a recipe's page and merged on their own page"
   await expect(quick.getByRole("button", { name: "Zusammenführen" })).toHaveCount(0);
   await expect(quick.getByRole("link", { name: "Löschen" })).toHaveCount(0);
 });
+
+test("the editions of a magazine are one stack", async ({ page }) => {
+  // A single recipe from an edition: its name and the edition, as on the cover.
+  for (const [title, book] of [
+    ["Rhabarberkuchen", "Testheft 05/26"],
+    ["Spargelsalat", "Testheft 06/2026"],
+  ]) {
+    await page.goto("/rezepte/neu");
+    await page.getByLabel("Titel").fill(title);
+    await page.getByLabel("Zutaten, eine pro Zeile").fill("500 g Spaghetti");
+    await page.getByText("Aus einem Kochbuch oder Heft?").click();
+    await page.getByLabel("Kochbuch oder Heft").fill(book);
+    await page.getByRole("button", { name: /speichern/i }).click();
+    await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
+  }
+  await expect(page.getByText("Testheft 06/2026")).toBeVisible();
+
+  // One entry in the library, its editions a further choice.
+  await page.goto("/rezepte?buch=Testheft");
+  await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
+  await page.getByRole("group", { name: "Ausgabe" }).getByRole("link", { name: "05/2026" }).click();
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+  await expect(page.getByRole("link", { name: /Rhabarberkuchen/ })).toBeVisible();
+
+  // The upload says where a batch goes before it starts.
+  await page.goto("/import");
+  await page.getByLabel("Kochbuch oder Heft").fill("Testheft Jahresheft 2026");
+  await expect(
+    page.getByText("Kommt zu „Testheft“, Ausgabe „Jahresheft 2026“ (neu)."),
+  ).toBeVisible();
+  await page.getByLabel("Kochbuch oder Heft").fill("Testheft 06/2026");
+  await expect(page.getByText("Kommt zu „Testheft“, Ausgabe „06/2026“.")).toBeVisible();
+});

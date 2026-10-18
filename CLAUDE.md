@@ -39,6 +39,7 @@ is easier than pen and paper.
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
+| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`    |
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
 | Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
@@ -150,6 +151,7 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Recipes are added on an upload tab in the app. The model detects title and kind. The
   household enters what a photo cannot show: cookbook and, if not printed, the page. The
   cookbook is asked once per batch and pre-filled from the folder name when a folder is chosen.
+  In a magazine's stack the folder is the edition (see "Library").
 - Photo uploads go from the browser straight to Storage. The server turns each one into an
   upright JPEG without metadata (the photos carry GPS). sharp cannot decode iPhone HEIC, so
   those go through `heic-decode` first. See `src/server/import/normalize-image.ts`.
@@ -538,8 +540,24 @@ Week plan
 
 Library
 
-- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`,
-  `tag` with one or more tags separated by commas; several tags mean all of them).
+- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `ausgabe`,
+  `favoriten`, `tag` with one or more tags separated by commas; several tags mean all of
+  them). `ausgabe` counts only with its `buch`.
+- A magazine is one source with its editions in it, a stack: `recipe.source_book`
+  "Einfach Hausgemacht", `recipe.source_edition` "06/2020" or "Jahresheft 2021" (null for a
+  cookbook; the same two on `import_batch`). The household types a source as one name, as
+  on the cover, wherever it is asked ("Kochbuch oder Heft"); the server splits it
+  (`splitSource`, `resolveSource`): a name that starts with a source there is, or with its
+  initials ("EH 05/26"), is that source and the rest its edition; otherwise an edition at
+  its end ("06/2020", "Jahresheft 2021", "Heft 3") makes a new stack. An issue is written
+  as month and year in full ("05/26" is "05/2026"), so two spellings are one edition. A
+  batch's folder is the edition of the stack typed above it, or of the one its name starts
+  with (`editionFromFolder`); a cookbook's folder stays the cookbook. The upload form says
+  before it starts where the photos go and whether stack and edition are new (`placement`).
+  Everywhere a source is shown it is one name again (`sourceLabel`). The library lists the
+  stack once ("Stöbern", the book chips) and offers its editions as chips once it is
+  chosen. Sources stored before editions existed are split with
+  `npm run library:split-sources`, by the shape of the name alone.
 - Beyond its category a recipe is described by tags in groups (`src/domain/library/tags.ts`):
   "Aufwand" (Schnell, Alltagsküche, Braucht Zeit), "Gericht" (pasta, rice, potatoes,
   casserole, pizza, pan, oven, burger), "Küche", "Saison", "Anlass", and "Eigene" for tags

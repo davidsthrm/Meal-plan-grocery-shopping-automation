@@ -171,6 +171,7 @@ export type Database = {
           household_id: string
           id: string
           source_book: string | null
+          source_edition: string | null
         }
         Insert: {
           created_at?: string
@@ -181,6 +182,7 @@ export type Database = {
           household_id: string
           id?: string
           source_book?: string | null
+          source_edition?: string | null
         }
         Update: {
           created_at?: string
@@ -191,6 +193,7 @@ export type Database = {
           household_id?: string
           id?: string
           source_book?: string | null
+          source_edition?: string | null
         }
         Relationships: [
           {
@@ -783,6 +786,7 @@ export type Database = {
           servings_min: number | null
           servings_unit: string | null
           source_book: string | null
+          source_edition: string | null
           source_page: number | null
           source_text: string | null
           source_title: string | null
@@ -807,6 +811,7 @@ export type Database = {
           servings_min?: number | null
           servings_unit?: string | null
           source_book?: string | null
+          source_edition?: string | null
           source_page?: number | null
           source_text?: string | null
           source_title?: string | null
@@ -831,6 +836,7 @@ export type Database = {
           servings_min?: number | null
           servings_unit?: string | null
           source_book?: string | null
+          source_edition?: string | null
           source_page?: number | null
           source_text?: string | null
           source_title?: string | null

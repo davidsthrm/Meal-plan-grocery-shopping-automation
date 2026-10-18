@@ -11,6 +11,7 @@ export function summary(id: string, patch: Partial<RecipeSummary> = {}): RecipeS
     prepMinutes: 30,
     isFavorite: false,
     sourceBook: "Speed Cooking",
+    sourceEdition: null,
     sourcePage: null,
     servings: { min: 4, max: 4, unit: null },
     addedOn: "2026-01-05",
