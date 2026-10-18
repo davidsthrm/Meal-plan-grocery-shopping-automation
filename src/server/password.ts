@@ -1,5 +1,5 @@
 import "server-only";
-import { requestOrigin } from "./origin";
+import { requestOrigin } from "./request-origin";
 import { createSessionClient } from "./supabase/server";
 
 /**

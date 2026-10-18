@@ -11,7 +11,7 @@ import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import { requireHousehold } from "@/server/auth";
 import { loadCatalogIndex, must } from "@/server/catalog";
 import { loadInvites, loadMembers } from "@/server/family";
-import { requestOrigin } from "@/server/origin";
+import { requestOrigin } from "@/server/request-origin";
 import { createSessionClient } from "@/server/supabase/server";
 import {
   inviteMember,
