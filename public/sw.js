@@ -12,12 +12,12 @@
  * to the network as they always did. Ticks made offline wait in IndexedDB, not here.
  */
 
-const VERSION = 1;
+const VERSION = 2;
 const PAGES = `pages-v${VERSION}`;
 const ASSETS = `assets-v${VERSION}`;
 const SHELL = `shell-v${VERSION}`;
 const OFFLINE_PAGE = "/offline.html";
-const SHELL_FILES = [OFFLINE_PAGE, "/icon-192.png"];
+const SHELL_FILES = [OFFLINE_PAGE];
 
 /** How long the network may take before a kept page is shown, in ms. 0: as long as it takes. */
 const WAIT = Number(new URL(self.location.href).searchParams.get("wait") || 0);
