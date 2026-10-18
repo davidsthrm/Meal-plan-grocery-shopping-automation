@@ -174,6 +174,15 @@ export function TrashIcon() {
   );
 }
 
+/** A folder: a magazine with its editions in it. */
+export function FolderIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.2h8a1.5 1.5 0 0 1 1.5 1.5v8.3a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5Z" />
+    </svg>
+  );
+}
+
 /** A pushpin: the week as a note for the pinboard. */
 export function PinIcon() {
   return (

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { planAsExtra, resetLibrary, signIn } from "./fixtures";
+import { addBatches, planAsExtra, resetLibrary, signIn } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await resetLibrary();
@@ -181,4 +181,21 @@ test("the editions of a magazine are one stack", async ({ page }) => {
   ).toBeVisible();
   await page.getByLabel("Kochbuch oder Heft").fill("Testheft 06/2026");
   await expect(page.getByText("Kommt zu „Testheft“, Ausgabe „06/2026“.")).toBeVisible();
+});
+
+test("a magazine's batches are one folder with its editions", async ({ page }) => {
+  await addBatches([
+    { book: "Testheft", edition: "05/2026" },
+    { book: "Testheft Jahresheft 2021" },
+    { book: "E2E Kochbuch" },
+  ]);
+  await page.goto("/import");
+  const batches = page.locator("ul.card > li");
+  await expect(batches).toHaveCount(2);
+  const folder = batches.filter({ hasText: "Testheft" });
+  await expect(folder).toContainText("2 Ausgaben · 0 Rezepte");
+  await folder.getByText("Öffnen").click();
+  await expect(folder.getByRole("link", { name: /^05\/2026/ })).toBeVisible();
+  await expect(folder.getByRole("link", { name: /^Jahresheft 2021/ })).toBeVisible();
+  await expect(batches.filter({ hasText: "E2E Kochbuch" })).toContainText("0 Rezepte");
 });
