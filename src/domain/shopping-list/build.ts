@@ -120,34 +120,41 @@ function bucketKey(ingredient: Ingredient, trip: Trip, shopId: string | null): s
   return shopId ? `${ingredient.id}@${trip}@${shopId}` : `${ingredient.id}@${trip}`;
 }
 
-function linesForBucket(bucket: Bucket): ShoppingLine[] {
-  const { ingredient, trip } = bucket;
-  // Contributions that sum up in the default unit, plus those without a quantity.
+/** What the parts of one line add up to. */
+interface Sums {
+  /** The parts that add up in the ingredient's default unit, and those without a quantity. */
+  primary: Contribution[];
+  /** Their sum in the default unit. Null when none of them has a quantity that converts. */
+  sum: number | null;
+  /** True when a part asks for no quantity, or for a spoonful that cannot be added. */
+  hasUnquantified: boolean;
+  /**
+   * Whether everything with an amount asks for a spoonful or a pinch: then no amount is
+   * shown, three tablespoons of oil are "Öl", not "45 ml Öl".
+   */
+  bySpoonOnly: boolean;
+  /** Amounts with no conversion path: one exact sum per dimension, in its base unit. */
+  apart: { dimension: Dimension; exact: Amount; contributions: Contribution[] }[];
+}
+
+function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): Sums {
   const primary: Contribution[] = [];
-  let primarySum = 0;
-  let hasSum = false;
+  let sum: number | null = null;
   let hasUnquantified = false;
-  // Whether everything with an amount asks for a spoonful or a pinch: then no amount is
-  // shown, three tablespoons of oil are "Öl", not "45 ml Öl".
   let bySpoonOnly = true;
-  // Amounts with no conversion path stay apart, one sum per dimension.
   const apart = new Map<Dimension, { sum: number; contributions: Contribution[] }>();
 
-  for (const contribution of bucket.contributions) {
-    if (contribution.amount === null) {
+  for (const contribution of contributions) {
+    const { amount } = contribution;
+    if (amount === null) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;
     }
-    const spoonful = SPOONFULS.has(contribution.amount.unit);
-    const inDefault = toDefaultUnit(
-      ingredient,
-      contribution.amount,
-      contribution.source.type === "manual",
-    );
+    const spoonful = SPOONFULS.has(amount.unit);
+    const inDefault = toDefaultUnit(ingredient, amount, contribution.source.type === "manual");
     if (inDefault !== null) {
-      primarySum += inDefault;
-      hasSum = true;
+      sum = (sum ?? 0) + inDefault;
       if (!spoonful) bySpoonOnly = false;
       primary.push(contribution);
       continue;
@@ -160,18 +167,32 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       primary.push(contribution);
       continue;
     }
-    const dimension = dimensionOf(contribution.amount.unit);
-    const inBase = convert(
-      contribution.amount.quantity,
-      contribution.amount.unit,
-      baseUnitOf(dimension),
-    ) as number;
+    const dimension = dimensionOf(amount.unit);
     const group = apart.get(dimension) ?? { sum: 0, contributions: [] };
-    group.sum += inBase;
+    group.sum += convert(amount.quantity, amount.unit, baseUnitOf(dimension)) as number;
     group.contributions.push(contribution);
     apart.set(dimension, group);
   }
 
+  return {
+    primary,
+    sum,
+    hasUnquantified,
+    bySpoonOnly,
+    apart: [...apart].map(([dimension, group]) => ({
+      dimension,
+      exact: { quantity: tidy(group.sum), unit: baseUnitOf(dimension) },
+      contributions: group.contributions,
+    })),
+  };
+}
+
+function linesForBucket(bucket: Bucket): ShoppingLine[] {
+  const { ingredient, trip } = bucket;
+  const { primary, sum, hasUnquantified, bySpoonOnly, apart } = sumUp(
+    ingredient,
+    bucket.contributions,
+  );
   const forms = { one: nameForOne(ingredient), many: ingredient.name };
   const common = {
     ingredientId: ingredient.id,
@@ -189,13 +210,6 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   );
   const defaultAtHome = ingredient.isPantryStaple && !askedFor;
   const note = bucket.notes.length > 0 ? bucket.notes.join(", ") : null;
-  const primaryAmounts: Amount[] = hasSum
-    ? [{ quantity: tidy(primarySum), unit: ingredient.defaultUnit }]
-    : [];
-  const apartAmounts = [...apart].map(([dimension, group]): Amount => ({
-    quantity: tidy(group.sum),
-    unit: baseUnitOf(dimension),
-  }));
   const key = bucketKey(ingredient, trip, bucket.shopId);
   // The day it is needed is said only for what goes bad: tomatoes and yoghurt are bought
   // close to their meal, flour is simply on the list.
@@ -205,15 +219,15 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   if (primary.length > 0) {
     // The amount needed stands in front of the name whenever it is known, whatever the
     // ingredient is bought as: "200 g Crème fraîche", "1x Schalotte", "400 g Champignons".
-    const purchase = hasSum && !bySpoonOnly ? purchaseFor(ingredient, primarySum) : null;
+    const purchase = sum !== null && !bySpoonOnly ? purchaseFor(ingredient, sum) : null;
     lines.push({
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
       key,
       neededBy: dated ? neededBy(primary) : null,
       purchase,
-      packs: hasSum ? packsFor(ingredient, primarySum) : null,
-      amounts: primaryAmounts,
+      packs: sum !== null ? packsFor(ingredient, sum) : null,
+      amounts: sum !== null ? [{ quantity: tidy(sum), unit: ingredient.defaultUnit }] : [],
       hasUnquantified,
       contributions: primary,
       note,
@@ -221,9 +235,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       optional: isOptional(primary),
     });
   }
-  let index = 0;
-  for (const [dimension, group] of apart) {
-    const exact = apartAmounts[index];
+  for (const { dimension, exact, contributions } of apart) {
     const purchase = {
       quantity: roundUpTo(exact.quantity, naturalStep(exact.quantity, exact.unit)),
       unit: exact.unit,
@@ -232,18 +244,17 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
       key: `${key}#${dimension}`,
-      neededBy: dated ? neededBy(group.contributions) : null,
+      neededBy: dated ? neededBy(contributions) : null,
       purchase,
       packs: null,
       amounts: [exact],
       hasUnquantified: false,
-      contributions: group.contributions,
+      contributions,
       // The note belongs to the main line. Without one, it must not get lost.
       note: primary.length > 0 ? null : note,
       defaultAtHome,
-      optional: isOptional(group.contributions),
+      optional: isOptional(contributions),
     });
-    index++;
   }
   return lines;
 }
