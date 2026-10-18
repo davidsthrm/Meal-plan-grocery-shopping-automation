@@ -24,13 +24,13 @@ test("an empty week waits to be asked: a suggestion comes on request", async ({ 
   // Nothing is put on the plan unasked. A few meals offer a suggestion, to take or leave.
   await expect(page.getByText("Vorschlag", { exact: true })).toHaveCount(5);
   await expect(page.getByText("4 Personen")).toHaveCount(0);
+  // Offered unasked, a suggestion says what it is for: nothing is planned, so a gap.
+  await expect(page.getByText(/fehlt diese Woche noch/).first()).toBeVisible();
 
   // Asked for, whether it offered one already or not.
   const monday = meal(page, "Montag Mittag");
   await page.goto(`/woche?w=${WEEK}&frage=${WEEK}.lunch&v=0`);
   await expect(monday.getByText("Vorschlag", { exact: true })).toBeVisible();
-  // Nothing is planned yet, so the suggestion is there to fill a gap.
-  await expect(monday).toContainText("fehlt diese Woche noch");
   const first = await monday.getByRole("link").first().innerText();
   await monday.getByRole("link", { name: "Noch ein Vorschlag" }).click();
   await expect(monday.getByRole("link").first()).not.toHaveText(first);
