@@ -18,7 +18,15 @@ import {
   weekRange,
   type IsoDate,
 } from "@/domain/dates";
-import { BY_KIND, groupRecipes } from "@/domain/library/grouping";
+import {
+  BY_KIND,
+  groupRecipes,
+  readWishGrouping,
+  WISH_GROUPINGS,
+  wishGrouping,
+  type WishGrouping,
+} from "@/domain/library/grouping";
+import { EFFORT_NAME, type Effort, type TagGroup } from "@/domain/library/tags";
 import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { openingWeek } from "@/domain/planned";
@@ -425,7 +433,13 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
 
       {!placing && !showExtras && !saved && wishes.length > 0 && (
-        <Wishes week={week} wishes={wishes} all={one(params.wuensche) === "alle"} />
+        <Wishes
+          week={week}
+          wishes={wishes}
+          all={one(params.wuensche) === "alle"}
+          by={readWishGrouping(one(params["wuensche-nach"]))}
+          tagGroups={library.tagGroups}
+        />
       )}
     </div>
   );
@@ -434,21 +448,59 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 /** How many wishes a kind shows before the rest is folded into "weitere". */
 const WISHES_SHOWN = 8;
 
+/** The ways the wishes can be sorted, as the row above them names them. */
+const WISH_GROUPING_NAME: Record<WishGrouping, string> = {
+  art: "Art",
+  aufwand: "Aufwand",
+  gericht: "Gericht",
+  kueche: "Küche",
+  saison: "Saison",
+};
+
 /**
  * What someone wants to cook soon, below the plan, sorted by kind so that dozens of them stay
- * a few rows. A tap puts one on a meal.
+ * a few rows, or by a group of tags: how much work, what kind of dish, cuisine, season. A
+ * tap puts one on a meal.
  */
 function Wishes({
   week,
   wishes,
   all,
+  by,
+  tagGroups,
 }: {
   week: IsoDate;
   wishes: RecipeSummary[];
   /** Every wish is shown, not only the first of each kind. */
   all: boolean;
+  by: WishGrouping;
+  tagGroups: readonly TagGroup[];
 }) {
-  const groups = groupRecipes(wishes, BY_KIND);
+  const tagName = new Map(tagGroups.flatMap((group) => group.tags.map((t) => [t.ref, t.name])));
+  const groups: { key: string | null; name: string; tone: string; recipes: RecipeSummary[] }[] =
+    by === "art"
+      ? groupRecipes(wishes, BY_KIND).map((group) => ({
+          ...group,
+          name: kindGroupName(group.key),
+          tone: group.key ? `kind-${group.key}` : "",
+        }))
+      : groupRecipes(wishes, wishGrouping(by, tagGroups)).map((group) => ({
+          ...group,
+          name:
+            group.key === null
+              ? "Ohne Angabe"
+              : by === "aufwand"
+                ? EFFORT_NAME[group.key as Effort]
+                : (tagName.get(group.key) ?? group.key),
+          tone: "",
+        }));
+  const address = (extra: Record<string, string>, way = by) =>
+    `/woche?${new URLSearchParams({
+      w: week,
+      ...(all ? { wuensche: "alle" } : {}),
+      ...(way !== "art" ? { "wuensche-nach": way } : {}),
+      ...extra,
+    })}#wuensche`;
   return (
     <section id="wuensche" aria-label="Möchte ich kochen" className="mt-8 scroll-mt-4">
       <h2 className="eyebrow flex items-center gap-1.5">
@@ -456,16 +508,30 @@ function Wishes({
         Möchte ich kochen
         <span className="font-normal">· {wishes.length}</span>
       </h2>
-      <ul className="mt-2 space-y-2.5">
+      <nav aria-label="Wünsche sortieren" className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-sm text-muted">Nach</span>
+        {WISH_GROUPINGS.map((way) => (
+          <Link
+            key={way}
+            href={address({}, way)}
+            scroll={false}
+            className={`chip min-h-9 px-3 text-sm ${by === way ? "chip-on" : ""}`}
+            aria-current={by === way ? "true" : undefined}
+          >
+            {WISH_GROUPING_NAME[way]}
+          </Link>
+        ))}
+      </nav>
+      <ul className="mt-3 space-y-2.5">
         {groups.map((group) => {
           const shown = all ? group.recipes : group.recipes.slice(0, WISHES_SHOWN);
           const more = group.recipes.length - shown.length;
-          const name = kindGroupName(group.key);
+          const name = group.name;
           return (
             <li
               key={group.key ?? "rest"}
               aria-label={name}
-              className={`${group.key ? `kind-${group.key}` : ""} flex flex-wrap items-center gap-1.5 sm:grid sm:grid-cols-[8.5rem_1fr] sm:items-start sm:gap-3`}
+              className={`${group.tone} flex flex-wrap items-center gap-1.5 sm:grid sm:grid-cols-[8.5rem_1fr] sm:items-start sm:gap-3`}
             >
               <span className="flex min-h-9 items-center gap-1.5 pr-1 text-sm font-semibold text-muted">
                 <span className="dot" />
@@ -484,7 +550,7 @@ function Wishes({
                 ))}
                 {more > 0 && (
                   <Link
-                    href={`/woche?w=${week}&wuensche=alle#wuensche`}
+                    href={address({ wuensche: "alle" })}
                     scroll={false}
                     className="chip min-h-9 px-3 text-sm text-muted"
                   >
