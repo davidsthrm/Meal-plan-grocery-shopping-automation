@@ -40,6 +40,8 @@ is easier than pen and paper.
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
 | Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
+| Measure reading steps alone on the five sample photos (calls the API)     | `npm run import:eval-steps`                    |
+| Steps for imported recipes: dry run with the cost, then per cookbook      | `npm run import:fill-steps -- "<name>"`        |
 | Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`         |
 | Regenerate the database types after a migration                           | `npm run db:types`                             |
 | Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
@@ -134,7 +136,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `/rezepte/[id]`, `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
   `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/import/pruefen/angaben` (assigned
   fields that do not fit; `?feld=` one of them) and `/import/pruefen/doppelt` (duplicates;
-  `?behalten=<id>&weg=<id>` asks before a merge), `/einkauf` (the shopping notes of
+  `?behalten=<id>&weg=<id>` asks before a merge), `/import/pruefen/schritte` (steps read with
+  doubts), `/einkauf` (the shopping notes of
   a week as tiles; `?zettel=<date>.<place>` shows one of them picked up) with `/einkauf/pdf`
   (all notes, or with `zettel` one, as a PDF), `/merkzettel` (what ran out at home, as a
   page; the header pulls the same note down over any page), `/einstellungen` with `/einstellungen/vorrat` (what is usually at home), `/import`
@@ -501,8 +504,27 @@ Library
   The lines are the rows of the import's review (`IngredientRows`, shared by both forms):
   amount, unit, ingredient and note per row, the printed line shown above it. What is typed
   is checked on the server by `readReview`, and saving replaces the recipe's lines.
+- A recipe has its preparation steps, one entry per printed step in printed order
+  (`recipe.prep_steps`, `src/domain/import/steps.ts`), so the app replaces the cookbook at
+  the stove. Null means nobody has read them yet, an empty list that the photos show none.
+  The recipe page shows them below the ingredients as "Arbeitsschritte", numbered and in
+  large print; a recipe without any says "Keine Arbeitsschritte vorhanden". A part the
+  model could not read is "[…]", never a guess. Steps are typed and corrected one per line,
+  on the review screen, on `/rezepte/[id]/bearbeiten` and in the form for a typed or pasted
+  recipe (`readTypedSteps`); nothing typed keeps them unknown. The old column `recipe.steps`
+  was never written and is not read.
+- Recipes imported before steps were read get them from their stored page photos with
+  `npm run import:fill-steps`, one cookbook at a time: a reading of the steps alone
+  (`STEPS_PROMPT`, `createAnthropicStepsReader`) and a check of them (`STEPS_VERIFICATION_PROMPT`),
+  the cut-out of a recipe sent with its page. Ingredients are not touched. Such a recipe is
+  approved already, so a doubt does not send it to review: the steps are stored with their
+  doubts in German (`prep_steps_doubts`, `settleSteps`). The recipe page shows them above the
+  steps, and "Arbeitsschritte prüfen" (a third tile under "Prüfen", `/import/pruefen/schritte`)
+  lists such recipes with photo and steps side by side: "Stimmt so, übernehmen" stores the
+  steps as they stand in the field and clears the doubts. Saving the recipe's form does too. Steps a person saved are
+  never overwritten. Without --write the script only counts and estimates.
 - The recipe page shows the photographed page folded away (`<details>`): what is cooked from
-  are the ingredients above it. Opened, it shows the recipe's own part of the page where it
+  are the ingredients and steps above it. Opened, it shows the recipe's own part of the page where it
   shares the page with others, with a link to the whole page below.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows a few shelves that change with the day (`discover`):
@@ -533,8 +555,9 @@ Library
   the rules for photos (`createAnthropicTextReader`), and what it read fills the form for a
   typed recipe (`pastedRecipe`), where a person checks it before anything is saved. What
   needs a look is listed above the form: no title, no servings, a line the model was unsure
-  about, an alternative that was left out. The pasted text is kept with the recipe
-  (`recipe.source_text`) and shown on its page, because the steps are nowhere else. Tried on
+  about, an alternative that was left out, no steps. Its steps fill the form's steps field
+  and are stored like any other. The pasted text is kept with the recipe
+  (`recipe.source_text`) and shown folded away on its page. Tried on
   one made-up web page with navigation and a story around the recipe: all nine ingredients
   right, about 0.2 cents.
 
@@ -841,6 +864,18 @@ Import
   without a mistake over three runs, 25 of 25 planted mistakes caught by the second pass, no
   false alarm, about 0.35 cents per recipe for both passes. Re-measure after changing a prompt
   or a model.
+- The reading copies the steps as well (`STEP_RULES`, shared with the reading of steps alone).
+  The second pass checks them for structure and numbers, not word by word: every printed step
+  there and in order, none from a tip box, each read to its end across columns, and every
+  time, temperature and amount as printed (`STEP_CHECK_RULES`). A step with "[…]", one that
+  breaks off mid-word or on a comma, or no steps where the first look at the page saw some
+  (`stepProblems`, `surveySawSteps`) send a recipe to review. Measured with steps (October
+  2026): ingredients still 5 of 5 without a mistake; 20 of 22 steps exactly as printed, the
+  other two with one word normalised ("einkochen" for "einköcheln", "Stengelansätze"), no
+  number wrong; 38 of 38 planted mistakes caught, the 13 in the steps included, no false
+  alarm; 0.43 cents per recipe for both passes, 0.08 more than without steps. Reading the
+  steps alone from a stored page: 0.21 cents for both requests, the same two words, stable
+  over three runs. The steps of the five samples are transcribed by hand in the fixtures.
 
 ## Open items
 
@@ -865,6 +900,18 @@ Import
   the seed only, not on the household's 880 recipes. Watch for false alarms (a word list
   decides what is meat or fish) and tune the lists in `quality.ts`.
 - Editing a recipe on `/rezepte/[id]/bearbeiten` does not mark its fields as checked.
+- The steps of the 875 recipes imported before steps were read are not filled in yet:
+  `npm run import:fill-steps -- "Stührmann" --write --all`, estimated at about $2.20. Tried
+  on three recipes of "bunter Ordner": one read without doubt, a handwritten one with its
+  unclear words named, and one the check caught with steps missing.
+- The check of steps let a paragraph pass that the reading had split in two (one run of
+  five). The text was complete, so nothing is lost for the cook.
+- The reading sometimes writes a word the way it is usually spelled rather than as printed.
+  Asked in the instructions to copy the letters, it did no better and split a step instead.
+- A recipe whose steps run on to a page that was not photographed has the steps up to there
+  and a doubt; the rest can be typed on `/rezepte/[id]/bearbeiten`.
+- The screen of a phone may go dark while someone cooks from the steps. Keeping it awake
+  (Wake Lock) is not built.
 - The live search loads the whole library into the browser, about 880 recipes today. Watch
   how long that takes as the library grows.
 - A recipe's own view of its page can miss the end of its steps where the text runs on in
