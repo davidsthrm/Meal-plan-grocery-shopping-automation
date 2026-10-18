@@ -24,6 +24,12 @@ export default defineConfig({
   projects: [
     { name: "phone", use: { ...devices["iPhone 14"], browserName: "chromium" } },
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    // An iPad, for the screenshots only: the flows are the phone's and the desktop's.
+    {
+      name: "tablet",
+      use: { ...devices["iPad (gen 7)"], browserName: "chromium" },
+      grep: /@look/,
+    },
   ],
   webServer: {
     // The test of the shop without a connection needs a production build (`e2e:offline`).

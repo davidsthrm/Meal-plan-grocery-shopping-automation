@@ -1,10 +1,13 @@
 import "server-only";
+import { similarTag } from "@/domain/library/tag-admin";
 import { chosenTags, OWN_GROUP, TAG_GROUPS } from "@/domain/library/tags";
 import type { TypedRecipe } from "@/domain/library/typed-recipe";
 import { loadCatalogIndex, loadIngredientNames, must, type Db } from "./catalog";
 import type { ReviewLine } from "./import/review";
 import { importModels } from "./import/models";
 import { saveImportedRecipe, saveReviewedRecipe } from "./import/save-recipe";
+import { removePhotos } from "./import/storage";
+import { loadRecipePlaces, type PlanPlace } from "./planning/week";
 
 /**
  * Recipes the household types in or corrects by hand. They go the same way into the library
@@ -115,7 +118,8 @@ export async function setCategory(
 
 /**
  * Sets the tags that describe a recipe beyond its category, replacing the ones it had. Names
- * the household typed become tags of its own group, unless a tag of that name exists.
+ * the household typed become tags of its own group, unless a tag of that name, or nearly
+ * that name, exists.
  */
 export async function saveRecipeTags(
   db: Db,
@@ -137,7 +141,8 @@ export async function saveRecipeTags(
   const ids = chosenTags(chosen, all).map((ref) => idOf.get(ref) as string);
 
   for (const name of ownNames) {
-    const existing = rows.find((row) => row.name.toLowerCase() === name.toLowerCase());
+    // However it is written, or a letter wrong: "Oma Rezept" is the "Omas Rezept" there is.
+    const existing = similarTag(name, rows);
     if (existing) {
       // A name that is a category or a diet is not a tag to put on a recipe here.
       if (described.includes(existing) && !ids.includes(existing.id)) ids.push(existing.id);
@@ -256,4 +261,30 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
           : null,
     })),
   };
+}
+
+/**
+ * Deletes a recipe that stands on no plan. One that does is left as it is, and the places it
+ * stands are returned, to say why. Its ingredient lines, tags and photo rows go with it; its
+ * own view of a page goes from storage, the page itself stays with its batch, where other
+ * recipes may share it.
+ */
+export async function deleteRecipe(db: Db, recipeId: string): Promise<PlanPlace[]> {
+  const places = await loadRecipePlaces(db, recipeId);
+  if (places.length > 0) return places;
+  // Row level security lets this read the household's own recipe only, and so decides
+  // which files may go below.
+  const photos = must(
+    await db.from("recipe_photo").select("crop_path").eq("recipe_id", recipeId),
+    "load photos of recipe",
+  );
+  const discarded = await db
+    .from("import_job")
+    .update({ status: "discarded", issues: [] })
+    .eq("recipe_id", recipeId);
+  if (discarded.error) throw new Error(`discard import of recipe: ${discarded.error.message}`);
+  const removed = await db.from("recipe").delete().eq("id", recipeId);
+  if (removed.error) throw new Error(`delete recipe: ${removed.error.message}`);
+  await removePhotos(photos.flatMap((photo) => (photo.crop_path ? [photo.crop_path] : [])));
+  return [];
 }

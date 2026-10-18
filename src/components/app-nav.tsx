@@ -8,7 +8,7 @@ import { BookIcon, CameraIcon, HeartIcon, ListIcon, WeekIcon } from "./icons";
 const SECTIONS: { href: string; label: string; icon: ReactNode }[] = [
   { href: "/woche", label: "Woche", icon: <WeekIcon /> },
   { href: "/einkauf", label: "Einkauf", icon: <ListIcon /> },
-  { href: "/rezepte", label: "Entdecken", icon: <BookIcon /> },
+  { href: "/rezepte", label: "Rezepte", icon: <BookIcon /> },
   { href: "/favoriten", label: "Favoriten", icon: <HeartIcon /> },
   { href: "/import", label: "Import", icon: <CameraIcon /> },
 ];

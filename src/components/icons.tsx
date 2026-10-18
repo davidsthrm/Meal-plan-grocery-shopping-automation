@@ -174,6 +174,16 @@ export function TrashIcon() {
   );
 }
 
+/** A label on a string: the tags of a recipe. */
+export function TagIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.4 1.4 0 0 1 0 2l-6.7 6.7a1.4 1.4 0 0 1-2 0Z" />
+      <circle cx="8.2" cy="8.2" r="1.4" />
+    </svg>
+  );
+}
+
 export function StarIcon({ filled = false }: { filled?: boolean }) {
   return (
     <svg {...base} fill={filled ? "currentColor" : "none"}>
