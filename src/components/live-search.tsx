@@ -12,10 +12,18 @@ import { SubmitButton } from "./submit-button";
 /** How many recipes the list under the field shows while someone types. */
 const SHOWN = 8;
 
-// One index for the whole visit: it is fetched once and searched for every letter.
+/**
+ * Told by `LiveRefresh` when someone changed a recipe, a tag or the catalog: the index is
+ * fetched again, past the browser's copy of it.
+ */
+export const LIBRARY_CHANGED = "essensplan:library-changed";
+
+// One index for the whole visit: it is fetched once and searched for every letter, and
+// again after the library changed.
 let loading: Promise<SearchIndex> | null = null;
+let changed = false;
 function loadIndex(): Promise<SearchIndex> {
-  loading ??= fetch("/api/suche")
+  loading ??= fetch("/api/suche", changed ? { cache: "no-store" } : undefined)
     .then((response) => {
       if (!response.ok) throw new Error(`search index: ${response.status}`);
       return response.json() as Promise<SearchIndex>;
@@ -58,7 +66,18 @@ export function LiveSearch({
   const [text, setText] = useState(filter.text);
   const [index, setIndex] = useState<SearchIndex | null>(null);
   const [failed, setFailed] = useState(false);
+  const [version, setVersion] = useState(0);
   const list = useId();
+
+  useEffect(() => {
+    const reload = () => {
+      loading = null;
+      changed = true;
+      setVersion((count) => count + 1);
+    };
+    window.addEventListener(LIBRARY_CHANGED, reload);
+    return () => window.removeEventListener(LIBRARY_CHANGED, reload);
+  }, []);
 
   useEffect(() => {
     let wanted = true;
@@ -72,7 +91,7 @@ export function LiveSearch({
     return () => {
       wanted = false;
     };
-  }, []);
+  }, [version]);
 
   const typed = text.trim();
   // What the page shows already is not listed a second time.
