@@ -320,10 +320,17 @@ Household
   on the first visit). Until it has, the app's own hold (`DEFAULT_SHOPPING_DAYS`: supermarket
   on Monday and Friday, market on Saturday). At least one day must be at a supermarket, where
   everything else is bought. `household.shopping_weekday` is no longer read.
-- The butcher and the bakery have no weekdays (`ON_DEMAND_PLACES`): the household did not
-  want standing days for them. They are gone to for the meal that needs something from
-  there, on the day of that meal, and on the Saturday for a Sunday (`onDemandDay`). Days once
-  stored for them are ignored.
+- The butcher and the bakery are gone to only for a meal that needs something from there
+  (`ON_DEMAND_PLACES`): their notes have no standing days. The butcher has preferred days,
+  a row "Metzger" among the shopping days (stored in `shopping_days` as the place
+  `butcher`, which older versions read and ignore). Its meat goes to the last butcher day on
+  or before its meal, at most three days before and not before it was planned
+  (`butcherDay`, `BUTCHER_REACH_DAYS`): Monday buys for Monday to Thursday, Saturday for the
+  weekend and the start of the week. The catalog's shelf life of fresh meat is not asked.
+  While no butcher day is ticked, the butcher days are those of the supermarket and the
+  market (`butcherWeekdays`). The household found a note for the butcher on every day with
+  meat a waste of time (October 2026). Where no butcher day reaches a meal, and for the
+  bakery always, it is the day of the meal, and the Saturday for a Sunday (`onDemandDay`).
 - The drugstore (dm, place `drugstore`) has one weekday, Saturday until the household picks
   another on `/einstellungen` (`household.drugstore_weekday`, merged into the shopping days
   by `withDrugstore`). It is kept apart from `shopping_days`, which older versions read
@@ -676,8 +683,8 @@ Shopping list
   vegetables and fish at the market, meat at the butcher; the household's to change on
   `/einstellungen`) goes on that place's note. For the market that is when its day is at
   most three days before the meal and it keeps until then: the weekend and the start of the
-  week, also though Monday is a supermarket day. Meat is a note for the butcher on the day
-  it is cooked. A household that buys everything in one go, like the one of the handwritten
+  week, also though Monday is a supermarket day. Meat is a note for the butcher on its butcher
+  day (see above). A household that buys everything in one go, like the one of the handwritten
   list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
@@ -691,11 +698,11 @@ Shopping list
   holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
   The page of a week shows the errands in it, and one before it when that buys for the
   week. `loadShoppingNotes` therefore reads the plans of the weeks around it.
-- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher and
-  the bakery on the day of the meal, the market on its day when that reaches the meal and
-  otherwise on the day of the meal too, which then has an errand of its own. Bread and cold
-  cuts for a "Vesper" on Monday are a note for the bakery and one for the butcher on Monday,
-  next to the supermarket's. So a week shows the household's shopping days and every other day
+- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher on
+  its butcher day like meat for cooking, the bakery on the day of the meal, the market on
+  its day when that reaches the meal and otherwise on the day of the meal too, which then
+  has an errand of its own. Bread and cold cuts for a "Vesper" on Monday are a note for the
+  bakery and one for the butcher on Monday, next to the supermarket's. So a week shows the household's shopping days and every other day
   something is bought on.
 - An errand can be done on another day ("An einem anderen Tag einkaufen" on its note,
   `changeNoteDay`). The note offers the three days before and after and says for each
