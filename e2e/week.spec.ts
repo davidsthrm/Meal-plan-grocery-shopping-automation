@@ -268,3 +268,16 @@ test("a member invites someone, who joins the household with an account of their
   await again.context().close();
   await context.close();
 });
+
+test("the week is a small note for the pinboard", async ({ page }) => {
+  await page.goto("/woche?w=2027-03-01");
+  // Nothing planned: nothing to pin up.
+  await expect(page.getByRole("link", { name: "Für die Pinnwand" })).toHaveCount(0);
+  await plan(page, "Montag Mittag", "Pfeffersteak");
+  const link = page.getByRole("link", { name: "Für die Pinnwand" });
+  await expect(link).toHaveAttribute("href", "/woche/pdf?w=2027-03-01");
+  const pdf = await page.request.get("/woche/pdf?w=2027-03-01");
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+});

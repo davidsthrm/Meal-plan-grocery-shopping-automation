@@ -174,6 +174,15 @@ export function TrashIcon() {
   );
 }
 
+/** A pushpin: the week as a note for the pinboard. */
+export function PinIcon() {
+  return (
+    <svg {...base}>
+      <path d="M9 4.5h6l-1 5.5 3 3H7l3-3ZM12 13v7" />
+    </svg>
+  );
+}
+
 /** A label on a string: the tags of a recipe. */
 export function TagIcon() {
   return (

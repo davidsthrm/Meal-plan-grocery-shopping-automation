@@ -76,7 +76,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   that say they need a connection.
 - Phase 7 (branch `phase-7-regal-stichworte`): the Regal to look after every recipe, the
   tags' own page, tags changed in place and offered while typing, the wishes sorted by a
-  group of tags, and a lunch on a working day bought on the errand before.
+  group of tags, a lunch on a working day bought on the errand before, a magazine's
+  editions as one stack, and the week as a note for the pinboard.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -168,7 +169,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   shelves of the browse page. `src/domain/recommend/`: the balance of a week and the
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
-- Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
+- Pages: `/woche` (the week plan, start page; `/woche/pdf?w=` the week as a note for the
+  pinboard; `?t=extra` shows what the week needs outside
   its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for, `?mehr=<date>.<meal>`
   the meal "Mehr kochen" is open under), `/woche/auswahl`
   (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
@@ -463,6 +465,12 @@ Week plan
   holds (`Today`), also while the page already shows the coming week. Once something is
   planned for those days, it stands next to the greeting like a widget on a large screen,
   and under it on a phone; otherwise the header is the greeting alone.
+- "Für die Pinnwand" (in the row of the plan's actions, once anything is planned) opens the
+  week as a PDF the size of a postcard (A6) to pin up (`planNote` in `src/lib/plan-note.ts`,
+  `planNotePdf`): every day a row with its lunch and dinner, Sunday's coffee only when
+  planned, leftovers as "Reste vom Di", a meal with several recipes joined by "+", at most
+  two lines a meal, an open meal a faint line to write on, and the extras at the foot.
+  Black on white like the shopping notes. It opens in the browser (`inline`), to print.
 - "Woche leeren" empties a week after asking: every meal and the extras (`resetWeek`).
   The rubber makes the sheet invisible with a class that `ResetWeek` takes off again as
   soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an

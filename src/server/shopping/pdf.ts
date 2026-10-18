@@ -1,7 +1,8 @@
 import "server-only";
-import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, type PDFPage } from "pdf-lib";
 import { NOTE_PAPER, PAPERS, type Paper } from "@/lib/note-paper";
 import type { PdfSection } from "@/lib/pdf-sections";
+import { printable, wrap } from "../pdf-text";
 
 /**
  * The shopping notes as sheets of a small notepad, for whoever would rather take paper than
@@ -14,29 +15,6 @@ const GUTTER = 24;
 const BLACK = rgb(0, 0, 0);
 /** The ruled lines: faint, so they use little ink. */
 const RULE = rgb(0.78, 0.78, 0.78);
-
-/** The standard fonts know Western European letters only. Anything else becomes "?". */
-function printable(text: string, font: PDFFont): string {
-  const known = new Set(font.getCharacterSet());
-  return [...text].map((char) => (known.has(char.codePointAt(0) as number) ? char : "?")).join("");
-}
-
-/** Breaks a text into lines that fit the width. A single long word is not broken. */
-function wrap(text: string, font: PDFFont, size: number, width: number): string[] {
-  const lines: string[] = [];
-  let current = "";
-  for (const word of text.split(" ")) {
-    const candidate = current === "" ? word : `${current} ${word}`;
-    if (current !== "" && font.widthOfTextAtSize(candidate, size) > width) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current !== "") lines.push(current);
-  return lines;
-}
 
 export async function shoppingListPdf(
   documentTitle: string,

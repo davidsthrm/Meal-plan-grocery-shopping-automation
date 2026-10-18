@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowIcon, PenIcon, PlusIcon, TrashIcon, WishIcon } from "@/components/icons";
+import { ArrowIcon, PenIcon, PinIcon, PlusIcon, TrashIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -345,6 +345,18 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                   ))}
                   <SubmitButton className="btn btn-small">Plan vervollständigen</SubmitButton>
                 </form>
+              )}
+              {/* The plan as a small note to pin up: a PDF the size of a postcard. */}
+              {slots.length + extras.length > 0 && (
+                <a
+                  href={`/woche/pdf?w=${week}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-small"
+                >
+                  <PinIcon />
+                  Für die Pinnwand
+                </a>
               )}
               {/* Done planning: the plan is saved and shown to read. Or the whole week is
                   rubbed out. */}
