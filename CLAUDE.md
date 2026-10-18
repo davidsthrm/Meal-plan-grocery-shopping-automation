@@ -274,8 +274,16 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   or it is shown as a label. To look at a new drawing, render the paths with sharp: at the
   size of a badge a line is about a pixel wide.
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
-  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar at the bottom
-  with a sign above each name.
+  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar that floats above
+  the bottom of the screen (`.tabbar`), with a sign above each name and the open section on
+  the green's pastel. It keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
+  `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
+  phone's gestures. Next to the Merkzettel stands the first letter of whoever is signed in
+  on the green (`.account`, `initialOf`), the way to the settings, on every screen size.
+- In the view for the shop the tick sits inside its box (`.tickbox-large`); on the note it
+  runs past the box like a pen's. The view shows the supermarkets' logos as the note does,
+  and the service worker keeps them for the shop: its own Content-Security-Policy (in
+  `next.config.ts`) allows `https://*.wikimedia.org` and nothing else from outside.
 - What moves, moves a little: a card lifts under the finger (`.lift`), a page comes in
   softly, and both are off for whoever asked for less motion. Nothing depends on it.
 - Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`
