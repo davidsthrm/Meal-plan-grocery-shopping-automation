@@ -51,7 +51,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
   const host = address.get("x-forwarded-host") ?? address.get("host");
   const origin = `${address.get("x-forwarded-proto") ?? "http"}://${host}`;
   const self = members.find((member) => member.isSelf);
-  const fresh = (place: "market" | "butcher") =>
+  const fresh = (place: "market" | "butcher" | "bakery") =>
     aisles
       .filter((group) => group.fresh_place === place)
       .map((group) => group.name)
@@ -213,12 +213,14 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
           </section>
           <section className="card scroll-mt-4 p-4" aria-labelledby="frisch">
             <h2 id="frisch" className="text-lg font-bold tracking-tight">
-              Frisch vom Markt und vom Metzger
+              Frisch vom Markt, vom Metzger und vom Bäcker
             </h2>
             <p className="mt-1 text-muted">
               Markt: {fresh("market")}
               <br />
               Metzger: {fresh("butcher")}
+              <br />
+              Bäcker: {fresh("bakery")}
             </p>
             {said === "frisch" && (
               <p role="status" className="mt-1 text-sm text-accent">
@@ -229,9 +231,10 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
               <p className="text-sm text-muted">
                 Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens drei
-                Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger gehört,
-                bekommt einen Zettel für den Tag der Mahlzeit. Alles andere kommt aus dem
-                Supermarkt.
+                Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger gehört, kommt
+                auf seinen Zettel am Metzgertag vor der Mahlzeit. Was dem Bäcker gehört, bekommt
+                einen Zettel für den Tag der Mahlzeit, für den Sonntag am Samstag. Alles andere
+                kommt aus dem Supermarkt.
               </p>
               <form action={saveFreshPlaces} className="mt-3">
                 <ul className="divide-y divide-line">
@@ -247,6 +250,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
                         <option value="">{PLACE_NAME.supermarket}</option>
                         <option value="market">{PLACE_NAME.market}</option>
                         <option value="butcher">{PLACE_NAME.butcher}</option>
+                        <option value="bakery">{PLACE_NAME.bakery}</option>
                       </select>
                     </li>
                   ))}

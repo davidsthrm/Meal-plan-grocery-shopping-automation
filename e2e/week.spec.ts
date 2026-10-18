@@ -203,7 +203,7 @@ test("the meat of several meals is one visit to the butcher, on the household's 
 
 test("what comes from the market is the household's to say", async ({ page }) => {
   await page.goto("/einstellungen");
-  const fresh = page.getByRole("region", { name: "Frisch vom Markt und vom Metzger" });
+  const fresh = page.getByRole("region", { name: "Frisch vom Markt, vom Metzger und vom Bäcker" });
   await expect(fresh).toContainText("Metzger: Fleisch & Wurst");
   await fresh.getByText("Ändern").click();
   // Eggs come from the market in this household.

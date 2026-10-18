@@ -263,6 +263,20 @@ describe("assignTrip", () => {
     expect(assignTrip(need(FRIDAY, meat), trips)).toEqual(butcher(FRIDAY));
   });
 
+  it("goes to the bakery on the day of the meal for a kind of grocery the bakery sells", () => {
+    const bread = { fresh: "bakery" as const, shelfLifeDays: 3 };
+    expect(assignTrip(need(WEDNESDAY, bread), trips)).toEqual({
+      date: WEDNESDAY,
+      place: "bakery",
+      trip: "main",
+    });
+    expect(assignTrip(need(SUNDAY, bread), trips)).toEqual({
+      date: SATURDAY,
+      place: "bakery",
+      trip: "main",
+    });
+  });
+
   it("goes on the Saturday for a Sunday: the shops are closed then", () => {
     const meat = { fresh: "butcher" as const, shelfLifeDays: 3 };
     expect(assignTrip(need(SUNDAY, meat), trips)).toEqual(butcher(SATURDAY));

@@ -779,7 +779,9 @@ Shopping list
   `/einstellungen`) goes on that place's note. For the market that is when its day is at
   most three days before the meal and it keeps until then: the weekend and the start of the
   week, also though Monday is a supermarket day. Meat is a note for the butcher on its butcher
-  day (see above). A household that buys everything in one go, like the one of the handwritten
+  day (see above). A kind of grocery can also come from the bakery (`fresh_place` "bakery",
+  e.g. "Brot & Backwaren"): it is then a note for the bakery on the day of its meal, for a
+  Sunday on the Saturday, like bread named for a cold supper. A household that buys everything in one go, like the one of the handwritten
   list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.

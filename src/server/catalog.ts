@@ -144,7 +144,7 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
       id: aisle.id,
       name: aisle.name,
       sortOrder: aisle.sort_order,
-      freshPlace: aisle.fresh_place as "market" | "butcher" | null,
+      freshPlace: aisle.fresh_place as "market" | "butcher" | "bakery" | null,
     })),
     ingredients: ingredients.map((row): Ingredient => ({
       id: row.id,
