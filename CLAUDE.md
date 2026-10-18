@@ -505,10 +505,12 @@ Library
   amount, unit, ingredient and note per row, the printed line shown above it. What is typed
   is checked on the server by `readReview`, and saving replaces the recipe's lines.
 - A recipe has its preparation steps, one entry per printed step in printed order
-  (`recipe.prep_steps`, `src/domain/import/steps.ts`), so the app replaces the cookbook at
-  the stove. Null means nobody has read them yet, an empty list that the photos show none.
-  The recipe page shows them below the ingredients as "Arbeitsschritte", numbered and in
-  large print; a recipe without any says "Keine Arbeitsschritte vorhanden". A part the
+  (`recipe.prep_steps`, `src/domain/import/steps.ts`). Null means nobody has read them yet,
+  an empty list that the photos show none. They are folded away on the recipe page
+  ("Arbeitsschritte", a `<details>` below the ingredients, numbered), like the photo: the
+  household keeps cooking from the book on the shelf and did not want the app to replace
+  it. The steps matter most for recipes that came in as text. A recipe without any says
+  "Keine Arbeitsschritte vorhanden". A part the
   model could not read is "[…]", never a guess. Steps are typed and corrected one per line,
   on the review screen, on `/rezepte/[id]/bearbeiten` and in the form for a typed or pasted
   recipe (`readTypedSteps`); nothing typed keeps them unknown. The old column `recipe.steps`
@@ -524,7 +526,7 @@ Library
   steps as they stand in the field and clears the doubts. Saving the recipe's form does too. Steps a person saved are
   never overwritten. Without --write the script only counts and estimates.
 - The recipe page shows the photographed page folded away (`<details>`): what is cooked from
-  are the ingredients and steps above it. Opened, it shows the recipe's own part of the page where it
+  are the ingredients above it. Opened, it shows the recipe's own part of the page where it
   shares the page with others, with a link to the whole page below.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows a few shelves that change with the day (`discover`):
@@ -910,8 +912,6 @@ Import
   Asked in the instructions to copy the letters, it did no better and split a step instead.
 - A recipe whose steps run on to a page that was not photographed has the steps up to there
   and a doubt; the rest can be typed on `/rezepte/[id]/bearbeiten`.
-- The screen of a phone may go dark while someone cooks from the steps. Keeping it awake
-  (Wake Lock) is not built.
 - The live search loads the whole library into the browser, about 880 recipes today. Watch
   how long that takes as the library grows.
 - A recipe's own view of its page can miss the end of its steps where the text runs on in

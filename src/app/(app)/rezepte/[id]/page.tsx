@@ -206,47 +206,60 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       </ul>
 
       {(steps.length > 0 || recipe.prep_steps_doubts.length > 0) && (
-        // Read from the counter while cooking: large print, one numbered step at a time.
-        <section aria-labelledby="arbeitsschritte" className="mt-8">
-          <h2 id="arbeitsschritte" className="mb-2 text-xl font-bold tracking-tight">
-            Arbeitsschritte
-          </h2>
-          {recipe.prep_steps_doubts.length > 0 && (
-            <div role="note" className="mb-3 rounded-lg bg-warn-soft px-4 py-3 text-warn">
-              <p className="font-semibold">
-                Nicht ganz sicher gelesen. Bitte mit dem Originalfoto vergleichen.
-              </p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
-                {recipe.prep_steps_doubts.map((doubt) => (
-                  <li key={doubt}>{doubt}</li>
+        // Folded away like the photo: the household cooks from the book on the shelf. The
+        // steps are there to look something up, and for a recipe that came in as text.
+        <details className="group card mt-6">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
+            <span>
+              Arbeitsschritte
+              {steps.length > 0 && (
+                <span className="font-normal text-muted"> · {steps.length}</span>
+              )}
+              {recipe.prep_steps_doubts.length > 0 && (
+                <span className="font-normal text-warn"> · nicht ganz sicher gelesen</span>
+              )}
+            </span>
+            <span className="text-sm font-semibold text-accent">
+              <span className="group-open:hidden">Ansehen</span>
+              <span className="hidden group-open:inline">Ausblenden</span>
+            </span>
+          </summary>
+          <div className="border-t border-line">
+            {recipe.prep_steps_doubts.length > 0 && (
+              <div role="note" className="m-4 rounded-lg bg-warn-soft px-4 py-3 text-warn">
+                <p className="font-semibold">Bitte mit dem Originalfoto vergleichen.</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
+                  {recipe.prep_steps_doubts.map((doubt) => (
+                    <li key={doubt}>{doubt}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {steps.length > 0 && (
+              <ol className="divide-y divide-line">
+                {steps.map((step, i) => (
+                  <li key={i} className="flex gap-3 px-4 py-3">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-bold text-accent">
+                      {i + 1}
+                    </span>
+                    <p className="min-w-0 leading-relaxed">
+                      {step.split(GAP).map((part, at) => (
+                        <span key={at}>
+                          {at > 0 && (
+                            <span className="rounded bg-warn-soft px-1 font-semibold text-warn">
+                              {GAP}
+                            </span>
+                          )}
+                          {part}
+                        </span>
+                      ))}
+                    </p>
+                  </li>
                 ))}
-              </ul>
-            </div>
-          )}
-          {steps.length > 0 && (
-            <ol className="card divide-y divide-line">
-              {steps.map((step, i) => (
-                <li key={i} className="flex gap-4 px-4 py-4 sm:gap-5 sm:px-5 sm:py-5">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-lg font-bold text-accent sm:size-10 sm:text-xl">
-                    {i + 1}
-                  </span>
-                  <p className="min-w-0 text-lg leading-relaxed sm:text-xl">
-                    {step.split(GAP).map((part, at) => (
-                      <span key={at}>
-                        {at > 0 && (
-                          <span className="rounded bg-warn-soft px-1 font-semibold text-warn">
-                            {GAP}
-                          </span>
-                        )}
-                        {part}
-                      </span>
-                    ))}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+              </ol>
+            )}
+          </div>
+        </details>
       )}
       {steps.length === 0 && recipe.prep_steps_doubts.length === 0 && !recipe.source_text && (
         // A pasted recipe from before steps were stored has them in its text below.
