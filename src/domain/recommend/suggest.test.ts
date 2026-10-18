@@ -317,6 +317,15 @@ describe("suggestWeek", () => {
     }
   });
 
+  it("puts a wish on the first meal it suits, before the tightest meals", () => {
+    // A quick trout someone wants to cook would also fit a workday evening, where little
+    // fits. It stands on Monday lunch all the same, as it is suggested there when asked.
+    const wish = summary("forelle", { proteinType: "fish", prepMinutes: 20, wanted: true });
+    const picks = suggestWeek([...library, wish], week, context());
+    expect(picks[0]).toMatchObject({ date: "2026-10-12", meal: "lunch" });
+    expect(picks[0].suggestion.recipe.id).toBe("forelle");
+  });
+
   it("gives each pick the reasons of the week as it is planned", () => {
     const picks = suggestWeek(library, week, context());
     // Chosen one after the other, but every vegetarian pick fills the empty week's gap.

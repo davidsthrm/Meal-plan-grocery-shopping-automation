@@ -156,13 +156,13 @@ export function suggest(
 
 /**
  * One suggestion for every open meal of a week, so that the suggestions add up to a balanced
- * week: each one is chosen as if the ones before it had been accepted. The meal with the
- * fewest suitable recipes left is chosen for first, so that a workday evening, which takes
- * only what is light and quick, is not left with nothing but a third meat dish after the
- * lunches took the salad and the fish. Returns them in the order of the slots; a slot
- * nothing is left for is missing. What each one says for itself is said of the week as it is
- * planned (`context`), not of the order they were chosen in: asked about an empty week, a
- * vegetarian dish fills a gap wherever it stands.
+ * week: each one is chosen as if the ones before it had been accepted, mostly in the order of
+ * the week. A wish goes to the first meal it suits. A meal that could run out, with fewer
+ * suitable recipes left than meals still open, is chosen for before the others: in a small
+ * cookbook the lunches took the salad and the fish, and a workday evening, which takes only
+ * what is light and quick, was left with a third meat dish. Returns them in the order of the
+ * slots; a slot nothing is left for is missing. What each one says for itself is said of the
+ * week as it is planned (`context`), not of the order they were chosen in.
  */
 export function suggestWeek(
   recipes: readonly RecipeSummary[],
@@ -178,23 +178,31 @@ export function suggestWeek(
       (recipe) => suitsMeal(recipe, slot.meal) && suitsDay(recipe, slot) && !planned.has(recipe.id),
     ).length;
 
-  const waiting = [...slots];
-  while (waiting.length > 0) {
-    // The tightest meal first; between equally tight ones, the earlier.
-    let at = 0;
-    let least = choices(waiting[0]);
-    for (let i = 1; i < waiting.length && least > 0; i++) {
-      const left = choices(waiting[i]);
-      if (left < least) [at, least] = [i, left];
-    }
-    const [slot] = waiting.splice(at, 1);
-    // Each slot draws its own order, or two slots with the same needs would get the same dish.
-    const [suggestion] = suggest(
+  // Each slot draws its own order, or two slots with the same needs would get the same dish.
+  const best = (slot: OpenSlot) =>
+    suggest(
       recipes,
       slot,
       { ...context, balance, planned, seed: `${context.seed}:${slot.date}:${slot.meal}` },
       1,
-    );
+    )[0] as Suggestion | undefined;
+
+  const waiting = [...slots];
+  while (waiting.length > 0) {
+    // A wish goes to the first meal it leads, as it does when that meal is asked about.
+    let at = waiting.findIndex((slot) => best(slot)?.recipe.wanted);
+    if (at === -1) {
+      // Otherwise in the order of the week, unless a meal could run out: one with fewer
+      // suitable recipes left than meals still open goes first, the tightest of them.
+      at = 0;
+      let least = waiting.length;
+      waiting.forEach((slot, i) => {
+        const left = choices(slot);
+        if (left < least) [at, least] = [i, left];
+      });
+    }
+    const [slot] = waiting.splice(at, 1);
+    const suggestion = best(slot);
     if (!suggestion) continue;
     chosen.set(slot, scoreRecipe(suggestion.recipe, context));
     planned.add(suggestion.recipe.id);
