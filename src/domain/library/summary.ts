@@ -14,7 +14,10 @@ export interface RecipeSummary {
   proteinType: ProteinType | null;
   prepMinutes: number | null;
   isFavorite: boolean;
+  /** The cookbook, or the magazine whose editions are one stack ("Einfach Hausgemacht"). */
   sourceBook: string | null;
+  /** The edition of a magazine ("06/2020"). Null for a cookbook. */
+  sourceEdition: string | null;
   sourcePage: number | null;
   servings: Servings | null;
   /** The day it entered the library. */

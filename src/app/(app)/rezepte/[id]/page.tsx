@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FavoriteHeart } from "@/components/favorite-heart";
-import { PenIcon, TickIcon, WishIcon } from "@/components/icons";
+import { PenIcon, TagIcon, TickIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { SubmitButton } from "@/components/submit-button";
+import { TagEditor } from "@/components/tag-editor";
 import type { ProteinType } from "@/domain/library/summary";
 import { weekdayLong } from "@/domain/dates";
 import { GAP, STEP_MAX_LENGTH, STEPS_MAX, typedSteps } from "@/domain/import/steps";
-import { TAG_GROUPS } from "@/domain/library/tags";
+import { groupTags, TAG_GROUPS } from "@/domain/library/tags";
 import {
   amountText,
   ingredientText,
@@ -38,7 +40,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, status, is_favorite, wanted_at, source_text, prep_steps, prep_steps_doubts",
+      "id, title, source_title, source_book, source_edition, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, status, is_favorite, wanted_at, source_text, prep_steps, prep_steps_doubts",
     )
     .eq("id", id)
     .maybeSingle();
@@ -65,7 +67,12 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     loadLastCooked(db, id, now),
   ]);
   const ownIds = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
-  const ownTags = must(categories, "load tags").filter((tag) => ownIds.has(tag.id));
+  const allTags = must(categories, "load tags");
+  const ownTags = allTags.filter((tag) => ownIds.has(tag.id));
+  // Every tag a recipe can be described by, for changing them in place.
+  const tagGroups = groupTags(
+    allTags.map((tag) => ({ ref: tag.key ?? tag.id, name: tag.name, group: tag.group_name })),
+  );
   const category = ownTags.find((tag) => tag.group_name === "Kategorie");
   // What else describes the recipe, in the order of the groups.
   const described = TAG_GROUPS.flatMap((group) =>
@@ -80,7 +87,10 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       ...(photo.crop_path ? [photo.crop_path] : []),
     ]),
   );
-  const source = sourceText(recipe.source_book, recipe.source_page);
+  const source = sourceText(
+    sourceLabel(recipe.source_book, recipe.source_edition) || null,
+    recipe.source_page,
+  );
   const steps = recipe.prep_steps ?? [];
   // The address this page was opened with, so that changing the steps keeps the way back.
   const pageQuery = (extra: Record<string, string> = {}) => {
@@ -97,6 +107,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const editingSteps = canEditSteps && one(query.schritte) === "bearbeiten";
   const stepsFailed = one(query.fehler) === "schritte";
   const editStepsHref = `/rezepte/${recipe.id}${pageQuery({ schritte: "bearbeiten" })}#arbeitsschritte`;
+  const editingTags = recipe.status === "approved" && one(query.stichworte) === "bearbeiten";
+  const editTagsHref = `/rezepte/${recipe.id}${pageQuery({ stichworte: "bearbeiten" })}#stichworte`;
 
   return (
     <article className="mx-auto max-w-3xl">
@@ -137,16 +149,45 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       </p>
       <p className="mt-1 text-sm text-muted">{lastCookedText(cooked, now)}</p>
 
-      {described.length > 0 && (
-        <ul aria-label="Stichworte" className="mt-3 flex flex-wrap gap-1.5">
-          {described.map((tag) => (
-            <li key={tag.ref}>
-              <Link href={`/rezepte?tag=${tag.ref}`} className="tag min-h-7 px-2.5 hover:underline">
-                {tag.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+      {editingTags ? (
+        // Changed in place, like the steps: what the household reads is what it ticks.
+        <div id="stichworte" className="card mt-4 scroll-mt-4 p-4">
+          <TagEditor
+            recipeId={recipe.id}
+            chosen={described.map((tag) => tag.ref)}
+            tagGroups={tagGroups}
+            target="rezept"
+            back={pageQuery()}
+            cancel={`/rezepte/${recipe.id}${pageQuery()}`}
+          />
+        </div>
+      ) : (
+        <div id="stichworte" className="mt-3 flex scroll-mt-4 flex-wrap items-center gap-1.5">
+          {described.length > 0 && (
+            <ul aria-label="Stichworte" className="flex flex-wrap gap-1.5">
+              {described.map((tag) => (
+                <li key={tag.ref}>
+                  <Link
+                    href={`/rezepte?tag=${tag.ref}`}
+                    className="tag min-h-7 px-2.5 hover:underline"
+                  >
+                    {tag.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {recipe.status === "approved" && (
+            <Link
+              href={editTagsHref}
+              className="link inline-flex min-h-9 items-center gap-1 px-1 text-sm"
+              scroll={false}
+            >
+              <TagIcon />
+              {described.length > 0 ? "Stichworte ändern" : "Stichworte vergeben"}
+            </Link>
+          )}
+        </div>
       )}
 
       {recipe.status === "approved" && (

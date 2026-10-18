@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { batchSource } from "@/domain/import/batch-shelf";
+import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ImportIssue } from "@/domain/import/checks";
@@ -31,7 +33,7 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
   const db = await createSessionClient();
   const { data: batch } = await db
     .from("import_batch")
-    .select("id, source_book")
+    .select("id, source_book, source_edition")
     .eq("id", batchId)
     .maybeSingle();
   if (!batch) notFound();
@@ -57,7 +59,10 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
   const recipeIds = jobRows.flatMap((job) => (job.recipe_id ? [job.recipe_id] : []));
   const recipes = recipeIds.length
     ? must(
-        await db.from("recipe").select("id, title, source_page").in("id", recipeIds),
+        await db
+          .from("recipe")
+          .select("id, title, source_page, source_book, source_edition")
+          .in("id", recipeIds),
         "load recipes",
       )
     : [];
@@ -67,13 +72,24 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
     leftOut.flatMap((page) => (page.photo_path ? [page.photo_path] : [])),
   );
   const { recipes: count } = progress;
+  // The batch's own source, or the one all its recipes were given at review.
+  const source = batchSource({
+    book: batch.source_book,
+    edition: batch.source_edition,
+    recipeSources: recipes.map((recipe) => ({
+      book: recipe.source_book,
+      edition: recipe.source_edition,
+    })),
+  });
 
   return (
     <div className="mx-auto max-w-3xl">
       <Link href="/import" className="text-sm font-semibold text-accent">
         ← Alle Stapel
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold">{batch.source_book ?? "Stapel ohne Kochbuch"}</h1>
+      <h1 className="mt-2 text-2xl font-semibold">
+        {source ? sourceLabel(source.book, source.edition) : "Stapel ohne Kochbuch"}
+      </h1>
       <p className="mt-1 text-muted">
         {pageRows.length} {pageRows.length === 1 ? "Foto" : "Fotos"}
         {count.total > 0 &&

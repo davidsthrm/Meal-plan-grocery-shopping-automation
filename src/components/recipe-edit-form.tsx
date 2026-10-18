@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { saveRecipeEdit } from "@/app/(app)/rezepte/actions";
 import type { ReviewErrors } from "@/domain/import/review-input";
 import type { Category } from "@/domain/library/summary";
+import { suggestTags } from "@/domain/library/tag-admin";
 import { toggleTag, type TagGroup } from "@/domain/library/tags";
 import type { RecipeFormData } from "@/server/recipes";
 import { typedSteps } from "@/domain/import/steps";
@@ -44,6 +45,8 @@ export function RecipeEditForm({
   const allTags = tagGroups.flatMap((group) => group.tags);
   const [tags, setTags] = useState(recipe.tags);
   const [ownTags, setOwnTags] = useState("");
+  // Several new tags are separated by commas; the last one is the one being typed.
+  const offered = suggestTags(ownTags.split(",").at(-1) ?? "", allTags);
   const [title, setTitle] = useState(recipe.title);
   const [category, setCategory] = useState(recipe.category);
   const [protein, setProtein] = useState(recipe.protein);
@@ -261,7 +264,28 @@ export function RecipeEditForm({
             onChange={(event) => setOwnTags(event.target.value)}
             maxLength={120}
             placeholder="z. B. Omas Rezept, Kindergeburtstag"
+            autoComplete="off"
           />
+          {/* The tags there are come first: "Oma Rezept" next to "Omas Rezept" helps nobody. */}
+          {offered.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-live="polite">
+              <span className="text-sm text-muted">Gibt es schon:</span>
+              {offered.map((tag) => (
+                <button
+                  key={tag.ref}
+                  type="button"
+                  className="chip min-h-9 px-3 text-sm"
+                  onClick={() => {
+                    if (!tags.includes(tag.ref)) setTags(toggleTag(tags, tag, allTags));
+                    setOwnTags(ownTags.split(",").slice(0, -1).join(","));
+                  }}
+                >
+                  {tag.name}
+                  <span className="font-normal text-muted">{tag.group}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
       {problem("sourcePage")}

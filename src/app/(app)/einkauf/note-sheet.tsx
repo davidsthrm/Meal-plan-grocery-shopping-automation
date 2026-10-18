@@ -548,8 +548,9 @@ function Line({
                   {where}
                   <label className="flex-1">
                     <span className="sr-only">Notiz zu {line.label}</span>
+                    {/* Not "note": that field names the shopping note the form belongs to. */}
                     <input
-                      name="note"
+                      name="text"
                       defaultValue={view.note ?? ""}
                       maxLength={80}
                       className="field"

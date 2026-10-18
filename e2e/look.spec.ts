@@ -133,7 +133,11 @@ test("screens @look", async ({ page }, info) => {
   await shot("2-suche");
   await page.getByPlaceholder("Titel oder Zutat").fill("");
   // The first recipe on the page, and its photographed page opened if it has one.
-  const recipe = page.locator('main a[href^="/rezepte/"]:not([href$="/neu"])').first();
+  const recipe = page
+    .locator(
+      'main a[href^="/rezepte/"]:not([href$="/neu"]):not([href^="/rezepte/regal"]):not([href^="/rezepte/stichworte"])',
+    )
+    .first();
   if (await recipe.count()) {
     await recipe.click();
     await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
@@ -159,6 +163,27 @@ test("screens @look", async ({ page }, info) => {
       await shot("2-rezept-foto");
     }
   }
+
+  await page.goto("/rezepte/regal");
+  await page.waitForLoadState("networkidle");
+  await shot("2-regal");
+  // Two recipes ticked: the bar for them opens.
+  const boxes = page.locator('input[name="rezept"]');
+  if ((await boxes.count()) >= 2) {
+    await boxes.nth(0).check();
+    await boxes.nth(1).check();
+    await page.locator(".selection-bar summary").click();
+    await page.screenshot({ path: `test-results/look/${info.project.name}-2-regal-auswahl.png` });
+  }
+  const tagLink = page.locator('a[aria-label^="Stichworte ändern: "]').first();
+  if (await tagLink.count()) {
+    await page.goto((await tagLink.getAttribute("href"))!);
+    await page.waitForLoadState("networkidle");
+    await shot("2-regal-stichworte");
+  }
+  await page.goto("/rezepte/stichworte");
+  await page.waitForLoadState("networkidle");
+  await shot("2-stichworte");
 
   await page.goto("/rezepte/neu?art=text");
   await page.waitForLoadState("networkidle");

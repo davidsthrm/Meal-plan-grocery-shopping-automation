@@ -515,6 +515,45 @@ export async function resetLibrary(): Promise<void> {
   if (photos.error) throw new Error(`create photos: ${photos.error.message}`);
 }
 
+/** Batches as the import page lists them, without photos: only their sources matter. */
+export async function addBatches(
+  batches: { book: string | null; edition?: string | null }[],
+): Promise<void> {
+  const household = await testHousehold();
+  const added = await db.from("import_batch").insert(
+    batches.map((batch) => ({
+      household_id: household,
+      source_book: batch.book,
+      source_edition: batch.edition ?? null,
+    })),
+  );
+  if (added.error) throw new Error(`add batches: ${added.error.message}`);
+}
+
+/** Puts a recipe of the test library among the extras of a week, as "Außerdem" does. */
+export async function planAsExtra(title: string, week: string): Promise<void> {
+  const household = await testHousehold();
+  const recipe = check(
+    await db.from("recipe").select("id").eq("household_id", household).eq("title", title).single(),
+    "find recipe",
+  );
+  const plan = check(
+    await db
+      .from("week_plan")
+      .upsert(
+        { household_id: household, week_start: week },
+        { onConflict: "household_id,week_start" },
+      )
+      .select("id")
+      .single(),
+    "create week",
+  );
+  const planned = await db
+    .from("plan_extra")
+    .insert({ household_id: household, week_plan_id: plan.id, recipe_id: recipe.id, servings: 4 });
+  if (planned.error) throw new Error(`plan extra: ${planned.error.message}`);
+}
+
 /**
  * Puts the test household back to how a household starts: the app's own shopping days, no
  * invitations, and nobody in it but the test user. Accounts that joined in a test are

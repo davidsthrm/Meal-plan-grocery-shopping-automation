@@ -6,6 +6,10 @@ import { MEAL_NAME } from "@/lib/plan-text";
 import { allRows, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
+import { FolderIcon } from "@/components/icons";
+import { batchShelf, type BatchEntry } from "@/domain/import/batch-shelf";
+import { sourceLabel } from "@/domain/library/source";
+import { loadSources } from "@/server/sources";
 import { CheckTiles, CheckTilesWithLibrary } from "./library-checks";
 import { NewBatchForm } from "./new-batch-form";
 
@@ -33,10 +37,11 @@ export default async function ImportPage(props: PageProps<"/import">) {
   const [batches, jobs, proposals] = await Promise.all([
     db
       .from("import_batch")
-      .select("id, source_book, created_at")
+      .select("id, source_book, source_edition, created_at")
       .order("created_at", { ascending: false }),
     allRows(
-      (from, to) => db.from("import_job").select("batch_id, status").order("id").range(from, to),
+      (from, to) =>
+        db.from("import_job").select("id, batch_id, status, recipe_id").order("id").range(from, to),
       "load recipes of batches",
     ),
     db.from("ingredient_proposal").select("id").eq("status", "open"),
@@ -45,9 +50,38 @@ export default async function ImportPage(props: PageProps<"/import">) {
   const jobRows = jobs;
   const waiting = jobRows.filter((job) => job.status === "needs_review").length;
   const open = must(proposals, "load proposals").length;
-  const books = [
-    ...new Set(batchRows.map((b) => b.source_book).filter((b): b is string => Boolean(b))),
-  ];
+  // Every cookbook and magazine of the library, with its editions, to offer and to place.
+  const [sources, recipeSources] = await Promise.all([
+    loadSources(db),
+    allRows(
+      (from, to) =>
+        db.from("recipe").select("id, source_book, source_edition").order("id").range(from, to),
+      "load sources of recipes",
+    ),
+  ]);
+  const sourceOfRecipe = new Map(
+    recipeSources.map((recipe) => [
+      recipe.id,
+      { book: recipe.source_book, edition: recipe.source_edition },
+    ]),
+  );
+  const shelf = batchShelf(
+    batchRows.map((batch) => {
+      const own = jobRows.filter((job) => job.batch_id === batch.id);
+      return {
+        id: batch.id,
+        createdAt: batch.created_at,
+        book: batch.source_book,
+        edition: batch.source_edition,
+        recipes: own.length,
+        review: own.filter((job) => job.status === "needs_review").length,
+        recipeSources: own.flatMap((job) => {
+          const source = job.recipe_id ? sourceOfRecipe.get(job.recipe_id) : undefined;
+          return source ? [source] : [];
+        }),
+      };
+    }),
+  );
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -83,7 +117,7 @@ export default async function ImportPage(props: PageProps<"/import">) {
         <h2 className="mt-6 mb-2 text-lg font-semibold">Neuer Stapel</h2>
       )}
       <NewBatchForm
-        knownBooks={books}
+        sources={sources}
         forMeal={forMeal && { date: forMeal.date, meal: forMeal.meal }}
       />
 
@@ -91,29 +125,74 @@ export default async function ImportPage(props: PageProps<"/import">) {
         <>
           <h2 className="mt-8 mb-2 text-lg font-semibold">Bisherige Stapel</h2>
           <ul className="card divide-y divide-line">
-            {batchRows.map((batch) => {
-              const own = jobRows.filter((job) => job.batch_id === batch.id);
-              const review = own.filter((job) => job.status === "needs_review").length;
-              return (
-                <li key={batch.id}>
-                  <Link
-                    href={`/import/${batch.id}`}
-                    className="block px-4 py-3 hover:bg-accent-soft"
-                  >
-                    <span className="block font-semibold">
-                      {batch.source_book ?? "Ohne Kochbuch"}
-                    </span>
-                    <span className="block text-sm text-muted">
-                      {day.format(new Date(batch.created_at))} · {own.length} Rezepte
-                      {review > 0 && ` · ${review} zu prüfen`}
-                    </span>
-                  </Link>
+            {shelf.map((entry) =>
+              entry.kind === "batch" ? (
+                <li key={entry.batch.id}>
+                  <BatchLink
+                    batch={entry.batch}
+                    name={
+                      entry.source
+                        ? sourceLabel(entry.source.book, entry.source.edition)
+                        : "Ohne Kochbuch"
+                    }
+                  />
                 </li>
-              );
-            })}
+              ) : (
+                // A magazine is a folder with an edition per row; so is a cookbook
+                // photographed in several sittings.
+                <li key={entry.book}>
+                  <details className="group">
+                    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-accent-soft [&::-webkit-details-marker]:hidden">
+                      <span className="text-accent">
+                        <FolderIcon />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">{entry.book}</span>
+                        <span className="block text-sm text-muted">
+                          {entry.editions.some((edition) => edition.edition)
+                            ? `${countText(entry.editions.length, "Ausgabe", "Ausgaben")} · `
+                            : ""}
+                          {countText(entry.recipes, "Rezept", "Rezepte")}
+                        </span>
+                      </span>
+                      <span className="text-sm font-semibold text-accent">
+                        <span className="group-open:hidden">Öffnen</span>
+                        <span className="hidden group-open:inline">Schließen</span>
+                      </span>
+                    </summary>
+                    <ul className="divide-y divide-line border-t border-line bg-paper">
+                      {entry.editions.flatMap((edition) =>
+                        edition.batches.map((batch) => (
+                          <li key={batch.id} className="pl-8">
+                            <BatchLink batch={batch} name={edition.edition ?? entry.book} />
+                          </li>
+                        )),
+                      )}
+                    </ul>
+                  </details>
+                </li>
+              ),
+            )}
           </ul>
         </>
       )}
     </div>
+  );
+}
+
+function countText(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** One batch: its name, when it was started, and what came of it. */
+function BatchLink({ batch, name }: { batch: BatchEntry; name: string }) {
+  return (
+    <Link href={`/import/${batch.id}`} className="block px-4 py-3 hover:bg-accent-soft">
+      <span className="block font-semibold">{name}</span>
+      <span className="block text-sm text-muted">
+        {day.format(new Date(batch.createdAt))} · {countText(batch.recipes, "Rezept", "Rezepte")}
+        {batch.review > 0 && ` · ${batch.review} zu prüfen`}
+      </span>
+    </Link>
   );
 }

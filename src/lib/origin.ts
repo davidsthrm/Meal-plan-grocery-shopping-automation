@@ -31,6 +31,9 @@ export function fromFieldChecks(field: string | null): string {
 /** What a link to a recipe adds to its address when it stands among the steps to check. */
 export const FROM_STEP_CHECKS = "?von=schritte";
 
+/** What a link to a recipe adds to its address when it stands in the Regal. */
+export const FROM_SHELF = "?von=regal";
+
 /** What a link to a recipe adds to its address when it stands among the duplicates. */
 export const FROM_DUPLICATES = "?von=doppelt";
 
@@ -51,6 +54,10 @@ export function readOrigin(
     const filter = field && isCheckedField(field) ? `?feld=${field}` : "";
     const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";
     return { href: `/import/pruefen/angaben${filter}${anchor}`, label: "Angaben prüfen" };
+  }
+  if (von === "regal") {
+    const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";
+    return { href: `/rezepte/regal${anchor}`, label: "Regal" };
   }
   if (von === "doppelt") return { href: "/import/pruefen/doppelt", label: "Doppelte Rezepte" };
   if (von === "schritte") {

@@ -145,10 +145,11 @@ export async function buyAfterAll(form: FormData): Promise<void> {
 
 /** Writes a note next to a line: a brand, an offer price. */
 export async function noteLine(form: FormData): Promise<void> {
-  const input = read(line.extend({ note: z.string().trim().max(80) }), form);
+  // The text is not called "note": that is the shopping note the line is on.
+  const input = read(line.extend({ text: z.string().trim().max(80) }), form);
   const household = await requireHousehold();
   await changeLine(await createSessionClient(), household, noteOf(input.note), input.key, {
-    note: input.note,
+    note: input.text,
   });
   backToList(input);
 }

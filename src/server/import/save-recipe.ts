@@ -3,8 +3,10 @@ import { randomUUID } from "node:crypto";
 import type { CatalogIndex } from "@/domain/catalog";
 import { sameProductName } from "@/domain/import/map-ingredient";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
+import type { Source } from "@/domain/library/source";
 import type { RecipeIngredient, Servings } from "@/domain/recipe";
 import { must, type Db } from "../catalog";
+import { resolveSource } from "../sources";
 import type { CatalogSuggester } from "./read-recipe";
 
 /**
@@ -164,11 +166,16 @@ async function writeLines(
   if (error) throw new StoreError(`save ingredient lines: ${error.message}`);
 }
 
-function recipeColumns(recipe: StoredRecipe, status: "approved" | "needs_review") {
+/**
+ * The columns of a recipe. Its source is written as one name ("Einfach Hausgemacht
+ * 06/2020") and stored as the stack and its edition (`resolveSource`).
+ */
+function recipeColumns(recipe: StoredRecipe, status: "approved" | "needs_review", source: Source) {
   return {
     title: recipe.title,
     source_title: recipe.sourceTitle,
-    source_book: recipe.sourceBook,
+    source_book: source.book || null,
+    source_edition: source.edition,
     source_page: recipe.sourcePage,
     servings_min: recipe.servings?.min ?? null,
     servings_max: recipe.servings?.max ?? null,
@@ -201,7 +208,7 @@ export async function saveImportedRecipe(
     .insert({
       household_id: householdId,
       kind: input.kind ?? "cookbook",
-      ...recipeColumns(recipe, input.status),
+      ...recipeColumns(recipe, input.status, await resolveSource(db, recipe.sourceBook)),
     })
     .select("id")
     .single();
@@ -265,7 +272,10 @@ export async function saveReviewedRecipe(
   await writeLines(db, input.householdId, recipeId, recipe, input.index, input.suggest);
   const updated = await db
     .from("recipe")
-    .update({ ...recipeColumns(recipe, "approved"), updated_at: new Date().toISOString() })
+    .update({
+      ...recipeColumns(recipe, "approved", await resolveSource(db, recipe.sourceBook)),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", recipeId);
   if (updated.error) throw new StoreError(`save reviewed recipe: ${updated.error.message}`);
 }

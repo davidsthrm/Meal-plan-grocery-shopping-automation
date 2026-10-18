@@ -68,6 +68,20 @@ describe("tags in the filter", () => {
   });
 });
 
+describe("a magazine's editions", () => {
+  it("narrows a magazine down to one edition, every edition without one", () => {
+    const june = summary("Juni", { sourceBook: "Einfach Hausgemacht", sourceEdition: "06/2020" });
+    const year = summary("Jahr", {
+      sourceBook: "Einfach Hausgemacht",
+      sourceEdition: "Jahresheft 2021",
+    });
+    const magazine = { ...NO_FILTER, book: "Einfach Hausgemacht" };
+    expect([june, year].filter((r) => matchesFilter(r, magazine))).toHaveLength(2);
+    expect(matchesFilter(june, { ...magazine, edition: "06/2020" })).toBe(true);
+    expect(matchesFilter(year, { ...magazine, edition: "06/2020" })).toBe(false);
+  });
+});
+
 describe("the filter in the address", () => {
   it("survives being written and read", () => {
     const filter = {
@@ -75,7 +89,8 @@ describe("the filter in the address", () => {
       category: "hauptgericht",
       diet: "fisch" as const,
       maxMinutes: 30,
-      book: "Speed Cooking",
+      book: "Einfach Hausgemacht",
+      edition: "06/2020",
       favorites: true,
       tags: ["schnell", "italienisch"],
     };
@@ -84,11 +99,17 @@ describe("the filter in the address", () => {
       kategorie: "hauptgericht",
       kost: "fisch",
       zeit: "30",
-      buch: "Speed Cooking",
+      buch: "Einfach Hausgemacht",
+      ausgabe: "06/2020",
       favoriten: "1",
       tag: "schnell,italienisch",
     });
     expect(readFilter(filterParams(filter))).toEqual(filter);
+  });
+
+  it("reads an edition only within its book", () => {
+    expect(readFilter({ ausgabe: "06/2020" }).edition).toBeNull();
+    expect(readFilter({ buch: "Einfach Hausgemacht", ausgabe: "06/2020" }).edition).toBe("06/2020");
   });
 
   it("reads tags as a list, and nothing that could not be one", () => {

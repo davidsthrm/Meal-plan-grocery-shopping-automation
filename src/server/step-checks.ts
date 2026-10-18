@@ -1,4 +1,5 @@
 import "server-only";
+import { sourceLabel } from "@/domain/library/source";
 import { must, type Db } from "./catalog";
 import { viewUrls } from "./import/storage";
 
@@ -34,7 +35,7 @@ export async function loadStepChecks(db: Db, limit: number): Promise<StepCheck[]
   const recipes = must(
     await db
       .from("recipe")
-      .select("id, title, source_book, source_page, prep_steps, prep_steps_doubts")
+      .select("id, title, source_book, source_edition, source_page, prep_steps, prep_steps_doubts")
       .not("prep_steps_doubts", "eq", "{}")
       .order("title")
       .order("id")
@@ -59,7 +60,7 @@ export async function loadStepChecks(db: Db, limit: number): Promise<StepCheck[]
   return recipes.map((recipe) => ({
     id: recipe.id,
     title: recipe.title,
-    sourceBook: recipe.source_book,
+    sourceBook: sourceLabel(recipe.source_book, recipe.source_edition) || null,
     sourcePage: recipe.source_page,
     steps: recipe.prep_steps ?? [],
     doubts: recipe.prep_steps_doubts,

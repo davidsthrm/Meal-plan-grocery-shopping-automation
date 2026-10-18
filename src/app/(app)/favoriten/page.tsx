@@ -80,6 +80,7 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
             filter={filter}
             categories={categories}
             books={books}
+            sources={library.sources}
             tagGroups={tagGroups}
             favorites="only"
           />

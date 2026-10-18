@@ -2,6 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import {
+  editionFromFolder,
+  placement,
+  sourceLabel,
+  splitSource,
+  type KnownSource,
+} from "@/domain/library/source";
 import { createBrowserSupabase } from "@/lib/supabase-browser";
 import { startBatch } from "./actions";
 
@@ -21,10 +28,11 @@ function contentType(file: File): string {
 }
 
 export function NewBatchForm({
-  knownBooks,
+  sources,
   forMeal = null,
 }: {
-  knownBooks: string[];
+  /** The cookbooks and magazines there are, with their editions. */
+  sources: KnownSource[];
   /** The meal of the week plan the upload is for: the recipe read from it is planned there. */
   forMeal?: { date: string; meal: string } | null;
 }) {
@@ -39,9 +47,13 @@ export function NewBatchForm({
     const chosen = inPageOrder(Array.from(list ?? []));
     setFiles(chosen);
     setError(chosen.length === 0 && list?.length ? "In der Auswahl sind keine Fotos." : null);
-    // A folder named after the cookbook saves typing the name.
+    // A folder named after the cookbook saves typing the name. In a magazine's stack, typed
+    // above it or named in it, the folder is the edition: "EH 05-26".
     const folder = chosen[0]?.webkitRelativePath.split("/")[0];
-    if (folder && book.trim() === "") setBook(folder);
+    if (folder) {
+      const found = editionFromFolder(folder, book, sources);
+      setBook(sourceLabel(found.book, found.edition));
+    }
   }
 
   async function upload() {
@@ -82,7 +94,7 @@ export function NewBatchForm({
     <div className="card space-y-4 p-4">
       <div>
         <label className="label" htmlFor="book">
-          Kochbuch
+          Kochbuch oder Heft
         </label>
         <input
           className="field"
@@ -94,11 +106,13 @@ export function NewBatchForm({
           disabled={busy}
         />
         <datalist id="known-books">
-          {knownBooks.map((name) => (
-            <option key={name} value={name} />
-          ))}
+          {sources.flatMap((source) =>
+            [source.book, ...source.editions.map((e) => sourceLabel(source.book, e))].map(
+              (name) => <option key={name} value={name} />,
+            ),
+          )}
         </datalist>
-        <p className="mt-1 text-sm text-muted">Gilt für alle Fotos dieses Stapels.</p>
+        <Placed text={book} sources={sources} />
       </div>
 
       <div>
@@ -158,5 +172,25 @@ export function NewBatchForm({
         {busy ? `Lade hoch … ${uploaded} von ${files.length}` : "Hochladen und einlesen"}
       </button>
     </div>
+  );
+}
+
+/**
+ * Where the photos of this batch will go, said before they are sent: the magazine and the
+ * edition the typed name was found in, and which of them are new.
+ */
+function Placed({ text, sources }: { text: string; sources: KnownSource[] }) {
+  const where = placement(splitSource(text, sources), sources);
+  if (where.kind === "none" || (where.kind === "book" && where.known)) {
+    return <p className="mt-1 text-sm text-muted">Gilt für alle Fotos dieses Stapels.</p>;
+  }
+  if (where.kind === "book") {
+    return <p className="mt-1 text-sm text-muted">Neues Kochbuch „{where.book}“.</p>;
+  }
+  return (
+    <p className="mt-1 text-sm text-muted" aria-live="polite">
+      {where.bookKnown ? "Kommt zu" : "Neuer Stapel"} „{where.book}“, Ausgabe „{where.edition}“
+      {where.editionKnown ? "." : " (neu)."}
+    </p>
   );
 }

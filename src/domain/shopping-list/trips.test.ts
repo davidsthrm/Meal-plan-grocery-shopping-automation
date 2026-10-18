@@ -210,6 +210,43 @@ describe("assignTrip", () => {
     expect(assignTrip(need(SUNDAY), trips)).toEqual(shop(FRIDAY));
   });
 
+  it("buys a lunch on a working day on the errand before: the household shops after lunch", () => {
+    const lunch = { lunch: true };
+    expect(assignTrip(need(FRIDAY, lunch), trips)).toEqual(shop(MONDAY));
+    expect(assignTrip(need(MONDAY, lunch), trips)).toEqual(shop("2026-10-09"));
+    // The dinner of that day comes after the errand.
+    expect(assignTrip(need(FRIDAY), trips)).toEqual(shop(FRIDAY));
+    // Unchanged on a day without an errand.
+    expect(assignTrip(need(THURSDAY, lunch), trips)).toEqual(shop(MONDAY));
+  });
+
+  it("buys Saturday's lunch on Saturday: the household shops in the morning then", () => {
+    const fresh = { lunch: true, fresh: "market" as const, shelfLifeDays: 5 };
+    expect(assignTrip(need(SATURDAY, fresh), trips)).toEqual(market(SATURDAY));
+  });
+
+  it("buys a lunch that would not keep from the errand before shortly before it", () => {
+    const tomatoes = { lunch: true, shelfLifeDays: 2 };
+    expect(assignTrip(need(FRIDAY, tomatoes), trips)).toEqual(shop(MONDAY, "later"));
+  });
+
+  it("keeps a lunch on its own day where no errand before it could buy it", () => {
+    // Planned on Tuesday: Monday's errand was over.
+    expect(assignTrip(need(FRIDAY, { lunch: true, plannedOn: TUESDAY }), trips)).toEqual(
+      shop(FRIDAY),
+    );
+    // One shopping day only, as on the handwritten list.
+    expect(assignTrip(need(MONDAY, { lunch: true }), singleTrip(MONDAY))).toEqual(shop(MONDAY));
+  });
+
+  it("buys the meat of a lunch on the butcher day before, where one reaches it", () => {
+    const meat = { lunch: true, fresh: "butcher" as const, shelfLifeDays: 3 };
+    const days = butcherWeekdays(DEFAULT_SHOPPING_DAYS);
+    expect(assignTrip(need(MONDAY, meat), trips, undefined, days)).toEqual(butcher(SAT_BEFORE));
+    // Monday is four days before Friday: too far for the butcher, so Friday it is.
+    expect(assignTrip(need(FRIDAY, meat), trips, undefined, days)).toEqual(butcher(FRIDAY));
+  });
+
   it("buys what is fresh at the market for the weekend and the start of the week", () => {
     const fresh = { fresh: "market" as const, shelfLifeDays: 5 };
     expect(assignTrip(need(SATURDAY, fresh), trips)).toEqual(market(SATURDAY));

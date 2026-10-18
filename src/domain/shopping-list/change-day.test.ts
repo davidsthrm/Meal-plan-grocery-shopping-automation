@@ -24,7 +24,7 @@ const recipe: Recipe = {
 const slot = (date: string): PlanSlot => ({
   id: date,
   date,
-  meal: "lunch",
+  meal: "dinner",
   kind: "recipes",
   items: [{ recipeId: "essen", servings: 4 }],
 });

@@ -14,7 +14,8 @@ import {
 } from "@/domain/import/review-input";
 import { savedSteps } from "@/domain/import/steps";
 import { PASTED_TEXT_MAX, pastedRecipe, type PastedRecipe } from "@/domain/library/pasted-recipe";
-import { readOwnTags } from "@/domain/library/tags";
+import { shelfParams } from "@/domain/library/recipe-table";
+import { readOwnTags, SINGLE_GROUPS } from "@/domain/library/tags";
 import {
   readTypedRecipe,
   type TypedRecipeErrors,
@@ -72,6 +73,38 @@ export async function saveSteps(form: FormData): Promise<void> {
   revalidatePath("/", "layout");
   kept.set("schritte", "offen");
   redirect(`/rezepte/${id}?${kept}#arbeitsschritte`);
+}
+
+/**
+ * Saves the tags of one recipe as the form shows them: ticked chips, the one chosen in each
+ * group that allows one, and names typed for new ones. A typed name that is nearly a tag
+ * there is becomes that tag. Back to the recipe's page, or to the Regal it was changed in.
+ */
+export async function saveTags(form: FormData): Promise<void> {
+  const household = await requireHousehold();
+  const id = z.guid().parse(form.get("rezept"));
+  const chosen = [
+    ...form.getAll("tag").map(String),
+    ...[...SINGLE_GROUPS].map((group) => String(form.get(`einer-${group}`) ?? "")),
+  ].filter((ref) => /^[A-Za-z0-9-]{1,64}$/.test(ref));
+  // Typed one by one with suggestions, or several at once separated by commas.
+  const typed = readOwnTags(form.getAll("neu").map(String).join(","));
+  const db = await createSessionClient();
+  await saveRecipeTags(db, household.id, id, chosen, typed);
+  revalidatePath("/", "layout");
+
+  const back = new URLSearchParams(String(form.get("zurueck") ?? ""));
+  if (form.get("ziel") === "regal") {
+    const query = new URLSearchParams(shelfParams(Object.fromEntries(back))).toString();
+    redirect(`/rezepte/regal${query ? `?${query}` : ""}#r-${id}`);
+  }
+  const kept = new URLSearchParams();
+  for (const key of ["von", "w", "feld"]) {
+    const value = back.get(key);
+    if (value) kept.set(key, value.slice(0, 40));
+  }
+  const query = kept.toString();
+  redirect(`/rezepte/${id}${query ? `?${query}` : ""}`);
 }
 
 /** Marks a recipe as one someone wants to cook soon, or takes the mark away. */

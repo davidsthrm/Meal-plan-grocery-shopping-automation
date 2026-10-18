@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PictogramIcon } from "@/components/pictogram";
 import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
+import { RecipeViews } from "@/components/recipe-views";
 import { directory, discover } from "@/domain/library/discover";
 import { byFavoriteThenTitle, filterParams, isNoFilter, readFilter } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
@@ -57,6 +58,9 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
         {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
       </p>
       <h1 className="title mt-1">Entdecken</h1>
+      <div className="mt-4">
+        <RecipeViews current="entdecken" />
+      </div>
 
       {waiting > 0 && (
         <Link
@@ -82,6 +86,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
             filter={filter}
             categories={categories}
             books={books}
+            sources={library.sources}
             tagGroups={tagGroups}
             favorites="none"
           />

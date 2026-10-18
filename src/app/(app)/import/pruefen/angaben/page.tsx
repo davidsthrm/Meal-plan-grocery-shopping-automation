@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import { RecipeBadge, RecipeFacts } from "@/components/recipe-card";
 import {
@@ -239,7 +240,9 @@ function RecipeRow({
 }) {
   const { recipe } = check;
   const facts = [
-    summary ? sourceText(summary.sourceBook, summary.sourcePage) : "",
+    summary
+      ? sourceText(sourceLabel(summary.sourceBook, summary.sourceEdition), summary.sourcePage)
+      : "",
     recipe.proteinType ? PROTEIN_NAME[recipe.proteinType] : "",
     recipe.category ? categoryName(recipe.category) : "",
   ].filter(Boolean);

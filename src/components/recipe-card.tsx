@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sourceLabel } from "@/domain/library/source";
 import type { ReactNode } from "react";
 import { setFavorite } from "@/app/(app)/rezepte/actions";
 import { pictogramFor } from "@/domain/library/pictogram";
@@ -108,7 +109,9 @@ export function RecipeCard({
               <RecipeFacts recipe={recipe} />
             </span>
             {recipe.sourceBook && (
-              <span className="block truncate pr-16 text-sm text-muted">{recipe.sourceBook}</span>
+              <span className="block truncate pr-16 text-sm text-muted">
+                {sourceLabel(recipe.sourceBook, recipe.sourceEdition)}
+              </span>
             )}
           </span>
         </span>

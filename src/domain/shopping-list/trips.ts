@@ -94,6 +94,17 @@ export const BUTCHER_REACH_DAYS = 3;
  */
 export const FRESH_REACH_DAYS = 3;
 
+/**
+ * The weekdays the household shops in the afternoon, after lunch: Monday to Friday. On a
+ * Saturday it shops in the morning, so Saturday's errand still buys Saturday's lunch.
+ */
+export const AFTERNOON_WEEKDAYS: readonly number[] = [1, 2, 3, 4, 5];
+
+/** Whether a need is eaten before the errands of its own day. */
+function beforeTheErrands(need: Need): boolean {
+  return need.lunch === true && AFTERNOON_WEEKDAYS.includes(isoWeekday(need.date));
+}
+
 /** A note as an address and a key: "2026-10-12.supermarket". */
 export function noteId(trip: ShoppingTrip): string {
   return `${trip.date}.${trip.place}`;
@@ -168,8 +179,10 @@ export function butcherWeekdays(days: readonly ShoppingDay[]): number[] {
 export function butcherDay(
   need: Pick<Need, "date" | "plannedOn">,
   weekdays: readonly number[],
+  /** Not on the day of the meal itself: its errands come after it. */
+  dayBefore = false,
 ): IsoDate | null {
-  for (let back = 0; back <= BUTCHER_REACH_DAYS; back += 1) {
+  for (let back = dayBefore ? 1 : 0; back <= BUTCHER_REACH_DAYS; back += 1) {
     const day = addDays(need.date, -back);
     if (need.plannedOn && day < need.plannedOn) return null;
     if (weekdays.includes(isoWeekday(day))) return day;
@@ -204,6 +217,8 @@ export interface Need {
   date: IsoDate;
   /** The day it was put on the plan. An errand before that cannot have bought it. */
   plannedOn?: IsoDate | null;
+  /** Eaten at midday: an errand in the afternoon of that day comes too late for it. */
+  lunch?: boolean;
   /** Where its kind of grocery is bought fresh. Null: at the supermarket. */
   fresh: FreshPlace | null;
   /** A place named on purpose for this need: the bread of a cold supper from the bakery. */
@@ -239,12 +254,37 @@ const last = <T>(items: readonly T[]): T | undefined => items[items.length - 1];
  * buys everything in one go has none. `butcherDays` are weekdays (`butcherWeekdays`);
  * without any the butcher is gone to on the day of each meal. Null only when the household
  * has no shopping day at all.
+ *
+ * A lunch on a working day is bought on an errand before that day where one is in time
+ * (`AFTERNOON_WEEKDAYS`): the household shops in the afternoon, so Friday's errand comes
+ * after Friday's lunch, and Monday buys for it. What would not keep that long is bought
+ * shortly before, as from any errand. Only where no earlier errand was possible, because
+ * the meal was planned after it or no butcher day reaches it, does the meal's own day stay.
  */
 export function assignTrip(
   need: Need,
   trips: readonly ShoppingTrip[],
   onDemand: readonly Place[] = ON_DEMAND_PLACES,
   butcherDays: readonly number[] = [],
+): Assignment | null {
+  if (beforeTheErrands(need)) {
+    const earlier = trips.filter((trip) => trip.date < need.date);
+    const bought = assignOn(need, earlier, onDemand, butcherDays, true);
+    if (bought) return bought;
+  }
+  return assignOn(need, trips, onDemand, butcherDays, false);
+}
+
+/**
+ * `assignTrip` among the given errands. `strict` answers null instead of falling back to the
+ * day of the meal or to an errand that was over before the meal was planned.
+ */
+function assignOn(
+  need: Need,
+  trips: readonly ShoppingTrip[],
+  onDemand: readonly Place[],
+  butcherDays: readonly number[],
+  strict: boolean,
 ): Assignment | null {
   const keeps = (trip: ShoppingTrip) =>
     need.shelfLifeDays === null || daysBetween(trip.date, need.date) <= need.shelfLifeDays;
@@ -256,7 +296,8 @@ export function assignTrip(
   const named = need.at && need.at !== "supermarket" ? need.at : null;
   const elsewhere = named ?? need.fresh;
   if (elsewhere && onDemand.includes(elsewhere)) {
-    const bundled = elsewhere === "butcher" ? butcherDay(need, butcherDays) : null;
+    const bundled = elsewhere === "butcher" ? butcherDay(need, butcherDays, strict) : null;
+    if (strict && !bundled) return null;
     return { date: bundled ?? onDemandDay(need), place: elsewhere, trip: "main" };
   }
   if (elsewhere) {
@@ -267,9 +308,10 @@ export function assignTrip(
     );
     if (errand) return { ...errand, trip: "main" };
   }
-  if (named) return { date: need.date, place: named, trip: "main" };
+  if (named) return strict ? null : { date: need.date, place: named, trip: "main" };
   const shop = last(inTime(before("supermarket")));
   if (shop) return { ...shop, trip: keeps(shop) ? "main" : "later" };
+  if (strict) return null;
   // Planned after the last shopping day before the meal: it has to be fetched in between.
   const missed =
     last(before("supermarket")) ?? trips.find((trip) => trip.place === "supermarket") ?? trips[0];

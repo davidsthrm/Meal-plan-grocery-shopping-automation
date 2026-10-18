@@ -551,6 +551,88 @@ export async function loadLastCooked(
   return lastCooked(days, today);
 }
 
+/**
+ * The day each recipe was last cooked, from the whole plan history: for a table of every
+ * recipe, where reading one recipe's meals at a time would be hundreds of requests.
+ */
+export async function loadLastCookedAll(db: Db, today: IsoDate): Promise<Map<string, IsoDate>> {
+  const [slots, items] = await Promise.all([
+    allRows(
+      (from, to) =>
+        db
+          .from("plan_slot")
+          .select("id, date")
+          .eq("kind", "recipes")
+          .lt("date", today)
+          .order("id")
+          .range(from, to),
+      "load earlier meals",
+    ),
+    allRows(
+      (from, to) =>
+        db.from("plan_slot_item").select("id, plan_slot_id, recipe_id").order("id").range(from, to),
+      "load recipes of meals",
+    ),
+  ]);
+  const dateOf = new Map(slots.map((slot) => [slot.id, slot.date]));
+  const last = new Map<string, IsoDate>();
+  for (const item of items) {
+    const date = dateOf.get(item.plan_slot_id);
+    if (date === undefined) continue;
+    const known = last.get(item.recipe_id);
+    if (known === undefined || date > known) last.set(item.recipe_id, date);
+  }
+  return last;
+}
+
+/** A place on a plan a recipe stands: a meal, or the extras of a week. */
+export type PlanPlace =
+  { week: IsoDate; date: IsoDate; meal: Meal } | { week: IsoDate; date: null; meal: null };
+
+/**
+ * Every place on any plan, past or to come, a recipe stands. A recipe that stands anywhere
+ * is not deleted: the plan, and with it the history and the shopping, would lose it.
+ */
+export async function loadRecipePlaces(db: Db, recipeId: string): Promise<PlanPlace[]> {
+  const [items, extras] = await Promise.all([
+    db.from("plan_slot_item").select("plan_slot_id").eq("recipe_id", recipeId),
+    db.from("plan_extra").select("week_plan_id").eq("recipe_id", recipeId),
+  ]);
+  const slotIds = [...new Set(must(items, "load meals of recipe").map((i) => i.plan_slot_id))];
+  const extraWeeks = must(extras, "load extras of recipe").map((extra) => extra.week_plan_id);
+  const slots =
+    slotIds.length === 0
+      ? []
+      : must(
+          await db
+            .from("plan_slot")
+            .select("date, meal, week_plan_id")
+            .in("id", slotIds.slice(0, SLOTS_PER_REQUEST)),
+          "load days of recipe",
+        );
+  const weekIds = [...new Set([...extraWeeks, ...slots.map((slot) => slot.week_plan_id)])];
+  const weeks =
+    weekIds.length === 0
+      ? []
+      : must(
+          await db.from("week_plan").select("id, week_start").in("id", weekIds),
+          "load weeks of recipe",
+        );
+  const startOf = new Map(weeks.map((week) => [week.id, week.week_start]));
+  const places: PlanPlace[] = [
+    ...slots.map((slot) => ({
+      week: startOf.get(slot.week_plan_id) ?? mondayOf(slot.date),
+      date: slot.date,
+      meal: slot.meal as Meal,
+    })),
+    ...extraWeeks.flatMap((id) => {
+      const week = startOf.get(id);
+      return week ? [{ week, date: null, meal: null }] : [];
+    }),
+  ];
+  return places.sort((a, b) => (a.date ?? a.week).localeCompare(b.date ?? b.week));
+}
+
 /** The meal of a week at a day and time, if it is one without a recipe. */
 async function mealWithoutRecipe(db: Db, weekStart: IsoDate, date: IsoDate, meal: Meal) {
   const slot = (await loadWeek(db, weekStart)).find(

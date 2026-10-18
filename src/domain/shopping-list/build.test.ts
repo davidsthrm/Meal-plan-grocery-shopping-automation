@@ -25,11 +25,12 @@ function recipe(
   return { id, title: id, kind: "cookbook", servings, ingredients };
 }
 
+/** A dinner: bought on its own day's errand, which a lunch on a working day is not. */
 function slot(date: string, recipeId: string, servings = 4): PlanSlot {
   return {
     id: `${date}-${recipeId}`,
     date,
-    meal: "lunch",
+    meal: "dinner",
     kind: "recipes",
     items: [{ recipeId, servings }],
   };
@@ -52,10 +53,15 @@ describe("toDefaultUnit", () => {
   const prawns = testIndex.ingredientById.get("garnelen")!;
   const carrots = testIndex.ingredientById.get("karotten")!;
 
-  it("reads packs and bare counts of a pack ingredient as packs", () => {
+  it("reads packs of a pack ingredient as packs, and a bare count typed on a note too", () => {
     expect(toDefaultUnit(prawns, { quantity: 2, unit: "Packung" })).toBe(450);
-    expect(toDefaultUnit(prawns, { quantity: 2, unit: "Stück" })).toBe(450);
+    expect(toDefaultUnit(prawns, { quantity: 2, unit: "Stück" }, true)).toBe(450);
     expect(toDefaultUnit(prawns, { quantity: 300, unit: "g" })).toBe(300);
+  });
+
+  it("does not read the pieces a recipe counts as packs", () => {
+    // "4 Riesengarnelen" are four prawns, not 900 g.
+    expect(toDefaultUnit(prawns, { quantity: 4, unit: "Stück" })).toBeNull();
   });
 
   it("returns null when there is no conversion path", () => {
@@ -65,6 +71,25 @@ describe("toDefaultUnit", () => {
 });
 
 describe("buildShoppingList", () => {
+  it("lists the prawns a recipe counts as pieces, beside what it weighs", () => {
+    const lines = build(
+      [
+        recipe("garnelen-pfanne", [line("garnelen", 4, "Stück")]),
+        recipe("paella", [line("garnelen", 200, "g")]),
+      ],
+      [slot(MONDAY, "garnelen-pfanne"), slot(MONDAY, "paella")],
+    );
+    const prawns = [...lines.values()].filter((entry) => entry.ingredientId === "garnelen");
+    expect(prawns.map((entry) => entry.purchase)).toEqual([
+      { quantity: 200, unit: "g" },
+      { quantity: 4, unit: "Stück" },
+    ]);
+    expect(prawns.map((entry) => entry.amounts)).toEqual([
+      [{ quantity: 200, unit: "g" }],
+      [{ quantity: 4, unit: "Stück" }],
+    ]);
+  });
+
   it("sums one ingredient across meals and rounds up to whole pieces", () => {
     const lines = build(
       [
@@ -585,6 +610,15 @@ describe("several errands", () => {
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
     expect(on(lines, `${FRIDAY}.supermarket`)).toEqual(["sahne@main"]);
     expect(lines).toHaveLength(2);
+  });
+
+  it("buys Friday's lunch on Monday and Friday's dinner on Friday", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const lines = lists([soup], [{ ...slot(FRIDAY, "suppe"), meal: "lunch" }]);
+    expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
+    expect(on(lists([soup], [slot(FRIDAY, "suppe")]), `${FRIDAY}.supermarket`)).toEqual([
+      "sahne@main",
+    ]);
   });
 
   it("sums per errand, not over the week", () => {

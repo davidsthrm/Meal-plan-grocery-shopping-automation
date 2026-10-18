@@ -174,6 +174,34 @@ export function TrashIcon() {
   );
 }
 
+/** A folder: a magazine with its editions in it. */
+export function FolderIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3.5 7.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.2h8a1.5 1.5 0 0 1 1.5 1.5v8.3a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5Z" />
+    </svg>
+  );
+}
+
+/** A pushpin: the week as a note for the pinboard. */
+export function PinIcon() {
+  return (
+    <svg {...base}>
+      <path d="M9 4.5h6l-1 5.5 3 3H7l3-3ZM12 13v7" />
+    </svg>
+  );
+}
+
+/** A label on a string: the tags of a recipe. */
+export function TagIcon() {
+  return (
+    <svg {...base}>
+      <path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.4 1.4 0 0 1 0 2l-6.7 6.7a1.4 1.4 0 0 1-2 0Z" />
+      <circle cx="8.2" cy="8.2" r="1.4" />
+    </svg>
+  );
+}
+
 export function StarIcon({ filled = false }: { filled?: boolean }) {
   return (
     <svg {...base} fill={filled ? "currentColor" : "none"}>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import { RecipeBadge, RecipeFacts } from "@/components/recipe-card";
 import { HeartIcon, WishIcon } from "@/components/icons";
@@ -147,7 +148,10 @@ function PairCard({
                   </Link>
                   <p className="text-sm text-muted">
                     {[
-                      sourceText(side.summary.sourceBook, side.summary.sourcePage),
+                      sourceText(
+                        sourceLabel(side.summary.sourceBook, side.summary.sourceEdition),
+                        side.summary.sourcePage,
+                      ),
                       side.summary.proteinType ? PROTEIN_NAME[side.summary.proteinType] : "",
                       side.summary.category ? categoryName(side.summary.category) : "",
                     ]
@@ -208,9 +212,12 @@ function PairCard({
           <input type="hidden" name="bestaetigt" value="ja" />
           <p>
             „{dropped.summary.title}“
-            {dropped.summary.sourceBook ? ` aus ${dropped.summary.sourceBook}` : ""} wird gelöscht,
-            „{kept.summary.title}“ bleibt. {carried(dropped, planned.get(dropped.summary.id) ?? 0)}{" "}
-            Das lässt sich nicht rückgängig machen.
+            {dropped.summary.sourceBook
+              ? ` aus ${sourceLabel(dropped.summary.sourceBook, dropped.summary.sourceEdition)}`
+              : ""}{" "}
+            wird gelöscht, „{kept.summary.title}“ bleibt.{" "}
+            {carried(dropped, planned.get(dropped.summary.id) ?? 0)} Das lässt sich nicht rückgängig
+            machen.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button className="btn btn-danger">Zusammenführen und eins löschen</button>

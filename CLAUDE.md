@@ -39,6 +39,7 @@ is easier than pen and paper.
 | Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
+| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`    |
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
 | Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
@@ -73,6 +74,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Phase 6 (branch `phase-6-pwa-offline`): installable on iPhone and Android, the notes of
   the week kept for the shop, ticks without a connection, the view for the shop, and pages
   that say they need a connection.
+- Phase 7 (branch `phase-7-regal-stichworte`): the Regal to look after every recipe, the
+  tags' own page, tags changed in place and offered while typing, the wishes sorted by a
+  group of tags, a lunch on a working day bought on the errand before, a magazine's
+  editions as one stack, and the week as a note for the pinboard.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -147,6 +152,7 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Recipes are added on an upload tab in the app. The model detects title and kind. The
   household enters what a photo cannot show: cookbook and, if not printed, the page. The
   cookbook is asked once per batch and pre-filled from the folder name when a folder is chosen.
+  In a magazine's stack the folder is the edition (see "Library").
 - Photo uploads go from the browser straight to Storage. The server turns each one into an
   upright JPEG without metadata (the photos carry GPS). sharp cannot decode iPhone HEIC, so
   those go through `heic-decode` first. See `src/server/import/normalize-image.ts`.
@@ -163,13 +169,17 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   shelves of the browse page. `src/domain/recommend/`: the balance of a week and the
   suggestions. `src/server/library.ts` and `src/server/planning/week.ts` load and store what
   they work on.
-- Pages: `/woche` (the week plan, start page; `?t=extra` shows what the week needs outside
+- Pages: `/woche` (the week plan, start page; `/woche/pdf?w=` the week as a note for the
+  pinboard; `?t=extra` shows what the week needs outside
   its meals, `?frage=<date>.<meal>` the meal a suggestion was asked for, `?mehr=<date>.<meal>`
   the meal "Mehr kochen" is open under), `/woche/auswahl`
   (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
-  month by month), `/rezepte` (browse and search, called "Entdecken"), `/favoriten`,
-  `/rezepte/[id]`, `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
+  month by month), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/regal`
+  (every recipe as a table to look after; `?stichworte=<id>` opens a row's tags,
+  `?loeschen=<id>` asks before deleting), `/rezepte/stichworte` (the tags themselves;
+  `?stichwort=<id>` opens one), `/favoriten`,
+  `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
   `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/import/pruefen/angaben` (assigned
   fields that do not fit; `?feld=` one of them) and `/import/pruefen/doppelt` (duplicates;
   `?behalten=<id>&weg=<id>` asks before a merge), `/import/pruefen/schritte` (steps read with
@@ -278,8 +288,20 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   the bottom of the screen (`.tabbar`), with a sign above each name and the open section on
   the green's pastel. It keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
   `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
-  phone's gestures. Next to the Merkzettel stands the first letter of whoever is signed in
-  on the green (`.account`, `initialOf`), the way to the settings, on every screen size.
+  phone's gestures. It reaches half a rem into that inset: above the whole of it, the bar
+  floated too high (October 2026). Next to the Merkzettel stands the first letter of
+  whoever is signed in on the green (`.account`, `initialOf`), the way to the settings, on
+  every screen size. Between a phone and a large screen (`sm` to `lg`, an iPad upright) the
+  header holds the sections too: the logo stands without its name there, and "Abmelden" is
+  at the foot of the page, as on a phone. With both in the header the page was 983 pixels
+  wide on an 810 pixel iPad, which zoomed it out and pushed fixed bars off the screen.
+- The sections in the bar are Woche, Einkauf, Rezepte, Favoriten and Import. "Rezepte" has
+  two views at its top, as the week has (`RecipeViews`): "Entdecken" to find something to
+  cook and "Regal" to look after the library.
+- What is done with the recipes ticked in the Regal is a bar at the foot of the screen that
+  opens upwards (`.selection-bar`, `SelectionBar`), out of sight while nothing is ticked.
+  It is put directly into the body: every page comes in with a transform (`page-in`), and
+  inside a transformed element "fixed" is fixed to that element, not to the screen.
 - In the view for the shop the tick sits inside its box (`.tickbox-large`); on the note it
   runs past the box like a pen's. The view shows the supermarkets' logos as the note does,
   and the service worker keeps them for the shop: its own Content-Security-Policy (in
@@ -443,6 +465,12 @@ Week plan
   holds (`Today`), also while the page already shows the coming week. Once something is
   planned for those days, it stands next to the greeting like a widget on a large screen,
   and under it on a phone; otherwise the header is the greeting alone.
+- "Für die Pinnwand" (in the row of the plan's actions, once anything is planned) opens the
+  week as a PDF the size of a postcard (A6) to pin up (`planNote` in `src/lib/plan-note.ts`,
+  `planNotePdf`): every day a row with its lunch and dinner, Sunday's coffee only when
+  planned, leftovers as "Reste vom Di", a meal with several recipes joined by "+", at most
+  two lines a meal, an open meal a faint line to write on, and the extras at the foot.
+  Black on white like the shopping notes. It opens in the browser (`inline`), to print.
 - "Woche leeren" empties a week after asking: every meal and the extras (`resetWeek`).
   The rubber makes the sheet invisible with a class that `ResetWeek` takes off again as
   soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an
@@ -492,8 +520,10 @@ Week plan
   suggested before everything else, shown below the plan to be placed with one tap, and the
   mark goes as soon as the recipe is on a plan (`fulfilWishes`), as a meal or as an extra.
   There can be dozens, so they are grouped by kind in the kind's pastel (`groupRecipes`
-  with `BY_KIND`), eight per kind until "weitere" shows all (`?wuensche=alle`). A grouping
-  by a group of tags (`byTag`) is ready for when the wishes should be sorted that way.
+  with `BY_KIND`), eight per kind until "weitere" shows all (`?wuensche=alle`). "Nach"
+  above them sorts them by Aufwand, Gericht, Küche or Saison instead (`?wuensche-nach=`,
+  `wishGrouping`: the effort as the week goes by it, `BY_EFFORT`; a group of tags by the
+  first of a recipe's tags in it, `byTag`), each without a colour of its own.
 - "Mehr kochen" on a planned meal cooks extra portions for leftovers. They are the meal's own
   number (`plan_slot.extra_servings`, `PlanSlot.extra`), apart from its persons: the meal
   shows "4 Personen" and below "2 Extra-Portionen" with minus and plus, so a third person at
@@ -518,15 +548,37 @@ Week plan
 
 Library
 
-- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `favoriten`,
-  `tag` with one or more tags separated by commas; several tags mean all of them).
+- The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `ausgabe`,
+  `favoriten`, `tag` with one or more tags separated by commas; several tags mean all of
+  them). `ausgabe` counts only with its `buch`.
+- A magazine is one source with its editions in it, a stack: `recipe.source_book`
+  "Einfach Hausgemacht", `recipe.source_edition` "06/2020" or "Jahresheft 2021" (null for a
+  cookbook; the same two on `import_batch`). The household types a source as one name, as
+  on the cover, wherever it is asked ("Kochbuch oder Heft"); the server splits it
+  (`splitSource`, `resolveSource`): a name that starts with a source there is, or with its
+  initials ("EH 05/26"), is that source and the rest its edition; otherwise an edition at
+  its end ("06/2020", "Jahresheft 2021", "Heft 3") makes a new stack. An issue is written
+  as month and year in full ("05/26" is "05/2026"), so two spellings are one edition. A
+  batch's folder is the edition of the stack typed above it, or of the one its name starts
+  with (`editionFromFolder`); a cookbook's folder stays the cookbook. The upload form says
+  before it starts where the photos go and whether stack and edition are new (`placement`).
+  Everywhere a source is shown it is one name again (`sourceLabel`). The library lists the
+  stack once ("Stöbern", the book chips) and offers its editions as chips once it is
+  chosen. Sources stored before editions existed are split with
+  `npm run library:split-sources`, by the shape of the name alone.
 - Beyond its category a recipe is described by tags in groups (`src/domain/library/tags.ts`):
   "Aufwand" (Schnell, Alltagsküche, Braucht Zeit), "Gericht" (pasta, rice, potatoes,
   casserole, pizza, pan, oven, burger), "Küche", "Saison", "Anlass", and "Eigene" for tags
   the household makes itself. The app refers to a tag by its key, or by its id when it has
   none. "Aufwand" and "Küche" hold one tag per recipe.
-- The tags are suggestions and the household's to change: "Ändern" on a recipe switches
-  them on and off and takes new ones ("Omas Rezept"). `tagRecipes` suggests them with the
+- The tags are suggestions and the household's to change: "Stichworte ändern" on a recipe's
+  page and in a row of the Regal switches them on and off and takes new ones ("Omas
+  Rezept"), as does the recipe's form. One form for both (`TagEditor`): every tag a chip,
+  a group that allows one tag a choice of one with "Keins". Typing a new one offers the
+  tags there are first (`suggestTags`), and a name that is one of them however it is
+  written, or a letter or two away from one ("Oma Rezept" for "Omas Rezept"), is that tag
+  (`similarTag`, also on the server in `saveRecipeTags` and `tagForName`): the household
+  should not end up with two of almost the same name. Short names must be the same. `tagRecipes` suggests them with the
   reading model from title, category, printed time and ingredients, fifteen recipes per
   request, for recipes that do not say yet how much work they are: at the end of a batch,
   after a recipe was pasted as text, and for a whole library with
@@ -589,6 +641,37 @@ Library
 - The recipe page shows the photographed page folded away (`<details>`): what is cooked from
   are the ingredients above it. Opened, it shows the recipe's own part of the page where it
   shares the page with others, with a link to the whole page below.
+- The Regal (`/rezepte/regal`) is the library as a table, the place to look after recipes:
+  title, cookbook, page, category, kind, effort and time, servings, tags, heart, wish and
+  when it was last cooked (`loadLastCookedAll`, the whole plan history). Its filter is the
+  one of "Entdecken"; it also narrows to what lacks a category, an effort or any tag other
+  than the effort (`?ohne=`). A column's heading sorts by it, again for the other way round
+  (`?sortierung=`, `&richtung=ab`); a recipe without a value stands last either way. With
+  words searched and no column chosen, the best fit comes first. Fifty recipes a page
+  (`?seite=`, `pageOf`). All of it is in `src/domain/library/recipe-table.ts`. Columns give
+  way with the width: a phone shows title, book, page, category and effort as one row with
+  "Mehr" to open the rest and the actions; an iPad drops book, servings and tags into the
+  title cell; a large screen shows every column.
+- Ticked recipes (or "Alle auf dieser Seite") are changed together: a tag added (typed, as
+  above) or taken away, a category or an effort set (`changeSeveral`). A tag added in a
+  group that allows one replaces the one a recipe had there. Category and effort set this
+  way count as checked by a person, like on "Angaben prüfen".
+- A recipe is deleted from the Regal after asking (`deleteRecipe`). One that stands on any
+  plan, past weeks and extras included, is not: the page lists where it stands, with links,
+  and points to "Doppelte Rezepte" for a duplicate, whose merge takes its meals along. The
+  recipe's own cut-out view goes from storage; its page photo stays with its batch, where
+  other recipes may share it. Its import job is marked discarded, as after a merge.
+- The tags themselves are looked after on `/rezepte/stichworte`, by group with the number
+  of recipes behind each (`src/domain/library/tag-admin.ts`, `src/server/tags.ts`). Every
+  tag can be renamed, a category too: the app goes by the key, so code that finds
+  "hauptgericht" or "schnell" still does. A name another tag has is refused; those two are
+  merged instead. Only a tag the household made (no key) can be merged into another,
+  deleted, or moved into Gericht, Küche, Saison, Anlass or Eigene; the app's tags stay, or
+  the week would lose what tells it a recipe is quick. A merge or a move that would give a
+  recipe two tags of "Küche" (or of "Aufwand") is refused with the number of such recipes.
+  A merge links first and deletes after, so a failure halfway loses no recipe's tag. A
+  refused change goes back with what was asked in the address, and the page asks the rule
+  again to say why.
 - A recipe without a printed time is never "quick".
 - Without a filter the page shows a few shelves that change with the day (`discover`):
   quick meals, what is tagged for the season, long not cooked, new. They bring up what nobody
@@ -683,7 +766,14 @@ Shopping list
   "Brot · Bäcker" for a cold supper.
 - Every errand has a note of its own: a place on a day (`ShoppingTrip`, as an address
   `<date>.<place>`). A need goes to the supermarket's last shopping day on or before its meal
-  (`assignTrip`): Monday buys for Monday to Thursday, Friday for Friday to Sunday. What a
+  (`assignTrip`): Monday buys for Monday to Thursday, Friday for Friday to Sunday. The
+  household shops in the afternoon from Monday to Friday and in the morning on Saturday
+  (`AFTERNOON_WEEKDAYS`), so a lunch on a working day is bought on an errand before its day
+  (`Need.lunch`): Friday's lunch on Monday's note, Monday's on the Friday before, and its
+  meat on a butcher day before it where one reaches it. What would not keep that long is
+  bought shortly before ("later"), as from any errand. Only where no earlier errand could
+  buy it (planned after it, or no butcher day in reach) does the meal's own day stay. The
+  household asked for it: it never shops on a Friday morning (October 2026). What a
   kind of grocery says is bought fresh elsewhere (`aisle_group.fresh_place`: fruit,
   vegetables and fish at the market, meat at the butcher; the household's to change on
   `/einstellungen`) goes on that place's note. For the market that is when its day is at
@@ -732,7 +822,10 @@ Shopping list
   be on (`groupAtHome`). "Doch kaufen" puts every line it stands for back on its note while
   that errand is still to come, and otherwise on the next note from today on that sells it
   (`noteToBuyOn`), where it is not at home either.
-- For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs.
+- For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs. Only typed:
+  in a recipe a number counts pieces, and "4 Riesengarnelen" are four prawns, a line of
+  their own beside any grams other recipes need, not four packs of 225 g. A prawn's weight
+  varies too much to guess one from a count.
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked. The staples are the household's to change: a tile in the settings
   opens `/einstellungen/vorrat` (`ingredient.is_pantry_staple`), the staples by kind of
@@ -986,8 +1079,6 @@ Import
 - The cookbooks were framed with the first way of asking, and only their turned pages and
   an overview of all pages were checked by eye. A page that still lies wrongly is framed
   again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
-- The cut-out view of a recipe that is deleted by itself stays in storage until its batch
-  is deleted.
 - The shopping list does not show yet what changed since it was last looked at. Without a
   connection only ticking works; typing a line, moving it or changing its amount needs one.
   Only a supermarket line can be bought at another shop for a week. The "Haben wir

@@ -42,7 +42,8 @@ test("the week becomes a note for every errand, to pick up and work through", as
   // A long walk: planning, seven notes, ticking, moving, and the plan changed again.
   test.setTimeout(150_000);
   await page.goto(`/woche?w=${WEEK}`);
-  await plan(page, "Montag Mittag", "Pfeffersteak");
+  // The steak for a dinner: a lunch on a working day is bought on the errand before its day.
+  await plan(page, "Dienstag Abend", "Pfeffersteak");
   await plan(page, "Dienstag Mittag", "Kartoffelsuppe");
   // A cold supper with bread from the bakery and a cucumber.
   await page.getByRole("link", { name: "Montag Abend planen" }).click();
@@ -65,7 +66,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   // Saturday, which the plan never fills.
   await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(7);
   await expect(tile(page, DRUGSTORE)).toContainText("Noch nichts notiert");
-  // What is fresh comes from the market, the meat from the butcher on the day it is cooked.
+  // What is fresh comes from the market, the meat from the butcher on its day before.
   // A note shows its first lines while it lies among the others.
   await expect(tile(page, MARKET)).toContainText("2x Karotten");
   await expect(tile(page, MARKET)).toContainText("1x Gurke");
@@ -101,7 +102,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
 
   // A note is picked up to work through it.
   await tile(page, MONDAY).click();
-  await expect(sheet(page, MONDAY)).toContainText("für Montag bis Dienstag");
+  await expect(sheet(page, MONDAY)).toContainText("für Dienstag");
   await expect(group(page, MONDAY, "Obst & Gemüse")).toHaveCount(0);
   // 200 ml and 100 ml of cream: the amount stands in front, the packs are one tap away.
   await expect(sheet(page, MONDAY).getByText("300 ml Sahne")).toBeVisible();
@@ -313,4 +314,15 @@ test("what one device changes shows on another without reloading", async ({
   });
   await expect(other.getByRole("list", { name: "Zettel" })).toContainText("Hefe");
   await context.close();
+});
+
+test("a note written next to a line stays with it", async ({ page }) => {
+  await page.goto(`/woche?w=${WEEK}`);
+  await plan(page, "Dienstag Abend", "Pfeffersteak");
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await sheet(page, MONDAY).getByText("200 ml Sahne").click();
+  await page.getByLabel("Notiz zu Sahne").fill("Angebot 1,29");
+  await page.getByRole("button", { name: "Merken" }).click();
+  // The note's own field was called like the field naming the note, and the page broke.
+  await expect(sheet(page, MONDAY)).toContainText("Angebot 1,29");
 });
