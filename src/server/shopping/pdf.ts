@@ -1,6 +1,7 @@
 import "server-only";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import { NOTE_PAPER, PAPERS, type Paper } from "@/lib/note-paper";
+import type { PdfSection } from "@/lib/pdf-sections";
 
 /**
  * The shopping notes as sheets of a small notepad, for whoever would rather take paper than
@@ -8,12 +9,6 @@ import { NOTE_PAPER, PAPERS, type Paper } from "@/lib/note-paper";
  * box to tick per line. Black on white, like the note it replaces, with faint ruled lines
  * as the only decoration.
  */
-
-export type PdfSection =
-  /** The lines under one heading. */
-  | { heading: string; lines: string[] }
-  /** A shopping day: it starts a new page, and the sections after it belong to it. */
-  | { title: string; subtitle: string };
 
 const GUTTER = 24;
 const BLACK = rgb(0, 0, 0);
@@ -107,6 +102,28 @@ export async function shoppingListPdf(
       }
       y -= 6;
       top = y;
+      continue;
+    }
+    if ("shop" in section) {
+      // The supermarket, its name over the column with a rule beneath, and its kinds of
+      // grocery below it. It does not stand alone at the bottom of a column either.
+      const shopSize = size.heading + 1.5;
+      const sheet = need(shopSize + 8 + size.heading + 10 + lineHeight);
+      if (y !== top) y -= 12;
+      sheet.drawText(printable(section.shop, bold), {
+        x: x(),
+        y: y - shopSize,
+        size: shopSize,
+        font: bold,
+      });
+      y -= shopSize + 4;
+      sheet.drawLine({
+        start: { x: x(), y },
+        end: { x: x() + column, y },
+        color: BLACK,
+        thickness: 0.8,
+      });
+      y -= 2;
       continue;
     }
     if (section.lines.length === 0) continue;
