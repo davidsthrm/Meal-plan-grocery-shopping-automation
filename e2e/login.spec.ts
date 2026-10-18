@@ -30,7 +30,8 @@ test("a wrong password is refused without saying which part was wrong", async ({
 
 test("signing in opens the week plan, signing out closes it again", async ({ page }) => {
   await signIn(page);
-  await expect(page.getByText("Wochenplan", { exact: true })).toBeVisible();
+  // The test user has a name: the plan greets them and is called "Euer Wochenplan".
+  await expect(page.getByRole("heading", { level: 1, name: /Wochenplan/ })).toBeVisible();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/rezepte");

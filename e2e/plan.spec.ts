@@ -126,6 +126,8 @@ test("one meal after the other is planned without going back to the week", async
   await page.goto(`/woche?w=${WEEK}`);
   await page.getByRole("link", { name: "Dienstag Mittag planen" }).click();
   await page.getByRole("button", { name: "Reste" }).click();
+  // Left before it is stored, the meal would still be open.
+  await expect(page.getByText("Geplant: Reste")).toBeVisible();
   await page.goto(`/woche/auswahl?w=${WEEK}&d=2027-03-01&m=dinner&modus=replace`);
   await page.getByRole("link", { name: "Nächste Mahlzeit: Dienstag Abend" }).click();
   await expect(page.getByText("Dienstag, 2. März")).toBeVisible();

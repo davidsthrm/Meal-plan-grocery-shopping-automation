@@ -9,6 +9,19 @@ test.beforeEach(async ({ page }) => {
 
 const meal = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 
+/**
+ * Ticks or unticks a weekday chip the way a finger does, on its visible label. The box itself
+ * is hidden for screen readers only; clicked by force at its spot, the click could land on
+ * the bar at the bottom of a phone.
+ */
+async function setDay(page: Page, name: string, on: boolean) {
+  const box = page.getByLabel(name);
+  if ((await box.isChecked()) !== on) {
+    await page.locator("label", { has: box }).click();
+  }
+  await expect(box).toBeChecked({ checked: on });
+}
+
 /** Today where the household lives, as the app sees it. */
 function today(): { date: string; weekday: string; monday: string } {
   const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
@@ -39,9 +52,10 @@ test("a saved plan is read, with what there is today on top and a pen for a chan
   await page.goto(`/woche?w=${now.monday}`);
   await plan(page, lunch, "Pilzrisotto");
 
-  // What there is to eat today stands on top of the running week.
+  // What there is to eat today stands on top of the running week. The test user has a name,
+  // so the greeting above says the day and the card does not repeat it.
   await expect(page.getByRole("region", { name: "Heute" })).toContainText("Pilzrisotto");
-  await expect(page.getByRole("region", { name: "Heute" })).toContainText(`Heute, ${now.weekday}`);
+  await expect(page.getByText(new RegExp(`^${now.weekday}, \\d`)).first()).toBeVisible();
 
   // Done planning. The controls go, the meals stay.
   await page.getByRole("button", { name: "Plan speichern" }).click();
@@ -100,6 +114,8 @@ test("a meal at grandma's or one that is ordered asks for no recipe", async ({ p
   // One tap away, like eating out.
   await page.getByRole("link", { name: "Dienstag Mittag planen" }).click();
   await page.getByRole("button", { name: "Oma Heidrun" }).click();
+  // The page for one meal stays and says what was planned; only then back to the week.
+  await expect(page.getByText("Geplant: Oma Heidrun")).toBeVisible();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Dienstag Mittag")).toContainText("Oma Heidrun");
   await expect(meal(page, "Dienstag Mittag")).not.toContainText("Noch kein Rezept dazu");
@@ -107,6 +123,7 @@ test("a meal at grandma's or one that is ordered asks for no recipe", async ({ p
   await page.getByRole("link", { name: "Mittwoch Mittag planen" }).click();
   await page.getByLabel("Eigener Eintrag").fill("oma heidrun");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await expect(page.getByText("Geplant: Oma Heidrun")).toBeVisible();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Mittwoch Mittag")).toContainText("Oma Heidrun");
   await expect(meal(page, "Mittwoch Mittag")).not.toContainText("Noch kein Rezept dazu");
@@ -115,6 +132,8 @@ test("a meal at grandma's or one that is ordered asks for no recipe", async ({ p
   await page.getByRole("link", { name: "Donnerstag Abend planen" }).click();
   await page.getByLabel("Eigener Eintrag").fill("Pizza bestellen");
   await page.getByRole("button", { name: "Eintragen" }).click();
+  await expect(page.getByText("Geplant: Pizza bestellen")).toBeVisible();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Donnerstag Abend")).toContainText("Noch kein Rezept dazu");
   await page.getByRole("button", { name: "Donnerstag Abend: braucht kein Rezept" }).click();
   await expect(meal(page, "Donnerstag Abend")).toContainText("Pizza bestellen");
@@ -125,8 +144,8 @@ test("the household sets its shopping days, and the notes follow", async ({ page
   await page.goto("/einstellungen");
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
   // Thursday instead of Friday.
-  await page.getByLabel("Supermarkt am Freitag").uncheck({ force: true });
-  await page.getByLabel("Supermarkt am Donnerstag").check({ force: true });
+  await setDay(page, "Supermarkt am Freitag", false);
+  await setDay(page, "Supermarkt am Donnerstag", true);
   await page
     .getByRole("region", { name: "Einkaufstage" })
     .getByRole("button", { name: "Speichern" })
@@ -142,8 +161,8 @@ test("the household sets its shopping days, and the notes follow", async ({ page
 
   // Without a day at the supermarket there is nowhere to buy the rest.
   await page.goto("/einstellungen");
-  await page.getByLabel("Supermarkt am Montag").uncheck({ force: true });
-  await page.getByLabel("Supermarkt am Donnerstag").uncheck({ force: true });
+  await setDay(page, "Supermarkt am Montag", false);
+  await setDay(page, "Supermarkt am Donnerstag", false);
   await page
     .getByRole("region", { name: "Einkaufstage" })
     .getByRole("button", { name: "Speichern" })
