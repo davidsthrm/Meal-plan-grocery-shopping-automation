@@ -54,11 +54,7 @@ describe("planNote", () => {
   });
 
   it("has Sunday's coffee only when something is planned for it", () => {
-    expect(note.days[6].meals.map((meal) => meal.name)).toEqual([
-      "Mittag",
-      "Kaffee",
-      "Abend",
-    ]);
+    expect(note.days[6].meals.map((meal) => meal.name)).toEqual(["Mittag", "Kaffee", "Abend"]);
     const empty = planNote(WEEK, [], [], titleOf);
     expect(empty.days[6].meals.map((meal) => meal.meal)).toEqual(["lunch", "dinner"]);
     expect(empty.extras).toEqual([]);
