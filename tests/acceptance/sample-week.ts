@@ -66,7 +66,8 @@ interface HandwrittenList {
 const handwrittenList: HandwrittenList = handwritten;
 const index = createCatalogIndex(seedCatalog);
 
-function planSlots(): PlanSlot[] {
+/** The handwritten plan as the app stores it. */
+export function planSlots(): PlanSlot[] {
   return plan.slots.map((slot): PlanSlot => {
     const base = {
       id: `${slot.date}-${slot.meal}`,
