@@ -163,3 +163,34 @@ test("the cookbook page is folded away and shows the recipe's own part", async (
   );
   await expect(page.getByRole("link", { name: "In voller Größe ansehen" })).toBeVisible();
 });
+
+test("the Arbeitsschritte are folded away, and a recipe without any says so", async ({ page }) => {
+  await page.goto("/rezepte?q=risotto");
+  await page.getByRole("link", { name: /Pilzrisotto/ }).click();
+  const first = page.getByText("Pilze putzen und in Scheiben schneiden.");
+  await expect(first).toBeHidden();
+  await page.getByText("Arbeitsschritte · 3").click();
+  await expect(first).toBeVisible();
+
+  await page.goto("/rezepte?q=spätzle");
+  await page.getByRole("link", { name: /Käsespätzle/ }).click();
+  await expect(page.getByText("Keine Arbeitsschritte vorhanden.")).toBeVisible();
+});
+
+test("steps read with a doubt are checked against the photo and taken over", async ({ page }) => {
+  await page.goto("/import");
+  await page.getByRole("link", { name: /1 Rezept mit unsicheren Arbeitsschritten/ }).click();
+  await expect(page.getByRole("heading", { name: "Arbeitsschritte prüfen" })).toBeVisible();
+  await expect(page.getByText("Schritt 2: Die Garzeit ist verwischt.")).toBeVisible();
+
+  const steps = page.getByLabel("Arbeitsschritte, einer pro Zeile");
+  await steps.fill("Linsen waschen.\nEtwa 30 Minuten köcheln lassen.");
+  await page.getByRole("button", { name: "Stimmt so, übernehmen" }).click();
+  await expect(page.getByText("Alle Arbeitsschritte sind geprüft.")).toBeVisible();
+
+  await page.goto("/rezepte?q=linsen");
+  await page.getByRole("link", { name: /Linsen-Eintopf/ }).click();
+  await expect(page.getByText("nicht ganz sicher gelesen")).toHaveCount(0);
+  await page.getByText("Arbeitsschritte · 2").click();
+  await expect(page.getByText("Etwa 30 Minuten köcheln lassen.")).toBeVisible();
+});

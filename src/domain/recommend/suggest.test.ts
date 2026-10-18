@@ -279,6 +279,61 @@ describe("suggestWeek", () => {
     expect(picks.map((pick) => pick.suggestion.recipe.id)).not.toContain("fisch0");
   });
 
+  it("keeps to the limits when only a few dishes suit a workday evening", () => {
+    // As in a small cookbook: pasta and rice for lunch, and only a salad, two fish, three
+    // poultry and three meat dishes light and quick enough for a Monday evening. Filled from
+    // Monday on, the lunches took the salad and the fish, and a third meat dish was left
+    // for Thursday evening.
+    const small = [
+      ...Array.from({ length: 6 }, (_, i) => summary(`nudeln${i}`, { tags: ["pasta"] })),
+      ...Array.from({ length: 4 }, (_, i) => summary(`auflauf${i}`, { prepMinutes: 45 })),
+      summary("salat", { category: "salat", prepMinutes: 10 }),
+      ...Array.from({ length: 2 }, (_, i) =>
+        summary(`fisch${i}`, { proteinType: "fish", prepMinutes: 20 }),
+      ),
+      ...Array.from({ length: 3 }, (_, i) =>
+        summary(`huhn${i}`, { proteinType: "poultry", prepMinutes: 25 }),
+      ),
+      ...Array.from({ length: 2 }, (_, i) =>
+        summary(`steak${i}`, { proteinType: "red_meat", prepMinutes: 25 }),
+      ),
+      summary("wurstsalat", { proteinType: "red_meat", category: "vesper", prepMinutes: 15 }),
+      summary("gulasch", { proteinType: "red_meat", tags: ["aufwendig"], prepMinutes: null }),
+    ];
+    for (let seed = 0; seed < 60; seed++) {
+      const picks = suggestWeek(small, week, context({ seed: `s${seed}` }));
+      const tally = groups(picks);
+      expect(tally.red_meat ?? 0, `seed ${seed}`).toBeLessThanOrEqual(2);
+      expect(tally.poultry ?? 0, `seed ${seed}`).toBeLessThanOrEqual(2);
+      expect(tally.fish ?? 0, `seed ${seed}`).toBeGreaterThanOrEqual(1);
+      // Still in the order of the week.
+      expect(picks.map((pick) => `${pick.date}.${pick.meal}`)).toEqual(
+        week
+          .filter((slot) =>
+            picks.some((pick) => pick.date === slot.date && pick.meal === slot.meal),
+          )
+          .map((slot) => `${slot.date}.${slot.meal}`),
+      );
+    }
+  });
+
+  it("puts a wish on the first meal it suits, before the tightest meals", () => {
+    // A quick trout someone wants to cook would also fit a workday evening, where little
+    // fits. It stands on Monday lunch all the same, as it is suggested there when asked.
+    const wish = summary("forelle", { proteinType: "fish", prepMinutes: 20, wanted: true });
+    const picks = suggestWeek([...library, wish], week, context());
+    expect(picks[0]).toMatchObject({ date: "2026-10-12", meal: "lunch" });
+    expect(picks[0].suggestion.recipe.id).toBe("forelle");
+  });
+
+  it("gives each pick the reasons of the week as it is planned", () => {
+    const picks = suggestWeek(library, week, context());
+    // Chosen one after the other, but every vegetarian pick fills the empty week's gap.
+    for (const pick of picks.filter((p) => p.suggestion.recipe.proteinType === "vegetarian")) {
+      expect(pick.suggestion.reasons).toEqual([{ kind: "fills_gap", group: "vegetarian" }]);
+    }
+  });
+
   it("leaves a meal open when the library has nothing left for it", () => {
     expect(suggestWeek([lasagne], week.slice(0, 3), context())).toHaveLength(1);
   });

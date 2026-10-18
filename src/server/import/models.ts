@@ -2,6 +2,8 @@ import "server-only";
 import {
   createAnthropicFramer,
   createAnthropicReader,
+  createAnthropicStepsReader,
+  createAnthropicStepsVerifier,
   createAnthropicSuggester,
   createAnthropicSurveyor,
   createAnthropicTagger,
@@ -26,6 +28,8 @@ export function importModels() {
     read: createAnthropicReader(reading),
     readText: createAnthropicTextReader(reading),
     verify: createAnthropicVerifier({ model: model("ANTHROPIC_VERIFY_MODEL") }),
+    readSteps: createAnthropicStepsReader(reading),
+    verifySteps: createAnthropicStepsVerifier({ model: model("ANTHROPIC_VERIFY_MODEL") }),
     suggest: createAnthropicSuggester(reading),
     tag: createAnthropicTagger(reading),
     readingModel: reading.model,

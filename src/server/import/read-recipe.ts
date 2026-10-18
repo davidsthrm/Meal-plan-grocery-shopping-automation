@@ -3,6 +3,7 @@ import type { ExtractedRecipe } from "@/domain/import/extraction";
 import type { CopyName, PageFrame } from "@/domain/import/frame";
 import type { IngredientProposal } from "@/domain/import/proposal";
 import type { RecipeToTag, TagSuggestion } from "@/domain/library/tagging";
+import type { StepsReading } from "@/domain/import/steps";
 import type { PageSurvey } from "@/domain/import/survey";
 import type { Verification } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
@@ -44,6 +45,22 @@ export interface RecipeVerification {
 export type RecipeVerifier = (
   images: PreparedImage[],
   recipe: ExtractedRecipe,
+  options?: ReadOptions,
+) => Promise<RecipeVerification>;
+
+/**
+ * Reads only the preparation steps of a recipe that is in the library already. Images labelled
+ * "Cut-out of Page n" show where the recipe meant stands on that page.
+ */
+export type StepsReader = (
+  images: PreparedImage[],
+  options?: ReadOptions,
+) => Promise<{ reading: StepsReading; usage: { inputTokens: number; outputTokens: number } }>;
+
+/** Compares steps read by a `StepsReader` with the photos they were read from. */
+export type StepsVerifier = (
+  images: PreparedImage[],
+  steps: string[],
   options?: ReadOptions,
 ) => Promise<RecipeVerification>;
 

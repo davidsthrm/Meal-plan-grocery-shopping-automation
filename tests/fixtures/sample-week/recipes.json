@@ -33,6 +33,10 @@
         { "raw": "150 ml Sahne", "quantity": 150, "quantityMax": null, "unit": "ml", "name": "Sahne", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "4 TL eingelegter grüner Pfeffer", "quantity": 4, "quantityMax": null, "unit": "TL", "name": "grüner Pfeffer", "note": "eingelegter", "approx": false, "secondary": null, "alternative": null }
       ],
+      "steps": [
+        "Die Steaks etwa 20 Minuten vor dem Braten aus dem Kühlschrank nehmen. Die Pilze putzen und in Scheiben oder Stücke schneiden. Den Knoblauch schälen und hacken. Die Spätzle in Salzwasser garen, abgießen und warm halten.",
+        "Den Ofen auf 110 Grad (Ober-/Unterhitze) vorheizen. 1 EL Öl in einer großen Pfanne erhitzen. Die Steaks darin je nach Dicke 2–3 Minuten von jeder Seite kräftig anbraten, mit Salz und Pfeffer würzen und aus der Pfanne nehmen. Auf einem Teller im Ofen nachziehen lassen. In der Pfanne die Pilze im restlichen Öl bei starker Hitze goldbraun anbraten. Erst wenn sie kräftig gebräunt sind, Knoblauch und Thymian zufügen. Mit Salz und Pfeffer würzen. Pilze aus der Pfanne nehmen und warm stellen. Die Brühe und die Sahne auf den Bratensatz gießen, 3–4 Minuten einköcheln lassen und den grünen Pfeffer unterrühren. Die Steaks aus dem Ofen nehmen und den Fleischsaft vom Teller in die Soße rühren. Spätzle mit den Pilzen und den Steaks auf Tellern anrichten und die Pfefferrahmsoße darübergeben."
+      ],
       "flags": [
         "A second recipe is cut off at the right edge of the photo. It is not part of this recipe.",
         "A 'Tipp' bubble describes a vegetarian variant ('Statt Fleisch die Pilzmenge erhöhen und eine Zwiebel mit anbraten'). It is not part of the ingredient list.",
@@ -60,6 +64,15 @@
         { "raw": "2 kleine, feste Tomaten", "quantity": 2, "quantityMax": null, "unit": "Stück", "name": "Tomaten", "note": "kleine, feste", "approx": false, "secondary": null, "alternative": null },
         { "raw": "1 reife Avocado", "quantity": 1, "quantityMax": null, "unit": "Stück", "name": "Avocado", "note": "reife", "approx": false, "secondary": null, "alternative": null },
         { "raw": "2 EL Zitronensaft", "quantity": 2, "quantityMax": null, "unit": "EL", "name": "Zitronensaft", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "steps": [
+        "Die Kartoffeln waschen, schälen und grob würfeln. Die Zwiebel fein hacken.",
+        "Das Öl in einem breiten Topf erhitzen, die Zwiebel darin bei mittlerer Hitze glasig dünsten. Die Kartoffeln einrühren und die Gemüsebrühe angießen.",
+        "Mit Salz und Pfeffer würzen und etwa 1 TL Koriandergrün einrühren. Die Kartoffeln zugedeckt etwa 20 Min. garen.",
+        "Die Kartoffeln glatt pürieren, wieder aufkochen. Mit Salz und Pfeffer abschmecken. Je nach Konsistenz die Suppe etwas einkochen lassen oder noch etwas Wasser oder Brühe angießen.",
+        "Die Tomaten waschen und in kleine Würfel schneiden, die grünen Stengelsansätze entfernen.",
+        "Die Avocado rundherum bis auf den Stein einschneiden, die Hälften trennen, den Stein entfernen. Das Fruchtfleisch aus der Schale lösen und in kleine Würfel schneiden, sofort mit Zitronensaft beträufeln. Die Avocadowürfel mit den Tomaten mischen, mit Salz und Pfeffer würzen.",
+        "Zum Servieren die Kartoffelsuppe auf Teller verteilen, die Avocado-Tomatenmischung darauf streuen. Mit dem restlichen Koriandergrün oder mit Petersilie garnieren."
       ],
       "flags": [
         "Prep time is printed as 'etwa 45 Min.' (approximate).",
@@ -90,6 +103,12 @@
         { "raw": "Salz", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "schwarzer Pfeffer aus der Mühle", "quantity": null, "quantityMax": null, "unit": null, "name": "schwarzer Pfeffer", "note": "aus der Mühle", "approx": false, "secondary": null, "alternative": null },
         { "raw": "1 Bund Schnittlauch", "quantity": 1, "quantityMax": null, "unit": "Bund", "name": "Schnittlauch", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "steps": [
+        "Die Linsen eventuell 2 Std. in Wasser einweichen. Danach den Speck fein würfeln. In einem Topf langsam erhitzen, das Fett auslassen, die Grieben knusprig braten.",
+        "Inzwischen den Ingwer schälen und fein hacken. Die Zwiebeln putzen, waschen, in feine Ringe schneiden. Die Grieben herausnehmen, das Öl im Speckfett erhitzen, die weißen Zwiebelringe andünsten. Den Knoblauch dazudrücken, den Ingwer und 2–3 EL Essig einrühren. Die Linsen abtropfen lassen und untermischen. Die Brühe angießen, die Chilischote hineingeben, aufkochen.",
+        "Die Kartoffeln und die Möhren waschen, schälen, beides in winzige Würfelchen schneiden und zu den Linsen geben. Die grünen Zwiebelringe untermischen.",
+        "Den Eintopf etwa 45 Min. leise köchelnd garen. Mit Salz, Pfeffer und Essig würzen. Schnittlauchröllchen und die Speckgrieben aufstreuen."
       ],
       "flags": [
         "Servings are a range (4–6).",
@@ -123,6 +142,14 @@
         { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Pfeffer", "note": null, "approx": false, "secondary": null, "alternative": null }
       ],
+      "steps": [
+        "Spaghetti nach Packungsanweisung in Salzwasser bissfest garen.",
+        "Inzwischen Knoblauch schälen und vierteln. Die Basilikumblätter von den Stängeln zupfen.",
+        "Knoblauch, Basilikum, Zitronensaft, Pinienkerne und Olivenöl in einem Blitzhacker fein mixen.",
+        "Das Fruchtfleisch der Avocado mit einem Löffel aus der Schale lösen.",
+        "Die Avocado in den Mixer geben und alles zu einem Pesto mixen. Mit Salz und Pfeffer würzen.",
+        "Spaghetti abgießen, mit dem Pesto vermischen und auf Teller verteilen. Schafskäse darüberkrümeln und die Chiliflocken darüberstreuen (wer mag, kann sie aber auch weglassen)."
+      ],
       "flags": [
         "The recipe title is not on the photographed page. It is presumably on the facing page, which was not photographed.",
         "The steps describe spaghetti with an avocado and basil pesto, topped with Schafskäse. That is a description, not the title.",
@@ -151,6 +178,13 @@
         { "raw": "ital. TK-Kräuter 2 TL", "quantity": 2, "quantityMax": null, "unit": "TL", "name": "ital. TK-Kräuter", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Salz", "note": null, "approx": false, "secondary": null, "alternative": null },
         { "raw": "Salz & Pfeffer", "quantity": null, "quantityMax": null, "unit": null, "name": "Pfeffer", "note": null, "approx": false, "secondary": null, "alternative": null }
+      ],
+      "steps": [
+        "Die Linsen nach Packungsanweisung in Salzwasser bissfest garen.",
+        "Inzwischen die Oliven und die Salami klein schneiden. Die Mozzarella-Kugeln nach Wunsch halbieren.",
+        "Kirschtomaten waschen und halbieren. Die Zwiebel schälen und in feine Ringe schneiden.",
+        "Olivenöl mit Essig und Kräutern verrühren. Das Dressing mit Salz und Pfeffer würzen.",
+        "Die Linsen abgießen und sofort mit dem Dressing mischen. Dann alle übrigen Zutaten untermischen."
       ],
       "flags": [
         "The recipe title is not on the photographed page. It is presumably on the facing page, which was not photographed.",

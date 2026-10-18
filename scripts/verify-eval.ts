@@ -11,13 +11,14 @@ import fixtures from "../tests/fixtures/sample-week/recipes.json";
  * Measures the second check pass: does it catch a mistake in a transcription, and does it
  * leave a correct transcription alone?
  *
- * For each sample recipe it checks the correct transcription and five copies with one planted
- * mistake each: a wrong amount, a wrong unit, a dropped line, an invented line, wrong servings.
+ * For each sample recipe it checks the correct transcription and copies with one planted
+ * mistake each: a wrong amount, a wrong unit, a dropped line, an invented line, wrong servings,
+ * and in the steps a wrong number, a dropped step and a tip taken for a step.
  *
  *   npm run import:eval-verify                       model from ANTHROPIC_VERIFY_MODEL
  *   npm run import:eval-verify -- --model claude-sonnet-5-5
  *
- * Every run calls the API 30 times and costs money.
+ * Every run calls the API about 45 times and costs money.
  */
 
 const PRICES: Record<string, [number, number]> = {
@@ -142,6 +143,39 @@ function cases(correct: ExtractedRecipe): Case[] {
     recipe: servings,
     caught: (problems) => problems.some((p) => p.field === "servings"),
   });
+
+  // The steps: a number the cook goes by, a step left out, and a tip box taken for a step.
+  const steps = correct.steps;
+  const numberAt = steps.findIndex((step) => /\d/.test(step));
+  if (numberAt !== -1) {
+    const wrongNumber = copy(correct);
+    wrongNumber.steps[numberAt] = steps[numberAt].replace(/\d+/, (digits) =>
+      String(Number(digits) < 10 ? Number(digits) + 1 : Number(digits) + 10),
+    );
+    list.push({
+      name: `wrong number in step ${numberAt + 1}: ${steps[numberAt].match(/\d+/)?.[0]} -> ${wrongNumber.steps[numberAt].match(/\d+/)?.[0]}`,
+      recipe: wrongNumber,
+      caught: (problems) => problems.some((p) => p.stepIndex === numberAt),
+    });
+  }
+  if (steps.length >= 2) {
+    const stepAt = Math.floor(steps.length / 2);
+    const droppedStep = copy(correct);
+    droppedStep.steps.splice(stepAt, 1);
+    list.push({
+      name: `dropped step ${stepAt + 1}`,
+      recipe: droppedStep,
+      caught: (problems) => problems.some((p) => p.field === "missing_step"),
+    });
+  }
+  const tip = copy(correct);
+  tip.steps.push("Tipp: Dazu passt ein grüner Salat mit Joghurtdressing.");
+  list.push({
+    name: "tip taken for a step",
+    recipe: tip,
+    caught: (problems) =>
+      problems.some((p) => p.field === "extra_step" || p.stepIndex === steps.length),
+  });
   return list;
 }
 
@@ -166,7 +200,7 @@ async function main() {
       calls++;
       const problems = verification.problems;
       const describe = (p: Problems[number]) =>
-        `[${p.ingredientIndex ?? "-"}] ${p.field}: printed "${p.printed}", transcribed "${p.transcribed}"`;
+        `[${p.ingredientIndex ?? p.stepIndex ?? "-"}] ${p.field}: printed "${p.printed}", transcribed "${p.transcribed}"`;
 
       if (test.caught === null) {
         if (problems.length === 0) cleanPassed++;

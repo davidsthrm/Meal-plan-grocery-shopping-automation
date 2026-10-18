@@ -51,6 +51,7 @@ export async function approveReview(
       dishType: extraction?.dishType ?? "unbekannt",
       proteinType: extraction?.proteinType ?? "unknown",
       lines: read.lines,
+      steps: read.steps,
     },
     index,
     suggest: importModels().suggest,
@@ -203,6 +204,8 @@ export interface Review {
   servingsUnit: string;
   prepMinutes: number | null;
   lines: ReviewLine[];
+  /** The preparation steps as read, one per printed step. */
+  steps: string[];
   issues: ImportIssue[];
   notes: string[];
   photoUrls: string[];
@@ -222,7 +225,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
     db
       .from("recipe")
       .select(
-        "title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes",
+        "title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, prep_steps",
       )
       .eq("id", job.recipe_id)
       .single(),
@@ -262,6 +265,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
     servingsMax: r.servings_max,
     servingsUnit: r.servings_unit ?? "",
     prepMinutes: r.prep_minutes,
+    steps: r.prep_steps ?? [],
     lines: rows.map((row, at) => ({
       // An unknown ingredient shows the name it was read with, so it can be corrected or kept.
       ingredient: row.ingredient_id

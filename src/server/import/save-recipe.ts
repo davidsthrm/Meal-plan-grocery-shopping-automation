@@ -34,6 +34,11 @@ export interface StoredRecipe {
   dishType: ExtractedRecipe["dishType"];
   proteinType: ExtractedRecipe["proteinType"];
   lines: StoredLine[];
+  /**
+   * The preparation steps, one per printed step. Null when they are not known: nobody has
+   * read or typed them. Left out, the stored steps stay as they are.
+   */
+  steps?: string[] | null;
 }
 
 /** Tag key of a diet the import can tell from the ingredients. */
@@ -171,6 +176,8 @@ function recipeColumns(recipe: StoredRecipe, status: "approved" | "needs_review"
     prep_minutes: recipe.prepMinutes,
     protein_type: recipe.proteinType === "unknown" ? null : recipe.proteinType,
     status,
+    // Steps that come from the import or from a person replace any doubts about older ones.
+    ...(recipe.steps !== undefined ? { prep_steps: recipe.steps, prep_steps_doubts: [] } : {}),
   };
 }
 

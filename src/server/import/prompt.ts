@@ -1,4 +1,28 @@
 /**
+ * How the preparation steps are copied. Shared by the full reading and by the reading of steps
+ * alone, so both store the same thing.
+ */
+const STEP_RULES = `Preparation steps: one entry per printed step, in printed order
+- steps: the recipe's preparation steps exactly as printed. A step that is numbered in print ("1", "2.") is one entry, without its number. Steps printed as paragraphs without numbers are one entry per paragraph.
+- A step that runs on in the next column or on the next photo is still one entry. Read it to its end, past pictures and boxes in between.
+- A word hyphenated at the end of a line is written whole ("Back-" and "papier" is "Backpapier"). A hyphen that belongs to the word stays ("Ober- und Unterhitze", "Zucchini-Möhren-Gemüse").
+- A heading among the steps ("Für den Belag") stays at the start of the step it belongs to, followed by a colon.
+- Copy, do not rewrite: keep the words, numbers, temperatures and times as printed. Do not shorten, explain, correct or complete anything.
+- Tip boxes, variations, shopping hints, nutrition facts, serving suggestions printed apart from the steps, and the steps of a neighbouring recipe are not steps. Mention them in "notes".
+- If part of a step cannot be read with certainty, write "[…]" in its place, keep the rest of the step, and add an entry to "uncertain" with the field "steps" that names the step by its number and says what is unclear. Never fill in a likely word or number.
+- If the steps visibly break off because they go on on a page that is not among the photos, keep what is there and add an entry to "uncertain" with the field "steps" that says so.
+- If no preparation steps are printed for this recipe, return an empty list and say so in "notes".`;
+
+/** How the second pass checks the steps. Shared by the full check and the check of steps alone. */
+const STEP_CHECK_RULES = `How to check the steps ("steps", each with its index from 0)
+- Every printed step of this recipe has one entry, in printed order. None is missing, none is merged with the next one or split in two, and no entry comes from a tip box, a variation or another recipe.
+- Each entry ends where the printed step ends, also where the step runs on in another column or on the next photo.
+- Every number in a step matches the print, character by character: temperatures, times, amounts, sizes. Look hardest at ranges ("2–3"), fractions and digits that look alike.
+- Do not compare the rest of the wording letter by letter. Report a word only when it changes what the cook does: another ingredient, another action, another pan.
+- These are conventions, not mistakes: a step's printed number is left out; a word hyphenated at the end of a line is written whole; a heading among the steps stands at the start of its step; "[…]" marks a part the transcription says it could not read.
+- Report a problem with a step in field "step" and its stepIndex, a printed step that has no entry in field "missing_step" with stepIndex null, and an entry that is not a printed step of this recipe in field "extra_step" with its stepIndex. For these, ingredientIndex is null. For everything that is no step, stepIndex is null.`;
+
+/**
  * Instructions for reading one recipe from photos. The rules mirror the fields of
  * `extractedRecipeSchema`; the examples are deliberately not taken from the sample recipes
  * the models are measured on.
@@ -27,6 +51,8 @@ Ingredients: one entry per ingredient, in printed order
 - An alternative ("Butter oder Margarine", "1 Bund Dill (oder 1 TL getrockneter Dill)"): one entry for the first ingredient and a second entry for the alternative, with alternativeTo set to the position of the first entry, counting from 0. Both share the same raw. All other entries have alternativeTo null.
 - optional: true only when the recipe itself says the ingredient can be left out. Recipes often say this in the steps rather than in the list ("wer mag", "nach Belieben", "kann man weglassen"), so read the steps for it.
 
+${STEP_RULES}
+
 Recipe fields
 - servingsRaw: the printed line that says what the amounts are for, copied exactly as printed. Most recipes count persons ("Für 4 Personen"). Baking and finger food often count what the recipe makes instead: a cake tin, a baking tray, pieces ("Zutaten für 1 Springform (Ø 26 cm)", "Ergibt ca. 30 Stück"). Copy that line just the same.
 - servingsMin and servingsMax: the number in that line. "für 4 Personen" is 4 and 4, "für 2–3 Personen" is 2 and 3, "für 1 Blech" is 1 and 1.
@@ -37,7 +63,7 @@ Recipe fields
 - subtitle, servingsRaw and note are empty strings when there is nothing to put there.
 
 uncertain and notes, both written in German because the family reads them
-- uncertain: one entry for each printed thing you could not read with certainty: blurred or cut-off text, a digit that could be two different numbers, a line that could belong to another recipe. It is only about the title, the servings and the ingredient lines. Doubt about dishType or proteinType does not belong here; choose "unbekannt" or "unknown" there instead. Every entry makes a person check the recipe by hand, so add one only when a person really has to decide something. A page you read without doubt has an empty list.
+- uncertain: one entry for each printed thing you could not read with certainty: blurred or cut-off text, a digit that could be two different numbers, a line that could belong to another recipe. It is only about the title, the servings, the ingredient lines and the steps. Doubt about dishType or proteinType does not belong here; choose "unbekannt" or "unknown" there instead. Every entry makes a person check the recipe by hand, so add one only when a person really has to decide something. A page you read without doubt has an empty list.
 - notes: observations that need no decision, such as a tip box or neighbouring recipe you left out, or a difference between the steps and the ingredient list. A title, page number or time that is simply not on the photo is not uncertain: return null and, at most, mention it here.`;
 
 /**
@@ -50,6 +76,7 @@ How to check
 1. Go through the recipe's ingredient list on the photo, line by line. For each printed line, find its entry in the transcription and compare amount and unit with the print, character by character. Look hardest at fractions (½, ¼, ¾), ranges ("2–3") and digits that look alike.
 2. Check that every printed ingredient line has an entry, and that the transcription has no entry that is not printed in this recipe's ingredient list. Tip boxes, sidebars and neighbouring recipes are not part of the list.
 3. Check title, servings, page number and preparation time.
+4. Check the steps as described below.
 
 How the transcription is written. These are conventions, not mistakes:
 - Quantities are decimals: ½ is 0.5, 1 ¼ is 1.25. A range has its lower number in quantity and its upper in quantityMax.
@@ -66,8 +93,10 @@ How the transcription is written. These are conventions, not mistakes:
 - prepMinutes leaves out waiting times printed as an extra.
 - title, page or prepMinutes are null when they are not visible on the photos. That is correct if they really are not visible.
 
+${STEP_CHECK_RULES}
+
 What to report
-Report a problem only when the photo clearly shows something different from the transcription. For each one give the position of the entry (ingredientIndex, or null for a recipe field or a missing line), the field, what the photo shows (printed, quoted exactly) and what the transcription says (transcribed). If everything matches, return an empty list. Do not report anything you are not sure you can see on the photo.`;
+Report a problem only when the photo clearly shows something different from the transcription. For each one give the position of the entry (ingredientIndex, or null for a recipe field, a missing line or a step; stepIndex for a step), the field, what the photo shows (printed, quoted exactly) and what the transcription says (transcribed). If everything matches, return an empty list. Do not report anything you are not sure you can see on the photo.`;
 
 /** Instructions for suggesting where an ingredient the catalog does not know would go. */
 export const SUGGESTION_PROMPT = `You help a German household maintain the ingredient catalog behind their shopping list. Recipes they imported use ingredients the catalog does not have yet. For each one, suggest an entry. A person confirms every suggestion, so say what is most likely and do not hedge.
@@ -124,7 +153,32 @@ export const PASTED_TEXT_NOTE = `This time the recipe does not come as photos. I
 - The text may contain more than the recipe: navigation, advertising, comments, ratings, a story before the recipe. None of that belongs to it.
 - If the text holds several recipes, read the first complete one and say so in "notes".
 - If the text is no recipe at all, return no title and no ingredients and say so in "uncertain".
-- "page" is null.`;
+- "page" is null.
+- A step that the text spreads over several lines is still one entry. A text without preparation steps has an empty list.`;
+
+/**
+ * Instructions for reading the steps of a recipe that is in the library already: its
+ * ingredients were read and checked when it was imported, only the steps are new.
+ */
+export const STEPS_PROMPT = `You read the preparation steps of one German recipe from photos of cookbook, magazine or recipe folder pages. A family cooks from them in the kitchen instead of from the book, so every step must be complete and every number right. The title, servings and ingredients have been read already; return the steps only.
+
+Every image has a label. "Page 1", "Page 2" and so on are photographed pages of the recipe. "Cut-out of Page 1" shows the part of that page where the recipe meant stands. The steps can go on outside the cut-out, in another column of the page, so always follow them on the page itself to their end.
+
+${STEP_RULES}
+
+uncertain and notes, both written in German because the family reads them
+- uncertain: one entry for each part of the steps you could not read with certainty, with the field "steps". A step you read without doubt needs none. Every entry is shown to the family next to the step.
+- notes: observations that need no decision, such as a tip box you left out.`;
+
+/** Instructions for checking steps read from photos of a recipe that is in the library. */
+export const STEPS_VERIFICATION_PROMPT = `You check a transcription of the preparation steps of a German recipe against photos of the printed page. Someone else made the transcription, and it can contain mistakes. A family will cook from it instead of from the book.
+
+"Page 1", "Page 2" and so on are the photographed pages. "Cut-out of Page 1" shows where the recipe meant stands; its steps can go on outside the cut-out, on the page.
+
+${STEP_CHECK_RULES}
+
+What to report
+Report a problem only when the photo clearly shows something different from the transcription, with what the photo shows (printed, quoted exactly) and what the transcription says (transcribed). If everything matches, return an empty list. Do not report anything you are not sure you can see on the photo.`;
 
 export const TAGGING_PROMPT = `You describe German recipes with a few tags for a family's meal planner. For each recipe you get one numbered line: its title, its category if it has one, the time its cookbook prints if it prints one, and its ingredients. You return one entry per recipe with the same number.
 

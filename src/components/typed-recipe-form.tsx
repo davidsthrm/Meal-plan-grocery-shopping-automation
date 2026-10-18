@@ -146,6 +146,21 @@ export function TypedRecipeForm({ initial, categories, extra = {}, submitLabel }
         </div>
       )}
 
+      <div>
+        <label className="label" htmlFor="steps">
+          Arbeitsschritte, einer pro Zeile (optional)
+        </label>
+        <textarea
+          id="steps"
+          name="steps"
+          rows={values.steps === "" ? 4 : 10}
+          className={`${field("steps")} leading-relaxed`}
+          defaultValue={values.steps}
+          placeholder={"Nudeln in Salzwasser garen.\nMit dem Pesto mischen."}
+        />
+        {problem("steps")}
+      </div>
+
       <details className="group" open={values.book !== "" || values.page !== ""}>
         <summary className="link inline-flex min-h-10 items-center">Aus einem Kochbuch?</summary>
         <div className="mt-2 grid grid-cols-3 gap-3">

@@ -95,7 +95,7 @@ export async function importFromImages(
   }
 
   const draft = toDraft(extraction, provided, deps.index);
-  const issues = checkDraft(draft, extraction);
+  const issues = checkDraft(draft, extraction, provided.stepsShown ?? null);
 
   let verification: Verification | null = null;
   try {
@@ -103,10 +103,12 @@ export async function importFromImages(
     verification = checked.verification;
     spend(checked.usage);
     for (const problem of verification.problems) {
+      const step = problem.stepIndex !== null ? `step ${problem.stepIndex + 1} ` : "";
       issues.push({
         code: "verification_disagrees",
-        ingredientIndex: problem.ingredientIndex,
-        detail: `${problem.field}: printed "${problem.printed}", read as "${problem.transcribed}"`,
+        // A step problem belongs to the recipe as a whole, not to an ingredient line.
+        ingredientIndex: problem.stepIndex !== null ? null : problem.ingredientIndex,
+        detail: `${step}${problem.field}: printed "${problem.printed}", read as "${problem.transcribed}"`,
       });
     }
   } catch (error) {

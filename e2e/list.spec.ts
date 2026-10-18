@@ -213,6 +213,8 @@ test("what was not bought at the drugstore comes along to its next note", async 
   await page.goto(`/einkauf?w=${last.monday}&zettel=${last.date}.drugstore`);
   await page.getByLabel("Was").fill("Deo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
+  // The field is emptied once the line is stored; typed into earlier, the next is lost.
+  await expect(page.getByRole("button", { name: "Deo: erledigt" })).toBeVisible();
   await page.getByLabel("Was").fill("Shampoo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
   await page.getByRole("button", { name: "Shampoo: erledigt" }).click();

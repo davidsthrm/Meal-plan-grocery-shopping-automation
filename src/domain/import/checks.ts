@@ -2,6 +2,7 @@ import { convert, dimensionOf, type Unit } from "../units";
 import type { RecipeDraft } from "./draft";
 import type { ExtractedRecipe } from "./extraction";
 import { readServingsLine } from "./servings";
+import { stepProblems } from "./steps";
 
 /**
  * The automatic checks every imported recipe has to pass before it is approved without a
@@ -31,6 +32,12 @@ export type IssueCode =
   | "unit_missing"
   | "invalid_range"
   | "invalid_alternative"
+  /** A step holds a part the model could not read ("[…]"). */
+  | "steps_unreadable"
+  /** The last step breaks off in the middle: the rest is on a page that was not read. */
+  | "steps_cut_off"
+  /** The first look saw steps on the photo, and none were read. */
+  | "steps_missing"
   /** The second pass saw something different on the photo. */
   | "verification_disagrees"
   /** The model's answer could not be used at all. */
@@ -43,6 +50,11 @@ export interface ImportIssue {
   /** Position of the ingredient line, or null for the recipe as a whole. */
   ingredientIndex: number | null;
   detail: string;
+}
+
+/** A doubt of the model about the preparation steps rather than the ingredients. */
+function isAboutSteps(item: { field: string }): boolean {
+  return /^(steps?|schritt|zubereitung)\b/i.test(item.field.trim());
 }
 
 /** Above these amounts per serving, a line is almost certainly misread. */
@@ -75,7 +87,11 @@ function limitFor(unit: Unit): { amount: (quantity: number) => number; max: numb
   return { amount: (q) => q, max: MAX_PER_SERVING.containers };
 }
 
-export function checkDraft(draft: RecipeDraft, extracted: ExtractedRecipe): ImportIssue[] {
+export function checkDraft(
+  draft: RecipeDraft,
+  extracted: ExtractedRecipe,
+  stepsShown: boolean | null = null,
+): ImportIssue[] {
   const issues: ImportIssue[] = [];
   const add = (code: IssueCode, ingredientIndex: number | null, detail: string) =>
     issues.push({ code, ingredientIndex, detail });
@@ -90,6 +106,12 @@ export function checkDraft(draft: RecipeDraft, extracted: ExtractedRecipe): Impo
     // Doubt about how to file a recipe is no reason to read it again by hand.
     if (/^(dishType|proteinType)\b/i.test(item.field.trim())) continue;
     add("model_uncertain", null, `${item.field}: ${item.reason}`);
+  }
+  for (const problem of stepProblems(draft.steps, stepsShown)) {
+    // The model has named what it could not read; its gap needs no second issue.
+    if (problem.code === "steps_unreadable" && extracted.uncertain.some(isAboutSteps)) continue;
+    // The detail is the number of the step, counted from 1, as the household counts them.
+    add(problem.code, null, problem.step === null ? "" : String(problem.step + 1));
   }
 
   draft.ingredients.forEach((line, at) => {

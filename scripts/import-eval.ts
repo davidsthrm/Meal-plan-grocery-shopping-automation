@@ -1,5 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { scoreExtraction, type ExpectedRecipe, type Score } from "@/domain/import/score";
+import {
+  scoreExtraction,
+  scoreSteps,
+  stepScoreLines,
+  type ExpectedRecipe,
+  type Score,
+  type StepScore,
+} from "@/domain/import/score";
 import { createAnthropicReader } from "@/server/import/anthropic-reader";
 import { normalizeImage, prepareForModel } from "@/server/import/normalize-image";
 import { RecipeReadError } from "@/server/import/read-recipe";
@@ -56,6 +63,8 @@ if (missingPhotos.length > 0) {
 interface Run {
   id: string;
   score: Score | null;
+  /** The steps against the hand transcription. Null where the fixture has none. */
+  steps: StepScore | null;
   /** What the model said it was not sure about. Any entry would send the recipe to review. */
   uncertain: string[];
   error: string | null;
@@ -86,6 +95,7 @@ async function evaluate(model: string): Promise<Run[]> {
       runs.push({
         id: expected.id,
         score: scoreExtraction(expected, reading.recipe),
+        steps: expected.steps ? scoreSteps(expected.steps, reading.recipe.steps) : null,
         uncertain: reading.recipe.uncertain.map((u) => `${u.field}: ${u.reason}`),
         error: null,
         inputTokens: reading.usage.inputTokens,
@@ -98,6 +108,7 @@ async function evaluate(model: string): Promise<Run[]> {
       runs.push({
         id: expected.id,
         score: null,
+        steps: null,
         uncertain: [],
         error: `${error.failure}: ${error.message}`,
         inputTokens: 0,
@@ -136,6 +147,7 @@ function report(model: string, runs: Run[]) {
     }
     for (const line of score.missing) console.log(`    missing: ${line}`);
     for (const line of score.extra) console.log(`    not in the recipe: ${line}`);
+    if (run.steps) for (const line of stepScoreLines(run.steps)) console.log(`    ${line}`);
     for (const reason of run.uncertain) console.log(`    model is unsure -> review: ${reason}`);
   }
   const scored = runs.filter((r) => r.score);
@@ -148,6 +160,11 @@ function report(model: string, runs: Run[]) {
   console.log(
     `=> ${perfect} of ${runs.length} recipes read without a mistake, ${unsure} sent to review by the model, ` +
       `${((total / runs.length) * 100).toFixed(2)} ct per recipe for one pass.`,
+  );
+  const stepped = runs.filter((r) => r.steps);
+  console.log(
+    `=> steps: ${stepped.filter((r) => r.steps!.perfect).length} of ${stepped.length} recipes with every step as printed, ` +
+      `${stepped.reduce((sum, r) => sum + r.steps!.wrongNumbers.length, 0)} steps with a wrong number.`,
   );
 }
 

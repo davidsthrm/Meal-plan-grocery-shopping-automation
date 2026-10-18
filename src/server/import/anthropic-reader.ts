@@ -15,12 +15,15 @@ import {
 } from "@/domain/import/verification";
 import type { PreparedImage } from "./normalize-image";
 import { suggestionSchema, toProposals, type Suggestions } from "@/domain/import/proposal";
+import { stepsReadingSchema, type StepsReading } from "@/domain/import/steps";
 import { pageSurveySchema, type PageSurvey } from "@/domain/import/survey";
 import { taggingLine, taggingSchema } from "@/domain/library/tagging";
 import {
   EXTRACTION_PROMPT,
   FRAME_PROMPT,
   PASTED_TEXT_NOTE,
+  STEPS_PROMPT,
+  STEPS_VERIFICATION_PROMPT,
   SUGGESTION_PROMPT,
   SURVEY_PROMPT,
   TAGGING_PROMPT,
@@ -36,6 +39,8 @@ import {
   type RecipeReader,
   type RecipeTagger,
   type RecipeVerifier,
+  type StepsReader,
+  type StepsVerifier,
   type TextRecipeReader,
   type UprightFinder,
 } from "./read-recipe";
@@ -209,6 +214,46 @@ export function createAnthropicVerifier(options: AnthropicReaderOptions): Recipe
       [
         ...imageBlocks(images),
         { type: "text", text: `Transcription to check.${focus(read)}\n${transcription}` },
+      ],
+      zodOutputFormat(verificationSchema),
+    );
+    return { verification: output, model, usage };
+  };
+}
+
+/** Reads only the steps of a recipe in the library with a Claude model. */
+export function createAnthropicStepsReader(options: AnthropicReaderOptions): StepsReader {
+  return async (images, read) => {
+    const { output, usage } = await ask<StepsReading>(
+      options,
+      STEPS_PROMPT,
+      [
+        ...imageBlocks(images),
+        {
+          type: "text",
+          text: `Read the preparation steps of the recipe on these photos.${focus(read)}`,
+        },
+      ],
+      zodOutputFormat(stepsReadingSchema),
+    );
+    return { reading: output, usage };
+  };
+}
+
+/** Checks steps read by `createAnthropicStepsReader` against the photos, in a request of its own. */
+export function createAnthropicStepsVerifier(options: AnthropicReaderOptions): StepsVerifier {
+  return async (images, steps, read) => {
+    const transcription = JSON.stringify(
+      { steps: steps.map((text, index) => ({ index, text })) },
+      null,
+      1,
+    );
+    const { output, model, usage } = await ask<Verification>(
+      options,
+      STEPS_VERIFICATION_PROMPT,
+      [
+        ...imageBlocks(images),
+        { type: "text", text: `Steps to check.${focus(read)}\n${transcription}` },
       ],
       zodOutputFormat(verificationSchema),
     );

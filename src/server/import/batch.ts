@@ -3,6 +3,7 @@ import sharp from "sharp";
 import type { IsoDate } from "@/domain/dates";
 import type { RecipeDraft } from "@/domain/import/draft";
 import { groupPages } from "@/domain/import/group-pages";
+import { surveySawSteps } from "@/domain/import/steps";
 import type { PageSurvey } from "@/domain/import/survey";
 import type { Meal } from "@/domain/plan";
 import { loadCatalogIndex, must, type Db } from "../catalog";
@@ -344,6 +345,7 @@ function toStored(draft: RecipeDraft): StoredRecipe {
     dishType: draft.dishType,
     proteinType: draft.proteinType,
     lines: draft.ingredients,
+    steps: draft.steps,
   };
 }
 
@@ -396,6 +398,10 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
             .filter((parts) => parts.length === job.focus_count)
             .map((parts) => parts[(job.focus_position as number) - 1]?.page)
             .find((n) => n != null);
+    const focus =
+      job.focus_position !== null && job.focus_count !== null
+        ? { position: job.focus_position, count: job.focus_count }
+        : null;
     const models = importModels();
     const result = await importFromImages(
       images,
@@ -404,15 +410,14 @@ async function importJob(db: Db, householdId: string, jobId: string): Promise<vo
         book: must(batch, "load batch").source_book,
         // Without a page from the first look, the reader's own reading of it is used.
         page: job.provided_page ?? ownPage ?? null,
+        // The first look noted whether the photos show steps: none read then needs a person.
+        stepsShown: surveySawSteps(
+          pageRows.map((p) => p.survey as unknown as PageSurvey | null),
+          focus,
+        ),
       },
       { read: models.read, verify: models.verify, index },
-      {
-        focusTitle: job.focus_title,
-        focus:
-          job.focus_position !== null && job.focus_count !== null
-            ? { position: job.focus_position, count: job.focus_count }
-            : null,
-      },
+      { focusTitle: job.focus_title, focus },
     );
 
     const recipeId = result.draft

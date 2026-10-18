@@ -5,6 +5,7 @@ import { parseQuantity } from "../quantity";
 import { isUnit, type Unit } from "../units";
 import { mapToCatalog } from "./map-ingredient";
 import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "./servings";
+import { readTypedSteps } from "./steps";
 
 /**
  * What the household submits when it reviews an imported recipe, and the check of it.
@@ -44,6 +45,8 @@ export const reviewInput = z.object({
   servingsUnit: z.string().default(""),
   prepMinutes: z.string(),
   lines: z.array(lineInput),
+  /** The preparation steps, one per line. */
+  steps: z.string(),
 });
 
 export type ReviewInput = z.infer<typeof reviewInput>;
@@ -69,6 +72,8 @@ export function readReview(
       servings: Servings;
       page: number | null;
       prep: number | null;
+      /** Null when no step was typed: the steps are not known. */
+      steps: string[] | null;
     }
   | { ok: false; errors: ReviewErrors } {
   const errors: ReviewErrors = {};
@@ -90,6 +95,9 @@ export function readReview(
   if (page === undefined) errors.sourcePage = "Die Seite muss eine Zahl sein.";
   const prep = wholeNumber(input.prepMinutes);
   if (prep === undefined || prep === 0) errors.prepMinutes = "Die Zeit in Minuten, als Zahl.";
+
+  const steps = readTypedSteps(input.steps);
+  if (!steps.ok) errors.steps = steps.error;
 
   if (input.lines.length === 0) errors.lines = "Ein Rezept braucht mindestens eine Zutat.";
   const lines = input.lines.map((line, at): ReviewedLine => {
@@ -134,12 +142,13 @@ export function readReview(
     };
   });
 
-  if (Object.keys(errors).length > 0 || !min) return { ok: false, errors };
+  if (Object.keys(errors).length > 0 || !min || !steps.ok) return { ok: false, errors };
   return {
     ok: true,
     lines,
     servings: { min, max: max ?? min, unit },
     page: page ?? null,
     prep: prep ?? null,
+    steps: steps.steps,
   };
 }

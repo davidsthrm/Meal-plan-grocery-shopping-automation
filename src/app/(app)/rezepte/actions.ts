@@ -86,6 +86,7 @@ export async function saveTypedRecipe(
     book: text("book"),
     page: text("page"),
     lines: form.has("lines") ? text("lines") : null,
+    steps: text("steps"),
   };
   const household = await requireHousehold();
   const db = await createSessionClient();
@@ -96,7 +97,7 @@ export async function saveTypedRecipe(
     return { errors: { lines: "Mindestens eine Zutat, eine pro Zeile." }, values };
   }
   const created = await createTypedRecipe(db, household.id, read.recipe);
-  // A recipe that was pasted in keeps its text: the steps are nowhere else.
+  // A recipe that was pasted in keeps its text as it was pasted, beside the steps read from it.
   const sourceText = text("sourceText").trim().slice(0, PASTED_TEXT_MAX);
   if (sourceText !== "") {
     const kept = await db.from("recipe").update({ source_text: sourceText }).eq("id", created);
@@ -214,6 +215,7 @@ export async function saveRecipeEdit(
     dishType,
     proteinType,
     lines: read.lines,
+    steps: read.steps,
   });
   const tags = z.array(z.string().max(64)).max(40).safeParse(kind.tags);
   await saveRecipeTags(

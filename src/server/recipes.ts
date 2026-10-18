@@ -62,6 +62,8 @@ export async function updateTypedRecipe(
         servings_max: recipe.servings.max,
         servings_unit: recipe.servings.unit,
         prep_minutes: recipe.prepMinutes,
+        prep_steps: recipe.steps,
+        prep_steps_doubts: [],
         updated_at: new Date().toISOString(),
       })
       .eq("id", recipeId);
@@ -183,6 +185,10 @@ export interface RecipeFormData {
   /** The tags that describe it beyond its category, as the app refers to them. */
   tags: string[];
   lines: ReviewLine[];
+  /** The preparation steps. Null while nobody has read or typed them. */
+  steps: string[] | null;
+  /** What was not read with certainty when the steps were filled in later. */
+  stepDoubts: string[];
 }
 
 /** A recipe as the form for changing it shows it. Null when this household has no such recipe. */
@@ -190,7 +196,7 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
   const { data: recipe } = await db
     .from("recipe")
     .select(
-      "id, title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type",
+      "id, title, source_book, source_page, servings_min, servings_max, servings_unit, prep_minutes, protein_type, prep_steps, prep_steps_doubts",
     )
     .eq("id", recipeId)
     .maybeSingle();
@@ -223,6 +229,8 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
     servingsMax: recipe.servings_max,
     servingsUnit: recipe.servings_unit ?? "",
     prepMinutes: recipe.prep_minutes,
+    steps: recipe.prep_steps,
+    stepDoubts: recipe.prep_steps_doubts,
     tags: ownTags
       .filter((tag) => (TAG_GROUPS as readonly string[]).includes(tag.group_name))
       .map((tag) => tag.key ?? tag.id),

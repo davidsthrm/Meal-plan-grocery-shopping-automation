@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { FROM_DUPLICATES, FROM_FAVORITES, fromFieldChecks, fromPlan, readOrigin } from "./origin";
+import {
+  FROM_DUPLICATES,
+  FROM_STEP_CHECKS,
+  FROM_FAVORITES,
+  fromFieldChecks,
+  fromPlan,
+  readOrigin,
+} from "./origin";
 
 const RECIPE = "0b6d5a52-6f3c-4c6e-9d6a-3f1e2b7c8a90";
 
@@ -37,6 +44,14 @@ describe("where a recipe was opened from", () => {
       href: "/import/pruefen/doppelt",
       label: "Doppelte Rezepte",
     });
+  });
+
+  it("leads back to the recipe among the steps to check", () => {
+    expect(read(FROM_STEP_CHECKS, RECIPE)).toEqual({
+      href: `/import/pruefen/schritte#r-${RECIPE}`,
+      label: "Arbeitsschritte prüfen",
+    });
+    expect(read(FROM_STEP_CHECKS, "x#y").href).toBe("/import/pruefen/schritte");
   });
 
   it("is the library for everything else", () => {

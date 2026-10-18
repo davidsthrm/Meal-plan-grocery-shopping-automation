@@ -236,6 +236,9 @@ const LIBRARY: {
   lines?: [string, number | null, Unit | null][];
   /** Keys of the tags that describe it beyond its category. */
   tags?: string[];
+  /** Its Arbeitsschritte, and what was not read with certainty in them. */
+  steps?: string[];
+  stepDoubts?: string[];
 }[] = [
   {
     title: "Gemüse-Lasagne",
@@ -260,6 +263,11 @@ const LIBRARY: {
     protein: "vegetarian",
     minutes: 35,
     book: "E2E Kochbuch",
+    steps: [
+      "Pilze putzen und in Scheiben schneiden.",
+      "Reis in Butter glasig dünsten, nach und nach Brühe angießen.",
+      "Pilze anbraten und unter das Risotto heben.",
+    ],
     tags: ["herbst", "reis", "italienisch"],
   },
   {
@@ -298,6 +306,8 @@ const LIBRARY: {
     protein: "vegan",
     minutes: 40,
     book: "Zweites Buch",
+    steps: ["Linsen waschen.", "Etwa […] Minuten köcheln lassen."],
+    stepDoubts: ["Schritt 2: Die Garzeit ist verwischt."],
   },
   {
     title: "Kartoffelsuppe",
@@ -429,6 +439,8 @@ export async function resetLibrary(): Promise<void> {
           prep_minutes: entry.minutes,
           protein_type: entry.protein,
           is_favorite: entry.favorite ?? false,
+          prep_steps: entry.steps ?? null,
+          prep_steps_doubts: entry.stepDoubts ?? [],
           status: "approved" as const,
         })),
       )

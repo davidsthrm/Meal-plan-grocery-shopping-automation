@@ -125,6 +125,30 @@ describe("merge_recipes", () => {
     ).toEqual({ status: "discarded", recipe_id: null });
   });
 
+  it("takes the duplicate's steps only where the kept recipe has none read", async () => {
+    const bare = await recipe("Gulasch");
+    const read = await recipe(
+      "Gulasch nach Omas Art",
+      ", prep_steps, prep_steps_doubts",
+      ", array['Fleisch anbraten.', 'Schmoren.'], array['Schritt 2: Zeit unleserlich']",
+    );
+    await db.query("select public.merge_recipes($1, $2)", [bare, read]);
+    expect(
+      await one("select prep_steps, prep_steps_doubts from public.recipe where id = $1", [bare]),
+    ).toEqual({
+      prep_steps: ["Fleisch anbraten.", "Schmoren."],
+      prep_steps_doubts: ["Schritt 2: Zeit unleserlich"],
+    });
+
+    // An empty list was read too: the photo shows no steps. It is kept.
+    const none = await recipe("Pfannkuchen", ", prep_steps", ", array[]::text[]");
+    const other = await recipe("Pfannkuchen (2)", ", prep_steps", ", array['Teig rühren.']");
+    await db.query("select public.merge_recipes($1, $2)", [none, other]);
+    expect(
+      await one("select prep_steps, prep_steps_doubts from public.recipe where id = $1", [none]),
+    ).toEqual({ prep_steps: [], prep_steps_doubts: [] });
+  });
+
   it("keeps the kept recipe's own category", async () => {
     const kept = await recipe("Kürbissuppe");
     const duplicate = await recipe("Kürbis-Suppe");
