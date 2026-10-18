@@ -3,6 +3,7 @@ import { DISH_TYPES, PROTEIN_TYPES } from "../import/extraction";
 import { mapToCatalog, splitJoinedName } from "../import/map-ingredient";
 import type { ReviewedLine } from "../import/review-input";
 import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "../import/servings";
+import { readTypedSteps } from "../import/steps";
 import { parseQuantity } from "../quantity";
 import type { Servings } from "../recipe";
 import { parseUnit, type Unit } from "../units";
@@ -75,6 +76,8 @@ export interface TypedRecipeInput {
   page: string;
   /** One ingredient per line. Null when the ingredients are not part of what is saved. */
   lines: string | null;
+  /** The preparation steps, one per line. May be empty. */
+  steps: string;
 }
 
 export interface TypedRecipe {
@@ -87,6 +90,8 @@ export interface TypedRecipe {
   proteinType: (typeof PROTEIN_TYPES)[number];
   /** Null when the ingredients are not part of what is saved. */
   lines: ReviewedLine[] | null;
+  /** Null when none were typed. */
+  steps: string[] | null;
 }
 
 /** Messages for the form, by field name. */
@@ -119,6 +124,8 @@ export function readTypedRecipe(
   if (minutes === undefined || minutes === 0) errors.minutes = "Die Zeit in Minuten, als Zahl.";
   const page = whole(input.page);
   if (page === undefined) errors.page = "Die Seite muss eine Zahl sein.";
+  const steps = readTypedSteps(input.steps);
+  if (!steps.ok) errors.steps = steps.error;
 
   let lines: ReviewedLine[] | null = null;
   if (input.lines !== null) {
@@ -173,7 +180,7 @@ export function readTypedRecipe(
     }
   }
 
-  if (Object.keys(errors).length > 0 || !servings) return { ok: false, errors };
+  if (Object.keys(errors).length > 0 || !servings || !steps.ok) return { ok: false, errors };
   const dishType = (DISH_TYPES as readonly string[]).includes(input.category)
     ? (input.category as TypedRecipe["dishType"])
     : "unbekannt";
@@ -191,6 +198,7 @@ export function readTypedRecipe(
       dishType,
       proteinType,
       lines,
+      steps: steps.steps,
     },
   };
 }

@@ -37,6 +37,7 @@ const form = (patch: Partial<ReviewInput> = {}): ReviewInput => ({
     }),
     line({}),
   ],
+  steps: "",
   ...patch,
 });
 
@@ -50,6 +51,18 @@ describe("readReview", () => {
       ["zitronensaft", 3.5, "EL"],
       ["salz", null, null],
     ]);
+  });
+
+  it("reads the steps one per line, and none typed as not known", () => {
+    const typed = readReview(form({ steps: "1. Spaghetti garen.\n\n2. Pesto mixen.\n" }), index);
+    expect(typed).toMatchObject({ ok: true, steps: ["Spaghetti garen.", "Pesto mixen."] });
+    expect(readReview(form({ steps: "  \n " }), index)).toMatchObject({ ok: true, steps: null });
+  });
+
+  it("refuses a step longer than any recipe prints", () => {
+    const result = readReview(form({ steps: `Rühren ${"und rühren ".repeat(250)}` }), index);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.errors.steps).toMatch(/Schritt 1 ist zu lang/);
   });
 
   it("accepts a synonym typed by hand and keeps what was printed", () => {

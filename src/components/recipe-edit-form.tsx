@@ -6,7 +6,9 @@ import type { ReviewErrors } from "@/domain/import/review-input";
 import type { Category } from "@/domain/library/summary";
 import { toggleTag, type TagGroup } from "@/domain/library/tags";
 import type { RecipeFormData } from "@/server/recipes";
+import { typedSteps } from "@/domain/import/steps";
 import { IngredientRows, rowsToLines, toRows } from "./ingredient-rows";
+import { StepsField } from "./steps-field";
 
 const PROTEINS = [
   { value: "", label: "keine Angabe" },
@@ -56,6 +58,7 @@ export function RecipeEditForm({
   const [servingsUnit, setServingsUnit] = useState(recipe.servingsUnit);
   const [prepMinutes, setPrepMinutes] = useState(recipe.prepMinutes?.toString() ?? "");
   const [rows, setRows] = useState(() => toRows(recipe.lines));
+  const [steps, setSteps] = useState(() => typedSteps(recipe.steps));
   const [errors, setErrors] = useState<ReviewErrors>({});
   const [pending, startTransition] = useTransition();
 
@@ -72,6 +75,7 @@ export function RecipeEditForm({
           servingsUnit,
           prepMinutes,
           lines: rowsToLines(rows),
+          steps,
         },
         { category, protein, tags, ownTags },
       );
@@ -270,6 +274,14 @@ export function RecipeEditForm({
         ingredientNames={ingredientNames}
         knownNames={knownNames}
         errors={errors}
+      />
+
+      <h2 className="pt-2 text-xl font-bold tracking-tight">Arbeitsschritte</h2>
+      <StepsField
+        value={steps}
+        onChange={setSteps}
+        error={errors.steps}
+        doubts={recipe.stepDoubts}
       />
 
       {failed && (

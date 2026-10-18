@@ -30,6 +30,7 @@ const recipe = (patch: Partial<ExtractedRecipe>): ExtractedRecipe => ({
   dishType: "hauptgericht",
   proteinType: "vegetarian",
   ingredients: [],
+  steps: [],
   uncertain: [],
   notes: [],
   ...patch,
@@ -102,6 +103,7 @@ describe("pastedRecipe", () => {
           ingredient({ quantity: 1, unit: "Glas", name: "Pesto" }),
           ingredient({ name: "Parmesan" }),
         ],
+        steps: ["1. Spaghetti kochen.", "Mit dem  Pesto\nmischen."],
       }),
       4,
     );
@@ -115,6 +117,7 @@ describe("pastedRecipe", () => {
       book: "",
       page: "",
       lines: "250 g Spaghetti\n1 Glas Pesto\nParmesan",
+      steps: "Spaghetti kochen.\nMit dem Pesto mischen.",
     });
     expect(read.check).toEqual([]);
   });
@@ -157,6 +160,7 @@ describe("pastedRecipe", () => {
       "Im Text steht nicht, für wie viele es reicht. Eingetragen ist 4.",
       "Als Alternative weggelassen: oder Petersilie",
       "Bitte prüfen: etwas Öl?",
+      "Im Text wurden keine Arbeitsschritte gefunden.",
       "Unsicher (prepMinutes): Zwei Zeiten im Text",
     ]);
   });

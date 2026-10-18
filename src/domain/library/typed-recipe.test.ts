@@ -73,6 +73,7 @@ describe("readTypedRecipe", () => {
     minutes: "15",
     book: "",
     page: "",
+    steps: "",
     lines: "500 g Spaghetti\n\n1 Glas Pesto\nParmesan\n200 g Topinambur",
     ...patch,
   });

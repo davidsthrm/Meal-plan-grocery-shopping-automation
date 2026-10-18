@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { IngredientRows, rowsToLines, toRows } from "@/components/ingredient-rows";
+import { StepsField } from "@/components/steps-field";
+import { typedSteps } from "@/domain/import/steps";
 import type { ReviewErrors, ReviewInput } from "@/domain/import/review-input";
 import { issueText } from "@/lib/issue-text";
 import type { Review } from "@/server/import/review";
@@ -44,6 +46,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
   const [servingsUnit, setServingsUnit] = useState(review.servingsUnit);
   const [prepMinutes, setPrepMinutes] = useState(review.prepMinutes?.toString() ?? "");
   const [rows, setRows] = useState(() => toRows(review.lines));
+  const [steps, setSteps] = useState(() => typedSteps(review.steps));
   const [errors, setErrors] = useState<ReviewErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -62,6 +65,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
       servingsUnit,
       prepMinutes,
       lines: rowsToLines(rows),
+      steps,
     };
     setMessage(null);
     startTransition(async () => {
@@ -273,6 +277,9 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
             errors={errors}
             issuesAt={issuesAt}
           />
+
+          <h2 className="pt-2 text-lg font-semibold">Arbeitsschritte</h2>
+          <StepsField value={steps} onChange={setSteps} error={errors.steps} />
 
           {review.notes.length > 0 && (
             <details className="card p-3">

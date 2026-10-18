@@ -92,6 +92,7 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
               book: "",
               page: "",
               lines: "",
+              steps: "",
             }}
             categories={categories}
             extra={forMeal ? meal : {}}
