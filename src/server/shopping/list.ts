@@ -14,12 +14,18 @@ import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import {
+  completion,
+  extrasToBuy,
+  notesOfWeek,
+  type LineTick,
+} from "@/domain/shopping-list/week-notes";
+import {
   butcherWeekdays,
   noteId,
   tripsBetween,
   type ShoppingTrip,
 } from "@/domain/shopping-list/trips";
-import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
+import type { LineState, ManualEntry } from "@/domain/shopping-list/types";
 import type { Amount } from "@/domain/units";
 import { today } from "@/lib/today";
 import type { Household } from "../auth";
@@ -200,11 +206,8 @@ export async function loadShoppingNotes(
       .lte("shopping_date", weekEnd),
   ]);
   const slots = weeks.flatMap((week) => week.slots);
-  // The weeks around buy their extras for a day like their meals. One without a day is
-  // bought on its own week's first supermarket day, which only this week's notes show.
-  const extras = extrasAround.flatMap((list, at) =>
-    at === 1 ? list : list.filter((extra) => extra.date),
-  );
+  const [before, thisWeek, after] = extrasAround;
+  const extras = extrasToBuy({ before, week: thisWeek, after });
   const lists = must(listRows, "load shopping lists");
   const listIds = lists.map((list) => list.id);
   const tripOf = new Map(
@@ -266,11 +269,14 @@ export async function loadShoppingNotes(
   const states = new Map<string, Record<string, LineState>>();
   const moves = new Map<string, ShoppingTrip>();
   // Who ticked a line, and when: the last tick on a note says who finished the errand.
-  const ticks = new Map<string, { at: string; by: string | null }>();
+  const ticks = new Map<string, LineTick>();
   for (const row of stateRows ? must(stateRows, "load line states") : []) {
     const trip = tripOf.get(row.shopping_list_id) as ShoppingTrip;
     if (row.checked_at !== null) {
-      ticks.set(`${noteId(trip)}|${row.line_key}`, { at: row.checked_at, by: row.checked_by });
+      ticks.set(`${noteId(trip)}|${row.line_key}`, {
+        at: Date.parse(row.checked_at),
+        by: row.checked_by,
+      });
     }
     if (row.moved_date !== null && row.moved_place !== null) {
       moves.set(moveKey(trip, row.line_key), {
@@ -323,32 +329,12 @@ export async function loadShoppingNotes(
   ];
   const linesOf = (trip: ShoppingTrip) =>
     lines.filter((line) => line.shoppingDate === trip.date && line.place === trip.place);
-  const buysForWeek = (trip: ShoppingTrip) =>
-    linesOf(trip).some((line) =>
-      line.contributions.some(({ source }) => {
-        const day = dayOf(source);
-        return day !== null && inWeek(day);
-      }),
-    );
-  // The household's shopping days of the week, and every other day something is bought on:
-  // the bakery on the day of a cold supper, a note the household moved to another day.
-  const shown = new Map<string, ShoppingTrip>();
-  for (const trip of trips) if (inWeek(trip.date)) shown.set(noteId(trip), trip);
-  for (const line of lines) {
-    const trip = { date: line.shoppingDate, place: line.place };
-    if (inWeek(trip.date) || (trip.date < weekStart && buysForWeek(trip))) {
-      shown.set(noteId(trip), trip);
-    }
-  }
-  const inOrder = [...shown.values()].sort(
-    (a, b) => a.date.localeCompare(b.date) || PLACES.indexOf(a.place) - PLACES.indexOf(b.place),
-  );
   const nameOf = new Map(
     must(memberRows, "load members").map((member) => [member.user_id, member.display_name]),
   );
 
   const atHome: WeekNotes["atHome"] = [];
-  const notes = inOrder.map((trip): NoteList => {
+  const notes = notesOfWeek(lines, trips, weekStart).map((trip): NoteList => {
     const id = noteId(trip);
     const view =
       trip.place === "drugstore"
@@ -357,19 +343,14 @@ export async function loadShoppingNotes(
     atHome.push(...view.atHome.map((line) => ({ trip, line })));
     const toBuy = view.groups.flatMap((group) => group.lines);
     const done = toBuy.filter((line) => line.checked).length;
-    const last = toBuy
-      .flatMap((line) => ticks.get(`${id}|${line.line.key}`) ?? [])
-      .sort((a, b) => b.at.localeCompare(a.at))[0];
+    const finished = completion(toBuy, (key) => ticks.get(`${id}|${key}`));
     return {
       trip,
       id,
       view,
       open: toBuy.length - done,
       done,
-      completed:
-        toBuy.length > 0 && done === toBuy.length
-          ? { by: (last?.by && nameOf.get(last.by)) || null }
-          : null,
+      completed: finished && { by: (finished.by && nameOf.get(finished.by)) || null },
     };
   });
   atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));
