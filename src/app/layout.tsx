@@ -14,6 +14,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // The page reaches the edges of the screen, and says itself where the phone keeps its own
+  // bars (`env(safe-area-inset-*)`): the sections float clear of the iPhone's home bar.
+  viewportFit: "cover",
   themeColor: "#f7f4ee",
 };
 

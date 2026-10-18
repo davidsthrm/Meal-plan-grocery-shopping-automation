@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Shop } from "@/domain/catalog";
+import type { Pictogram } from "@/domain/library/pictogram";
+import { PictogramIcon } from "./pictogram";
+import { ShopLogo } from "./shop-logo";
 import {
   CompleteNote,
   SyncStatus,
@@ -11,14 +15,21 @@ import {
   type PageLine,
 } from "./ticks";
 
+/** A supermarket as the view shows it: its logo and its name. */
+type Market = Pick<Shop, "id" | "name" | "logoUrl">;
+
 /** A note as the view for the shop shows it: by supermarket, then by kind of grocery. */
 export interface StoreNote {
   /** Where and when: "Aldi & Rewe", "Montag, 12. Oktober". */
   title: string;
   when: string;
+  /** The supermarkets the note is taken to, the main one first; empty for another place. */
+  markets: Market[];
+  /** The place's sign and pastel, where it has no logos: the market's basket. */
+  look: { pictogram: Pictogram; tone: string };
   sections: {
     /** The supermarket, on a note taken to several. */
-    shop: string | null;
+    shop: Market | null;
     groups: {
       name: string;
       lines: (PageLine & { text: string; shop: string | null })[];
@@ -115,12 +126,30 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
         {open && (
           <div className="mx-auto flex min-h-full max-w-xl flex-col">
             <header className="store-head">
-              <div className="min-w-0">
+              {note.markets.length > 0 ? (
+                <span className="flex shrink-0 -space-x-2">
+                  {note.markets.slice(0, 3).map((market) => (
+                    <ShopLogo
+                      key={market.id}
+                      shop={market}
+                      size={note.markets.length > 1 ? 36 : 44}
+                    />
+                  ))}
+                </span>
+              ) : (
+                <span className={`badge size-11 shrink-0 ${note.look.tone}`}>
+                  <PictogramIcon name={note.look.pictogram} className="h-[66%] w-[66%]" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
                 <h2 className="truncate text-xl leading-tight font-bold tracking-tight">
                   {note.title}
                 </h2>
                 <p className="text-muted">
-                  {note.when} · <TickProgress page={page} lines={lines} />
+                  {note.when} ·{" "}
+                  <span className="whitespace-nowrap">
+                    <TickProgress page={page} lines={lines} />
+                  </span>
                 </p>
               </div>
               <button type="button" className="btn shrink-0" onClick={close}>
@@ -130,10 +159,11 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
             <SyncStatus className="mx-4 mt-2" />
             <div className="flex-1 px-2 pb-4">
               {note.sections.map((section) => (
-                <section key={section.shop ?? "alle"} aria-label={section.shop ?? undefined}>
+                <section key={section.shop?.id ?? "alle"} aria-label={section.shop?.name}>
                   {section.shop && (
-                    <h3 className="mx-2 mt-5 border-b border-line pb-1 text-lg font-bold tracking-tight">
-                      {section.shop}
+                    <h3 className="mx-2 mt-5 flex items-center gap-2.5 border-b border-line pb-2 text-lg font-bold tracking-tight">
+                      <ShopLogo shop={section.shop} size={32} />
+                      {section.shop.name}
                     </h3>
                   )}
                   {section.groups.map((group) => (

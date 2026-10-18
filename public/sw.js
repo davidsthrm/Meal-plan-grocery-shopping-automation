@@ -5,7 +5,8 @@
  * - The pages of the shopping notes (/einkauf) come from the network when it answers, and
  *   are kept. Without an answer the kept page is shown. The page names the notes worth
  *   keeping ("keep" message, `pagesForTheShop`), and they are fetched ahead.
- * - Scripts and styles are kept as they are loaded, so that a kept page also works.
+ * - Scripts and styles are kept as they are loaded, so that a kept page also works, and
+ *   the supermarkets' logos from Wikimedia Commons, so that a kept note shows them.
  * - Any other page without a connection shows /offline.html, which says what works.
  *
  * Nothing but GET requests of this origin is touched: ticks, forms and the database go
@@ -29,6 +30,15 @@ const STALE = 14 * 24 * 60 * 60 * 1000;
 const MAX_ASSETS = 400;
 
 const KEPT_AT = "x-essensplan-kept-at";
+
+/** The supermarkets' logos (`commonsImageUrl`): small pictures that do not change. */
+const LOGOS = /https:\/\/commons\.wikimedia\.org\/wiki\/Special:FilePath\/[^"'\s\\<>]+/g;
+
+function isLogo(url) {
+  return (
+    url.hostname === "commons.wikimedia.org" && url.pathname.startsWith("/wiki/Special:FilePath/")
+  );
+}
 
 /** A page of the shopping notes, with or without a week and a note. */
 function isNotesPage(url) {
@@ -102,6 +112,10 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+  if (isLogo(url)) {
+    event.respondWith(logo(request));
+    return;
+  }
   if (url.origin !== self.location.origin) return;
   if (request.mode === "navigate") {
     event.respondWith(navigate(event, url));
@@ -158,6 +172,21 @@ async function asset(request) {
 /** The pages being fetched ahead, one request after the other. */
 let keeping = Promise.resolve();
 
+/** A logo from the cache, or fetched and kept. Without either the picture is left out. */
+async function logo(request) {
+  const cache = await caches.open(ASSETS);
+  const kept = await cache.match(request.url);
+  if (kept) return kept;
+  try {
+    const response = await fetch(request);
+    // A picture of another site comes back opaque: it can be kept, not looked into.
+    if (response.ok || response.type === "opaque") await cache.put(request.url, response.clone());
+    return response;
+  } catch {
+    return Response.error();
+  }
+}
+
 self.addEventListener("message", (event) => {
   const data = event.data;
   if (data && data.type === "keep" && Array.isArray(data.pages)) {
@@ -205,6 +234,14 @@ async function keepAssetsOf(html) {
     try {
       const response = await fetch(request);
       if (response.ok) await cache.put(request, response);
+    } catch {
+      return;
+    }
+  }
+  for (const url of new Set(html.match(LOGOS) || [])) {
+    if (await cache.match(url)) continue;
+    try {
+      await cache.put(url, await fetch(url, { mode: "no-cors" }));
     } catch {
       return;
     }

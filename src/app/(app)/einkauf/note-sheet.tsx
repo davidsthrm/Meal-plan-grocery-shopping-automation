@@ -168,8 +168,16 @@ export function NoteSheet({
     title:
       markets.length > 0 ? namesText(markets.map((shop) => shop.name)) : PLACE_NAME[trip.place],
     when: whenText(trip),
+    markets:
+      trip.place === "supermarket"
+        ? markets.map(({ id, name, logoUrl }) => ({ id, name, logoUrl }))
+        : [],
+    look: PLACE_LOOK[trip.place],
     sections: sections.map((section) => ({
-      shop: named && section.shop ? section.shop.name : null,
+      shop:
+        named && section.shop
+          ? { id: section.shop.id, name: section.shop.name, logoUrl: section.shop.logoUrl }
+          : null,
       groups: section.groups.map(({ aisleGroup, lines: entries }) => ({
         name: aisleGroup.name,
         lines: entries.map((entry) => ({
