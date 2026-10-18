@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LogoMark } from "@/components/logo";
+import { ForgetSignedOut } from "@/components/service-worker";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Anmelden" };
@@ -16,6 +17,7 @@ export default function LoginPage() {
       <p className="mt-6 text-sm text-muted">
         Zugang gibt es nur auf Einladung. Passwort vergessen? Frag David.
       </p>
+      <ForgetSignedOut />
     </main>
   );
 }

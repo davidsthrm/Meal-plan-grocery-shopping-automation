@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppNav } from "@/components/app-nav";
+import { ConnectionGuard } from "@/components/connection";
 import { SettingsIcon } from "@/components/icons";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
@@ -38,15 +39,17 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           >
             <SettingsIcon />
           </Link>
-          <form action={signOut} className="hidden sm:block">
+          <form action={signOut} data-sign-out className="hidden sm:block">
             <button className="btn min-h-10 px-3 text-sm">Abmelden</button>
           </form>
         </div>
       </header>
       <main>{children}</main>
       <LiveRefresh />
+      <ConnectionGuard />
       <form
         action={signOut}
+        data-sign-out
         className="mx-auto mt-12 flex max-w-5xl items-center justify-between gap-3 border-t border-line pt-4 sm:hidden print:hidden"
       >
         <Link href="/einstellungen" className="link inline-flex min-h-10 items-center gap-1.5">

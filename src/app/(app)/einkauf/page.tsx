@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { NoteIcon, TickIcon } from "@/components/icons";
 import { PrintButton } from "@/components/print-button";
+import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
 import { SubmitButton } from "@/components/submit-button";
 import type { CatalogIndex, Shop } from "@/domain/catalog";
@@ -18,6 +19,7 @@ import { groupAtHome, noteToBuyOn, type AtHomeGroup } from "@/domain/shopping-li
 import { marketsOfNote } from "@/domain/shopping-list/supermarkets";
 import { noteId, type ShoppingDay } from "@/domain/shopping-list/trips";
 import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
+import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
 import { today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
@@ -47,11 +49,22 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const thisWeek = planningWeek(now);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
   const db = await createSessionClient();
-  const [{ notes, atHome, index, members, supermarkets, alsoOn }, noted] = await Promise.all([
-    loadShoppingNotes(db, household, week),
-    loadRestock(db, household, now),
-  ]);
+  const [{ notes, atHome, index, members, supermarkets, alsoOn, readAt }, noted] =
+    await Promise.all([loadShoppingNotes(db, household, week), loadRestock(db, household, now)]);
   const picked = notes.find((note) => note.id === one(params.zettel));
+  // The notes of the running week are kept on the device for the shop, and the next errand
+  // with them when it lies in the week after.
+  const trips = notes.map((note) => note.trip);
+  const keep =
+    week === thisWeek &&
+    pagesForTheShop(
+      week,
+      trips,
+      now,
+      hasErrandFrom(trips, now)
+        ? []
+        : (await loadShoppingNotes(db, household, addDays(week, 7))).notes.map((note) => note.trip),
+    );
 
   if (picked) {
     // A line can be moved to every other note of the week that sells food. The drugstore's
@@ -86,7 +99,9 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           members={members}
           supermarkets={supermarkets}
           alsoOn={alsoOn}
+          renderedAt={readAt}
         />
+        {keep && <KeepForTheShop pages={keep} readAt={readAt} />}
       </div>
     );
   }
@@ -209,6 +224,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             ))}
         </nav>
       )}
+      {keep && <KeepForTheShop pages={keep} readAt={readAt} />}
     </div>
   );
 }

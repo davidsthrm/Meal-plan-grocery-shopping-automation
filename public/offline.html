@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <meta name="robots" content="noindex" />
+    <title>Keine Verbindung · Essensplan</title>
+    <!--
+      Shown by the service worker (sw.js) for a page that is not kept on the device while
+      there is no connection. It stands alone: no script or style of the app is needed.
+    -->
+    <style>
+      :root {
+        --paper: #f7f4ee;
+        --surface: #fffdf9;
+        --ink: #23211d;
+        --muted: #6b665d;
+        --line: #ddd6c8;
+        --accent: #2f5d50;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        font-size: 17px;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        padding: 1rem;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.45;
+      }
+      main {
+        max-width: 32rem;
+        margin: 12vh auto 0;
+        padding: 1.5rem 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: var(--surface);
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .logo span {
+        color: var(--accent);
+      }
+      h1 {
+        margin: 1.25rem 0 0.4rem;
+        font-size: 1.5rem;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0.5rem 0 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 1.25rem;
+      }
+      a {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        padding: 0 1rem;
+        border: 1px solid var(--line);
+        border-radius: 0.6rem;
+        background: var(--surface);
+        color: var(--ink);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="logo">
+        <img src="/icon-192.png" alt="" width="32" height="32" />
+        <div>Essens<span>plan</span></div>
+      </div>
+      <h1>Keine Verbindung</h1>
+      <p id="what">Diese Seite braucht eine Verbindung zum Server.</p>
+      <p class="muted">
+        Ohne Netz gehen die Einkaufszettel dieser Woche, wenn sie auf diesem Gerät schon einmal
+        offen waren. Häkchen werden auf dem Gerät gemerkt und übertragen, sobald wieder Netz da ist.
+      </p>
+      <div class="actions">
+        <a class="primary" href="/einkauf">Zu den Einkaufszetteln</a>
+        <a href="" id="again">Nochmal versuchen</a>
+      </div>
+    </main>
+    <script>
+      // The page stands at the address that was asked for: name what needs the connection.
+      var path = location.pathname;
+      var what =
+        path.indexOf("/import") === 0
+          ? "Der Import liest Fotos auf dem Server und braucht dafür eine Verbindung."
+          : path.indexOf("/einstellungen") === 0
+            ? "Die Einstellungen werden auf dem Server gespeichert und brauchen dafür eine Verbindung."
+            : null;
+      if (what) document.getElementById("what").textContent = what;
+      document.getElementById("again").addEventListener("click", function (event) {
+        event.preventDefault();
+        location.reload();
+      });
+    </script>
+  </body>
+</html>
