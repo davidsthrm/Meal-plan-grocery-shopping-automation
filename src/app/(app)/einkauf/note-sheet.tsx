@@ -2,7 +2,16 @@ import { TickIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ShopLogo } from "@/components/shop-logo";
+import { StoreView, type StoreNote } from "@/components/store-view";
 import { SubmitButton } from "@/components/submit-button";
+import {
+  CompleteNote,
+  SyncStatus,
+  TickButton,
+  TickCount,
+  TickRefresh,
+  type NotePage,
+} from "@/components/ticks";
 import type { CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { quantityText } from "@/domain/quantity";
@@ -39,8 +48,6 @@ import {
   amountLine,
   buyAtSupermarket,
   changeNoteDay,
-  checkLine,
-  completeListNote,
   markAtHome,
   moveListLine,
   noteLine,
@@ -120,6 +127,7 @@ export function NoteSheet({
   members,
   supermarkets,
   alsoOn,
+  renderedAt,
 }: {
   note: NoteList;
   week: IsoDate;
@@ -133,8 +141,14 @@ export function NoteSheet({
   supermarkets: Shop[];
   /** The other notes of the week each line is on too (`lineOnNote`). */
   alsoOn: ReadonlyMap<string, ShoppingTrip[]>;
+  /** When the server drew the page, by its clock: ticks of this device after it count more. */
+  renderedAt: number;
 }) {
   const { trip, view } = note;
+  const page: NotePage = { week, note: note.id, renderedAt };
+  const pageLines = view.groups
+    .flatMap((group) => group.lines)
+    .map((entry) => ({ key: entry.line.key, checked: entry.checked }));
   const drugstore = trip.place === "drugstore";
   const covers = coversText(view);
   // The errand on another day: which of the days around it would work, and why the others
@@ -148,6 +162,33 @@ export function NoteSheet({
   const favourites = trip.place === "supermarket" ? supermarkets : [];
   const sections = sectionsByShop(view, favourites);
   const named = sections.some((section) => section.shop && section.shop !== favourites[0]);
+  const markets = marketsOfNote(view, favourites);
+  // The same note for the shop: large rows, nothing but ticking.
+  const forShop: StoreNote = {
+    title:
+      markets.length > 0 ? namesText(markets.map((shop) => shop.name)) : PLACE_NAME[trip.place],
+    when: whenText(trip),
+    markets:
+      trip.place === "supermarket"
+        ? markets.map(({ id, name, logoUrl }) => ({ id, name, logoUrl }))
+        : [],
+    look: PLACE_LOOK[trip.place],
+    sections: sections.map((section) => ({
+      shop:
+        named && section.shop
+          ? { id: section.shop.id, name: section.shop.name, logoUrl: section.shop.logoUrl }
+          : null,
+      groups: section.groups.map(({ aisleGroup, lines: entries }) => ({
+        name: aisleGroup.name,
+        lines: entries.map((entry) => ({
+          key: entry.line.key,
+          checked: entry.checked,
+          text: entry.text,
+          shop: chosenShop(index, entry),
+        })),
+      })),
+    })),
+  };
   const elsewhere = (entry: ViewLine): Elsewhere[] =>
     (alsoOn.get(lineOnNote(trip, entry.line.key)) ?? []).map((other) => ({
       trip: other,
@@ -163,15 +204,20 @@ export function NoteSheet({
       <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <h1>
-            <NoteHead note={note} markets={marketsOfNote(view, favourites)} />
+            <NoteHead note={note} markets={markets} />
           </h1>
-          {note.open + note.done > 0 && (
+          {pageLines.length > 0 && (
             <p className="text-sm text-muted tabular-nums print:hidden">
-              {note.open} offen{note.done > 0 ? `, ${note.done} erledigt` : ""}
+              <TickCount page={page} lines={pageLines} />
             </p>
           )}
         </div>
         {covers !== "" && <p className="mt-2 text-sm text-muted print:text-black">{covers}</p>}
+        <TickRefresh />
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 print:hidden">
+          <StoreView page={page} note={forShop} />
+          <SyncStatus className="text-sm" />
+        </div>
         {note.completed && (
           <p
             role="status"
@@ -219,6 +265,7 @@ export function NoteSheet({
                         key={line.line.key}
                         view={line}
                         week={week}
+                        page={page}
                         note={trip}
                         shop={chosenShop(index, line)}
                         others={others}
@@ -261,15 +308,9 @@ export function NoteSheet({
           </>
         )}
 
-        {note.open > 0 && (
-          <form action={completeListNote} className="mt-5 print:hidden">
-            <Where week={week} note={note.id} />
-            <SubmitButton className="btn btn-primary w-full sm:w-auto">
-              <TickIcon />
-              Einkauf erledigt
-            </SubmitButton>
-          </form>
-        )}
+        <div className="mt-5 print:hidden">
+          <CompleteNote page={page} lines={pageLines} />
+        </div>
 
         {lines.length > 0 && !drugstore && (
           <details className="mt-3 print:hidden">
@@ -390,6 +431,7 @@ function DrugstoreForm({
 function Line({
   view,
   week,
+  page,
   note,
   shop,
   others,
@@ -399,6 +441,7 @@ function Line({
 }: {
   view: ViewLine;
   week: IsoDate;
+  page: NotePage;
   note: ShoppingTrip;
   /** The shop, where the line names one on purpose. */
   shop: string | null;
@@ -431,26 +474,17 @@ function Line({
   const boughtAt = supermarketOf(view, supermarkets);
 
   return (
-    <li className="flex items-start gap-3 print:gap-2 print:py-0.5">
-      <form action={checkLine} className="print:hidden">
-        {where}
-        <input type="hidden" name="checked" value={view.checked ? "0" : "1"} />
-        <SubmitButton
-          className="tickbox"
-          label={`${view.text}: ${view.checked ? "wieder offen" : "erledigt"}`}
-          on={view.checked}
-        >
-          <TickIcon />
-        </SubmitButton>
-      </form>
+    <li className="tick-line flex items-start gap-3 print:gap-2 print:py-0.5">
+      <TickButton
+        page={page}
+        line={{ key: line.key, checked: view.checked }}
+        label={view.text}
+        className="print:hidden"
+      />
       <span aria-hidden className="mt-1 hidden size-3 shrink-0 border border-black print:block" />
       <div className="min-w-0 flex-1">
         <details>
-          <summary
-            className={`flex min-h-10 items-center py-1 print:min-h-0 print:py-0 ${
-              view.checked ? "text-muted line-through" : ""
-            }`}
-          >
+          <summary className="tick-text flex min-h-10 items-center py-1 print:min-h-0 print:py-0">
             <span>
               {view.text}
               {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}

@@ -38,6 +38,8 @@ export interface BuildInput {
    * bakery, unless said otherwise. Empty for a household that buys everything in one go.
    */
   onDemand?: readonly Place[];
+  /** The weekdays the butcher is gone to on (`butcherWeekdays`). Without any: for each meal. */
+  butcherDays?: readonly number[];
   /** The supermarket day the extras without a day are bought on. Without one, the first. */
   extrasDate?: IsoDate;
   manualEntries?: ManualEntry[];
@@ -280,6 +282,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       },
       trips,
       input.onDemand,
+      input.butcherDays,
     ) as Assignment;
 
   /** Where a line ends up: on its own note, or on the one the household moved it to. */

@@ -80,6 +80,15 @@ export function firstName(displayName: string | null | undefined): string | null
 }
 
 /**
+ * The letter that stands for a member in the header, on the way to the settings: "D" for
+ * "David Stührmann". Null without a name.
+ */
+export function initialOf(displayName: string | null | undefined): string | null {
+  const first = firstName(displayName);
+  return first ? [...first][0].toLocaleUpperCase("de") : null;
+}
+
+/**
  * How a member is greeted at this hour where the household lives: "Guten Morgen" until
  * eleven, "Guten Abend" from six in the evening, "Hallo" in between and at night.
  */

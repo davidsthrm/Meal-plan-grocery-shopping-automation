@@ -20,6 +20,8 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
   const router = useRouter();
   const [progress, setProgress] = useState(initial);
   const [failed, setFailed] = useState(false);
+  // The connection went: it carries on by itself once it is back.
+  const [offline, setOffline] = useState(false);
   const [round, setRound] = useState(0);
   // The recipe this upload was made for, once it stands on its meal of the week plan.
   const [placed, setPlaced] = useState<PlacedRecipe | null>(null);
@@ -49,7 +51,10 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
           if (body.result === "throttled")
             await new Promise((resolve) => setTimeout(resolve, 20_000));
         } catch {
-          if (!stopped.current) setFailed(true);
+          if (!stopped.current) {
+            if (navigator.onLine) setFailed(true);
+            else setOffline(true);
+          }
           stopped.current = true;
           break;
         }
@@ -63,6 +68,16 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
     };
   }, [batchId, initial.done, initial.photosWaiting, round, router]);
 
+  useEffect(() => {
+    if (!offline) return;
+    const back = () => {
+      setOffline(false);
+      setRound((value) => value + 1);
+    };
+    window.addEventListener("online", back);
+    return () => window.removeEventListener("online", back);
+  }, [offline]);
+
   const { pages, recipes } = progress;
   const looked = pages.total - pages.waiting;
   const read = recipes.total - recipes.waiting;
@@ -75,7 +90,7 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
       </Link>
     </p>
   );
-  if (progress.done && !failed) {
+  if (progress.done && !failed && !offline) {
     if (progress.photosWaiting === 0) return onPlan;
     // The recipes are read and can be used. What still runs only concerns their photos.
     return (
@@ -93,7 +108,14 @@ export function BatchRunner({ batchId, initial }: { batchId: string; initial: Ba
     <>
       {onPlan}
       <div className="card mt-4 p-4" aria-live="polite">
-        {failed ? (
+        {offline ? (
+          <>
+            <p className="font-semibold text-warn">Keine Verbindung</p>
+            <p className="mt-1 text-muted">
+              Das Einlesen geht weiter, sobald wieder Netz da ist. Nichts ist verloren.
+            </p>
+          </>
+        ) : failed ? (
           <>
             <p className="font-semibold text-danger">Das Einlesen wurde unterbrochen.</p>
             <p className="mt-1 text-muted">Nichts ist verloren. Was fertig war, bleibt fertig.</p>

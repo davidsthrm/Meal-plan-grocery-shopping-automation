@@ -31,8 +31,8 @@ const OWN_MS = 3000;
  * taken from the message but the fact that something changed, so what a page shows always
  * comes from the server, under the same rules as on a reload.
  *
- * A phone that was asleep may have missed a message. A page that comes back into view reads
- * itself again as well.
+ * A phone that was asleep may have missed a message. A page that comes back into view, or
+ * back online, reads itself again as well.
  */
 export function LiveRefresh() {
   const router = useRouter();
@@ -51,8 +51,10 @@ export function LiveRefresh() {
         router.refresh();
       }, wait);
     };
+    // Without a connection the page cannot be read again: Next.js would load it as a new
+    // page, and the service worker would answer with the copy kept for the shop.
     const changed = () => {
-      if (quiet() || document.visibilityState !== "visible") return;
+      if (quiet() || document.visibilityState !== "visible" || !navigator.onLine) return;
       schedule();
     };
     // Every button of the app is a form. A tap moves a waiting read behind itself.
@@ -69,13 +71,16 @@ export function LiveRefresh() {
     channel.subscribe();
 
     const seen = () => {
-      if (document.visibilityState === "visible" && !quiet()) router.refresh();
+      if (document.visibilityState === "visible" && !quiet() && navigator.onLine) router.refresh();
     };
     document.addEventListener("visibilitychange", seen);
+    // Back online, the page may have missed what the others changed meanwhile.
+    window.addEventListener("online", seen);
     document.addEventListener("submit", acted, true);
     return () => {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", seen);
+      window.removeEventListener("online", seen);
       document.removeEventListener("submit", acted, true);
       void supabase.removeChannel(channel);
     };

@@ -84,8 +84,26 @@ test("screens @look", async ({ page }, info) => {
   if (await first.count()) {
     await first.click();
     await page.getByRole("link", { name: "← Alle Zettel" }).waitFor();
+    // A few lines written by hand, so that the note and the view for the shop show some.
+    const write = page.getByLabel("Auf den Zettel schreiben");
+    for (const text of ["Milch", "Brot", "Tomaten"]) {
+      await write.fill(text);
+      await write.press("Enter");
+      await page.getByRole("button", { name: new RegExp(`${text}: erledigt$`) }).waitFor();
+    }
     await page.waitForTimeout(500);
     await shot("2-einkauf-zettel");
+    // The same note for the shop, one line ticked.
+    const shopping = page.getByRole("link", { name: "Jetzt einkaufen" });
+    if (await shopping.count()) {
+      await shopping.click();
+      const view = page.getByRole("dialog", { name: /^Einkaufen: / });
+      await view.getByRole("button").nth(1).click();
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `test-results/look/${info.project.name}-2-einkaufen.png` });
+      await view.getByRole("button").nth(1).click();
+      await view.getByRole("button", { name: "Fertig" }).first().click();
+    }
   }
   // A saved plan, as the family reads it during the week.
   await page.goto("/woche?w=2027-03-01");

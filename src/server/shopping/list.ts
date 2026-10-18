@@ -13,7 +13,12 @@ import {
 import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
-import { noteId, tripsBetween, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import {
+  butcherWeekdays,
+  noteId,
+  tripsBetween,
+  type ShoppingTrip,
+} from "@/domain/shopping-list/trips";
 import { dayOf, type LineState, type ManualEntry } from "@/domain/shopping-list/types";
 import type { Amount } from "@/domain/units";
 import { today } from "@/lib/today";
@@ -64,6 +69,11 @@ export interface WeekNotes {
    * `lineOnNote`: small tomatoes on Monday's and on Saturday's.
    */
   alsoOn: Map<string, ShoppingTrip[]>;
+  /**
+   * When the notes were read, in milliseconds, taken before the first read: a tick the
+   * server took after it may be missing from them (`shownChecked`).
+   */
+  readAt: number;
 }
 
 /** The recipes of a week with their ingredient lines, as the list builder needs them. */
@@ -174,6 +184,7 @@ export async function loadShoppingNotes(
   household: Pick<Household, "shoppingDays">,
   weekStart: IsoDate,
 ): Promise<WeekNotes> {
+  const readAt = Date.now();
   const weekEnd = addDays(weekStart, 6);
   const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
   // An errand can buy for two weeks, so the weeks around this one are read with it.
@@ -300,6 +311,7 @@ export async function loadShoppingNotes(
       slots,
       extras,
       trips,
+      butcherDays: butcherWeekdays(household.shoppingDays),
       // The week's first trip to the supermarket.
       extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
       manualEntries: entries,
@@ -363,6 +375,7 @@ export async function loadShoppingNotes(
   atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));
   const members = [...nameOf.values()].filter((name): name is string => Boolean(name));
   return {
+    readAt,
     notes,
     atHome,
     index,
@@ -438,6 +451,7 @@ async function storeState(
   values: {
     checked_at?: string | null;
     checked_by?: string | null;
+    checked_changed_at?: string;
     at_home?: boolean;
     note?: string;
     moved_date?: string | null;
@@ -483,9 +497,11 @@ export async function changeLine(
 /** The columns a change of a line is stored in. */
 function stateOf(change: Parameters<typeof changeLine>[4], userId: string) {
   if ("checked" in change) {
+    const now = new Date().toISOString();
     return {
-      checked_at: change.checked ? new Date().toISOString() : null,
+      checked_at: change.checked ? now : null,
       checked_by: change.checked ? userId : null,
+      checked_changed_at: now,
     };
   }
   if ("atHome" in change) return { at_home: change.atHome };
@@ -564,10 +580,39 @@ export async function completeNote(
       updated_at: now,
       checked_at: now,
       checked_by: household.userId,
+      checked_changed_at: now,
     })),
     { onConflict: "shopping_list_id,line_key" },
   );
   if (stored.error) throw new Error(`complete note: ${stored.error.message}`);
+}
+
+/**
+ * Stores ticks made on a device, maybe long ago in the shop without a connection. Each line
+ * keeps the tick made last (`tick_shopping_line`), so a tick sent twice, or after a later one
+ * of someone else, changes nothing. Returns the ids of the ticks done with: stored, or older
+ * than what the line has.
+ */
+export async function applyTicks(
+  db: Db,
+  household: Pick<Household, "id">,
+  ticks: readonly { id: string; note: ShoppingTrip; key: string; checked: boolean; at: Date }[],
+): Promise<string[]> {
+  const taken: string[] = [];
+  const lists = new Map<string, string>();
+  for (const tick of ticks) {
+    const id = noteId(tick.note);
+    if (!lists.has(id)) lists.set(id, await ensureList(db, household.id, tick.note));
+    const stored = await db.rpc("tick_shopping_line", {
+      list_id: lists.get(id) as string,
+      tick_key: tick.key,
+      tick_checked: tick.checked,
+      ticked_at: tick.at.toISOString(),
+    });
+    if (stored.error) throw new Error(`tick line: ${stored.error.message}`);
+    taken.push(tick.id);
+  }
+  return taken;
 }
 
 /**

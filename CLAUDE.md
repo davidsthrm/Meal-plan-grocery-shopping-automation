@@ -31,6 +31,8 @@ is easier than pen and paper.
 | Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
 | The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
 | Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
+| Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                          |
+| Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                          |
 | The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
 | Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                           |
@@ -68,6 +70,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   ran out at home, the look of paper notes, a pictogram for every filter, the upload started
   from a planned meal, pages that follow each other across devices, saved plans, settings,
   and invitations into a household (done).
+- Phase 6 (branch `phase-6-pwa-offline`): installable on iPhone and Android, the notes of
+  the week kept for the shop, ticks without a connection, the view for the shop, and pages
+  that say they need a connection.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -95,6 +100,37 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   An account is made in one place only: `acceptInvite`, with the secret key, for someone who
   holds the link of an invitation a member made.
 - The shopping list must work offline in the shop: cached list, queued check-offs.
+- Installable: `app/manifest.ts`, icons drawn from the logo (`scripts/build-icons.ts`: the
+  logo as it is, green to the edges for Android's mask and the iPhone), `appleWebApp` in
+  the root layout. `src/proxy.ts` lets the manifest, `sw.js` and `offline.html` through
+  without a login: the phone fetches the manifest without cookies.
+- The service worker is plain JavaScript in `public/sw.js`, registered in the root layout
+  (`ServiceWorker`). It touches only GET requests of the app: pages of `/einkauf` come from
+  the network and are kept (in production a kept page is shown after 4 seconds without an
+  answer: in a shop the connection hangs rather than fails), scripts and styles are kept
+  as they load, and any other page without a connection shows `/offline.html`. The page
+  names what to keep (`pagesForTheShop`, `KeepForTheShop`): the notes of the running week,
+  each note, and the next errand when it lies in the week after. A copy asked for earlier
+  never replaces one asked for later. `experimental.useOffline` stays off: with it a soft
+  navigation offline waits forever instead of loading the kept page.
+- Under `next dev` a kept page does not come to life offline (the dev runtime needs its
+  socket), so the offline browser test runs on a production build (`npm run e2e:offline`)
+  and skips itself under `npm run e2e`.
+- A tick is "this line is ticked (or open) since then", not "toggle" (`Tick`,
+  `src/domain/shopping-list/ticks.ts`). It is kept in IndexedDB first (`TickQueue`,
+  `src/lib/tick-sync.ts`, `src/lib/tick-store.ts`) and sent to `/api/einkauf/haken` at once,
+  when the connection comes back, when the app is opened again, and every 15 seconds while
+  something waits. The server stores it with `tick_shopping_line`: per line the tick made
+  last wins, by `shopping_line_state.checked_changed_at`; a tick sent twice changes nothing,
+  and a time in the future counts as now. Two people ticking never undo each other. The
+  device shows its own tick over a page drawn before the server took it
+  (`shownChecked`, `WeekNotes.readAt`). Every tick on a note, also "Einkauf erledigt", goes
+  this way; the plain form is the fallback without scripts.
+- Without a connection every other form is stopped before it is sent and a bar says so
+  (`ConnectionGuard`); only forms marked `data-offline-ok` go. Import and settings say at
+  the top that they need a connection (`NeedsConnection`), and the batch page carries on by
+  itself once the connection is back. Signing out (`data-sign-out`) makes the login page
+  forget the kept pages and the waiting ticks of the device.
 - Supabase Realtime tells an open page that the household changed something
   (`LiveRefresh`). A table that should do so is added to the publication `supabase_realtime`
   in a migration, guarded, because the embedded Postgres of the tests has no such publication.
@@ -238,8 +274,16 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   or it is shown as a label. To look at a new drawing, render the paths with sharp: at the
   size of a badge a line is about a pixel wide.
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
-  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar at the bottom
-  with a sign above each name.
+  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar that floats above
+  the bottom of the screen (`.tabbar`), with a sign above each name and the open section on
+  the green's pastel. It keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
+  `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
+  phone's gestures. Next to the Merkzettel stands the first letter of whoever is signed in
+  on the green (`.account`, `initialOf`), the way to the settings, on every screen size.
+- In the view for the shop the tick sits inside its box (`.tickbox-large`); on the note it
+  runs past the box like a pen's. The view shows the supermarkets' logos as the note does,
+  and the service worker keeps them for the shop: its own Content-Security-Policy (in
+  `next.config.ts`) allows `https://*.wikimedia.org` and nothing else from outside.
 - What moves, moves a little: a card lifts under the finger (`.lift`), a page comes in
   softly, and both are off for whoever asked for less motion. Nothing depends on it.
 - Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`
@@ -276,10 +320,17 @@ Household
   on the first visit). Until it has, the app's own hold (`DEFAULT_SHOPPING_DAYS`: supermarket
   on Monday and Friday, market on Saturday). At least one day must be at a supermarket, where
   everything else is bought. `household.shopping_weekday` is no longer read.
-- The butcher and the bakery have no weekdays (`ON_DEMAND_PLACES`): the household did not
-  want standing days for them. They are gone to for the meal that needs something from
-  there, on the day of that meal, and on the Saturday for a Sunday (`onDemandDay`). Days once
-  stored for them are ignored.
+- The butcher and the bakery are gone to only for a meal that needs something from there
+  (`ON_DEMAND_PLACES`): their notes have no standing days. The butcher has preferred days,
+  a row "Metzger" among the shopping days (stored in `shopping_days` as the place
+  `butcher`, which older versions read and ignore). Its meat goes to the last butcher day on
+  or before its meal, at most three days before and not before it was planned
+  (`butcherDay`, `BUTCHER_REACH_DAYS`): Monday buys for Monday to Thursday, Saturday for the
+  weekend and the start of the week. The catalog's shelf life of fresh meat is not asked.
+  While no butcher day is ticked, the butcher days are those of the supermarket and the
+  market (`butcherWeekdays`). The household found a note for the butcher on every day with
+  meat a waste of time (October 2026). Where no butcher day reaches a meal, and for the
+  bakery always, it is the day of the meal, and the Saturday for a Sunday (`onDemandDay`).
 - The drugstore (dm, place `drugstore`) has one weekday, Saturday until the household picks
   another on `/einstellungen` (`household.drugstore_weekday`, merged into the shopping days
   by `withDrugstore`). It is kept apart from `shopping_days`, which older versions read
@@ -637,8 +688,8 @@ Shopping list
   vegetables and fish at the market, meat at the butcher; the household's to change on
   `/einstellungen`) goes on that place's note. For the market that is when its day is at
   most three days before the meal and it keeps until then: the weekend and the start of the
-  week, also though Monday is a supermarket day. Meat is a note for the butcher on the day
-  it is cooked. A household that buys everything in one go, like the one of the handwritten
+  week, also though Monday is a supermarket day. Meat is a note for the butcher on its butcher
+  day (see above). A household that buys everything in one go, like the one of the handwritten
   list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
@@ -652,11 +703,11 @@ Shopping list
   holds what the weekend needs and what Monday and Tuesday of the next week need, summed.
   The page of a week shows the errands in it, and one before it when that buys for the
   week. `loadShoppingNotes` therefore reads the plans of the weeks around it.
-- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher and
-  the bakery on the day of the meal, the market on its day when that reaches the meal and
-  otherwise on the day of the meal too, which then has an errand of its own. Bread and cold
-  cuts for a "Vesper" on Monday are a note for the bakery and one for the butcher on Monday,
-  next to the supermarket's. So a week shows the household's shopping days and every other day
+- A shop named on purpose is gone to in any case (`shop.kind`, `Need.at`): the butcher on
+  its butcher day like meat for cooking, the bakery on the day of the meal, the market on
+  its day when that reaches the meal and otherwise on the day of the meal too, which then
+  has an errand of its own. Bread and cold cuts for a "Vesper" on Monday are a note for the
+  bakery and one for the butcher on Monday, next to the supermarket's. So a week shows the household's shopping days and every other day
   something is bought on.
 - An errand can be done on another day ("An einem anderen Tag einkaufen" on its note,
   `changeNoteDay`). The note offers the three days before and after and says for each
@@ -739,7 +790,14 @@ Shopping list
   Both show what is still to buy, without what is ticked off or at home. The PDF is a small
   notepad sheet to take along instead of a phone: A6, one column, black on white, faint
   ruled lines, no binding holes. The size is one constant for both (`NOTE_PAPER`
-  in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out).
+  in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out). A note taken to several
+  supermarkets has a section per supermarket in the PDF too, its name once above its kinds
+  of grocery (`pdfSections`), not in front of every heading.
+- "Jetzt einkaufen" on a note opens the view for the shop (`StoreView`, a `<dialog>` over
+  the whole screen; `#laden` opens it too): the note's lines by supermarket and kind of
+  grocery, each row one large button to tick, how many are ticked of how many, whether
+  ticks wait for a connection ("Offline – 3 Häkchen warten", `SyncStatus`), and "Einkauf
+  erledigt". The screen stays on while it is open (Wake Lock, where the browser has it).
 
 Import
 
@@ -930,8 +988,9 @@ Import
   again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The cut-out view of a recipe that is deleted by itself stays in storage until its batch
   is deleted.
-- The shopping list does not show yet what changed since it was last looked at, and ticking
-  off needs a connection. Only a supermarket line can be bought at another shop for a week. The "Haben wir
+- The shopping list does not show yet what changed since it was last looked at. Without a
+  connection only ticking works; typing a line, moving it or changing its amount needs one.
+  Only a supermarket line can be bought at another shop for a week. The "Haben wir
   schon?" step is a plain section of each list for now.
 - The shopping days are the same every week. For a holiday on a shopping day the errand is
   moved to another day by hand ("An einem anderen Tag einkaufen").
@@ -949,7 +1008,12 @@ Import
 - A meal planned on a shopping day after the shopping was done is still put on that day's
   list, where it shows as open: only the day of planning is known, not the hour.
 - What one device changes shows on the others while they are online. A phone without a
-  connection in the shop sees nothing new and cannot tick.
+  connection in the shop sees the notes as they were when it last had one, with its own
+  ticks; the counts on the tiles among the notes do not include ticks that still wait.
+- A note is kept for the shop only once the device has opened the shopping notes of the
+  running week online. The week plan, recipes and every other page are not kept.
+- The offline flow was tested in Chromium (Playwright). On an iPhone, check once by hand:
+  installed from Safari, open a note, airplane mode, tick, reopen the app, back online.
 - An upload started from a meal plans nothing when its page holds several recipes and none
   is named like the meal. The recipes are in the library and are planned by hand then.
 - A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose

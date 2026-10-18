@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { familyName, firstName, inviteIsOpen, readJoin, readName, salutation } from "./family";
+import {
+  familyName,
+  firstName,
+  initialOf,
+  inviteIsOpen,
+  readJoin,
+  readName,
+  salutation,
+} from "./family";
 
 describe("readName", () => {
   it("tidies a name", () => {
@@ -65,6 +73,18 @@ describe("familyName", () => {
     expect(familyName("stührmann")).toBeNull();
     expect(familyName("Familie Stührmann")).toBeNull();
     expect(familyName("")).toBeNull();
+  });
+});
+
+describe("initialOf", () => {
+  it("is the first letter of the first name, as a capital", () => {
+    expect(initialOf("David Stührmann")).toBe("D");
+    expect(initialOf("  özlem ")).toBe("Ö");
+  });
+
+  it("is nothing without a name", () => {
+    expect(initialOf(null)).toBeNull();
+    expect(initialOf("   ")).toBeNull();
   });
 });
 

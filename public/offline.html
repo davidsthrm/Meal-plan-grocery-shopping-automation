@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f4ee" />
+    <meta name="robots" content="noindex" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%20%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%229%22%20fill%3D%22%232f5d50%22/%3E%20%3Cg%20fill%3D%22none%22%20stroke%3D%22%23fffdf9%22%20stroke-width%3D%221.700%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%20%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%225%22/%3E%20%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%222%22%20opacity%3D%220.55%22/%3E%20%3Cpath%20d%3D%22M6%208.500v3.500a1.700%201.700%200%200%200%203.400%200V8.500M7.700%208.500v15%22/%3E%20%3Cpath%20d%3D%22M25.500%208.500c-1.800%201.300-2.300%204-2.300%207h2.300M25.500%208.500v15%22/%3E%20%3C/g%3E%20%3C/svg%3E"
+    />
+    <title>Keine Verbindung · Essensplan</title>
+    <!--
+      Shown by the service worker (sw.js) for a page that is not kept on the device while
+      there is no connection. It stands alone: no script, style or picture of the app is
+      loaded, the logo is drawn in the page itself. Change VERSION in sw.js with this page.
+    -->
+    <style>
+      :root {
+        --paper: #f7f4ee;
+        --surface: #fffdf9;
+        --ink: #23211d;
+        --muted: #6b665d;
+        --line: #ddd6c8;
+        --accent: #2f5d50;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        font-size: 17px;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        padding: 1rem;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Avenir Next",
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.45;
+      }
+      main {
+        max-width: 32rem;
+        margin: 12vh auto 0;
+        padding: 1.5rem 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: var(--surface);
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .logo span {
+        color: var(--accent);
+      }
+      h1 {
+        margin: 1.25rem 0 0.4rem;
+        font-size: 1.5rem;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0.5rem 0 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin-top: 1.25rem;
+      }
+      a {
+        display: inline-flex;
+        min-height: 2.75rem;
+        align-items: center;
+        padding: 0 1rem;
+        border: 1px solid var(--line);
+        border-radius: 0.6rem;
+        background: var(--surface);
+        color: var(--ink);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="logo">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 32 32"
+          width="32"
+          height="32"
+          aria-hidden="true"
+        >
+          <rect width="32" height="32" rx="9" fill="#2f5d50" />
+          <g
+            fill="none"
+            stroke="#fffdf9"
+            stroke-width="1.700"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="16" cy="16" r="5" />
+            <circle cx="16" cy="16" r="2" opacity="0.55" />
+            <path d="M6 8.500v3.500a1.700 1.700 0 0 0 3.400 0V8.500M7.700 8.500v15" />
+            <path d="M25.500 8.500c-1.800 1.300-2.300 4-2.300 7h2.300M25.500 8.500v15" />
+          </g>
+        </svg>
+        <div>Essens<span>plan</span></div>
+      </div>
+      <h1>Keine Verbindung</h1>
+      <p id="what">Diese Seite braucht eine Verbindung zum Server.</p>
+      <p class="muted">
+        Ohne Netz gehen die Einkaufszettel dieser Woche, wenn sie auf diesem Gerät schon einmal
+        offen waren. Häkchen werden auf dem Gerät gemerkt und übertragen, sobald wieder Netz da ist.
+      </p>
+      <div class="actions">
+        <a class="primary" href="/einkauf">Zu den Einkaufszetteln</a>
+        <a href="" id="again">Nochmal versuchen</a>
+      </div>
+    </main>
+    <script>
+      // The page stands at the address that was asked for: name what needs the connection.
+      var path = location.pathname;
+      var what =
+        path.indexOf("/import") === 0
+          ? "Der Import liest Fotos auf dem Server und braucht dafür eine Verbindung."
+          : path.indexOf("/einstellungen") === 0
+            ? "Die Einstellungen werden auf dem Server gespeichert und brauchen dafür eine Verbindung."
+            : null;
+      if (what) document.getElementById("what").textContent = what;
+      document.getElementById("again").addEventListener("click", function (event) {
+        event.preventDefault();
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

@@ -51,6 +51,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next.js internals and static files.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)"],
+  // Everything except Next.js internals and static files. The manifest, the service worker
+  // and the page it shows without a connection are fetched without the login cookie, by the
+  // phone when it installs the app, and contain nothing of the household.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)",
+  ],
 };

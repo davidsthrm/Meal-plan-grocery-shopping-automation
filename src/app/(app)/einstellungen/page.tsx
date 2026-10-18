@@ -92,10 +92,11 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               Einkaufstage
             </h2>
             <p className="mt-1 mb-3 text-sm text-muted">
-              Jeder Einkauf bekommt seinen eigenen Zettel. Metzger und Bäcker haben keinen festen
-              Tag: was eine Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser
-              Mahlzeit, für einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an
-              seinem Tag bereit und wird von Hand geschrieben.
+              Jeder Einkauf bekommt seinen eigenen Zettel. Zum Metzger geht es an seinen Tagen, und
+              nur wenn ein Essen Fleisch braucht. Der Bäcker hat keinen festen Tag: was eine
+              Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit, für
+              einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
+              bereit und wird von Hand geschrieben.
             </p>
             {one(params.fehler) === "tage" && (
               <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">

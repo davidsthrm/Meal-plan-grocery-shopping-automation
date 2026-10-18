@@ -30,8 +30,10 @@
     "e2e:batch": "tsx --conditions=react-server --env-file=.env.local scripts/batch-smoke.ts",
     "supermarkets:search": "tsx --conditions=react-server scripts/supermarket-search.ts",
     "e2e": "playwright test --grep-invert \"@look|@api\"",
+    "e2e:offline": "E2E_PROD=1 E2E_PORT=3200 playwright test e2e/offline.spec.ts",
     "e2e:look": "playwright test --grep @look",
-    "e2e:upload": "playwright test --grep @api --project desktop"
+    "e2e:upload": "playwright test --grep @api --project desktop",
+    "icons:build": "tsx scripts/build-icons.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

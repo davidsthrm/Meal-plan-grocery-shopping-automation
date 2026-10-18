@@ -26,9 +26,12 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
-    command: `npx next dev --port ${PORT}`,
+    // The test of the shop without a connection needs a production build (`e2e:offline`).
+    command: process.env.E2E_PROD
+      ? `npx next build && npx next start --port ${PORT}`
+      : `npx next dev --port ${PORT}`,
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: true,
-    timeout: 120_000,
+    timeout: process.env.E2E_PROD ? 600_000 : 120_000,
   },
 });
