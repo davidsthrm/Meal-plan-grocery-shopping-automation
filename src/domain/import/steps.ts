@@ -116,6 +116,19 @@ export function readTypedSteps(
   return { ok: true, steps: steps.length === 0 ? null : steps };
 }
 
+/**
+ * Steps a person saved where the recipe's steps are looked at, on its page or among the steps
+ * to check: one per line, and an empty field is a recipe without any. Unlike in the form for
+ * the whole recipe, nothing here is left unknown, so the steps are not read from the photo
+ * again.
+ */
+export function savedSteps(
+  text: string,
+): { ok: true; steps: string[] } | { ok: false; error: string } {
+  const read = readTypedSteps(text);
+  return read.ok ? { ok: true, steps: read.steps ?? [] } : read;
+}
+
 /** Steps as they stand in the form to change them: one per line. */
 export function typedSteps(steps: readonly string[] | null): string {
   return (steps ?? []).join("\n");

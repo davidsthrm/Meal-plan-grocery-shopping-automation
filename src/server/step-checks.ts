@@ -73,7 +73,10 @@ export async function loadStepChecks(db: Db, limit: number): Promise<StepCheck[]
   }));
 }
 
-/** Stores steps a person has compared with the photo. Null keeps them unknown. */
+/**
+ * Stores steps a person has looked at, among the steps to check or on the recipe's page, and
+ * takes the doubts away. Null keeps them unknown.
+ */
 export async function saveCheckedSteps(
   db: Db,
   recipeId: string,
