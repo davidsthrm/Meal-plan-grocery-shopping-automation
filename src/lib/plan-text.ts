@@ -1,4 +1,6 @@
 import type { Diet } from "@/domain/library/filter";
+import { VOLUME_UNIT } from "@/domain/import/servings";
+import { volumeText } from "./recipe-text";
 import type { RecipeKindGroup } from "@/domain/library/grouping";
 import type { Meal, PlanSlot } from "@/domain/plan";
 import type { ProteinType } from "@/domain/library/summary";
@@ -143,6 +145,7 @@ export function whyText(reasons: readonly Reason[]): string {
 
 /** A planned amount: "4 Personen", "1 Springform (Ø 26 cm)". */
 export function plannedText(servings: number, unit: string | null): string {
+  if (unit === VOLUME_UNIT) return volumeText(servings);
   if (unit !== null) return `${servings} ${unit}`;
   return servings === 1 ? "1 Person" : `${servings} Personen`;
 }

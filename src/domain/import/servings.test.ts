@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { meansPersons, readServingsLine, resolveServings } from "./servings";
+import { meansPersons, readServingsLine, resolveServings, volumeYield } from "./servings";
 
 const counted = (min: number, max: number, unit: string) => ({ kind: "counted", min, max, unit });
 
@@ -58,7 +58,6 @@ describe("readServingsLine", () => {
   it("assumes nothing about a line it cannot interpret", () => {
     for (const line of [
       "Springform 26 cm",
-      "Ergibt 1,5 l",
       "12er-Muffinblech",
       "20 Min.",
       "320 kcal",
@@ -69,6 +68,40 @@ describe("readServingsLine", () => {
     ]) {
       expect(readServingsLine(line), line).toEqual({ kind: "unclear" });
     }
+  });
+
+  it("reads a volume, kept in millilitres", () => {
+    expect(readServingsLine("Für 2,25 l")).toEqual({
+      kind: "counted",
+      min: 2250,
+      max: 2250,
+      unit: "ml",
+    });
+    expect(readServingsLine("Ergibt 1,5 l")).toEqual({
+      kind: "counted",
+      min: 1500,
+      max: 1500,
+      unit: "ml",
+    });
+    expect(readServingsLine("ca. 750 ml")).toEqual({
+      kind: "counted",
+      min: 750,
+      max: 750,
+      unit: "ml",
+    });
+    expect(readServingsLine("für 1–1,5 Liter")).toEqual({
+      kind: "counted",
+      min: 1000,
+      max: 1500,
+      unit: "ml",
+    });
+  });
+
+  it("reads a volume typed into a form", () => {
+    expect(volumeYield("2,25", "", "Liter")).toEqual({ min: 2250, max: 2250, unit: "ml" });
+    expect(volumeYield("500", "750", "ml")).toEqual({ min: 500, max: 750, unit: "ml" });
+    expect(volumeYield("4", "", "Personen")).toBeNull();
+    expect(volumeYield("viel", "", "l")).toBeUndefined();
   });
 
   it("knows when nothing is printed", () => {

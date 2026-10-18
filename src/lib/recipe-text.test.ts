@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amountText, ingredientText, lastCookedText, timeText } from "./recipe-text";
+import { amountText, ingredientText, lastCookedText, servingsText, timeText } from "./recipe-text";
 
 describe("timeText", () => {
   it("says the printed minutes where the cookbook prints them", () => {
@@ -46,5 +46,14 @@ describe("a recipe line", () => {
     expect(amountText(1.5, 2, "Stück")).toBe("1,5–2");
     expect(ingredientText(shallots, 1, null, "Bund")).toBe("Schalotten");
     expect(amountText(null, null, null)).toBe("");
+  });
+});
+
+describe("servingsText", () => {
+  it("shows a volume in litres from one litre on", () => {
+    expect(servingsText(2250, 2250, "ml")).toBe("2,25 l");
+    expect(servingsText(750, 750, "ml")).toBe("750 ml");
+    expect(servingsText(1000, 1500, "ml")).toBe("1–1,5 l");
+    expect(servingsText(4, 6, null)).toBe("4–6 Portionen");
   });
 });

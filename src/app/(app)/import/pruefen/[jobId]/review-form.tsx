@@ -210,7 +210,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
               <input
                 id="servings-min"
                 className={field("servingsMin")}
-                inputMode="numeric"
+                inputMode="decimal"
                 value={servingsMin}
                 onChange={(event) => setServingsMin(event.target.value)}
               />
@@ -222,7 +222,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
               <input
                 id="servings-max"
                 className={field("servingsMax")}
-                inputMode="numeric"
+                inputMode="decimal"
                 value={servingsMax}
                 onChange={(event) => setServingsMax(event.target.value)}
               />
@@ -261,6 +261,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
           <p className="text-sm text-muted">
             „statt Personen“ bleibt leer, wenn das Rezept für Personen gedacht ist. Bei Kuchen,
             Quiche oder Pizza steht dort, was das Rezept ergibt: 1 Springform, 1 Blech, 12 Stück.
+            Bei Getränken die Menge in Liter: 2,25 und Liter.
           </p>
           {problem("servingsMin")}
           {problem("servingsMax")}

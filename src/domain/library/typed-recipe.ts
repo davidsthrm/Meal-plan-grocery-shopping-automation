@@ -2,7 +2,7 @@ import type { CatalogIndex } from "../catalog";
 import { DISH_TYPES, PROTEIN_TYPES } from "../import/extraction";
 import { mapDescribed, mapToCatalog, splitJoinedName } from "../import/map-ingredient";
 import type { ReviewedLine } from "../import/review-input";
-import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "../import/servings";
+import { meansPersons, SERVINGS_UNIT_MAX_LENGTH, volumeYield } from "../import/servings";
 import { readTypedSteps } from "../import/steps";
 import { parseQuantity } from "../quantity";
 import type { Servings } from "../recipe";
@@ -113,9 +113,11 @@ export function readTypedRecipe(
   if (title === "") errors.title = "Wie heißt das Gericht?";
   else if (title.length > 120) errors.title = "Höchstens 120 Zeichen.";
 
-  const servings = whole(input.servings);
+  // A drink makes a volume: "2,25" "Liter" is kept as 2250 ml.
+  const volume = volumeYield(input.servings, "", input.servingsUnit);
+  const servings = volume ? volume.min : volume === undefined ? undefined : whole(input.servings);
   if (!servings) errors.servings = "Für wie viele reicht es? Eine Zahl ab 1.";
-  const typedUnit = input.servingsUnit.trim().replace(/\s+/g, " ");
+  const typedUnit = volume ? volume.unit : input.servingsUnit.trim().replace(/\s+/g, " ");
   const unit = typedUnit === "" || meansPersons(typedUnit) ? null : typedUnit;
   if (unit && unit.length > SERVINGS_UNIT_MAX_LENGTH) {
     errors.servingsUnit = `Höchstens ${SERVINGS_UNIT_MAX_LENGTH} Zeichen.`;

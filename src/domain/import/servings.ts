@@ -83,6 +83,45 @@ function tidyUnit(text: string): string {
     );
 }
 
+/**
+ * What a drink or a syrup makes is a volume: "Für 2,25 l". Servings are whole numbers, so a
+ * volume is kept in millilitres (2250 "ml") and shown in litres from one litre on.
+ */
+export const VOLUME_UNIT = "ml";
+const LITRES = /^(l|ltr\.?|liter|litern)$/i;
+const MILLILITRES = /^(ml|milliliter)$/i;
+/** "2,25 l", "750 ml", "1-1,5 Liter" at the start of what a line counts. */
+const VOLUME =
+  /^(\d+(?:[.,]\d+)?)(?:\s*(?:[–—-]|bis)\s*(\d+(?:[.,]\d+)?))?\s*(l|ltr\.?|liter|litern|ml|milliliter)(?![a-zäöüß])/i;
+
+const decimal = (text: string) => Number(text.replace(",", "."));
+
+function millilitres(amount: number, unit: string): number {
+  return Math.round(LITRES.test(unit) ? amount * 1000 : amount);
+}
+
+/**
+ * A yield typed into a form as an amount and a unit, where the unit is a volume: "2,25" and
+ * "Liter" are 2250 ml. Null when the unit is no volume; undefined when the amounts cannot be
+ * read.
+ */
+export function volumeYield(
+  min: string,
+  max: string,
+  unit: string,
+): { min: number; max: number; unit: string } | null | undefined {
+  const typed = unit.trim();
+  if (!LITRES.test(typed) && !MILLILITRES.test(typed)) return null;
+  const number = /^\d+(?:[.,]\d+)?$/;
+  if (!number.test(min.trim()) || (max.trim() !== "" && !number.test(max.trim()))) {
+    return undefined;
+  }
+  const low = millilitres(decimal(min.trim()), typed);
+  const high = max.trim() === "" ? low : millilitres(decimal(max.trim()), typed);
+  if (low < 1 || high < low) return undefined;
+  return { min: low, max: high, unit: VOLUME_UNIT };
+}
+
 /** Reads the servings line of a recipe as printed. */
 export function readServingsLine(raw: string): ServingsLine {
   let rest = raw.trim();
@@ -95,6 +134,14 @@ export function readServingsLine(raw: string): ServingsLine {
     const word = new RegExp(`^([${LETTER}]+)(?:[.:]\\s*|\\s+)`, "i").exec(rest);
     if (!word || !LEAD_INS.has(word[1].toLowerCase())) break;
     rest = rest.slice(word[0].length);
+  }
+
+  // "Für 2,25 l": a volume, kept in millilitres.
+  const volume = VOLUME.exec(rest);
+  if (volume) {
+    const min = millilitres(decimal(volume[1]), volume[3]);
+    const max = volume[2] === undefined ? min : millilitres(decimal(volume[2]), volume[3]);
+    if (min >= 1 && max >= min) return { kind: "counted", min, max, unit: VOLUME_UNIT };
   }
 
   let min: number;

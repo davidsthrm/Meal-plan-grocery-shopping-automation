@@ -153,7 +153,7 @@ export function RecipeEditForm({
           <input
             id="servings-min"
             className={field("servingsMin")}
-            inputMode="numeric"
+            inputMode="decimal"
             value={servingsMin}
             onChange={(event) => setServingsMin(event.target.value)}
           />
@@ -165,7 +165,7 @@ export function RecipeEditForm({
           <input
             id="servings-max"
             className={field("servingsMax")}
-            inputMode="numeric"
+            inputMode="decimal"
             value={servingsMax}
             onChange={(event) => setServingsMax(event.target.value)}
           />
