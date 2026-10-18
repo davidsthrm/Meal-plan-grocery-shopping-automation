@@ -27,6 +27,12 @@ export function issueText(issue: ImportIssue): string {
       return "Die Von-bis-Menge passt nicht zusammen.";
     case "invalid_alternative":
       return "Die Zuordnung „oder“ passt nicht.";
+    case "steps_unreadable":
+      return `Arbeitsschritt ${issue.detail} war nicht ganz lesbar (…). Bitte mit dem Foto vergleichen.`;
+    case "steps_cut_off":
+      return `Arbeitsschritt ${issue.detail} bricht mitten im Satz ab. Steht der Rest auf der nächsten Seite?`;
+    case "steps_missing":
+      return "Auf dem Foto stehen Arbeitsschritte, gelesen wurde keiner. Bitte abtippen oder die Seite dazunehmen.";
     case "verification_disagrees":
       return `Die Gegenprüfung liest etwas anderes: ${issue.detail}`;
     case "read_failed":

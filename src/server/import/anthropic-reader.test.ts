@@ -29,6 +29,7 @@ const recipe: ExtractedRecipe = {
   dishType: "hauptgericht",
   proteinType: "vegetarian",
   ingredients: [],
+  steps: [],
   uncertain: [],
   notes: [],
 };

@@ -20,6 +20,9 @@ export const VERIFICATION_FIELDS = [
   "optional",
   "missing_line",
   "extra_line",
+  "step",
+  "missing_step",
+  "extra_step",
 ] as const;
 
 export const verificationSchema = z.object({
@@ -27,6 +30,8 @@ export const verificationSchema = z.object({
     z.object({
       /** Position of the transcribed ingredient, from 0. Null for a recipe field or a missing line. */
       ingredientIndex: z.number().int().nullable(),
+      /** Position of the transcribed step, from 0. Null for anything that is no step. */
+      stepIndex: z.number().int().nullable(),
       field: z.enum(VERIFICATION_FIELDS),
       /** What the photo shows, quoted as printed. */
       printed: z.string(),
@@ -68,5 +73,7 @@ export function transcriptionForVerification(recipe: ExtractedRecipe) {
       secondaryScope: line.secondaryScope,
       alternativeTo: line.alternativeTo,
     })),
+    // The steps are compared as text: there is nothing else to compare them by.
+    steps: (recipe.steps ?? []).map((text, index) => ({ index, text })),
   };
 }

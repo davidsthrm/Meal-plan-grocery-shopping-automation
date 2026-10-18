@@ -80,6 +80,11 @@ export const extractedRecipeSchema = z.object({
   proteinType: z.enum(PROTEIN_TYPES),
   ingredients: z.array(extractedIngredientSchema),
   /**
+   * The preparation steps as printed, one entry per printed step, in printed order. A part
+   * that cannot be read is "[…]" and named in `uncertain`. Empty when no steps are printed.
+   */
+  steps: z.array(z.string()),
+  /**
    * What the model could not read or decide with certainty. Any entry sends the recipe to the
    * review queue, so observations that need no decision do not belong here.
    */

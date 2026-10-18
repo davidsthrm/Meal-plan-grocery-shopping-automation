@@ -159,6 +159,36 @@ describe("checkDraft", () => {
       expect(check(reading(id)), id).toEqual([]);
   });
 
+  it("carries the steps of a correct reading into the draft without an issue", () => {
+    const extracted = reading("IMG_5682");
+    expect(toDraft(extracted, {}, index).steps).toHaveLength(7);
+    expect(checkDraft(toDraft(extracted, {}, index), extracted, true)).toEqual([]);
+  });
+
+  it("sends steps with a gap, steps that break off or no steps at all to review", () => {
+    const gap = reading("IMG_5683");
+    gap.steps[3] = "Den Eintopf etwa […] Min. leise köchelnd garen.";
+    expect(check(gap)).toEqual([{ code: "steps_unreadable", ingredientIndex: null, detail: "4" }]);
+
+    // When the model said what it could not read, that is the one issue.
+    gap.uncertain = [{ field: "steps", reason: "Schritt 4: Garzeit verdeckt" }];
+    expect(check(gap).map((issue) => issue.code)).toEqual(["model_uncertain"]);
+
+    const cut = reading("IMG_5683");
+    cut.steps = cut.steps
+      .slice(0, 1)
+      .concat("Inzwischen den Ingwer schälen und fein hacken. Die Zwie-");
+    expect(check(cut)).toEqual([{ code: "steps_cut_off", ingredientIndex: null, detail: "2" }]);
+
+    const none = { ...reading("IMG_5683"), steps: [] };
+    expect(checkDraft(toDraft(none, {}, index), none, true)).toEqual([
+      { code: "steps_missing", ingredientIndex: null, detail: "" },
+    ]);
+    // A page without steps, by the first look or by not knowing, is no reason.
+    expect(checkDraft(toDraft(none, {}, index), none, false)).toEqual([]);
+    expect(check(none)).toEqual([]);
+  });
+
   it("asks for a title when the photo has none and the household entered none", () => {
     expect(check(reading("IMG_5685"))).toEqual([
       {

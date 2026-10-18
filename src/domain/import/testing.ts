@@ -52,6 +52,7 @@ export function flawless(expected: ExpectedRecipe): ExtractedRecipe {
     dishType: "unbekannt",
     proteinType: "unknown",
     ingredients,
+    steps: [...(expected.steps ?? [])],
     uncertain: [],
     notes: [],
   };

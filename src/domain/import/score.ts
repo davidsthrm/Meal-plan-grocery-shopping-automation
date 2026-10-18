@@ -36,6 +36,8 @@ export interface ExpectedRecipe {
   source: { page: number | null };
   prepTimeMinutes: number | null;
   ingredients: ExpectedIngredient[];
+  /** The preparation steps as printed, one per printed step. Absent where not transcribed. */
+  steps?: string[];
 }
 
 export interface Mistake {
@@ -216,4 +218,101 @@ export function scoreExtraction(expected: ExpectedRecipe, actual: ExtractedRecip
     mistakes,
     perfect: mistakes.length === 0 && missing.length === 0 && extra.length === 0,
   };
+}
+
+/** How well the steps were read, against the steps transcribed by hand. */
+export interface StepScore {
+  expected: number;
+  read: number;
+  /** Steps that are the same, apart from spaces, punctuation and hyphens at line ends. */
+  exact: number;
+  /** Steps whose numbers differ: a time, a temperature, an amount. The worst mistake here. */
+  wrongNumbers: { step: number; expected: string[]; actual: string[] }[];
+  /** Steps that differ in their words, with how much of the text is the same, from 0 to 1. */
+  different: { step: number; similarity: number; expected: string; actual: string }[];
+  perfect: boolean;
+}
+
+/** Text compared without case, spaces, punctuation or hyphens: "Packungs- anweisung" fits. */
+function stepKey(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+const numbersIn = (text: string) => text.match(/\d+(?:[.,]\d+)?|[½¼¾⅓⅔]/g) ?? [];
+
+/** Share of the longer text that stays when the edits from one to the other are taken away. */
+export function similarity(a: string, b: string): number {
+  if (a === b) return 1;
+  if (a === "" || b === "") return 0;
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(
+        previous[j] + 1,
+        row[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = row;
+  }
+  return 1 - previous[b.length] / Math.max(a.length, b.length);
+}
+
+/**
+ * Compares the steps read with the steps transcribed by hand, position by position. A step
+ * merged with the next or split in two shows as a different count and different steps.
+ */
+export function scoreSteps(expected: readonly string[], actual: readonly string[]): StepScore {
+  const wrongNumbers: StepScore["wrongNumbers"] = [];
+  const different: StepScore["different"] = [];
+  let exact = 0;
+  const count = Math.max(expected.length, actual.length);
+  for (let at = 0; at < count; at++) {
+    const want = expected[at] ?? "";
+    const got = actual[at] ?? "";
+    if (stepKey(want) === stepKey(got)) {
+      exact++;
+      continue;
+    }
+    const wantNumbers = numbersIn(want);
+    const gotNumbers = numbersIn(got);
+    if (wantNumbers.join(" ") !== gotNumbers.join(" ")) {
+      wrongNumbers.push({ step: at + 1, expected: wantNumbers, actual: gotNumbers });
+    }
+    different.push({
+      step: at + 1,
+      similarity: similarity(stepKey(want), stepKey(got)),
+      expected: want,
+      actual: got,
+    });
+  }
+  return {
+    expected: expected.length,
+    read: actual.length,
+    exact,
+    wrongNumbers,
+    different,
+    perfect: different.length === 0 && expected.length === actual.length,
+  };
+}
+
+/** A step score as lines of a report: the count, then each step that differs. */
+export function stepScoreLines(score: StepScore): string[] {
+  const read = score.read !== score.expected ? `, ${score.read} read` : "";
+  return [
+    `steps: ${score.exact} of ${score.expected} as printed${read}`,
+    ...score.wrongNumbers.map(
+      (step) =>
+        `WRONG NUMBER in step ${step.step}: expected ${step.expected.join(" ") || "none"}, got ${step.actual.join(" ") || "none"}`,
+    ),
+    ...score.different.flatMap((step) => [
+      `step ${step.step} differs (${Math.round(step.similarity * 100)} % the same)`,
+      `  expected: ${step.expected}`,
+      `  got:      ${step.actual}`,
+    ]),
+  ];
 }

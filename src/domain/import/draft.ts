@@ -4,12 +4,18 @@ import { COUNT_UNITS, type Unit } from "../units";
 import type { ExtractedRecipe } from "./extraction";
 import { mapToCatalog } from "./map-ingredient";
 import { resolveServings } from "./servings";
+import { cleanSteps } from "./steps";
 
 /** What the household entered on the upload form because a photo cannot show it. */
 export interface ProvidedMetadata {
   title?: string | null;
   book?: string | null;
   page?: number | null;
+  /**
+   * Whether the first look at the pages saw preparation steps for this recipe. Null or left
+   * out when it is not known.
+   */
+  stepsShown?: boolean | null;
 }
 
 /** A recipe line on its way into the library, with the name as it was read. */
@@ -33,6 +39,8 @@ export interface RecipeDraft {
   dishType: ExtractedRecipe["dishType"];
   proteinType: ExtractedRecipe["proteinType"];
   ingredients: DraftIngredient[];
+  /** The preparation steps as read, one per printed step. Empty when none were read. */
+  steps: string[];
 }
 
 const blank = (text: string | null | undefined) =>
@@ -99,5 +107,7 @@ export function toDraft(
     dishType: extracted.dishType,
     proteinType: extracted.proteinType,
     ingredients,
+    // A reading stored before steps were read has none.
+    steps: cleanSteps(extracted.steps ?? []),
   };
 }

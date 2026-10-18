@@ -79,7 +79,13 @@ describe("importRecipe", () => {
       [await photo()],
       {},
       deps(reading("IMG_5682"), [
-        { ingredientIndex: 3, field: "quantity", printed: "¾ l", transcribed: "0.25 l" },
+        {
+          ingredientIndex: 3,
+          stepIndex: null,
+          field: "quantity",
+          printed: "¾ l",
+          transcribed: "0.25 l",
+        },
       ]),
     );
     expect(result.status).toBe("needs_review");
@@ -88,6 +94,31 @@ describe("importRecipe", () => {
         code: "verification_disagrees",
         ingredientIndex: 3,
         detail: 'quantity: printed "¾ l", read as "0.25 l"',
+      },
+    ]);
+  });
+
+  it("files a step the second pass reads differently under the recipe, not a line", async () => {
+    const result = await importRecipe(
+      [await photo()],
+      {},
+      deps(reading("IMG_5680"), [
+        {
+          ingredientIndex: 1,
+          stepIndex: 1,
+          field: "step",
+          printed: "110 Grad",
+          transcribed: "180 Grad",
+        },
+      ]),
+    );
+    expect(result.status).toBe("needs_review");
+    expect(result.draft?.steps).toHaveLength(2);
+    expect(result.issues).toEqual([
+      {
+        code: "verification_disagrees",
+        ingredientIndex: null,
+        detail: 'step 2 step: printed "110 Grad", read as "180 Grad"',
       },
     ]);
   });
