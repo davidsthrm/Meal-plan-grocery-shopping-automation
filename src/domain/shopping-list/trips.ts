@@ -250,10 +250,7 @@ const last = <T>(items: readonly T[]): T | undefined => items[items.length - 1];
  * (`onDemandDay`). A market named on purpose is gone to on its day when that reaches the
  * meal, and otherwise on the day of the meal.
  *
- * `trips` are in order. `onDemand` are the places gone to for a meal; a household that
- * buys everything in one go has none. `butcherDays` are weekdays (`butcherWeekdays`);
- * without any the butcher is gone to on the day of each meal. Null only when the household
- * has no shopping day at all.
+ * `trips` are in order. Null only when the household has no shopping day at all.
  *
  * A lunch on a working day is bought on an errand before that day where one is in time
  * (`AFTERNOON_WEEKDAYS`): the household shops in the afternoon, so Friday's errand comes
@@ -264,15 +261,29 @@ const last = <T>(items: readonly T[]): T | undefined => items[items.length - 1];
 export function assignTrip(
   need: Need,
   trips: readonly ShoppingTrip[],
-  onDemand: readonly Place[] = ON_DEMAND_PLACES,
-  butcherDays: readonly number[] = [],
+  rules: ErrandRules = {},
 ): Assignment | null {
+  const known: Required<ErrandRules> = {
+    onDemand: rules.onDemand ?? ON_DEMAND_PLACES,
+    butcherDays: rules.butcherDays ?? [],
+  };
   if (beforeTheErrands(need)) {
     const earlier = trips.filter((trip) => trip.date < need.date);
-    const bought = assignOn(need, earlier, onDemand, butcherDays, true);
+    const bought = assignOn(need, earlier, known, true);
     if (bought) return bought;
   }
-  return assignOn(need, trips, onDemand, butcherDays, false);
+  return assignOn(need, trips, known, false);
+}
+
+/** How a household goes on the errands beyond its shopping days. */
+export interface ErrandRules {
+  /**
+   * The places gone to for the meal that needs something from there. Without them: the
+   * butcher and the bakery. Empty for a household that buys everything in one go.
+   */
+  onDemand?: readonly Place[];
+  /** The weekdays the butcher is gone to on (`butcherWeekdays`). Without any: for each meal. */
+  butcherDays?: readonly number[];
 }
 
 /**
@@ -282,8 +293,7 @@ export function assignTrip(
 function assignOn(
   need: Need,
   trips: readonly ShoppingTrip[],
-  onDemand: readonly Place[],
-  butcherDays: readonly number[],
+  { onDemand, butcherDays }: Required<ErrandRules>,
   strict: boolean,
 ): Assignment | null {
   const keeps = (trip: ShoppingTrip) =>

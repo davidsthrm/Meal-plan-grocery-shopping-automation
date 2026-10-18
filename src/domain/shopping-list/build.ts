@@ -15,7 +15,7 @@ import {
 import { parseFreeEntry } from "./free-entry";
 import { labelFor } from "./format";
 import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
-import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
+import { assignTrip, noteId, type Assignment, type ErrandRules, type ShoppingTrip } from "./trips";
 import {
   daysOf,
   type Contribution,
@@ -25,7 +25,7 @@ import {
   type Trip,
 } from "./types";
 
-export interface BuildInput {
+export interface BuildInput extends ErrandRules {
   index: CatalogIndex;
   recipes: Recipe[];
   slots: PlanSlot[];
@@ -33,13 +33,6 @@ export interface BuildInput {
   extras?: PlanExtra[];
   /** The household's errands around the planned meals, in order. At least one. */
   trips: readonly ShoppingTrip[];
-  /**
-   * The places gone to for the meal that needs something from there: the butcher and the
-   * bakery, unless said otherwise. Empty for a household that buys everything in one go.
-   */
-  onDemand?: readonly Place[];
-  /** The weekdays the butcher is gone to on (`butcherWeekdays`). Without any: for each meal. */
-  butcherDays?: readonly number[];
   /** The supermarket day the extras without a day are bought on. Without one, the first. */
   extrasDate?: IsoDate;
   manualEntries?: ManualEntry[];
@@ -300,8 +293,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         shelfLifeDays: ingredient?.shelfLifeDays ?? null,
       },
       trips,
-      input.onDemand,
-      input.butcherDays,
+      { onDemand: input.onDemand, butcherDays: input.butcherDays },
     ) as Assignment;
 
   /** Where a line ends up: on its own note, or on the one the household moved it to. */
