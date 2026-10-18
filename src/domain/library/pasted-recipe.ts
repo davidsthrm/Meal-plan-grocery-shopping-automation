@@ -58,7 +58,8 @@ export function pastedRecipe(extracted: ExtractedRecipe, defaultServings: number
     if (line.unclear) check.push(`Bitte prüfen: ${line.raw.trim() || line.name}`);
   }
   if (lines.length === 0) check.push("Im Text wurden keine Zutaten gefunden.");
-  if ((extracted.steps ?? []).length === 0) check.push("Im Text wurden keine Arbeitsschritte gefunden.");
+  if ((extracted.steps ?? []).length === 0)
+    check.push("Im Text wurden keine Arbeitsschritte gefunden.");
   for (const doubt of extracted.uncertain) check.push(`Unsicher (${doubt.field}): ${doubt.reason}`);
 
   const known = new Set(["vegetarian", "vegan", "fish", "poultry", "red_meat"]);
