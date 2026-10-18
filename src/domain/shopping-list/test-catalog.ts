@@ -69,6 +69,7 @@ export const testCatalog: Catalog = {
       gramsPer: { Stück: 100 },
     }),
     ingredient("ingwer", "Ingwer", {}),
+    ingredient("weintrauben", "Weintrauben", { synonyms: ["Trauben"], shelfLifeDays: 5 }),
     ingredient("tomaten", "Tomaten", {
       defaultUnit: "Stück",
       buyingMode: "count",

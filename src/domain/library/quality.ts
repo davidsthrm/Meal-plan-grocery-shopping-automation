@@ -268,23 +268,41 @@ function headWords(title: string): string[] {
 const SAVOURY_CAKE =
   /flammkuchen|zwiebelkuchen|pfannkuchen|reibekuchen|kartoffelkuchen|lauchkuchen|speckkuchen|fleischkuchen|fischkuchen/;
 const CAKE_WORD =
-  /kuchen$|(torte|torten|tortchen)$|^muffins?$|^brownies?$|platzchen$|^kekse?$|^cookies?$|cheesecake|cupcakes?$|makronen$|lebkuchen|stollen$|schnecken$/;
+  /kuchen$|(torte|torten|tortchen)$|^muffins?$|^brownies?$|cheesecake|cupcakes?$|stollen$|schnecken$/;
+/** Small baked goods made by the piece. */
+const COOKIE_WORD =
+  /platzchen$|kekse?$|^cookies?$|makronen$|lebkuchen|kipferln?$|spritzgeback$|spekulatius|zimtsterne?$|florentiner$|cantuccini$|biscotti$|^shortbread$|amarettini$|husarenkrapfen$|^taler$|biscuits?$|pfeffernusse$|pepernoten$|almendrados$|eisenbahnschienen$/;
+/** Something to drink. */
+const DRINK_WORD =
+  /bowle$|limonaden?$|sirup$|smoothies?$|punsch$|gluhwein$|likor$|lassi$|shakes?$|eistee$|schorlen?$|kakao$|^tee$|^latte$|^drinks?$/;
 const DESSERT_WORD = /tiramisu|mousse|pudding$|^cotta$|sorbet|kompott$|crumble$|^brulee$/;
 const SOUP_WORD = /suppe$|suppen$|eintopf$|minestrone|gazpacho|borschtsch|^ramen$|^pho$/;
 const SALAD_WORD = /salat$/;
 
-const SWEET_CATEGORIES = new Set(["kuchen", "dessert"]);
-/** Where something sweet may be filed besides cakes and desserts. */
-const SWEET_ALLOWED = new Set(["kuchen", "dessert", "fruehstueck", "snack", "getraenk"]);
+const SWEET_CATEGORIES = new Set(["kuchen", "plaetzchen", "dessert"]);
+/** Where something sweet may be filed besides cakes, cookies and desserts. */
+const SWEET_ALLOWED = new Set([
+  "kuchen",
+  "plaetzchen",
+  "dessert",
+  "fruehstueck",
+  "snack",
+  "getraenk",
+]);
 const SOUP_ALLOWED = new Set(["suppe-eintopf", "grundrezept"]);
 const SALAD_ALLOWED = new Set(["salat", "beilage", "vesper", "hauptgericht", "dessert"]);
 
 /** What the title says the category is, if it says so clearly. */
-function categoryFromTitle(title: string): string | null {
+export function categoryFromTitle(title: string): string | null {
   const words = headWords(title);
   const has = (pattern: RegExp) => words.some((word) => pattern.test(word));
   if (words.some((word) => SAVOURY_CAKE.test(word))) return null;
   if (has(SOUP_WORD)) return "suppe-eintopf";
+  // A drink or a cookie is what the last part of the name says: "Lebkuchen-Mousse" is a
+  // mousse, "Chai-Latte-Overnight-Oats" are oats.
+  const last = words[words.length - 1] ?? "";
+  if (DRINK_WORD.test(last)) return "getraenk";
+  if (COOKIE_WORD.test(last)) return "plaetzchen";
   if (has(CAKE_WORD)) return "kuchen";
   if (has(DESSERT_WORD)) return "dessert";
   if (has(SALAD_WORD)) return "salat";
@@ -329,7 +347,28 @@ function categoryFindings(recipe: QualityRecipe, categoryName: (key: string) => 
       },
     ];
   }
-  if ((fromTitle === "kuchen" || fromTitle === "dessert") && !SWEET_ALLOWED.has(category)) {
+  if (fromTitle === "getraenk" && category !== "getraenk") {
+    return [
+      {
+        field: "category",
+        text: `Der Titel nennt ein Getränk, eingetragen ist ${named}.`,
+        weight: 2,
+        suggestion: fromTitle,
+      },
+    ];
+  }
+  // Cookies filed with the cakes, from before there was a category for them.
+  if (fromTitle === "plaetzchen" && category === "kuchen") {
+    return [
+      {
+        field: "category",
+        text: `Der Titel nennt Plätzchen, eingetragen ist ${named}.`,
+        weight: 1,
+        suggestion: fromTitle,
+      },
+    ];
+  }
+  if (fromTitle !== null && SWEET_CATEGORIES.has(fromTitle) && !SWEET_ALLOWED.has(category)) {
     return [
       {
         field: "category",
@@ -411,6 +450,16 @@ function servingsFindings(recipe: QualityRecipe): Finding[] {
       {
         field: "servings",
         text: `Für ${servings.max} Personen: vermutlich Stück oder eine Form.`,
+        weight: 3,
+        suggestion: null,
+      },
+    ];
+  }
+  if (recipe.category === "plaetzchen") {
+    return [
+      {
+        field: "servings",
+        text: `Plätzchen für ${servings.min === servings.max ? servings.min : `${servings.min}–${servings.max}`} Personen: Wie viele Stück oder Bleche ergibt das Rezept?`,
         weight: 3,
         suggestion: null,
       },

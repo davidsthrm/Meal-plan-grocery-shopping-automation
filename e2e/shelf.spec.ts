@@ -187,6 +187,7 @@ test("a magazine's batches are one folder with its editions", async ({ page }) =
   await addBatches([
     { book: "Testheft", edition: "05/2026" },
     { book: "Testheft Jahresheft 2021" },
+    { book: "Testheft", edition: "Jahresheft 2021" },
     { book: "E2E Kochbuch" },
   ]);
   await page.goto("/import");
@@ -196,6 +197,8 @@ test("a magazine's batches are one folder with its editions", async ({ page }) =
   await expect(folder).toContainText("2 Ausgaben · 0 Rezepte");
   await folder.getByText("Öffnen").click();
   await expect(folder.getByRole("link", { name: /^05\/2026/ })).toBeVisible();
-  await expect(folder.getByRole("link", { name: /^Jahresheft 2021/ })).toBeVisible();
+  // Two uploads of one edition stand under it once.
+  await expect(folder.getByText(/^Jahresheft 2021/)).toHaveCount(1);
+  await expect(folder).toContainText("2 Stapel · 0 Rezepte");
   await expect(batches.filter({ hasText: "E2E Kochbuch" })).toContainText("0 Rezepte");
 });

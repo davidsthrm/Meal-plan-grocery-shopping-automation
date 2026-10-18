@@ -2,6 +2,7 @@ import { dayAndMonth, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { EFFORT_NAME, effortOf } from "@/domain/library/tags";
 import { nameForOne, type Ingredient } from "@/domain/catalog";
+import { VOLUME_UNIT } from "@/domain/import/servings";
 import { formatAmount, formatNumber } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
 
@@ -21,7 +22,16 @@ export function timeText(recipe: Pick<RecipeSummary, "tags" | "prepMinutes">): s
  */
 export function servingsText(min: number | null, max: number | null, unit: string | null): string {
   if (min === null || max === null) return "? Portionen";
+  if (unit === VOLUME_UNIT) return volumeText(min, max);
   return `${min === max ? min : `${min}–${max}`} ${unit ?? "Portionen"}`;
+}
+
+/** A volume kept in millilitres, as a drink's recipe prints it: "750 ml", "2,25 l". */
+export function volumeText(min: number, max: number = min): string {
+  const litres = max >= 1000;
+  const one = (ml: number) =>
+    litres ? (ml / 1000).toLocaleString("de-DE", { maximumFractionDigits: 3 }) : String(ml);
+  return `${min === max ? one(min) : `${one(min)}–${one(max)}`} ${litres ? "l" : "ml"}`;
 }
 
 /**

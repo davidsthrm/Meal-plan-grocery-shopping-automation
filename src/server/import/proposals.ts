@@ -1,7 +1,8 @@
 import "server-only";
 import { findIngredient, type CatalogIndex } from "@/domain/catalog";
-import { mapToCatalog, sameProductName } from "@/domain/import/map-ingredient";
+import { sameProductName } from "@/domain/import/map-ingredient";
 import { usualShop } from "@/domain/import/proposal";
+import { tidyProposals } from "@/domain/import/tidy-proposals";
 import { isUnit, type Unit } from "@/domain/units";
 import { loadCatalogIndex, must, type Db } from "../catalog";
 import type { Database } from "../supabase/database.types";
@@ -59,23 +60,27 @@ export async function loadOpenProposals(db: Db): Promise<OpenProposal[]> {
     "load recipes waiting for proposals",
   );
   const titleOf = new Map(recipes.map((recipe) => [recipe.id, recipe.title]));
-  return proposals.map((p) => ({
-    id: p.id,
-    name: p.name,
-    recipeTitles: [
-      ...new Set(
-        lines.filter((l) => l.proposal_id === p.id).map((l) => titleOf.get(l.recipe_id) ?? ""),
-      ),
-    ].filter(Boolean),
-    sameAsIngredientId: p.same_as_ingredient_id,
-    aisleGroupId: p.aisle_group_id,
-    shopId: p.preferred_shop_id,
-    defaultUnit: p.default_unit,
-    buyingMode: p.buying_mode,
-    packSize: p.pack_size,
-    isPantryStaple: p.is_pantry_staple,
-    shelfLifeDays: p.shelf_life_days,
-  }));
+  const waited = new Set(lines.map((line) => line.proposal_id));
+  // A proposal no recipe waits for any more asks nothing: its recipe was changed or deleted.
+  return proposals
+    .filter((p) => waited.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      recipeTitles: [
+        ...new Set(
+          lines.filter((l) => l.proposal_id === p.id).map((l) => titleOf.get(l.recipe_id) ?? ""),
+        ),
+      ].filter(Boolean),
+      sameAsIngredientId: p.same_as_ingredient_id,
+      aisleGroupId: p.aisle_group_id,
+      shopId: p.preferred_shop_id,
+      defaultUnit: p.default_unit,
+      buyingMode: p.buying_mode,
+      packSize: p.pack_size,
+      isPantryStaple: p.is_pantry_staple,
+      shelfLifeDays: p.shelf_life_days,
+    }));
 }
 
 /** Points every recipe line that waited for the proposal at the ingredient it became. */
@@ -187,25 +192,45 @@ async function rejectProposal(db: Db, proposalId: string): Promise<void> {
 }
 
 /**
- * Closes proposals the catalog can answer by now without anyone deciding: the name has become
- * a known name in the meantime, or differs from one only by a plural ending or "Bio-".
- * Called before the open proposals are shown, so the list only holds real questions.
+ * Puts the open proposals in order before they are shown, so the list only holds real
+ * questions, each once (`tidyProposals`): two proposals for one product become one, its
+ * recipe lines moved to the one that stays; a name loses an amount in front; and a proposal
+ * the catalog can answer by now is closed, its name remembered as another name of the
+ * ingredient.
  */
 export async function settleKnownProposals(db: Db, index: CatalogIndex): Promise<number> {
   const open = must(
-    await db.from("ingredient_proposal").select("id, name").eq("status", "open"),
+    await db.from("ingredient_proposal").select("id, name, created_at").eq("status", "open"),
     "load open proposals",
   );
+  const tidying = tidyProposals(
+    open.map((row) => ({ id: row.id, name: row.name, createdAt: row.created_at })),
+    index,
+  );
+  for (const { from, into } of tidying.merges) {
+    const moved = await db
+      .from("recipe_ingredient")
+      .update({ proposal_id: into })
+      .eq("proposal_id", from);
+    if (moved.error) throw new Error(`move lines to proposal: ${moved.error.message}`);
+    const closed = await db
+      .from("ingredient_proposal")
+      .update({ status: "rejected", resolved_at: new Date().toISOString() })
+      .eq("id", from);
+    if (closed.error) throw new Error(`close duplicate proposal: ${closed.error.message}`);
+  }
+  for (const { id, name } of tidying.renames) {
+    const renamed = await db.from("ingredient_proposal").update({ name }).eq("id", id);
+    if (renamed.error) throw new Error(`rename proposal: ${renamed.error.message}`);
+  }
   const byIngredient = new Map<string, { id: string; name: string }[]>();
-  for (const proposal of open) {
-    const known = mapToCatalog(index, { raw: proposal.name, name: proposal.name });
-    if (!known) continue;
-    byIngredient.set(known.id, [...(byIngredient.get(known.id) ?? []), proposal]);
+  for (const { id, name, ingredient } of tidying.known) {
+    byIngredient.set(ingredient.id, [...(byIngredient.get(ingredient.id) ?? []), { id, name }]);
   }
   for (const [ingredientId, proposals] of byIngredient) {
     await acceptAsSynonyms(db, ingredientId, proposals);
   }
-  return [...byIngredient.values()].reduce((sum, list) => sum + list.length, 0);
+  return tidying.merges.length + tidying.known.length;
 }
 
 export interface ProposalDecision {

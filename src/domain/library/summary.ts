@@ -51,7 +51,7 @@ export function isMeal(recipe: Pick<RecipeSummary, "category">): boolean {
 /** What is eaten in the evening rather than cooked for lunch. */
 const EVENING_ONLY = new Set(["vesper", "salat"]);
 /** What goes with coffee in the afternoon. */
-const SWEET = new Set(["kuchen", "dessert"]);
+const SWEET = new Set(["kuchen", "plaetzchen", "dessert"]);
 
 /** A cake or a dessert: never shown or counted as a vegetarian meal. */
 export function isSweet(recipe: Pick<RecipeSummary, "category">): boolean {

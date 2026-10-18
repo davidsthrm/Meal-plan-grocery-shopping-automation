@@ -434,8 +434,55 @@ export async function addEntry(
     quantity: extra.quantity,
     for_whom: extra.forWhom,
     created_by: household.userId,
+    aisle_group_id: await rememberedKind(db, text),
   });
   if (stored.error) throw new Error(`add entry: ${stored.error.message}`);
+}
+
+/**
+ * The kind of grocery the household gave the same text the last time it was written on a
+ * note: "Lakritzschnecken" put under "Süßes" once stays there. Null when it never did.
+ */
+async function rememberedKind(db: Db, text: string): Promise<string | null> {
+  const pattern = sameText(text);
+  if (pattern === "") return null;
+  const earlier = await db
+    .from("shopping_manual_entry")
+    .select("aisle_group_id")
+    .ilike("text", pattern)
+    .not("aisle_group_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (earlier.error) throw new Error(`remember kind: ${earlier.error.message}`);
+  return earlier.data?.aisle_group_id ?? null;
+}
+
+/**
+/** A text as a pattern that finds it written the same way, in any case: no wildcards. */
+function sameText(text: string): string {
+  return text.trim().replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+/**
+ * Puts a typed line the catalog does not know under a kind of grocery, or back under none.
+ * Every line of the same text goes with it, and the next one written takes it too
+ * (`rememberedKind`).
+ */
+export async function setEntryKind(
+  db: Db,
+  entryId: string,
+  aisleGroupId: string | null,
+): Promise<void> {
+  const entry = must(
+    await db.from("shopping_manual_entry").select("text").eq("id", entryId).single(),
+    "load entry",
+  );
+  const updated = await db
+    .from("shopping_manual_entry")
+    .update({ aisle_group_id: aisleGroupId })
+    .ilike("text", sameText(entry.text));
+  if (updated.error) throw new Error(`set kind: ${updated.error.message}`);
 }
 
 export async function removeEntry(db: Db, entryId: string): Promise<void> {

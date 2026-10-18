@@ -326,3 +326,26 @@ test("a note written next to a line stays with it", async ({ page }) => {
   // The note's own field was called like the field naming the note, and the page broke.
   await expect(sheet(page, MONDAY)).toContainText("Angebot 1,29");
 });
+
+test("a typed line goes under its kind of grocery", async ({ page }) => {
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  const write = page.getByLabel("Auf den Zettel schreiben");
+  // Named after what describes it, the grapes are still fruit.
+  await write.fill("grüne Trauben");
+  await write.press("Enter");
+  await expect(group(page, MONDAY, "Obst & Gemüse")).toContainText("Weintrauben");
+
+  // What the catalog does not know is put under a kind by hand, and stays there.
+  await write.fill("Lakritzschnecken");
+  await write.press("Enter");
+  await expect(group(page, MONDAY, "Sonstiges")).toContainText("Lakritzschnecken");
+  await sheet(page, MONDAY).getByText("Lakritzschnecken", { exact: true }).click();
+  await sheet(page, MONDAY).getByLabel("Gehört zu").selectOption({ label: "Süßes & Snacks" });
+  await sheet(page, MONDAY).getByRole("button", { name: "Einordnen" }).click();
+  await expect(group(page, MONDAY, "Süßes & Snacks")).toContainText("Lakritzschnecken");
+
+  await page.goto(`/einkauf?w=${WEEK}&zettel=2027-03-05.supermarket`);
+  await write.fill("Lakritzschnecken");
+  await write.press("Enter");
+  await expect(group(page, FRIDAY, "Süßes & Snacks")).toContainText("Lakritzschnecken");
+});

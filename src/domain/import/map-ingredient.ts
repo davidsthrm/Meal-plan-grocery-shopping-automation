@@ -55,6 +55,57 @@ export function nameVariants(name: string): string[] {
   return [...variants];
 }
 
+/**
+ * Words that say how a product is, not which product it is: its size, freshness or
+ * ripeness, that it is organic, seedless or green. "kleines Bauernbrot" is bread, "grüne
+ * Trauben" are grapes. A word that makes another product ("getrocknete Tomaten", "rote
+ * Linsen") is not among them: such a name stays as it is and is proposed if unknown.
+ */
+const DESCRIBING = [
+  "klein",
+  "gross",
+  "mittelgross",
+  "frisch",
+  "reif",
+  "fest",
+  "jung",
+  "zart",
+  "bio",
+  "kernlos",
+  "gruen",
+];
+const DECLENSION = ["", "e", "es", "er", "en", "em"];
+
+function isDescribing(word: string): boolean {
+  const key = normalizeName(word).replace(/ae/g, "a").replace(/oe/g, "o").replace(/ue/g, "u");
+  return DESCRIBING.some((root) => {
+    const plain = root.replace(/ue/g, "u");
+    return DECLENSION.some((ending) => key === plain + ending);
+  });
+}
+
+/** A name without the describing words in front of it, and those words. */
+export function describedName(text: string): { name: string; described: string[] } {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const described: string[] = [];
+  while (words.length > 1 && isDescribing(words[0])) described.push(words.shift() as string);
+  return { name: words.join(" "), described };
+}
+
+/**
+ * The ingredient a name means once the words that only describe it are left out, in the
+ * singular or the plural too. Null when nothing was left out or the rest is unknown.
+ */
+export function mapDescribed(index: CatalogIndex, text: string): Ingredient | null {
+  const { name, described } = describedName(text);
+  if (described.length === 0) return null;
+  for (const variant of nameVariants(name)) {
+    const found = findIngredient(index, variant);
+    if (found) return found;
+  }
+  return null;
+}
+
 /** Whether two names are the same product written differently, by the rules above. */
 export function sameProductName(a: string, b: string): boolean {
   const forms = new Set(nameVariants(a).map(normalizeName));

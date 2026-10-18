@@ -19,6 +19,7 @@ import {
   loadShoppingNotes,
   moveLines,
   removeEntry,
+  setEntryKind,
 } from "@/server/shopping/list";
 import { loadSupermarkets } from "@/server/catalog";
 import { createSessionClient } from "@/server/supabase/server";
@@ -151,6 +152,21 @@ export async function noteLine(form: FormData): Promise<void> {
   await changeLine(await createSessionClient(), household, noteOf(input.note), input.key, {
     note: input.text,
   });
+  backToList(input);
+}
+
+/**
+ * Puts a typed line the catalog does not know under a kind of grocery: "Lakritzschnecken"
+ * under "Süßes". The same text written again goes there by itself.
+ */
+export async function kindOfEntry(form: FormData): Promise<void> {
+  const input = read(line.extend({ entry: z.guid(), kind: z.string().min(1).max(64) }), form);
+  await requireHousehold();
+  const db = await createSessionClient();
+  // Row level security lets this find the household's own kinds only.
+  const kind = await db.from("aisle_group").select("id").eq("id", input.kind).maybeSingle();
+  if (kind.error) throw new Error(`load kind: ${kind.error.message}`);
+  if (kind.data) await setEntryKind(db, input.entry, kind.data.id);
   backToList(input);
 }
 

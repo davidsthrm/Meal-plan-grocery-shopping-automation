@@ -130,17 +130,50 @@ export async function resetImportData(): Promise<{ jobId: string; batchId: strin
       .single(),
     "create proposal",
   );
-  // A second unknown ingredient, used by no recipe line, for accepting several at once.
-  const second = await db.from("ingredient_proposal").insert({
+  // A second unknown ingredient, for accepting several at once. A recipe waits for it: a
+  // proposal nothing waits for is not shown.
+  const second = check(
+    await db
+      .from("ingredient_proposal")
+      .insert({
+        household_id: household,
+        name: "Pak Choi",
+        aisle_group_id: potato.aisle_group_id,
+        preferred_shop_id: potato.preferred_shop_id,
+        default_unit: "Stück",
+        buying_mode: "count",
+        shelf_life_days: 5,
+      })
+      .select("id")
+      .single(),
+    "create second proposal",
+  );
+  const waiting = check(
+    await db
+      .from("recipe")
+      .insert({
+        household_id: household,
+        title: "Pak-Choi-Pfanne",
+        servings_min: 4,
+        servings_max: 4,
+        status: "needs_review",
+      })
+      .select("id")
+      .single(),
+    "create recipe waiting for the second proposal",
+  );
+  const choi = await db.from("recipe_ingredient").insert({
     household_id: household,
-    name: "Pak Choi",
-    aisle_group_id: potato.aisle_group_id,
-    preferred_shop_id: potato.preferred_shop_id,
-    default_unit: "Stück",
-    buying_mode: "count",
-    shelf_life_days: 5,
+    recipe_id: waiting.id,
+    position: 0,
+    ingredient_id: null,
+    proposal_id: second.id,
+    quantity: 2,
+    unit: "Stück",
+    original_text: "2 Pak Choi",
   });
-  if (second.error) throw new Error(`create second proposal: ${second.error.message}`);
+  if (choi.error)
+    throw new Error(`create line waiting for the second proposal: ${choi.error.message}`);
   const recipe = check(
     await db
       .from("recipe")

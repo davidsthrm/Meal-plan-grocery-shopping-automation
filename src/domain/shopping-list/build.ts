@@ -367,6 +367,23 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       ...contribution,
       origin: { date: origin.date, place: origin.place },
     });
+    // A typed line with a number in front buys that many: "4 Ingwer-Shots" is "4x
+    // Ingwer-Shots". Written twice in one unit, the amounts add up; otherwise none is shown.
+    const amounts = line.contributions.map((part) => part.amount);
+    const unit = amounts[0]?.unit;
+    if (unit && amounts.every((amount) => amount?.unit === unit)) {
+      const sum = {
+        quantity: tidy(amounts.reduce((total, a) => total + (a?.quantity ?? 0), 0)),
+        unit,
+      };
+      line.amounts = [sum];
+      line.purchase = sum;
+      line.hasUnquantified = false;
+    } else {
+      line.amounts = [];
+      line.purchase = null;
+      line.hasUnquantified = true;
+    }
     loose.set(key, line);
   };
 

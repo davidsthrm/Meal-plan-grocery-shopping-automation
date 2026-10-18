@@ -96,7 +96,7 @@ export function TypedRecipeForm({ initial, categories, extra = {}, submitLabel }
             id="servings"
             name="servings"
             className={field("servings")}
-            inputMode="numeric"
+            inputMode="decimal"
             defaultValue={values.servings}
           />
         </div>

@@ -44,14 +44,14 @@ export async function saveShoppingDays(form: FormData): Promise<void> {
   back("einkaufstage", { ok: "tage" });
 }
 
-/** Stores which kinds of grocery are bought fresh at the market or at the butcher. */
+/** Stores which kinds of grocery are bought fresh at the market, the butcher or the bakery. */
 export async function saveFreshPlaces(form: FormData): Promise<void> {
   await requireHousehold();
-  const places = new Map<string, "market" | "butcher" | null>();
+  const places = new Map<string, "market" | "butcher" | "bakery" | null>();
   for (const [name, value] of form) {
     const id = /^frisch-(.+)$/.exec(name)?.[1];
     if (!id || !z.guid().safeParse(id).success) continue;
-    places.set(id, value === "market" || value === "butcher" ? value : null);
+    places.set(id, value === "market" || value === "butcher" || value === "bakery" ? value : null);
   }
   await storeFreshPlaces(await createSessionClient(), places);
   back("frisch", { ok: "frisch" });

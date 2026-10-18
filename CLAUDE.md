@@ -15,39 +15,40 @@ is easier than pen and paper.
 
 ## Commands
 
-| Task                                                                      | Command                                        |
-| ------------------------------------------------------------------------- | ---------------------------------------------- |
-| Dev server                                                                | `npm run dev`                                  |
-| Unit tests (domain, schema, acceptance)                                   | `npm test`                                     |
-| One test file                                                             | `npx vitest run src/domain/units.test.ts`      |
-| Typecheck                                                                 | `npm run typecheck`                            |
-| Lint                                                                      | `npm run lint`                                 |
-| Format                                                                    | `npm run format`                               |
-| Print the sample week list and compare with the handwritten one           | `npm run sample-week`                          |
-| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`                  | `npm run seed:build`                           |
-| Check the Supabase project in `.env.local`                                | `npm run db:check`                             |
-| Measure a model on the five sample recipe photos (calls the API)          | `npm run import:eval`                          |
-| Measure the second check pass with planted mistakes (calls the API)       | `npm run import:eval-verify`                   |
-| Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
-| The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
-| Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
-| Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                          |
-| Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                          |
-| The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
-| Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
-| Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                           |
-| Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                             |
-| A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                |
-| Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`    |
-| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`    |
-| Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`      |
-| Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                    |
-| Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`       |
-| Measure reading steps alone on the five sample photos (calls the API)     | `npm run import:eval-steps`                    |
-| Steps for imported recipes: dry run with the cost, then per cookbook      | `npm run import:fill-steps -- "<name>"`        |
-| Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`         |
-| Regenerate the database types after a migration                           | `npm run db:types`                             |
-| Apply new migrations to the linked Supabase project                       | `npx supabase db push`                         |
+| Task                                                                      | Command                                         |
+| ------------------------------------------------------------------------- | ----------------------------------------------- |
+| Dev server                                                                | `npm run dev`                                   |
+| Unit tests (domain, schema, acceptance)                                   | `npm test`                                      |
+| One test file                                                             | `npx vitest run src/domain/units.test.ts`       |
+| Typecheck                                                                 | `npm run typecheck`                             |
+| Lint                                                                      | `npm run lint`                                  |
+| Format                                                                    | `npm run format`                                |
+| Print the sample week list and compare with the handwritten one           | `npm run sample-week`                           |
+| Regenerate `supabase/seed.sql` from `supabase/seed/*.ts`                  | `npm run seed:build`                            |
+| Check the Supabase project in `.env.local`                                | `npm run db:check`                              |
+| Measure a model on the five sample recipe photos (calls the API)          | `npm run import:eval`                           |
+| Measure the second check pass with planted mistakes (calls the API)       | `npm run import:eval-verify`                    |
+| Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."`  |
+| The same for the five sample recipes                                      | `npm run import:photo -- --samples`             |
+| Browser tests against the separate test household (free)                  | `npm run e2e`                                   |
+| Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                           |
+| Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                           |
+| The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                     |
+| Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`     |
+| Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                            |
+| Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                              |
+| A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                 |
+| Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`     |
+| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`     |
+| File drinks and cookies by their titles (dry run, then `--apply`)         | `npm run library:assign-categories -- "<name>"` |
+| Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`       |
+| Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                     |
+| Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`        |
+| Measure reading steps alone on the five sample photos (calls the API)     | `npm run import:eval-steps`                     |
+| Steps for imported recipes: dry run with the cost, then per cookbook      | `npm run import:fill-steps -- "<name>"`         |
+| Look for the supermarkets near a postal code, step by step (no database)  | `npm run supermarkets:search -- 88471`          |
+| Regenerate the database types after a migration                           | `npm run db:types`                              |
+| Apply new migrations to the linked Supabase project                       | `npx supabase db push`                          |
 
 Docker is not required for tests. Migrations, seed and RLS run against an embedded Postgres
 (PGlite) in `supabase/tests/`.
@@ -389,6 +390,9 @@ Recipes
 
 - Scale by slot servings / base servings. Base servings can be a range such as 4 to 6. If the
   slot servings fall inside the range, the recipe is cooked as written.
+- A drink or a syrup makes a volume ("Für 2,25 l"). Servings are whole numbers, so a volume
+  is kept in millilitres (2250 "ml", `VOLUME_UNIT`), read from a printed line and from "2,25"
+  "Liter" in the forms (`volumeYield`), and shown in litres from one litre on.
 - Base servings count persons unless the recipe has a servings unit. Baking and finger food
   count what they make: 1 "Springform (Ø 26 cm)", 1 "Backblech", 40 "Stück". The unit is free
   text as printed, null for persons (`recipe.servings_unit`, `Servings.unit`).
@@ -398,8 +402,10 @@ Recipes
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
 - A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
-  Snack & Fingerfood, Dessert & Süßspeise, Kuchen & Gebäck, Frühstück, Getränk, or Soße, Dip &
-  Grundrezept. A category is a tag of the group "Kategorie" with a stable `key`. The import's
+  Snack & Fingerfood, Dessert & Süßspeise, Kuchen & Gebäck, Plätzchen & Kekse, Frühstück,
+  Getränk, or Soße, Dip & Grundrezept. Plätzchen are sweet like cakes (Sunday's coffee, the
+  colour); the check of the library knows drinks and cookies by the last part of a title
+  ("Erdbeer-Holunder-Bowle", "Lebkuchen-Kipferl"; "Lebkuchen-Mousse" is a mousse). A category is a tag of the group "Kategorie" with a stable `key`. The import's
   `dishType` is that key. Find such tags by key, never by name: the household may rename them.
   A new category needs a migration that adds its tag to every household, an entry in
   `DISH_TYPES` and a line in the reading instructions.
@@ -779,7 +785,9 @@ Shopping list
   `/einstellungen`) goes on that place's note. For the market that is when its day is at
   most three days before the meal and it keeps until then: the weekend and the start of the
   week, also though Monday is a supermarket day. Meat is a note for the butcher on its butcher
-  day (see above). A household that buys everything in one go, like the one of the handwritten
+  day (see above). A kind of grocery can also come from the bakery (`fresh_place` "bakery",
+  e.g. "Brot & Backwaren"): it is then a note for the bakery on the day of its meal, for a
+  Sunday on the Saturday, like bread named for a cold supper. A household that buys everything in one go, like the one of the handwritten
   list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
@@ -833,7 +841,13 @@ Shopping list
   catalog (`searchCatalog`), to take each out or put it in with one tap. The household found
   the 180 staples as chips on the settings page unstructured.
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
-  the rest as a note. Text that matches nothing stays a free line.
+  the rest as a note. Where the ingredient is named after what describes it ("grüne
+  Trauben"), the longest run of words anywhere that names one wins, in the singular or the
+  plural too, and the other words are the note: the grapes are fruit (`parseFreeEntry`).
+  Text that matches nothing stays a free line under "Sonstiges", until the household puts
+  it under a kind of grocery on the opened line ("Gehört zu", `kindOfEntry`,
+  `shopping_manual_entry.aisle_group_id`). Every entry of the same text goes with it, and
+  the same text written again later takes that kind by itself (`rememberedKind`).
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`), which is unique on one note. Notes, shop overrides, at-home marks
   and check-offs belong to the note and the key and survive. A meal moved to another
@@ -928,6 +942,14 @@ Import
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
   lines stay as printed text.
+- Before "Neue Zutaten" is shown, the open proposals are put in order (`tidyProposals`):
+  a name loses an amount in front and a note after a comma ("200 g Belugalinsen" is
+  "Belugalinsen"), two proposals for one product become one with all their recipe lines,
+  one the catalog can answer by now is answered, also behind words that only describe a
+  product (`mapDescribed`: "kleines Bauernbrot" is Brot; size, freshness, ripeness, organic,
+  seedless, green), and one no recipe waits for any more is not shown. A recipe's form
+  shows an unknown line under its proposed name, not as printed: saved as printed, it was
+  proposed a second time.
 - Singular, plural and a leading "Bio-" are the same product ("Lachsfilets", "Bio-Gurke").
   The import maps them by itself, and proposals the catalog can answer by now are closed
   before the list is shown. Short words get no such variants: "Ei" is not "Eis".
@@ -1039,6 +1061,8 @@ Import
   alarm; 0.43 cents per recipe for both passes, 0.08 more than without steps. Reading the
   steps alone from a stored page: 0.21 cents for both requests, the same two words, stable
   over three runs. The steps of the five samples are transcribed by hand in the fixtures.
+  Re-measured after "plaetzchen" joined the kinds of dish (October 2026): ingredients 5 of 5
+  without a mistake, the same two words in the steps, 0.30 cents per recipe for the reading.
 
 ## Open items
 

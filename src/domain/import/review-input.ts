@@ -3,8 +3,8 @@ import { findIngredient, type CatalogIndex } from "../catalog";
 import type { RecipeIngredient, Servings } from "../recipe";
 import { parseQuantity } from "../quantity";
 import { isUnit, type Unit } from "../units";
-import { mapToCatalog } from "./map-ingredient";
-import { meansPersons, SERVINGS_UNIT_MAX_LENGTH } from "./servings";
+import { mapDescribed, mapToCatalog } from "./map-ingredient";
+import { meansPersons, SERVINGS_UNIT_MAX_LENGTH, volumeYield } from "./servings";
 import { readTypedSteps } from "./steps";
 
 /**
@@ -79,14 +79,17 @@ export function readReview(
   const errors: ReviewErrors = {};
   if (input.title.trim() === "") errors.title = "Bitte einen Titel eingeben.";
 
-  const min = wholeNumber(input.servingsMin);
-  const max = wholeNumber(input.servingsMax);
-  if (!min) errors.servingsMin = "Für wie viele Portionen ist das Rezept?";
+  // A drink makes a volume: "2,25" "Liter" is kept as 2250 ml.
+  const volume = volumeYield(input.servingsMin, input.servingsMax, input.servingsUnit);
+  if (volume === undefined) errors.servingsMin = "Die Menge ist keine Zahl, z. B. 2,25 Liter.";
+  const min = volume ? volume.min : wholeNumber(input.servingsMin);
+  const max = volume ? volume.max : wholeNumber(input.servingsMax);
+  if (!min && volume !== undefined) errors.servingsMin = "Für wie viele Portionen ist das Rezept?";
   if (max === undefined || (max !== null && min && max < min)) {
     errors.servingsMax = "Muss eine Zahl sein und nicht kleiner als die erste.";
   }
   // "Personen" typed into the unit is what an empty unit already means.
-  const typedUnit = input.servingsUnit.trim().replace(/\s+/g, " ");
+  const typedUnit = volume ? volume.unit : input.servingsUnit.trim().replace(/\s+/g, " ");
   const unit = typedUnit === "" || meansPersons(typedUnit) ? null : typedUnit;
   if (unit !== null && unit.length > SERVINGS_UNIT_MAX_LENGTH) {
     errors.servingsUnit = `Höchstens ${SERVINGS_UNIT_MAX_LENGTH} Zeichen.`;
@@ -117,7 +120,10 @@ export function readReview(
 
     // The catalog name as typed, or the longest part of the printed line that the catalog knows.
     const ingredient =
-      findIngredient(index, name) ?? mapToCatalog(index, { raw: name, name }) ?? null;
+      findIngredient(index, name) ??
+      mapToCatalog(index, { raw: name, name }) ??
+      mapDescribed(index, name) ??
+      null;
     const secondary =
       line.secondary && isUnit(line.secondary.unit)
         ? { ...line.secondary, unit: line.secondary.unit as Unit }

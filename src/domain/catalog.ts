@@ -47,7 +47,7 @@ export interface AisleGroup {
    * Where this kind of grocery is bought fresh when a shopping day goes there. Null or left
    * out: at the supermarket.
    */
-  freshPlace?: "market" | "butcher" | null;
+  freshPlace?: "market" | "butcher" | "bakery" | null;
 }
 
 export interface Ingredient {

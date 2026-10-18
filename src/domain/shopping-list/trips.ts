@@ -11,7 +11,7 @@ import type { Trip } from "./types";
  */
 
 /** Where something is bought fresh instead of at the supermarket. */
-export type FreshPlace = "market" | "butcher";
+export type FreshPlace = "market" | "butcher" | "bakery";
 
 /** A weekday the household shops on, and where it goes that day. ISO weekday: 1 for Monday. */
 export interface ShoppingDay {

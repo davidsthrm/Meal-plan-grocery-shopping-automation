@@ -37,14 +37,14 @@ export async function storeDrugstoreWeekday(
 }
 
 /**
- * Stores where each kind of grocery is bought fresh: at the market, at the butcher, or
+ * Stores where each kind of grocery is bought fresh: at the market, the butcher, the bakery, or
  * (null) at the supermarket. Row level security keeps this to the household's own groups.
  */
 export async function storeFreshPlaces(
   db: Db,
-  places: ReadonlyMap<string, "market" | "butcher" | null>,
+  places: ReadonlyMap<string, "market" | "butcher" | "bakery" | null>,
 ): Promise<void> {
-  for (const place of ["market", "butcher", null] as const) {
+  for (const place of ["market", "butcher", "bakery", null] as const) {
     const ids = [...places].filter(([, value]) => value === place).map(([id]) => id);
     if (ids.length === 0) continue;
     const stored = await db.from("aisle_group").update({ fresh_place: place }).in("id", ids);

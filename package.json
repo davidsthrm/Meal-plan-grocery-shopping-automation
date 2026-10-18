@@ -25,6 +25,7 @@
     "import:fill-steps": "tsx --conditions=react-server --env-file=.env.local scripts/fill-steps.ts",
     "import:tag-recipes": "tsx --conditions=react-server --env-file=.env.local scripts/tag-recipes.ts",
     "db:types": "supabase gen types typescript --linked --schema public > src/server/supabase/database.types.ts",
+    "library:assign-categories": "tsx --env-file=.env.local scripts/assign-categories.ts",
     "library:split-sources": "tsx --env-file=.env.local scripts/split-sources.ts",
     "e2e:setup": "tsx --env-file=.env.local scripts/e2e-household.ts",
     "e2e:teardown": "tsx --env-file=.env.local scripts/e2e-household.ts --teardown",
