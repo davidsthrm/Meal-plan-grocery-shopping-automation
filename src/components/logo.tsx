@@ -22,11 +22,15 @@ export function LogoMark({ className = "h-8 w-8" }: { className?: string }) {
   );
 }
 
+/**
+ * The mark with the name. Between a phone and a large screen the header holds the sections
+ * as well, and the name would push it wider than an iPad: there the mark stands alone.
+ */
 export function Logo() {
   return (
     <span className="inline-flex items-center gap-2.5">
       <LogoMark />
-      <span className="text-xl font-bold tracking-tight">
+      <span className="text-xl font-bold tracking-tight sm:max-lg:hidden">
         Essens<span className="text-accent">plan</span>
       </span>
     </span>
