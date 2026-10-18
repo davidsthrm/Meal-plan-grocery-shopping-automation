@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
 import type { Recipe, RecipeIngredient, Servings } from "../recipe";
-import { buildShoppingList, moveKey, toDefaultUnit } from "./build";
+import { buildShoppingList, moveKey, originsOf, toDefaultUnit } from "./build";
 import { line, testIndex } from "./test-catalog";
 import {
   butcherWeekdays,
@@ -786,6 +786,22 @@ describe("several errands", () => {
     expect(cream.amounts).toEqual([{ quantity: 400, unit: "ml" }]);
     // Each part still knows the note it would be on by itself.
     expect(cream.contributions.map((part) => part.origin)).toEqual([monday, friday]);
+  });
+
+  it("knows the notes the parts of a moved line came from", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const moves = new Map([
+      [
+        moveKey({ date: MONDAY, place: "supermarket" }, "sahne@main"),
+        { date: FRIDAY, place: "supermarket" as const },
+      ],
+    ]);
+    const lines = lists([soup], [slot(TUESDAY, "suppe"), slot(SUNDAY, "suppe")], [], moves);
+    const friday = lines.find((entry) => entry.shoppingDate === FRIDAY)!;
+    expect(originsOf(friday, { date: FRIDAY, place: "supermarket" })).toEqual([
+      { date: MONDAY, place: "supermarket" },
+      { date: FRIDAY, place: "supermarket" },
+    ]);
   });
 
   it("moves a typed line and a line the catalog does not know", () => {

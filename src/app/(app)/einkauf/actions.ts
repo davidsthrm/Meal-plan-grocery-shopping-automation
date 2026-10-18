@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
-import { dayProblems } from "@/domain/shopping-list/change-day";
+import { originsOf } from "@/domain/shopping-list/build";
+import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
 import { readDrugstoreEntry } from "@/domain/shopping-list/drugstore";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { parseQuantity } from "@/domain/quantity";
@@ -219,18 +220,29 @@ export async function buyAtSupermarket(form: FormData): Promise<void> {
 }
 
 /**
- * Moves a line to another note: it is bought on another errand after all. `origins` are the
- * notes the parts of the line would be on by themselves.
+ * Moves a line to another note of the week: it is bought on another errand after all. The
+ * page offers only the notes where that is in time (`moveTargets`); this checks it again.
  */
 export async function moveListLine(form: FormData): Promise<void> {
-  const input = read(line.extend({ origins: z.string().max(400), to: z.string().max(40) }), form);
+  const input = read(line.extend({ to: z.string().max(40) }), form);
   const household = await requireHousehold();
-  const origins = input.origins.split(",").filter(Boolean).map(noteOf);
+  const db = await createSessionClient();
+  const { notes, index } = await loadShoppingNotes(db, household, input.week);
+  const here = notes.find((entry) => entry.id === input.note);
+  const view = here?.view.groups
+    .flatMap((group) => group.lines)
+    .find((entry) => entry.line.key === input.key);
+  if (!here || !view) backToList(input);
+  const trips = notes.map((entry) => entry.trip);
+  const target = moveTargets(view.line, here.trip, trips, today(), index).find(
+    (trip) => noteId(trip) === input.to,
+  );
+  if (!target) backToList(input);
   await moveLines(
-    await createSessionClient(),
+    db,
     household,
-    [{ key: input.key, origins }],
-    noteOf(input.to),
+    [{ key: view.line.key, origins: originsOf(view.line, here.trip) }],
+    target,
   );
   backToList(input);
 }
@@ -271,12 +283,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
   await moveLines(
     db,
     household,
-    lines.map((entry) => ({
-      key: entry.key,
-      origins: [
-        ...new Set(entry.contributions.map((part) => noteId(part.origin ?? note.trip))),
-      ].map(noteOf),
-    })),
+    lines.map((entry) => ({ key: entry.key, origins: originsOf(entry, note.trip) })),
     target,
   );
   backToList({ ...input, note: noteId(target) });

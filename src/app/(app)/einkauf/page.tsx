@@ -67,14 +67,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     );
 
   if (picked) {
-    // A line can be moved to every other note of the week that sells food. The drugstore's
-    // note is written by hand and keeps what is written on it.
-    const others =
-      picked.trip.place === "drugstore"
-        ? []
-        : notes
-            .map((note) => note.trip)
-            .filter((trip) => noteId(trip) !== picked.id && trip.place !== "drugstore");
+    // The notes of the week a line can be moved to, where it is in time (`moveTargets`).
+    const others = notes.map((note) => note.trip);
     return (
       <div className="mx-auto max-w-5xl">
         {/* Printed, the note has the size and the layout of its PDF. */}

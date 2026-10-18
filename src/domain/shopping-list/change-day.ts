@@ -1,6 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { addDays, daysBetween, isoWeekday, type IsoDate } from "../dates";
-import { AFTERNOON_WEEKDAYS, BUTCHER_REACH_DAYS, type ShoppingTrip } from "./trips";
+import { AFTERNOON_WEEKDAYS, BUTCHER_REACH_DAYS, noteId, type ShoppingTrip } from "./trips";
 import type { Contribution, ShoppingLine } from "./types";
 
 /**
@@ -101,4 +101,24 @@ export function moveProblems(
 ): DayProblem[] {
   if (target.date < today) return [{ kind: "past" }];
   return lineProblems(line, target, index, "too-late");
+}
+
+/**
+ * The other notes one line can be bought on instead: those of food errands where it is in
+ * time and keeps. The drugstore's note is written by hand and takes no food.
+ */
+export function moveTargets(
+  line: ShoppingLine,
+  here: ShoppingTrip,
+  notes: readonly ShoppingTrip[],
+  today: IsoDate,
+  index: CatalogIndex,
+): ShoppingTrip[] {
+  if (here.place === "drugstore") return [];
+  return notes.filter(
+    (trip) =>
+      noteId(trip) !== noteId(here) &&
+      trip.place !== "drugstore" &&
+      moveProblems(line, trip, today, index).length === 0,
+  );
 }

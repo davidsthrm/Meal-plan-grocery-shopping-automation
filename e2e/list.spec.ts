@@ -131,16 +131,17 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(sheet(page, MONDAY).getByText("Geschenkpapier", { exact: true })).toHaveCount(0);
   await all(page).click();
   await expect(tile(page, FRIDAY)).toContainText("Geschenkpapier");
-  // And the cream too, which then stands there with what Friday needs anyway.
+  await tile(page, FRIDAY).click();
+  await sheet(page, FRIDAY).getByText("Geschenkpapier", { exact: true }).click();
+  await expect(sheet(page, FRIDAY)).toContainText("verschoben von Mo 1. Supermarkt");
+  await all(page).click();
+  // The cream is for Tuesday: Friday is too late for it and is not offered, an errand
+  // before Tuesday is.
   await tile(page, MONDAY).click();
   await sheet(page, MONDAY).getByText("300 ml Sahne").click();
-  await page.getByRole("button", { name: "Sahne verschieben: Fr 5. Supermarkt" }).click();
-  await all(page).click();
-  await tile(page, FRIDAY).click();
-  await sheet(page, FRIDAY)
-    .getByText(/\d+ ml Sahne/)
-    .click();
-  await expect(sheet(page, FRIDAY)).toContainText("verschoben von Mo 1. Supermarkt");
+  const moves = sheet(page, MONDAY).getByRole("group", { name: "Sahne verschieben" });
+  await expect(moves.getByRole("button", { name: /Fr 5\. Supermarkt/ })).toHaveCount(0);
+  await expect(moves.getByRole("button", { name: /Mo 1\. Metzger/ })).toBeVisible();
   await all(page).click();
 
   // Ticking off, and the tick survives a change of the plan.

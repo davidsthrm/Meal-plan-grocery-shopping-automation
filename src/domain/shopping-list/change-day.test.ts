@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
 import type { Recipe } from "../recipe";
 import { buildShoppingList } from "./build";
-import { dayProblems, moveProblems } from "./change-day";
+import { dayProblems, moveProblems, moveTargets } from "./change-day";
 import { line, testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS, tripsBetween, type ShoppingTrip } from "./trips";
 
@@ -192,5 +192,29 @@ describe("moveProblems", () => {
     ]);
     // Bought shortly before anyway: how long it keeps is no question.
     expect(moveProblems(later, shop("2026-10-09"), TODAY, testIndex)).toEqual([]);
+  });
+});
+
+describe("moveTargets", () => {
+  const cream = monday.find((entry) => entry.key === "sahne@main")!;
+  const notes: ShoppingTrip[] = [
+    { date: SATURDAY, place: "market" },
+    { date: SUNDAY, place: "bakery" },
+    shop(MONDAY),
+    { date: MONDAY, place: "drugstore" },
+    shop("2026-10-16"),
+  ];
+
+  it("offers the other food notes where a line is in time and keeps", () => {
+    expect(moveTargets(cream, shop(MONDAY), notes, TODAY, testIndex)).toEqual([
+      { date: SATURDAY, place: "market" },
+      { date: SUNDAY, place: "bakery" },
+    ]);
+  });
+
+  it("offers nothing on the drugstore's note", () => {
+    expect(
+      moveTargets(cream, { date: MONDAY, place: "drugstore" }, notes, TODAY, testIndex),
+    ).toEqual([]);
   });
 });

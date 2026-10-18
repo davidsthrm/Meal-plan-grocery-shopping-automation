@@ -57,6 +57,19 @@ export function moveKey(origin: ShoppingTrip, lineKey: string): string {
 }
 
 /**
+ * The notes the parts of a line would be on by themselves, once each. A part moved here
+ * from another note says so; one that says nothing is at home on `note`.
+ */
+export function originsOf(line: Pick<ShoppingLine, "contributions">, note: ShoppingTrip) {
+  const origins = new Map<string, ShoppingTrip>();
+  for (const { origin } of line.contributions) {
+    const trip = origin ?? note;
+    origins.set(noteId(trip), { date: trip.date, place: trip.place });
+  }
+  return [...origins.values()];
+}
+
+/**
  * Converts an amount to the ingredient's default unit, or returns null if there is no path.
  * For an ingredient bought in packs, "2 Packungen" means two packs. A bare "2" means two
  * packs only where it was typed onto a note (`typed`): "2x Garnelen". In a recipe it counts
