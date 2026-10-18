@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { duplicatePairs, loadLibraryChecks, recipeChecks } from "@/server/quality";
+import { countStepChecks } from "@/server/step-checks";
 import { createSessionClient } from "@/server/supabase/server";
 
 /**
- * The checks of the whole library: assigned fields that do not fit, and recipes that are
- * there twice. Undefined while they are worked out, which reads the whole library and takes
+ * The checks of the whole library: assigned fields that do not fit, recipes that are there
+ * twice, and steps read with doubts. Undefined while they are worked out, which reads the whole library and takes
  * a moment; null when that failed (a migration not applied yet, an outage).
  */
-type LibraryCounts = { fields: number; pairs: number } | null | undefined;
+type LibraryCounts = { fields: number; pairs: number; steps: number } | null | undefined;
 
 interface Counts {
   /** Imported recipes waiting for review. */
@@ -21,7 +22,7 @@ const open = "rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn";
 const quiet = "rounded-lg border border-line bg-surface px-4 py-3 font-semibold";
 
 /**
- * What there is to check, as tiles. The two checks of the library are always there, so that
+ * What there is to check, as tiles. The checks of the library are always there, so that
  * the section stands at once and does not move when their numbers arrive.
  */
 export function CheckTiles({ waiting, proposals, library }: Counts) {
@@ -62,6 +63,18 @@ export function CheckTiles({ waiting, proposals, library }: Counts) {
           }
           none="Keine gefunden"
           about="Zusammenführen oder beide behalten"
+        />
+        <LibraryTile
+          href="/import/pruefen/schritte"
+          count={library === undefined ? undefined : library && library.steps}
+          name="Arbeitsschritte prüfen"
+          found={(n) =>
+            n === 1
+              ? "1 Rezept mit unsicheren Arbeitsschritten"
+              : `${n} Rezepte mit unsicheren Arbeitsschritten`
+          }
+          none="Alle sicher gelesen"
+          about="Mit dem Foto vergleichen"
         />
       </div>
     </section>
@@ -112,8 +125,8 @@ async function countLibraryChecks(): Promise<LibraryCounts> {
   try {
     const db = await createSessionClient();
     const library = await loadLibraryChecks(db);
-    const pairs = await duplicatePairs(db, library);
-    return { fields: recipeChecks(library).length, pairs: pairs.length };
+    const [pairs, steps] = await Promise.all([duplicatePairs(db, library), countStepChecks(db)]);
+    return { fields: recipeChecks(library).length, pairs: pairs.length, steps };
   } catch (error) {
     console.error("library checks on the import page:", error);
     return null;
