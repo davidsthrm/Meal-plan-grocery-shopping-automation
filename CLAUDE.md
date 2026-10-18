@@ -31,6 +31,8 @@ is easier than pen and paper.
 | Run the complete import on photos without touching the database           | `npm run import:photo -- <photo> --book "..."` |
 | The same for the five sample recipes                                      | `npm run import:photo -- --samples`            |
 | Browser tests against the separate test household (free)                  | `npm run e2e`                                  |
+| Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                          |
+| Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                          |
 | The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                    |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`    |
 | Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                           |
@@ -68,6 +70,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   ran out at home, the look of paper notes, a pictogram for every filter, the upload started
   from a planned meal, pages that follow each other across devices, saved plans, settings,
   and invitations into a household (done).
+- Phase 6 (branch `phase-6-pwa-offline`): installable on iPhone and Android, the notes of
+  the week kept for the shop, ticks without a connection, the view for the shop, and pages
+  that say they need a connection.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -95,6 +100,37 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   An account is made in one place only: `acceptInvite`, with the secret key, for someone who
   holds the link of an invitation a member made.
 - The shopping list must work offline in the shop: cached list, queued check-offs.
+- Installable: `app/manifest.ts`, icons drawn from the logo (`scripts/build-icons.ts`: the
+  logo as it is, green to the edges for Android's mask and the iPhone), `appleWebApp` in
+  the root layout. `src/proxy.ts` lets the manifest, `sw.js` and `offline.html` through
+  without a login: the phone fetches the manifest without cookies.
+- The service worker is plain JavaScript in `public/sw.js`, registered in the root layout
+  (`ServiceWorker`). It touches only GET requests of the app: pages of `/einkauf` come from
+  the network and are kept (in production a kept page is shown after 4 seconds without an
+  answer: in a shop the connection hangs rather than fails), scripts and styles are kept
+  as they load, and any other page without a connection shows `/offline.html`. The page
+  names what to keep (`pagesForTheShop`, `KeepForTheShop`): the notes of the running week,
+  each note, and the next errand when it lies in the week after. A copy asked for earlier
+  never replaces one asked for later. `experimental.useOffline` stays off: with it a soft
+  navigation offline waits forever instead of loading the kept page.
+- Under `next dev` a kept page does not come to life offline (the dev runtime needs its
+  socket), so the offline browser test runs on a production build (`npm run e2e:offline`)
+  and skips itself under `npm run e2e`.
+- A tick is "this line is ticked (or open) since then", not "toggle" (`Tick`,
+  `src/domain/shopping-list/ticks.ts`). It is kept in IndexedDB first (`TickQueue`,
+  `src/lib/tick-sync.ts`, `src/lib/tick-store.ts`) and sent to `/api/einkauf/haken` at once,
+  when the connection comes back, when the app is opened again, and every 15 seconds while
+  something waits. The server stores it with `tick_shopping_line`: per line the tick made
+  last wins, by `shopping_line_state.checked_changed_at`; a tick sent twice changes nothing,
+  and a time in the future counts as now. Two people ticking never undo each other. The
+  device shows its own tick over a page drawn before the server took it
+  (`shownChecked`, `WeekNotes.readAt`). Every tick on a note, also "Einkauf erledigt", goes
+  this way; the plain form is the fallback without scripts.
+- Without a connection every other form is stopped before it is sent and a bar says so
+  (`ConnectionGuard`); only forms marked `data-offline-ok` go. Import and settings say at
+  the top that they need a connection (`NeedsConnection`), and the batch page carries on by
+  itself once the connection is back. Signing out (`data-sign-out`) makes the login page
+  forget the kept pages and the waiting ticks of the device.
 - Supabase Realtime tells an open page that the household changed something
   (`LiveRefresh`). A table that should do so is added to the publication `supabase_realtime`
   in a migration, guarded, because the embedded Postgres of the tests has no such publication.
@@ -734,7 +770,14 @@ Shopping list
   Both show what is still to buy, without what is ticked off or at home. The PDF is a small
   notepad sheet to take along instead of a phone: A6, one column, black on white, faint
   ruled lines, no binding holes. The size is one constant for both (`NOTE_PAPER`
-  in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out).
+  in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out). A note taken to several
+  supermarkets has a section per supermarket in the PDF too, its name once above its kinds
+  of grocery (`pdfSections`), not in front of every heading.
+- "Jetzt einkaufen" on a note opens the view for the shop (`StoreView`, a `<dialog>` over
+  the whole screen; `#laden` opens it too): the note's lines by supermarket and kind of
+  grocery, each row one large button to tick, how many are ticked of how many, whether
+  ticks wait for a connection ("Offline – 3 Häkchen warten", `SyncStatus`), and "Einkauf
+  erledigt". The screen stays on while it is open (Wake Lock, where the browser has it).
 
 Import
 
@@ -926,8 +969,9 @@ Import
   again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The cut-out view of a recipe that is deleted by itself stays in storage until its batch
   is deleted.
-- The shopping list does not show yet what changed since it was last looked at, and ticking
-  off needs a connection. Only a supermarket line can be bought at another shop for a week. The "Haben wir
+- The shopping list does not show yet what changed since it was last looked at. Without a
+  connection only ticking works; typing a line, moving it or changing its amount needs one.
+  Only a supermarket line can be bought at another shop for a week. The "Haben wir
   schon?" step is a plain section of each list for now.
 - The shopping days are the same every week. For a holiday on a shopping day the errand is
   moved to another day by hand ("An einem anderen Tag einkaufen").
@@ -945,7 +989,12 @@ Import
 - A meal planned on a shopping day after the shopping was done is still put on that day's
   list, where it shows as open: only the day of planning is known, not the hour.
 - What one device changes shows on the others while they are online. A phone without a
-  connection in the shop sees nothing new and cannot tick.
+  connection in the shop sees the notes as they were when it last had one, with its own
+  ticks; the counts on the tiles among the notes do not include ticks that still wait.
+- A note is kept for the shop only once the device has opened the shopping notes of the
+  running week online. The week plan, recipes and every other page are not kept.
+- The offline flow was tested in Chromium (Playwright). On an iPhone, check once by hand:
+  installed from Safari, open a note, airplane mode, tick, reopen the app, back online.
 - An upload started from a meal plans nothing when its page holds several recipes and none
   is named like the meal. The recipes are in the library and are planned by hand then.
 - A recipe that is on a week plan cannot be deleted (foreign key). Deleting a batch whose
