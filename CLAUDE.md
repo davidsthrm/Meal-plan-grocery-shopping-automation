@@ -439,7 +439,7 @@ Week plan
   invitation. They count for the shopping list, not for the balance. Each can name the day
   of the week it is needed (`plan_extra.needed_on`, `PlanExtra.date`): it is then bought
   for that day exactly like a meal on it. Without a day it is bought on the week's first
-  supermarket day.
+  supermarket day, or on the next one when it was added after that errand was done.
 - A meal without a recipe can carry foods to buy (`plan_slot_food`): bread, cold cuts and a
   cucumber for a "Vesper". A food is a name, not an amount. It may name where it is bought
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
@@ -485,8 +485,10 @@ Week plan
   (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`); from
   anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
-  `SlotItem.plannedOn`). A meal written again with other servings or another side keeps the
-  day of what was there. Null for what was planned before this was recorded.
+  `SlotItem.plannedOn`) and the moment (`planned_at`, `plannedAt`; an extra its
+  `created_at`). A meal written again with other servings or another side keeps the day and
+  the moment of what was there (`plannedWhen`). Null for what was planned before each was
+  recorded.
 - A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
   when its group is still below the least the week should have, -4 when its group is used
   up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
@@ -735,7 +737,7 @@ Shopping list
 - The same thing on another open note of the week (small tomatoes on Monday's supermarket
   note and Saturday's market note) is said under the line ("Auch auf: Sa 17. Markt",
   `alsoOn`). "Dort mitkaufen" moves the line there where that is not too late and it keeps
-  (`dayProblems`); otherwise it is only said.
+  (`moveProblems`); otherwise the line says why ("Sahne wird schon am Montag gebraucht.").
 - The household's supermarkets are found by its postal code (`household.postal_code`,
   `place_name`; empty for a new household, and until it is entered no market can be
   chosen). The server looks the code up on OpenStreetMap (Nominatim), asks Overpass for the
@@ -810,26 +812,39 @@ Shopping list
 - An errand can be done on another day ("An einem anderen Tag einkaufen" on its note,
   `changeNoteDay`). The note offers the three days before and after and says for each
   whether it works, and if not, why (`dayProblems`): something on it is needed before that
-  day, or would not keep from that day until its meal, or the day is over. A line that
-  belongs to no meal, and one that is bought shortly before its meal anyway, is no obstacle.
-  The household asked to be told why, not just to be stopped. Changing the day moves every
-  line of the note to the same place on the new day; what the plan adds later is again put
-  where it belongs by itself.
+  day, or would not keep from that day until its meal, or the day is over. A lunch on a
+  working day is needed before that day's errands ("am Mittwochmittag"), as the notes are
+  worked out. On a butcher note a visit's reach (`BUTCHER_REACH_DAYS`) stands for the
+  shelf life: the meat is kept cold for those days on purpose. A line that belongs to no
+  meal, and one that is bought shortly before its meal anyway, is no obstacle. The
+  household asked to be told why, not just to be stopped. Changing the day moves every line
+  of the note to the same place on the new day; what the plan adds later is again put where
+  it belongs by itself. Any note can be done on its own day by these rules: whole weeks on
+  the real errands are held against it (`tests/acceptance/sample-weeks.test.ts`).
 - An errand is done when every line of its note is ticked: by the last tick, or by
   "Einkauf erledigt", which ticks what is still open. The note then pales among the others
   and carries a stamp with the name of whoever made the last tick (`NoteList.completed`,
   from `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored
-  for it: a line the plan adds afterwards opens the errand again, which is what it is.
+  for it (`completion`): a line the plan adds afterwards opens the errand again, which is
+  what it is, and so does a line typed onto the note. What was planned after the last tick
+  does not: that errand has not bought it. The notes are worked out a second time with the
+  errands that are done (`ErrandRules.doneAt`), and such a need goes to the next errand in
+  time or is bought shortly before.
 - A line can be moved to another note: the household decided to buy it on another errand
-  ("Lieber woanders kaufen", `moveLine`). The move is stored with the note the line would be
-  on by itself (`shopping_line_state.moved_date`, `moved_place`) and applied before the
-  lines are summed, so a moved line adds up with what its new note needs anyway. Every part
-  of a line knows the note it came from (`Contribution.origin`).
+  ("Lieber woanders kaufen", `moveListLine`). It is offered only the notes of the week where
+  it is in time and keeps (`moveTargets`, `moveProblems`: as for a whole errand, and a line
+  bought shortly before its meal not after it either), and the server checks the move
+  again. The move is stored with the note the line would be on by itself
+  (`shopping_line_state.moved_date`, `moved_place`) and applied before the lines are summed,
+  so a moved line adds up with what its new note needs anyway. Every part of a line knows
+  the note it came from (`Contribution.origin`, `originsOf`). The lines of one thing split
+  by an amount that cannot be merged ("ingwer@main#Stück") move together (`partKey`).
 - What is needed and at home is one list for the whole week, under the notes ("Haben wir
   schon"), not one per note: each thing once, by kind of grocery, without the note it would
   be on (`groupAtHome`). "Doch kaufen" puts every line it stands for back on its note while
-  that errand is still to come, and otherwise on the next note from today on that sells it
-  (`noteToBuyOn`), where it is not at home either.
+  that errand is still to come, otherwise on the next note from today on that sells it and
+  is in time for its meal, and where none is, on a supermarket note today (`noteToBuyOn`).
+  It is not at home there either. The server chooses the note.
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs. Only typed:
   in a recipe a number counts pieces, and "4 Riesengarnelen" are four prawns, a line of
   their own beside any grams other recipes need, not four packs of 225 g. A prawn's weight
@@ -870,8 +885,9 @@ Shopping list
   moved to a food note, have no "Haben wir schon", and the note is not moved to another day.
   What is still open on a dm note whose day is over comes along to the next one from today
   on (`carriedOver`, `nextDrugstoreTrip`, eight weeks back at most), until it is ticked or
-  removed. A tick on the note it came along to is stored there; an entry ticked on any
-  earlier note stays behind.
+  removed, and stands only there (`bringAlong`), also where the note it came from lies in
+  the same week. A tick on the note it came along to is stored there; an entry ticked on
+  any earlier note stays behind.
 - The Merkzettel (`restock_item`, in the header of every page with the number of its
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
   moves an entry to the note of the next errand from today on that sells it (`restockTrip`),
@@ -1109,8 +1125,6 @@ Import
   schon?" step is a plain section of each list for now.
 - The shopping days are the same every week. For a holiday on a shopping day the errand is
   moved to another day by hand ("An einem anderen Tag einkaufen").
-- Moving a single line to another note is not checked the way moving a whole errand is: the
-  household can put cream needed on Monday on Friday's note.
 - Cheese and antipasti come from the market in this household, but the catalog keeps cheese
   with the dairy and antipasti with the jars. The settings choose per kind of grocery, not
   per ingredient, so they stay on the supermarket's notes unless each line is moved.
@@ -1120,8 +1134,9 @@ Import
   mail server only writes to the project's team, so mail from the app would need another one.
 - Other families: a household of its own cannot be opened from the app yet. Before that,
   decide who pays for reading recipes, since every household's imports use the same API key.
-- A meal planned on a shopping day after the shopping was done is still put on that day's
-  list, where it shows as open: only the day of planning is known, not the hour.
+- An errand counts as done from its last tick. Ticks are made on the device's clock and
+  planning on the server's, so a meal planned within a minute or two of the last tick may
+  be counted to either side.
 - What one device changes shows on the others while they are online. A phone without a
   connection in the shop sees the notes as they were when it last had one, with its own
   ticks; the counts on the tiles among the notes do not include ticks that still wait.

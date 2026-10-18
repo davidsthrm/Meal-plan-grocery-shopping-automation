@@ -60,17 +60,49 @@ describe("groupAtHome", () => {
 
 describe("noteToBuyOn", () => {
   const days = withDrugstore(DEFAULT_SHOPPING_DAYS, 6);
+  const salt = atHome("salz", "Salz", "gewuerze").line.line;
+  /** The same thing, needed for a dinner on `date`. */
+  const forDinner = (line: ShoppingLine, date: string): ShoppingLine => ({
+    ...line,
+    contributions: [
+      {
+        source: {
+          type: "recipe",
+          slotId: date,
+          date,
+          meal: "dinner",
+          recipeId: "suppe",
+          recipeTitle: "Suppe",
+        },
+        amount: null,
+        originalText: line.label,
+        optional: false,
+      },
+    ],
+  });
 
   it("keeps a thing on its own note while that errand is still to come", () => {
-    expect(noteToBuyOn(FRIDAY, WEDNESDAY, days, null)).toEqual(FRIDAY);
-    expect(noteToBuyOn(FRIDAY, FRIDAY.date, days, null)).toEqual(FRIDAY);
+    expect(noteToBuyOn(salt, FRIDAY, WEDNESDAY, days, testIndex)).toEqual(FRIDAY);
+    expect(noteToBuyOn(salt, FRIDAY, FRIDAY.date, days, testIndex)).toEqual(FRIDAY);
   });
 
   it("puts it on the next errand from today on that sells it when its own is over", () => {
-    expect(noteToBuyOn(MONDAY, WEDNESDAY, days, null)).toEqual(FRIDAY);
-    expect(noteToBuyOn(MONDAY, "2026-10-17", days, "market")).toEqual({
+    expect(noteToBuyOn(salt, MONDAY, WEDNESDAY, days, testIndex)).toEqual(FRIDAY);
+    const carrots = atHome("karotten", "Karotten", "obst").line.line;
+    expect(noteToBuyOn(carrots, MONDAY, "2026-10-17", days, testIndex)).toEqual({
       date: "2026-10-17",
       place: "market",
     });
+  });
+
+  it("buys it today where the next errand comes after its meal", () => {
+    const forThursday = forDinner(salt, "2026-10-15");
+    expect(noteToBuyOn(forThursday, MONDAY, WEDNESDAY, days, testIndex)).toEqual({
+      date: WEDNESDAY,
+      place: "supermarket",
+    });
+    // Friday is in time for a meal on Saturday.
+    const forSaturday = forDinner(salt, "2026-10-17");
+    expect(noteToBuyOn(forSaturday, MONDAY, WEDNESDAY, days, testIndex)).toEqual(FRIDAY);
   });
 });

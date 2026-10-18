@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  bringAlong,
   carriedOver,
   drugstoreEntryFromText,
   DRUGSTORE_ITEMS,
@@ -180,6 +181,24 @@ describe("open entries of earlier drugstore notes", () => {
     expect(carried).toEqual([
       { id: "Deo", text: "Deo", quantity: 1, forWhom: null, from: LAST_SATURDAY },
     ]);
+  });
+
+  it("stand on the note they came along to, and no longer on the one they came from", () => {
+    const WEDNESDAY = { date: "2026-10-14", place: "drugstore" as const };
+    const notes = [
+      {
+        trip: WEDNESDAY,
+        entries: [entry("Deo", false, WEDNESDAY), entry("Seife", true, WEDNESDAY)],
+      },
+      { trip: SATURDAY, entries: [entry("Zahnpasta", false, SATURDAY)] },
+    ];
+    const carried = carriedOver([entry("Deo", false, WEDNESDAY)], "2026-10-15");
+    const after = bringAlong(notes, SATURDAY, carried);
+    expect(after.map((note) => [note.trip.date, note.entries.map((each) => each.id)])).toEqual([
+      [WEDNESDAY.date, ["Seife"]],
+      [SATURDAY.date, ["Deo", "Zahnpasta"]],
+    ]);
+    expect(bringAlong(notes, SATURDAY, [])).toEqual(notes);
   });
 
   it("go to the first drugstore note from today on, and keep where they were written", () => {

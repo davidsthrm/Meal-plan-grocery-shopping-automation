@@ -1,7 +1,7 @@
 import type { CatalogIndex, Ingredient, Place } from "../catalog";
 import { nameForOne, normalizeName } from "../catalog";
-import type { IsoDate } from "../dates";
-import { cookedServings, type PlanExtra, type PlanSlot } from "../plan";
+import { addDays, mondayOf, type IsoDate } from "../dates";
+import { cookedServings, type PlanExtra, type PlanSlot, type SlotItem } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
 import {
   baseUnitOf,
@@ -15,9 +15,9 @@ import {
 import { parseFreeEntry } from "./free-entry";
 import { labelFor } from "./format";
 import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
-import { assignTrip, noteId, type Assignment, type ShoppingTrip } from "./trips";
+import { assignTrip, noteId, type Assignment, type ErrandRules, type ShoppingTrip } from "./trips";
 import {
-  dayOf,
+  daysOf,
   type Contribution,
   type ContributionSource,
   type ManualEntry,
@@ -25,7 +25,7 @@ import {
   type Trip,
 } from "./types";
 
-export interface BuildInput {
+export interface BuildInput extends ErrandRules {
   index: CatalogIndex;
   recipes: Recipe[];
   slots: PlanSlot[];
@@ -33,13 +33,6 @@ export interface BuildInput {
   extras?: PlanExtra[];
   /** The household's errands around the planned meals, in order. At least one. */
   trips: readonly ShoppingTrip[];
-  /**
-   * The places gone to for the meal that needs something from there: the butcher and the
-   * bakery, unless said otherwise. Empty for a household that buys everything in one go.
-   */
-  onDemand?: readonly Place[];
-  /** The weekdays the butcher is gone to on (`butcherWeekdays`). Without any: for each meal. */
-  butcherDays?: readonly number[];
   /** The supermarket day the extras without a day are bought on. Without one, the first. */
   extrasDate?: IsoDate;
   manualEntries?: ManualEntry[];
@@ -50,10 +43,34 @@ export interface BuildInput {
   moves?: ReadonlyMap<string, ShoppingTrip>;
 }
 
+/**
+ * A line's key without the dimension of an amount that could not be merged: the lines
+ * "ingwer@main" and "ingwer@main#Stück" are one thing to move. Only that dimension follows
+ * a "#", and it may be a word with umlauts.
+ */
+export function partKey(lineKey: string): string {
+  return lineKey.replace(/#[^#]*$/, "");
+}
+
+/** When something was put on the plan: the day, and the moment where that is known. */
+type Planned = Pick<SlotItem, "plannedOn" | "plannedAt">;
+
 /** How a moved line is looked up: by the note it would be on by itself, and its key. */
 export function moveKey(origin: ShoppingTrip, lineKey: string): string {
-  // Amounts that could not be merged are lines of their own, but move together.
-  return `${noteId(origin)}|${lineKey.replace(/#\w+$/, "")}`;
+  return `${noteId(origin)}|${partKey(lineKey)}`;
+}
+
+/**
+ * The notes the parts of a line would be on by themselves, once each. A part moved here
+ * from another note says so; one that says nothing is at home on `note`.
+ */
+export function originsOf(line: Pick<ShoppingLine, "contributions">, note: ShoppingTrip) {
+  const origins = new Map<string, ShoppingTrip>();
+  for (const { origin } of line.contributions) {
+    const trip = origin ?? note;
+    origins.set(noteId(trip), { date: trip.date, place: trip.place });
+  }
+  return [...origins.values()];
 }
 
 /**
@@ -108,8 +125,7 @@ interface Bucket {
 }
 
 function neededBy(contributions: Contribution[]): IsoDate | null {
-  const dates = contributions.flatMap((c) => dayOf(c.source) ?? []);
-  return dates.length > 0 ? dates.reduce((a, b) => (a < b ? a : b)) : null;
+  return daysOf(contributions)[0] ?? null;
 }
 
 function isOptional(contributions: Contribution[]): boolean {
@@ -121,34 +137,41 @@ function bucketKey(ingredient: Ingredient, trip: Trip, shopId: string | null): s
   return shopId ? `${ingredient.id}@${trip}@${shopId}` : `${ingredient.id}@${trip}`;
 }
 
-function linesForBucket(bucket: Bucket): ShoppingLine[] {
-  const { ingredient, trip } = bucket;
-  // Contributions that sum up in the default unit, plus those without a quantity.
+/** What the parts of one line add up to. */
+interface Sums {
+  /** The parts that add up in the ingredient's default unit, and those without a quantity. */
+  primary: Contribution[];
+  /** Their sum in the default unit. Null when none of them has a quantity that converts. */
+  sum: number | null;
+  /** True when a part asks for no quantity, or for a spoonful that cannot be added. */
+  hasUnquantified: boolean;
+  /**
+   * Whether everything with an amount asks for a spoonful or a pinch: then no amount is
+   * shown, three tablespoons of oil are "Öl", not "45 ml Öl".
+   */
+  bySpoonOnly: boolean;
+  /** Amounts with no conversion path: one exact sum per dimension, in its base unit. */
+  apart: { dimension: Dimension; exact: Amount; contributions: Contribution[] }[];
+}
+
+function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): Sums {
   const primary: Contribution[] = [];
-  let primarySum = 0;
-  let hasSum = false;
+  let sum: number | null = null;
   let hasUnquantified = false;
-  // Whether everything with an amount asks for a spoonful or a pinch: then no amount is
-  // shown, three tablespoons of oil are "Öl", not "45 ml Öl".
   let bySpoonOnly = true;
-  // Amounts with no conversion path stay apart, one sum per dimension.
   const apart = new Map<Dimension, { sum: number; contributions: Contribution[] }>();
 
-  for (const contribution of bucket.contributions) {
-    if (contribution.amount === null) {
+  for (const contribution of contributions) {
+    const { amount } = contribution;
+    if (amount === null) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;
     }
-    const spoonful = SPOONFULS.has(contribution.amount.unit);
-    const inDefault = toDefaultUnit(
-      ingredient,
-      contribution.amount,
-      contribution.source.type === "manual",
-    );
+    const spoonful = SPOONFULS.has(amount.unit);
+    const inDefault = toDefaultUnit(ingredient, amount, contribution.source.type === "manual");
     if (inDefault !== null) {
-      primarySum += inDefault;
-      hasSum = true;
+      sum = (sum ?? 0) + inDefault;
       if (!spoonful) bySpoonOnly = false;
       primary.push(contribution);
       continue;
@@ -161,18 +184,32 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       primary.push(contribution);
       continue;
     }
-    const dimension = dimensionOf(contribution.amount.unit);
-    const inBase = convert(
-      contribution.amount.quantity,
-      contribution.amount.unit,
-      baseUnitOf(dimension),
-    ) as number;
+    const dimension = dimensionOf(amount.unit);
     const group = apart.get(dimension) ?? { sum: 0, contributions: [] };
-    group.sum += inBase;
+    group.sum += convert(amount.quantity, amount.unit, baseUnitOf(dimension)) as number;
     group.contributions.push(contribution);
     apart.set(dimension, group);
   }
 
+  return {
+    primary,
+    sum,
+    hasUnquantified,
+    bySpoonOnly,
+    apart: [...apart].map(([dimension, group]) => ({
+      dimension,
+      exact: { quantity: tidy(group.sum), unit: baseUnitOf(dimension) },
+      contributions: group.contributions,
+    })),
+  };
+}
+
+function linesForBucket(bucket: Bucket): ShoppingLine[] {
+  const { ingredient, trip } = bucket;
+  const { primary, sum, hasUnquantified, bySpoonOnly, apart } = sumUp(
+    ingredient,
+    bucket.contributions,
+  );
   const forms = { one: nameForOne(ingredient), many: ingredient.name };
   const common = {
     ingredientId: ingredient.id,
@@ -190,13 +227,6 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   );
   const defaultAtHome = ingredient.isPantryStaple && !askedFor;
   const note = bucket.notes.length > 0 ? bucket.notes.join(", ") : null;
-  const primaryAmounts: Amount[] = hasSum
-    ? [{ quantity: tidy(primarySum), unit: ingredient.defaultUnit }]
-    : [];
-  const apartAmounts = [...apart].map(([dimension, group]): Amount => ({
-    quantity: tidy(group.sum),
-    unit: baseUnitOf(dimension),
-  }));
   const key = bucketKey(ingredient, trip, bucket.shopId);
   // The day it is needed is said only for what goes bad: tomatoes and yoghurt are bought
   // close to their meal, flour is simply on the list.
@@ -206,15 +236,15 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   if (primary.length > 0) {
     // The amount needed stands in front of the name whenever it is known, whatever the
     // ingredient is bought as: "200 g Crème fraîche", "1x Schalotte", "400 g Champignons".
-    const purchase = hasSum && !bySpoonOnly ? purchaseFor(ingredient, primarySum) : null;
+    const purchase = sum !== null && !bySpoonOnly ? purchaseFor(ingredient, sum) : null;
     lines.push({
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
       key,
       neededBy: dated ? neededBy(primary) : null,
       purchase,
-      packs: hasSum ? packsFor(ingredient, primarySum) : null,
-      amounts: primaryAmounts,
+      packs: sum !== null ? packsFor(ingredient, sum) : null,
+      amounts: sum !== null ? [{ quantity: tidy(sum), unit: ingredient.defaultUnit }] : [],
       hasUnquantified,
       contributions: primary,
       note,
@@ -222,9 +252,7 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       optional: isOptional(primary),
     });
   }
-  let index = 0;
-  for (const [dimension, group] of apart) {
-    const exact = apartAmounts[index];
+  for (const { dimension, exact, contributions } of apart) {
     const purchase = {
       quantity: roundUpTo(exact.quantity, naturalStep(exact.quantity, exact.unit)),
       unit: exact.unit,
@@ -233,18 +261,17 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
       key: `${key}#${dimension}`,
-      neededBy: dated ? neededBy(group.contributions) : null,
+      neededBy: dated ? neededBy(contributions) : null,
       purchase,
       packs: null,
       amounts: [exact],
       hasUnquantified: false,
-      contributions: group.contributions,
+      contributions,
       // The note belongs to the main line. Without one, it must not get lost.
       note: primary.length > 0 ? null : note,
       defaultAtHome,
-      optional: isOptional(group.contributions),
+      optional: isOptional(contributions),
     });
-    index++;
   }
   return lines;
 }
@@ -277,14 +304,15 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
   const errandFor = (
     ingredient: Ingredient | undefined,
     date: IsoDate,
-    plannedOn: IsoDate | null | undefined,
+    planned: Planned,
     lunch: boolean,
     shopId?: string | null,
   ): Assignment =>
     assignTrip(
       {
         date,
-        plannedOn,
+        plannedOn: planned.plannedOn,
+        plannedAt: planned.plannedAt,
         lunch,
         fresh: ingredient
           ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
@@ -294,9 +322,30 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         shelfLifeDays: ingredient?.shelfLifeDays ?? null,
       },
       trips,
-      input.onDemand,
-      input.butcherDays,
+      { onDemand: input.onDemand, butcherDays: input.butcherDays, doneAt: input.doneAt },
     ) as Assignment;
+
+  /**
+   * The errand that buys an extra without a day: the week's first supermarket day, unless
+   * that errand was done before the extra was added. Then the week's next supermarket day
+   * that was not, or shortly before, as for a meal.
+   */
+  const extrasErrand = (planned: Planned): Assignment => {
+    const doneBefore = (trip: ShoppingTrip) => {
+      const done = input.doneAt?.get(noteId(trip));
+      return done !== undefined && planned.plannedAt != null && planned.plannedAt > done;
+    };
+    if (!doneBefore(extrasOn)) return extrasOn;
+    const weekEnd = addDays(mondayOf(extrasOn.date), 6);
+    const next = trips.find(
+      (trip) =>
+        trip.place === "supermarket" &&
+        trip.date > extrasOn.date &&
+        trip.date <= weekEnd &&
+        !doneBefore(trip),
+    );
+    return next ? { ...next, trip: "main" } : { ...extrasOn, trip: "later" };
+  };
 
   /** Where a line ends up: on its own note, or on the one the household moved it to. */
   const settle = (on: Assignment, lineKey: string): Assignment => {
@@ -396,22 +445,24 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     servings: number,
     source: ContributionSource,
     date: IsoDate | null,
-    plannedOn?: IsoDate | null,
+    planned: Planned,
   ) => {
     const factor = scaleFactor(recipe.servings, servings);
+    const plannedAt = planned.plannedAt ?? null;
     for (const line of recipe.ingredients) {
       if (line.alternativeTo !== null) continue;
       const ingredient = line.ingredientId
         ? index.ingredientById.get(line.ingredientId)
         : undefined;
       const lunch = source.type === "recipe" && source.meal === "lunch";
-      const on = date ? errandFor(ingredient, date, plannedOn, lunch) : extrasOn;
+      const on = date ? errandFor(ingredient, date, planned, lunch) : extrasErrand(planned);
       if (!ingredient) {
         const contribution = {
           source,
           amount: null,
           originalText: line.originalText,
           optional: line.optional,
+          plannedAt,
         };
         addLoose(
           `unmapped:${normalizeName(line.originalText)}`,
@@ -426,6 +477,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         source,
         amount: base && { quantity: tidy(base.quantity * factor), unit: base.unit },
         originalText: line.originalText,
+        plannedAt,
         optional: line.optional,
       });
     }
@@ -446,7 +498,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         };
         // Extra portions for leftovers are bought with the meal ("Mehr kochen").
         const servings = cookedServings(item.servings, slot.extra, recipe.servings.unit === null);
-        addRecipe(recipe, servings, source, slot.date, item.plannedOn);
+        addRecipe(recipe, servings, source, slot.date, item);
       }
     }
     // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".
@@ -469,14 +521,9 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
               : null,
           originalText: food.label,
           optional: false,
+          plannedAt: food.plannedAt ?? null,
         };
-        const on = errandFor(
-          ingredient,
-          slot.date,
-          food.plannedOn,
-          slot.meal === "lunch",
-          food.shopId,
-        );
+        const on = errandFor(ingredient, slot.date, food, slot.meal === "lunch", food.shopId);
         if (ingredient) {
           add(ingredient, on, contribution, undefined, food.shopId);
         } else {
@@ -503,7 +550,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       date: extra.date ?? null,
     };
     // An extra for a day is bought for that day, exactly like a meal on it.
-    addRecipe(recipe, extra.servings, source, extra.date ?? null, extra.plannedOn);
+    addRecipe(recipe, extra.servings, source, extra.date ?? null, extra);
   }
 
   for (const entry of input.manualEntries ?? []) {

@@ -15,7 +15,12 @@ import {
 import type { AisleGroup, CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { quantityText } from "@/domain/quantity";
-import { dayProblems } from "@/domain/shopping-list/change-day";
+import {
+  dayProblems,
+  moveProblems,
+  moveTargets,
+  type DayProblem,
+} from "@/domain/shopping-list/change-day";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
 import { lineOnNote } from "@/domain/shopping-list/duplicates";
 import { formatPurchase } from "@/domain/shopping-list/format";
@@ -114,8 +119,8 @@ const AMOUNT_UNITS: readonly Unit[] = ["Stück", "g", "kg", "ml", "l", "Bund", "
 /** Where a line is also on another note, and whether it can be bought there instead. */
 interface Elsewhere {
   trip: ShoppingTrip;
-  /** Buying it there is too late or would not keep: then it is only said. */
-  movable: boolean;
+  /** Why buying it there is too late or would not keep: then it is only said. */
+  problem: DayProblem | null;
 }
 
 /** A note picked up: every line, to tick, to annotate, and to move to another note. */
@@ -159,7 +164,10 @@ export function NoteSheet({
   const lines = view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
   const days = [-3, -2, -1, 1, 2, 3]
     .map((offset) => addDays(trip.date, offset))
-    .map((day) => ({ day, problems: dayProblems(lines, day, now, index) }));
+    .map((day) => ({
+      day,
+      problems: dayProblems(lines, { date: day, place: trip.place }, now, index),
+    }));
   // A supermarket note has a section per supermarket where the household moved something
   // to another one. Everything else is one walk through one shop.
   const favourites = trip.place === "supermarket" ? supermarkets : [];
@@ -195,7 +203,7 @@ export function NoteSheet({
   const elsewhere = (entry: ViewLine): Elsewhere[] =>
     (alsoOn.get(lineOnNote(trip, entry.line.key)) ?? []).map((other) => ({
       trip: other,
-      movable: dayProblems([entry.line], other.date, now, index).length === 0,
+      problem: moveProblems(entry.line, other, now, index)[0] ?? null,
     }));
 
   return (
@@ -271,7 +279,7 @@ export function NoteSheet({
                         page={page}
                         note={trip}
                         shop={chosenShop(index, line)}
-                        others={others}
+                        others={moveTargets(line.line, trip, others, now, index)}
                         drugstore={drugstore}
                         elsewhere={elsewhere(line)}
                         supermarkets={favourites}
@@ -472,8 +480,6 @@ function Line({
   const typed = line.contributions.flatMap((entry) =>
     entry.source.type === "manual" ? [{ id: entry.source.entryId, text: entry.originalText }] : [],
   );
-  // The notes the parts of the line would be on by themselves: a moved part is told apart.
-  const origins = [...new Set(line.contributions.map((entry) => noteId(entry.origin ?? note)))];
   const needed = line.trip === "later" ? neededText(view) : "";
   const planned = line.purchase ? formatPurchase(line.purchase) : "ohne Menge";
   // A line only written by hand has no plan behind it: its amount is what was written.
@@ -646,7 +652,6 @@ function Line({
                 {others.map((other) => (
                   <form key={noteId(other)} action={moveListLine}>
                     {where}
-                    <input type="hidden" name="origins" value={origins.join(",")} />
                     <input type="hidden" name="to" value={noteId(other)} />
                     <SubmitButton
                       className="chip min-h-9 text-sm"
@@ -667,10 +672,10 @@ function Line({
             {elsewhere.map((other) => (
               <li key={noteId(other.trip)} className="flex flex-wrap items-center gap-x-2">
                 <span>Auch auf: {noteName(other.trip)}</span>
-                {other.movable && (
+                {other.problem && <span>· {problemText(other.problem)}</span>}
+                {!other.problem && (
                   <form action={moveListLine}>
                     {where}
-                    <input type="hidden" name="origins" value={origins.join(",")} />
                     <input type="hidden" name="to" value={noteId(other.trip)} />
                     <SubmitButton
                       className="link min-h-9 text-sm"

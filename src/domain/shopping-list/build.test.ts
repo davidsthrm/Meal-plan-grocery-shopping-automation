@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
 import type { Recipe, RecipeIngredient, Servings } from "../recipe";
-import { buildShoppingList, moveKey, toDefaultUnit } from "./build";
+import { buildShoppingList, moveKey, originsOf, partKey, toDefaultUnit } from "./build";
 import { line, testIndex } from "./test-catalog";
 import {
   butcherWeekdays,
@@ -67,6 +67,15 @@ describe("toDefaultUnit", () => {
   it("returns null when there is no conversion path", () => {
     expect(toDefaultUnit(carrots, { quantity: 1, unit: "Bund" })).toBeNull();
     expect(toDefaultUnit(carrots, { quantity: 300, unit: "g" })).toBe(3);
+  });
+});
+
+describe("partKey", () => {
+  it("takes the dimension off a line's key, umlauts and all", () => {
+    expect(partKey("ingwer@main#Stück")).toBe("ingwer@main");
+    expect(partKey("basilikum@later#Stängel")).toBe("basilikum@later");
+    expect(partKey("butter@main#mass")).toBe("butter@main");
+    expect(partKey("brot@main@baecker")).toBe("brot@main@baecker");
   });
 });
 
@@ -788,6 +797,46 @@ describe("several errands", () => {
     expect(cream.contributions.map((part) => part.origin)).toEqual([monday, friday]);
   });
 
+  it("buys what was planned after an errand was done on the next one in time", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const shopped = Date.parse("2026-10-12T15:00:00Z");
+    const planned = (date: string, plannedAt: number): PlanSlot => ({
+      id: date,
+      date,
+      meal: "dinner",
+      kind: "recipes",
+      items: [{ recipeId: "suppe", servings: 4, plannedOn: MONDAY, plannedAt }],
+    });
+    const lines = buildShoppingList({
+      index: testIndex,
+      recipes: [soup],
+      // Wednesday's soup was planned before the shopping, Saturday's after it.
+      slots: [planned("2026-10-14", shopped - 1000), planned(SATURDAY, shopped + 1000)],
+      trips,
+      doneAt: new Map([[`${MONDAY}.supermarket`, shopped]]),
+    });
+    expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
+    expect(on(lines, `${FRIDAY}.supermarket`)).toEqual(["sahne@main"]);
+    const friday = lines.find((entry) => entry.shoppingDate === FRIDAY)!;
+    expect(friday.contributions[0].plannedAt).toBe(shopped + 1000);
+  });
+
+  it("knows the notes the parts of a moved line came from", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const moves = new Map([
+      [
+        moveKey({ date: MONDAY, place: "supermarket" }, "sahne@main"),
+        { date: FRIDAY, place: "supermarket" as const },
+      ],
+    ]);
+    const lines = lists([soup], [slot(TUESDAY, "suppe"), slot(SUNDAY, "suppe")], [], moves);
+    const friday = lines.find((entry) => entry.shoppingDate === FRIDAY)!;
+    expect(originsOf(friday, { date: FRIDAY, place: "supermarket" })).toEqual([
+      { date: MONDAY, place: "supermarket" },
+      { date: FRIDAY, place: "supermarket" },
+    ]);
+  });
+
   it("moves a typed line and a line the catalog does not know", () => {
     const market = { date: SATURDAY, place: "market" as const };
     const monday = { date: MONDAY, place: "supermarket" as const };
@@ -811,6 +860,23 @@ describe("several errands", () => {
       extrasDate: MONDAY,
     });
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["butter@main"]);
+  });
+
+  it("buys an extra without a day that came after the first errand on the next one", () => {
+    const cake = recipe("kuchen", [line("sahne", 200, "ml")]);
+    const shopped = Date.parse("2026-10-12T15:00:00Z");
+    const extra = (plannedAt: number) =>
+      buildShoppingList({
+        index: testIndex,
+        recipes: [cake],
+        slots: [],
+        extras: [{ recipeId: "kuchen", servings: 4, note: null, plannedOn: MONDAY, plannedAt }],
+        trips,
+        extrasDate: MONDAY,
+        doneAt: new Map([[`${MONDAY}.supermarket`, shopped]]),
+      }).map((entry) => `${entry.shoppingDate}.${entry.place}/${entry.trip}`);
+    expect(extra(shopped - 1000)).toEqual([`${MONDAY}.supermarket/main`]);
+    expect(extra(shopped + 1000)).toEqual([`${FRIDAY}.supermarket/main`]);
   });
 
   it("buys an extra for a day like a meal on that day", () => {

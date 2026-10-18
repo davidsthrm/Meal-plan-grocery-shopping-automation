@@ -35,6 +35,11 @@ export function dayOf(source: ContributionSource): IsoDate | null {
   return source.type === "manual" ? null : source.date;
 }
 
+/** The days the parts of a line are needed on, the first first. Empty for what has none. */
+export function daysOf(contributions: readonly Pick<Contribution, "source">[]): IsoDate[] {
+  return contributions.flatMap(({ source }) => dayOf(source) ?? []).sort();
+}
+
 /** One reason an ingredient is on the list, with the amount that reason asks for. */
 export interface Contribution {
   source: ContributionSource;
@@ -43,6 +48,11 @@ export interface Contribution {
   /** The recipe line or free entry as written. */
   originalText: string;
   optional: boolean;
+  /**
+   * The moment what asks for it was put on the plan, in milliseconds. Null where that is not
+   * known, and for a line typed onto a note.
+   */
+  plannedAt?: number | null;
   /**
    * The note this would be on by itself: a place on a day. Where it differs from the note
    * of its line, the household moved it there.

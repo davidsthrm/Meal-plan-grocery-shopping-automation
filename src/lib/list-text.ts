@@ -78,13 +78,18 @@ export function dayName(date: IsoDate): string {
   return `${weekdayShort(date)} ${Number(date.slice(8))}.`;
 }
 
+/** The day a line is needed too early for an errand: "Mittwoch", "Mittwochmittag". */
+function whenNeeded(problem: Extract<DayProblem, { kind: "too-late" }>): string {
+  return `${weekdayLong(problem.neededOn)}${problem.lunch ? "mittag" : ""}`;
+}
+
 /** Why an errand cannot be done on another day, as the note says it. */
 export function problemText(problem: DayProblem): string {
   switch (problem.kind) {
     case "past":
       return "Der Tag ist schon vorbei.";
     case "too-late":
-      return `${problem.label} wird schon am ${weekdayLong(problem.neededOn)} gebraucht.`;
+      return `${problem.label} wird schon am ${whenNeeded(problem)} gebraucht.`;
     case "does-not-keep": {
       const days = problem.shelfLifeDays;
       const keeps =

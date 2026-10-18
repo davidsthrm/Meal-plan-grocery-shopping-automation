@@ -5,7 +5,7 @@ import { PrintButton } from "@/components/print-button";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
 import { SubmitButton } from "@/components/submit-button";
-import type { CatalogIndex, Shop } from "@/domain/catalog";
+import type { Shop } from "@/domain/catalog";
 import {
   addDays,
   isIsoDate,
@@ -15,9 +15,9 @@ import {
   type IsoDate,
 } from "@/domain/dates";
 import { familyName } from "@/domain/family";
-import { groupAtHome, noteToBuyOn, type AtHomeGroup } from "@/domain/shopping-list/at-home";
+import { groupAtHome, type AtHomeGroup } from "@/domain/shopping-list/at-home";
 import { marketsOfNote } from "@/domain/shopping-list/supermarkets";
-import { noteId, type ShoppingDay } from "@/domain/shopping-list/trips";
+import { noteId } from "@/domain/shopping-list/trips";
 import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
@@ -67,14 +67,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     );
 
   if (picked) {
-    // A line can be moved to every other note of the week that sells food. The drugstore's
-    // note is written by hand and keeps what is written on it.
-    const others =
-      picked.trip.place === "drugstore"
-        ? []
-        : notes
-            .map((note) => note.trip)
-            .filter((trip) => noteId(trip) !== picked.id && trip.place !== "drugstore");
+    // The notes of the week a line can be moved to, where it is in time (`moveTargets`).
+    const others = notes.map((note) => note.trip);
     return (
       <div className="mx-auto max-w-5xl">
         {/* Printed, the note has the size and the layout of its PDF. */}
@@ -196,15 +190,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         )}
       </ul>
 
-      {atHomeGroups.length > 0 && (
-        <AtHomeList
-          groups={atHomeGroups}
-          week={week}
-          today={now}
-          days={household.shoppingDays}
-          index={index}
-        />
-      )}
+      {atHomeGroups.length > 0 && <AtHomeList groups={atHomeGroups} week={week} />}
 
       {open > 0 && (
         <nav
@@ -233,19 +219,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
  * "Haben wir schon": what the week needs and is at home, each thing once by kind of grocery.
  * "Doch kaufen" puts it on the note that buys it next.
  */
-function AtHomeList({
-  groups: atHomeGroups,
-  week,
-  today: now,
-  days,
-  index,
-}: {
-  groups: AtHomeGroup[];
-  week: IsoDate;
-  today: IsoDate;
-  days: readonly ShoppingDay[];
-  index: CatalogIndex;
-}) {
+function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; week: IsoDate }) {
   return (
     <details className="card mt-8 px-4 py-2">
       <summary className="flex min-h-11 items-center justify-between gap-3 font-semibold">
@@ -277,24 +251,14 @@ function AtHomeList({
                     <input type="hidden" name="week" value={week} />
                     <input type="hidden" name="note" value={noteId(item.lines[0].trip)} />
                     <input type="hidden" name="back" value="all" />
-                    {item.lines.map(({ trip, line }) => {
-                      const fresh =
-                        index.aisleGroupById.get(line.line.aisleGroupId)?.freshPlace ?? null;
-                      const target = noteToBuyOn(trip, now, days, fresh);
-                      const origins = [
-                        ...new Set(
-                          line.line.contributions.map((part) => noteId(part.origin ?? trip)),
-                        ),
-                      ];
-                      return (
-                        <input
-                          key={`${noteId(trip)}|${line.line.key}`}
-                          type="hidden"
-                          name="line"
-                          value={[noteId(trip), line.line.key, noteId(target), origins].join("|")}
-                        />
-                      );
-                    })}
+                    {item.lines.map(({ trip, line }) => (
+                      <input
+                        key={`${noteId(trip)}|${line.line.key}`}
+                        type="hidden"
+                        name="line"
+                        value={`${noteId(trip)}|${line.line.key}`}
+                      />
+                    ))}
                     <SubmitButton
                       className="link min-h-10 text-sm whitespace-nowrap"
                       label={`${item.label} doch kaufen`}

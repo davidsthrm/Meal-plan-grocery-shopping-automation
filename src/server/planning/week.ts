@@ -115,13 +115,14 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     recipe_id: string;
     servings: number;
     planned_on: string | null;
+    planned_at: string | null;
   }[] = [];
   for (let at = 0; at < withRecipes.length; at += SLOTS_PER_REQUEST) {
     items.push(
       ...must(
         await db
           .from("plan_slot_item")
-          .select("plan_slot_id, recipe_id, servings, position, planned_on")
+          .select("plan_slot_id, recipe_id, servings, position, planned_on, planned_at")
           .in("plan_slot_id", withRecipes.slice(at, at + SLOTS_PER_REQUEST))
           .order("position"),
         "load recipes of meals",
@@ -136,13 +137,14 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     ingredient_id: string | null;
     shop_id: string | null;
     planned_on: string | null;
+    planned_at: string | null;
   }[] = [];
   for (let at = 0; at < noRecipe.length; at += SLOTS_PER_REQUEST) {
     foods.push(
       ...must(
         await db
           .from("plan_slot_food")
-          .select("plan_slot_id, label, ingredient_id, shop_id, position, planned_on")
+          .select("plan_slot_id, label, ingredient_id, shop_id, position, planned_on, planned_at")
           .in("plan_slot_id", noRecipe.slice(at, at + SLOTS_PER_REQUEST))
           .order("position"),
         "load foods of meals",
@@ -164,6 +166,7 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
               recipeId: item.recipe_id,
               servings: item.servings,
               plannedOn: item.planned_on,
+              plannedAt: instant(item.planned_at),
             })),
         };
       case "free_text":
@@ -178,6 +181,7 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
               ingredientId: food.ingredient_id,
               shopId: food.shop_id,
               plannedOn: food.planned_on,
+              plannedAt: instant(food.planned_at),
             })),
         };
       case "away":
@@ -188,6 +192,23 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
         return { ...base, kind: "skipped" };
     }
   });
+}
+
+/** A moment as it is read from the database, in milliseconds. */
+function instant(value: string | null): number | null {
+  return value === null ? null : Date.parse(value);
+}
+
+/**
+ * When something was put on a meal, as it is stored. What was there before keeps its day
+ * and moment, also when its meal is written again; what is new was planned now.
+ */
+function plannedWhen(item: { plannedOn?: IsoDate | null; plannedAt?: number | null }) {
+  if (!item.plannedOn) return { planned_on: today(), planned_at: new Date().toISOString() };
+  return {
+    planned_on: item.plannedOn,
+    planned_at: item.plannedAt ? new Date(item.plannedAt).toISOString() : null,
+  };
 }
 
 async function storeFoods(
@@ -205,7 +226,7 @@ async function storeFoods(
       ingredient_id: food.ingredientId,
       shop_id: food.shopId,
       position,
-      planned_on: food.plannedOn ?? today(),
+      ...plannedWhen(food),
     })),
   );
   if (stored.error) throw new Error(`store foods of meal: ${stored.error.message}`);
@@ -309,7 +330,7 @@ export async function writeSlot(
       recipe_id: item.recipeId,
       servings: item.servings,
       position,
-      planned_on: item.plannedOn ?? today(),
+      ...plannedWhen(item),
     })),
   );
   if (items.error) {
@@ -368,7 +389,7 @@ export async function planOpenSlots(
           recipe_id: item.recipeId,
           servings: item.servings,
           position,
-          planned_on: item.plannedOn ?? today(),
+          ...plannedWhen(item),
         }))
       : [],
   );
@@ -671,7 +692,7 @@ export async function addFood(
     ingredient_id: findIngredient(index, name)?.id ?? null,
     shop_id: shop?.id ?? null,
     position: slot.foods?.length ?? 0,
-    planned_on: today(),
+    ...plannedWhen({}),
   });
   if (stored.error) throw new Error(`add food: ${stored.error.message}`);
 }
@@ -720,7 +741,7 @@ export async function loadExtras(db: Db, weekStart: IsoDate): Promise<PlanExtra[
   const rows = must(
     await db
       .from("plan_extra")
-      .select("recipe_id, servings, note, needed_on, planned_on")
+      .select("recipe_id, servings, note, needed_on, planned_on, created_at")
       .eq("week_plan_id", plan.data.id)
       .order("created_at"),
     "load extras of week",
@@ -731,6 +752,7 @@ export async function loadExtras(db: Db, weekStart: IsoDate): Promise<PlanExtra[
     note: row.note,
     date: row.needed_on,
     plannedOn: row.planned_on,
+    plannedAt: instant(row.created_at),
   }));
 }
 
