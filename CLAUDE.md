@@ -1061,6 +1061,8 @@ Import
   alarm; 0.43 cents per recipe for both passes, 0.08 more than without steps. Reading the
   steps alone from a stored page: 0.21 cents for both requests, the same two words, stable
   over three runs. The steps of the five samples are transcribed by hand in the fixtures.
+  Re-measured after "plaetzchen" joined the kinds of dish (October 2026): ingredients 5 of 5
+  without a mistake, the same two words in the steps, 0.30 cents per recipe for the reading.
 
 ## Open items
 
