@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
+import { noteToBuyOn } from "@/domain/shopping-list/at-home";
 import { originsOf } from "@/domain/shopping-list/build";
 import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
 import { readDrugstoreEntry } from "@/domain/shopping-list/drugstore";
@@ -124,23 +125,32 @@ export async function markAtHome(form: FormData): Promise<void> {
 
 /**
  * "Doch kaufen" on a thing at home: every line it stands for is to be bought again. A line
- * whose errand is over goes to the note the page chose for it (`noteToBuyOn`), and is not at
- * home there either. Each `line` field is "<note>|<key>|<target note>|<origins>".
+ * whose errand is over goes to the next note that is in time for it (`noteToBuyOn`), and is
+ * not at home there either. Each `line` field is "<note>|<key>".
  */
 export async function buyAfterAll(form: FormData): Promise<void> {
   const input = read(place, form);
   const household = await requireHousehold();
   const db = await createSessionClient();
+  const { atHome, index } = await loadShoppingNotes(db, household, input.week);
+  const now = today();
   for (const value of form.getAll("line").map(String)) {
-    const [note, key, to, origins = ""] = value.split("|");
-    if (!note || !key || !to || key.length > 200) continue;
-    const trip = noteOf(note);
-    const target = noteOf(to);
-    await changeLine(db, household, trip, key, { atHome: false });
+    const [note, key] = value.split("|");
+    const entry = atHome.find(
+      ({ trip, line: view }) => noteId(trip) === note && view.line.key === key,
+    );
+    if (!entry) continue;
+    const { trip, line: view } = entry;
+    await changeLine(db, household, trip, view.line.key, { atHome: false });
+    const target = noteToBuyOn(view.line, trip, now, household.shoppingDays, index);
     if (noteId(target) === noteId(trip)) continue;
-    const from = origins === "" ? [trip] : origins.split(",").map(noteOf);
-    await moveLines(db, household, [{ key, origins: from }], target);
-    await changeLine(db, household, target, key, { atHome: false });
+    await moveLines(
+      db,
+      household,
+      [{ key: view.line.key, origins: originsOf(view.line, trip) }],
+      target,
+    );
+    await changeLine(db, household, target, view.line.key, { atHome: false });
   }
   backToList(input);
 }
