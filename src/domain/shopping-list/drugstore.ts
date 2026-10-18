@@ -2,7 +2,7 @@ import { normalizeName, type AisleGroup } from "../catalog";
 import type { IsoDate } from "../dates";
 import type { AisleView, ViewLine } from "./present";
 import { byLabel, resolveLine } from "./present";
-import type { ShoppingTrip } from "./trips";
+import { noteId, type ShoppingTrip } from "./trips";
 import type { LineState, ShoppingLine } from "./types";
 
 /**
@@ -198,6 +198,32 @@ export function carriedOver(
   return entries
     .filter((entry) => entry.from.date < today && !entry.done)
     .map(({ id, text, quantity, forWhom, from }) => ({ id, text, quantity, forWhom, from }));
+}
+
+/** The entries written on one drugstore note. */
+export interface DrugstoreNote {
+  trip: ShoppingTrip;
+  entries: DrugstoreEntry[];
+}
+
+/**
+ * The drugstore notes with what came along from earlier ones (`carriedOver`) first on
+ * `target`. An entry that came along is no longer on the note it came from: where that
+ * note lies in the same week, as when the household moved the drugstore's weekday from
+ * Wednesday to Saturday, it would stand on both.
+ */
+export function bringAlong(
+  notes: readonly DrugstoreNote[],
+  target: ShoppingTrip,
+  carried: readonly DrugstoreEntry[],
+): DrugstoreNote[] {
+  if (carried.length === 0) return [...notes];
+  const along = new Set(carried.map((entry) => entry.id));
+  const others = notes
+    .filter((note) => noteId(note.trip) !== noteId(target))
+    .map((note) => ({ ...note, entries: note.entries.filter((entry) => !along.has(entry.id)) }));
+  const own = notes.find((note) => noteId(note.trip) === noteId(target))?.entries ?? [];
+  return [...others, { trip: target, entries: [...carried, ...own] }];
 }
 
 /** The drugstore note open entries go to: the first one from today on. */

@@ -4,11 +4,13 @@ import { addDays, isIsoDate, type IsoDate } from "@/domain/dates";
 import type { Recipe, RecipeIngredient } from "@/domain/recipe";
 import { buildShoppingList, moveKey, partKey } from "@/domain/shopping-list/build";
 import {
+  bringAlong,
   carriedOver,
   drugstoreLines,
   nextDrugstoreTrip,
   presentDrugstore,
   type DrugstoreEntry,
+  type DrugstoreNote,
 } from "@/domain/shopping-list/drugstore";
 import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
@@ -243,7 +245,7 @@ export async function loadShoppingNotes(
   // The drugstore's note is written by hand only, and read apart from the plan.
   const onDrugstore = (row: { shopping_list_id: string }) =>
     tripOf.get(row.shopping_list_id)?.place === "drugstore";
-  const drugstore = new Map<string, { trip: ShoppingTrip; entries: DrugstoreEntry[] }>();
+  const drugstore = new Map<string, DrugstoreNote>();
   for (const row of typed.filter(onDrugstore)) {
     const trip = tripOf.get(row.shopping_list_id) as ShoppingTrip;
     const note = drugstore.get(noteId(trip)) ?? { trip, entries: [] };
@@ -302,14 +304,14 @@ export async function loadShoppingNotes(
   // What is still open on drugstore notes whose day is over comes along to the next one.
   const now = today();
   const target = nextDrugstoreTrip(trips, now);
-  if (target && inWeek(target.date)) {
-    const carried = carriedOver(await earlierDrugstoreEntries(db, now), now);
-    if (carried.length > 0) {
-      const note = drugstore.get(noteId(target)) ?? { trip: target, entries: [] };
-      note.entries.unshift(...carried);
-      drugstore.set(noteId(target), note);
-    }
-  }
+  const drugstoreNotes =
+    target && inWeek(target.date)
+      ? bringAlong(
+          [...drugstore.values()],
+          target,
+          carriedOver(await earlierDrugstoreEntries(db, now), now),
+        )
+      : [...drugstore.values()];
   const lines = [
     ...buildShoppingList({
       index,
@@ -323,7 +325,7 @@ export async function loadShoppingNotes(
       manualEntries: entries,
       moves,
     }),
-    ...[...drugstore.values()].flatMap((note) =>
+    ...drugstoreNotes.flatMap((note) =>
       drugstoreLines(note.entries, note.trip, index.catalog.defaultShopId),
     ),
   ];
