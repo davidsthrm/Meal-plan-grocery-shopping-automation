@@ -177,8 +177,9 @@ test("the meat of several meals is one visit to the butcher, on the household's 
 }) => {
   // Without a butcher day of its own, the household goes there when it shops anyway.
   await page.goto("/woche?w=2027-03-01");
-  await plan(page, "Montag Mittag", "Pfeffersteak");
-  await plan(page, "Dienstag Mittag", "Pfeffersteak");
+  // Dinners: a lunch on a working day is bought on the errand before its day.
+  await plan(page, "Montag Abend", "Pfeffersteak");
+  await plan(page, "Dienstag Abend", "Pfeffersteak");
   await page.goto("/einkauf?w=2027-03-01");
   const notes = page.getByRole("list", { name: "Zettel" });
   const butcher = notes.getByRole("link", { name: /^Metzger, / });

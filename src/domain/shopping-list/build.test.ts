@@ -25,11 +25,12 @@ function recipe(
   return { id, title: id, kind: "cookbook", servings, ingredients };
 }
 
+/** A dinner: bought on its own day's errand, which a lunch on a working day is not. */
 function slot(date: string, recipeId: string, servings = 4): PlanSlot {
   return {
     id: `${date}-${recipeId}`,
     date,
-    meal: "lunch",
+    meal: "dinner",
     kind: "recipes",
     items: [{ recipeId, servings }],
   };
@@ -585,6 +586,15 @@ describe("several errands", () => {
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
     expect(on(lines, `${FRIDAY}.supermarket`)).toEqual(["sahne@main"]);
     expect(lines).toHaveLength(2);
+  });
+
+  it("buys Friday's lunch on Monday and Friday's dinner on Friday", () => {
+    const soup = recipe("suppe", [line("sahne", 200, "ml")]);
+    const lines = lists([soup], [{ ...slot(FRIDAY, "suppe"), meal: "lunch" }]);
+    expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["sahne@main"]);
+    expect(on(lists([soup], [slot(FRIDAY, "suppe")]), `${FRIDAY}.supermarket`)).toEqual([
+      "sahne@main",
+    ]);
   });
 
   it("sums per errand, not over the week", () => {

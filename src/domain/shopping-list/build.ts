@@ -267,12 +267,14 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     ingredient: Ingredient | undefined,
     date: IsoDate,
     plannedOn: IsoDate | null | undefined,
+    lunch: boolean,
     shopId?: string | null,
   ): Assignment =>
     assignTrip(
       {
         date,
         plannedOn,
+        lunch,
         fresh: ingredient
           ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
           : null,
@@ -374,7 +376,8 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       const ingredient = line.ingredientId
         ? index.ingredientById.get(line.ingredientId)
         : undefined;
-      const on = date ? errandFor(ingredient, date, plannedOn) : extrasOn;
+      const lunch = source.type === "recipe" && source.meal === "lunch";
+      const on = date ? errandFor(ingredient, date, plannedOn, lunch) : extrasOn;
       if (!ingredient) {
         const contribution = {
           source,
@@ -439,7 +442,13 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           originalText: food.label,
           optional: false,
         };
-        const on = errandFor(ingredient, slot.date, food.plannedOn, food.shopId);
+        const on = errandFor(
+          ingredient,
+          slot.date,
+          food.plannedOn,
+          slot.meal === "lunch",
+          food.shopId,
+        );
         if (ingredient) {
           add(ingredient, on, contribution, undefined, food.shopId);
         } else {
