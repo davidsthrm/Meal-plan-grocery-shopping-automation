@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
 import type { Recipe, RecipeIngredient, Servings } from "../recipe";
-import { buildShoppingList, moveKey, originsOf, toDefaultUnit } from "./build";
+import { buildShoppingList, moveKey, originsOf, partKey, toDefaultUnit } from "./build";
 import { line, testIndex } from "./test-catalog";
 import {
   butcherWeekdays,
@@ -67,6 +67,15 @@ describe("toDefaultUnit", () => {
   it("returns null when there is no conversion path", () => {
     expect(toDefaultUnit(carrots, { quantity: 1, unit: "Bund" })).toBeNull();
     expect(toDefaultUnit(carrots, { quantity: 300, unit: "g" })).toBe(3);
+  });
+});
+
+describe("partKey", () => {
+  it("takes the dimension off a line's key, umlauts and all", () => {
+    expect(partKey("ingwer@main#Stück")).toBe("ingwer@main");
+    expect(partKey("basilikum@later#Stängel")).toBe("basilikum@later");
+    expect(partKey("butter@main#mass")).toBe("butter@main");
+    expect(partKey("brot@main@baecker")).toBe("brot@main@baecker");
   });
 });
 

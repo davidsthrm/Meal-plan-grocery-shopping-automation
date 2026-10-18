@@ -45,10 +45,11 @@ export interface BuildInput extends ErrandRules {
 
 /**
  * A line's key without the dimension of an amount that could not be merged: the lines
- * "steak@main" and "steak@main#count" are one thing to move.
+ * "ingwer@main" and "ingwer@main#Stück" are one thing to move. Only that dimension follows
+ * a "#", and it may be a word with umlauts.
  */
 export function partKey(lineKey: string): string {
-  return lineKey.replace(/#\w+$/, "");
+  return lineKey.replace(/#[^#]*$/, "");
 }
 
 /** When something was put on the plan: the day, and the moment where that is known. */
