@@ -5,6 +5,7 @@ import {
   cleanSteps,
   GAP,
   readTypedSteps,
+  savedSteps,
   settleSteps,
   stepProblems,
   surveySawSteps,
@@ -106,6 +107,12 @@ describe("readTypedSteps", () => {
     expect(readTypedSteps(Array.from({ length: 41 }, (_, i) => `Schritt ${i}`).join("\n"))).toEqual(
       { ok: false, error: "Höchstens 40 Schritte." },
     );
+  });
+
+  it("saves an empty field where steps are looked at as a recipe without any", () => {
+    expect(savedSteps("  \n")).toEqual({ ok: true, steps: [] });
+    expect(savedSteps("1. Kochen.\n2. Essen.")).toEqual({ ok: true, steps: ["Kochen.", "Essen."] });
+    expect(savedSteps("x".repeat(2001)).ok).toBe(false);
   });
 
   it("writes stored steps back one per line", () => {

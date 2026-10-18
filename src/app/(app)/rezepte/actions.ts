@@ -12,6 +12,7 @@ import {
   type ReviewErrors,
   type ReviewInput,
 } from "@/domain/import/review-input";
+import { savedSteps } from "@/domain/import/steps";
 import { PASTED_TEXT_MAX, pastedRecipe, type PastedRecipe } from "@/domain/library/pasted-recipe";
 import { readOwnTags } from "@/domain/library/tags";
 import {
@@ -25,6 +26,7 @@ import { loadCatalogIndex } from "@/server/catalog";
 import { importModels } from "@/server/import/models";
 import { writeSlot } from "@/server/planning/week";
 import { createTypedRecipe, saveRecipeTags, updateTypedRecipe } from "@/server/recipes";
+import { saveCheckedSteps } from "@/server/step-checks";
 import { createSessionClient } from "@/server/supabase/server";
 import { tagRecipes } from "@/server/tagging";
 
@@ -43,6 +45,33 @@ export async function setFavorite(form: FormData): Promise<void> {
   if (updated.error) throw new Error(`mark favourite: ${updated.error.message}`);
   // The heart is on every recipe card: on "Entdecken", on "Favoriten" and on its own page.
   revalidatePath("/", "layout");
+}
+
+/**
+ * Saves the steps of a recipe changed on its own page, and opens them there. An emptied field
+ * says the recipe has none. Whatever was in doubt about them, a person has now looked.
+ */
+export async function saveSteps(form: FormData): Promise<void> {
+  await requireHousehold();
+  const id = z.guid().parse(form.get("rezept"));
+  // Only the way back is taken over from the page's address, nothing else.
+  const back = new URLSearchParams(String(form.get("zurueck") ?? ""));
+  const kept = new URLSearchParams();
+  for (const key of ["von", "w", "feld"]) {
+    const value = back.get(key);
+    if (value) kept.set(key, value.slice(0, 40));
+  }
+  const steps = savedSteps(String(form.get("schritte") ?? ""));
+  if (!steps.ok) {
+    kept.set("schritte", "bearbeiten");
+    kept.set("fehler", "schritte");
+    redirect(`/rezepte/${id}?${kept}#arbeitsschritte`);
+  }
+  // Row level security lets this reach the household's own recipes only.
+  await saveCheckedSteps(await createSessionClient(), id, steps.steps);
+  revalidatePath("/", "layout");
+  kept.set("schritte", "offen");
+  redirect(`/rezepte/${id}?${kept}#arbeitsschritte`);
 }
 
 /** Marks a recipe as one someone wants to cook soon, or takes the mark away. */

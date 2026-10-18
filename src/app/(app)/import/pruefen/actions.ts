@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { readTypedSteps } from "@/domain/import/steps";
+import { savedSteps } from "@/domain/import/steps";
 import { isCheckedField, type CheckedField } from "@/domain/library/quality";
 import { requireHousehold } from "@/server/auth";
 import {
@@ -184,17 +184,21 @@ export async function mergeDuplicate(form: FormData): Promise<void> {
 
 /**
  * Steps compared with the photo: stored as they stand in the field, corrected or not, and no
- * longer shown among the steps to check. A field left empty means the recipe has none.
+ * longer shown among the steps to check. A field left empty, or "Keine Arbeitsschritte",
+ * means the recipe has none.
  */
 export async function confirmSteps(form: FormData): Promise<void> {
   await requireHousehold();
   const id = text(form, "rezept");
   if (!recipeId.safeParse(id).success) redirect("/import/pruefen/schritte");
-  const steps = readTypedSteps(String(form.get("schritte") ?? ""));
+  const steps =
+    text(form, "aktion") === "keine"
+      ? savedSteps("")
+      : savedSteps(String(form.get("schritte") ?? ""));
   if (!steps.ok) {
     redirect(`/import/pruefen/schritte?fehler=${id}#r-${id}`);
   }
-  await saveCheckedSteps(await createSessionClient(), id, steps.steps ?? []);
+  await saveCheckedSteps(await createSessionClient(), id, steps.steps);
   revalidatePath("/", "layout");
   redirect("/import/pruefen/schritte");
 }

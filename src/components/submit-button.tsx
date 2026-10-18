@@ -9,6 +9,8 @@ export function SubmitButton({
   className = "btn",
   label,
   on,
+  name,
+  value,
 }: {
   children: ReactNode;
   className?: string;
@@ -16,6 +18,9 @@ export function SubmitButton({
   label?: string;
   /** For a button that shows a state, such as a ticked box: styles go by `data-on`. */
   on?: boolean;
+  /** Sent with the form when this button is the one pressed, to tell two buttons apart. */
+  name?: string;
+  value?: string;
 }) {
   const { pending } = useFormStatus();
   return (
@@ -25,6 +30,8 @@ export function SubmitButton({
       aria-label={label}
       aria-busy={pending}
       data-on={on}
+      name={name}
+      value={value}
     >
       {children}
     </button>
