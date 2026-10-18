@@ -51,38 +51,38 @@ export type Database = {
       }
       household: {
         Row: {
-          place_name: string | null
-          postal_code: string | null
-          drugstore_weekday: number | null
           balance_targets: Json | null
           created_at: string
           default_servings: number
+          drugstore_weekday: number | null
           id: string
           name: string
+          place_name: string | null
+          postal_code: string | null
           shopping_days: Json | null
           shopping_weekday: number
         }
         Insert: {
-          place_name?: string | null
-          postal_code?: string | null
-          drugstore_weekday?: number | null
           balance_targets?: Json | null
           created_at?: string
           default_servings?: number
+          drugstore_weekday?: number | null
           id?: string
           name: string
+          place_name?: string | null
+          postal_code?: string | null
           shopping_days?: Json | null
           shopping_weekday?: number
         }
         Update: {
-          place_name?: string | null
-          postal_code?: string | null
-          drugstore_weekday?: number | null
           balance_targets?: Json | null
           created_at?: string
           default_servings?: number
+          drugstore_weekday?: number | null
           id?: string
           name?: string
+          place_name?: string | null
+          postal_code?: string | null
           shopping_days?: Json | null
           shopping_weekday?: number
         }
@@ -597,8 +597,8 @@ export type Database = {
       }
       plan_slot: {
         Row: {
-          extra_servings: number
           date: string
+          extra_servings: number
           household_id: string
           id: string
           kind: Database["public"]["Enums"]["slot_kind"]
@@ -608,8 +608,8 @@ export type Database = {
           week_plan_id: string
         }
         Insert: {
-          extra_servings?: number
           date: string
+          extra_servings?: number
           household_id: string
           id?: string
           kind: Database["public"]["Enums"]["slot_kind"]
@@ -619,8 +619,8 @@ export type Database = {
           week_plan_id: string
         }
         Update: {
-          extra_servings?: number
           date?: string
+          extra_servings?: number
           household_id?: string
           id?: string
           kind?: Database["public"]["Enums"]["slot_kind"]
@@ -776,6 +776,8 @@ export type Database = {
           is_favorite: boolean
           kind: Database["public"]["Enums"]["recipe_kind"]
           prep_minutes: number | null
+          prep_steps: string[] | null
+          prep_steps_doubts: string[]
           protein_type: Database["public"]["Enums"]["protein_type"] | null
           servings_max: number | null
           servings_min: number | null
@@ -798,6 +800,8 @@ export type Database = {
           is_favorite?: boolean
           kind?: Database["public"]["Enums"]["recipe_kind"]
           prep_minutes?: number | null
+          prep_steps?: string[] | null
+          prep_steps_doubts?: string[]
           protein_type?: Database["public"]["Enums"]["protein_type"] | null
           servings_max?: number | null
           servings_min?: number | null
@@ -820,6 +824,8 @@ export type Database = {
           is_favorite?: boolean
           kind?: Database["public"]["Enums"]["recipe_kind"]
           prep_minutes?: number | null
+          prep_steps?: string[] | null
+          prep_steps_doubts?: string[]
           protein_type?: Database["public"]["Enums"]["protein_type"] | null
           servings_max?: number | null
           servings_min?: number | null
@@ -1153,39 +1159,39 @@ export type Database = {
       }
       shop: {
         Row: {
-          found_near: string | null
           address: string | null
-          logo_url: string | null
+          found_near: string | null
           household_id: string
           id: string
           is_default: boolean
           kind: string
+          logo_url: string | null
           name: string
           short_label: string
           sort_order: number
           supermarket_rank: number | null
         }
         Insert: {
-          found_near?: string | null
           address?: string | null
-          logo_url?: string | null
+          found_near?: string | null
           household_id: string
           id?: string
           is_default?: boolean
           kind?: string
+          logo_url?: string | null
           name: string
           short_label: string
           sort_order?: number
           supermarket_rank?: number | null
         }
         Update: {
-          found_near?: string | null
           address?: string | null
-          logo_url?: string | null
+          found_near?: string | null
           household_id?: string
           id?: string
           is_default?: boolean
           kind?: string
+          logo_url?: string | null
           name?: string
           short_label?: string
           sort_order?: number
@@ -1460,37 +1466,37 @@ export type Database = {
       }
       shopping_manual_entry: {
         Row: {
-          quantity: number | null
-          for_whom: string | null
           aisle_group_id: string | null
           created_at: string
           created_by: string | null
+          for_whom: string | null
           household_id: string
           id: string
+          quantity: number | null
           shop_id: string | null
           shopping_list_id: string
           text: string
         }
         Insert: {
-          quantity?: number | null
-          for_whom?: string | null
           aisle_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          for_whom?: string | null
           household_id: string
           id?: string
+          quantity?: number | null
           shop_id?: string | null
           shopping_list_id: string
           text: string
         }
         Update: {
-          quantity?: number | null
-          for_whom?: string | null
           aisle_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          for_whom?: string | null
           household_id?: string
           id?: string
+          quantity?: number | null
           shop_id?: string | null
           shopping_list_id?: string
           text?: string
