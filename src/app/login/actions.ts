@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { readEmail, readNewPassword } from "@/domain/family";
+import { mayUseDeployment } from "@/lib/preview";
 import { sendPasswordReset, storeNewPassword } from "@/server/password";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -14,6 +15,9 @@ export async function signIn(_previous: LoginState, formData: FormData): Promise
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Bitte E-Mail und Passwort eingeben.", email };
+  if (!mayUseDeployment(email)) {
+    return { error: "In dieser Vorschau kann sich nur der Test-Haushalt anmelden.", email };
+  }
 
   const supabase = await createSessionClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });

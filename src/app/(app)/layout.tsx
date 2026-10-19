@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { AppNav } from "@/components/app-nav";
 import { ConnectionGuard } from "@/components/connection";
 import { SettingsIcon } from "@/components/icons";
+import { InstallHintCard } from "@/components/install-hint";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
 import { NoteDrawer } from "@/components/note-drawer";
@@ -32,46 +34,50 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const initial = initialOf(name);
   return (
     // On a phone the sections float above the bottom of the screen: the page leaves room for
-    // them and for the bar the phone itself keeps there.
-    <div className="min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
-      {/* Paper gets the content only: no header, no navigation. */}
-      <header className="app-header mx-auto flex max-w-5xl items-center justify-between gap-4 pt-2.5 pb-3.5 print:hidden">
-        <Link href="/" aria-label="Essensplan, zum Wochenplan">
-          <Logo />
-        </Link>
-        <div className="hidden sm:block">
-          <AppNav />
-        </div>
-        <div className="flex items-center gap-2">
-          <NoteDrawer items={noted} />
-          <Link
-            href="/einstellungen"
-            className="account"
-            aria-label="Einstellungen"
-            title={name ? `${name} · Einstellungen` : "Einstellungen"}
-          >
-            {initial ?? <SettingsIcon />}
+    // them and for the bar the phone itself keeps there. Coming from the welcome, the whole
+    // app rises into place (`.app-in`); any other way in, it is simply there.
+    <ViewTransition enter={{ willkommen: "app-in", default: "none" }} default="none">
+      <div className="min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
+        {/* Paper gets the content only: no header, no navigation. */}
+        <header className="app-header mx-auto flex max-w-5xl items-center justify-between gap-4 pt-2.5 pb-3.5 print:hidden">
+          <Link href="/" aria-label="Essensplan, zum Wochenplan">
+            <Logo />
           </Link>
-          {/* Below a large screen the header has no room for it, with the sections in it on
+          <div className="hidden sm:block">
+            <AppNav />
+          </div>
+          <div className="flex items-center gap-2">
+            <NoteDrawer items={noted} />
+            <Link
+              href="/einstellungen"
+              className="account"
+              aria-label="Einstellungen"
+              title={name ? `${name} · Einstellungen` : "Einstellungen"}
+            >
+              {initial ?? <SettingsIcon />}
+            </Link>
+            {/* Below a large screen the header has no room for it, with the sections in it on
               an iPad: signing out is at the foot of the page. */}
-          <form action={signOut} data-sign-out className="hidden lg:block">
-            <button className="btn min-h-11 px-3 text-sm">Abmelden</button>
-          </form>
+            <form action={signOut} data-sign-out className="hidden lg:block">
+              <button className="btn min-h-11 px-3 text-sm">Abmelden</button>
+            </form>
+          </div>
+        </header>
+        <InstallHintCard />
+        <main>{children}</main>
+        <LiveRefresh />
+        <ConnectionGuard />
+        <form
+          action={signOut}
+          data-sign-out
+          className="mx-auto mt-12 flex max-w-5xl items-center justify-end gap-3 border-t border-line pt-4 lg:hidden print:hidden"
+        >
+          <button className="btn min-h-11 px-3 text-sm">Abmelden</button>
+        </form>
+        <div className="sm:hidden print:hidden">
+          <AppNav floating />
         </div>
-      </header>
-      <main>{children}</main>
-      <LiveRefresh />
-      <ConnectionGuard />
-      <form
-        action={signOut}
-        data-sign-out
-        className="mx-auto mt-12 flex max-w-5xl items-center justify-end gap-3 border-t border-line pt-4 lg:hidden print:hidden"
-      >
-        <button className="btn min-h-11 px-3 text-sm">Abmelden</button>
-      </form>
-      <div className="sm:hidden print:hidden">
-        <AppNav floating />
       </div>
-    </div>
+    </ViewTransition>
   );
 }

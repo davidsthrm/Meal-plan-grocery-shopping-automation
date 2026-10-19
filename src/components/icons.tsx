@@ -64,6 +64,15 @@ export function CloseIcon() {
   );
 }
 
+/** Safari's sign for sharing, a box with an arrow out of it: where "Zum Home-Bildschirm" is. */
+export function ShareIcon() {
+  return (
+    <svg {...base} width={18} height={18}>
+      <path d="M12 3v12M8 7l4-4 4 4M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" />
+    </svg>
+  );
+}
+
 /** The signs of the main sections, for the bar at the bottom of a phone. */
 export function WeekIcon() {
   return (

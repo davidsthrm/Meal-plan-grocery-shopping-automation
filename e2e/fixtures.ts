@@ -607,7 +607,10 @@ export async function planAsExtra(title: string, week: string): Promise<void> {
  */
 export async function resetHousehold(): Promise<void> {
   const household = await testHousehold();
-  const cleared = await db.from("household").update({ shopping_days: null }).eq("id", household);
+  const cleared = await db
+    .from("household")
+    .update({ shopping_days: null, first_week: null })
+    .eq("id", household);
   if (cleared.error) throw new Error(`reset shopping days: ${cleared.error.message}`);
   await db.from("household_invite").delete().eq("household_id", household);
   const members = check(
@@ -621,6 +624,15 @@ export async function resetHousehold(): Promise<void> {
     if (!data.user.email?.startsWith("e2e-gast-")) continue;
     await db.auth.admin.deleteUser(member.user_id);
   }
+}
+
+/** Lets the test household start with the app in this week, as a household that went live. */
+export async function startHouseholdOn(week: string): Promise<void> {
+  const set = await db
+    .from("household")
+    .update({ first_week: week })
+    .eq("id", await testHousehold());
+  if (set.error) throw new Error(`set first week: ${set.error.message}`);
 }
 
 /**
@@ -653,7 +665,7 @@ export async function signIn(
       {
         name: "ziele-gesehen",
         value: "1",
-        url: `http://localhost:${process.env.E2E_PORT ?? 3100}`,
+        url: process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_PORT ?? 3100}`,
       },
     ]);
   }
@@ -681,4 +693,43 @@ export async function clearTestHousehold(): Promise<void> {
     .eq("household_id", household)
     .eq("group_name", "Eigene");
   if (own.error) throw new Error(`clear own tags: ${own.error.message}`);
+}
+
+/** The tables a test in the app could write to by mistake, all of them per household. */
+const FAMILY_TABLES = [
+  "household_member",
+  "household_invite",
+  "week_plan",
+  "plan_slot",
+  "plan_extra",
+  "shopping_list",
+  "shopping_manual_entry",
+  "shopping_line_state",
+  "restock_item",
+  "recipe",
+  "recipe_tag",
+  "import_batch",
+] as const;
+
+/**
+ * How many rows every household but the test household has in each table, and the
+ * household rows themselves: the same before and after a test means it touched none of
+ * them. Reads only.
+ */
+export async function otherHouseholds(): Promise<Record<string, unknown>> {
+  const test = await testHousehold();
+  const households = check(
+    await db.from("household").select("*").neq("id", test).order("id"),
+    "load other households",
+  );
+  const counts: Record<string, number | null> = {};
+  for (const table of FAMILY_TABLES) {
+    const { count, error } = await db
+      .from(table)
+      .select("*", { count: "exact", head: true })
+      .neq("household_id", test);
+    if (error) throw new Error(`count ${table}: ${error.message}`);
+    counts[table] = count;
+  }
+  return { households, counts };
 }

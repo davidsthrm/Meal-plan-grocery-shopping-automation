@@ -76,6 +76,15 @@ function focus(read: ReadOptions | undefined): string {
   return ` The photos show more than one recipe. ${which}${named}`;
 }
 
+/**
+ * The client every request goes through unless a test brings its own. A function on Vercel
+ * has 300 seconds, and one import step can make three requests: each gives up after 90
+ * seconds and is tried once more only when the service asks for a pause or is busy. The
+ * batch page then hears "throttled" and carries on by itself.
+ */
+let shared: Anthropic | null = null;
+const sharedClient = () => (shared ??= new Anthropic({ timeout: 90_000, maxRetries: 1 }));
+
 /** Sends one structured-output request and returns the parsed answer with its token usage. */
 async function ask<T>(
   options: AnthropicReaderOptions,
@@ -83,7 +92,7 @@ async function ask<T>(
   content: Anthropic.ContentBlockParam[],
   format: ReturnType<typeof zodOutputFormat>,
 ): Promise<{ output: T; model: string; usage: { inputTokens: number; outputTokens: number } }> {
-  const client = options.client ?? new Anthropic();
+  const client = options.client ?? sharedClient();
   const response = await client.messages.parse({
     model: options.model,
     max_tokens: 16000,

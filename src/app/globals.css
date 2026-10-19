@@ -1560,13 +1560,51 @@ summary,
   .store-view .moved-line {
     padding-inline: 0.5rem;
   }
+  /* "Speichern" and "So lassen" at the foot of the welcome, over the page as it scrolls. */
+  .welcome-actions {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--color-paper) 70%, transparent);
+  }
+  .welcome-actions > .btn {
+    flex: 1;
+  }
+  @media (width >= 40rem) {
+    .welcome-actions > .btn {
+      flex: none;
+    }
+  }
   .row-actions {
     display: flex;
     flex: none;
     align-items: center;
   }
+  /*
+   * On a note the actions stand at the end of the line's first row, beside its text; what an
+   * opened line holds runs underneath them, the whole width of the note. Beside them it was
+   * a narrow column on a phone, its fields and buttons one under the other (October 2026).
+   */
   .tick-line .row-actions {
-    margin-top: -0.1rem;
+    position: absolute;
+    top: -0.1rem;
+    right: 0;
+  }
+  .tick-line summary {
+    padding-right: calc(3 * 2.75rem);
+  }
+  .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
+    padding-right: calc(2 * 2.75rem);
+  }
+  @media print {
+    .tick-line summary,
+    .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
+      padding-right: 0;
+    }
   }
 
   /* Bought on another note now: said quietly where it was, "Eier → Di". */
@@ -1926,6 +1964,62 @@ main > * {
     transform: translate(-35%, 4%) rotate(-14deg);
   }
 }
+/*
+ * From the welcome into the app, a moment that happens once per device and is meant to be
+ * seen. The welcome lifts off the moment a button is tapped (`.welcome-leaving`, a class:
+ * React runs no exit transition for a page Next.js leaves), and the app comes in under it
+ * in three parts, 60ms apart: the header drops into place, the page rises, the bar of the
+ * sections comes up from the foot. The header and the bar get names of their own only
+ * during this transition (`willkommen`), so no other navigation moves them.
+ */
+.welcome-leaving {
+  pointer-events: none;
+  animation: welcome-out 360ms var(--ease-drawer) forwards;
+}
+@keyframes welcome-out {
+  to {
+    opacity: 0;
+    transform: translateY(-2.5rem) scale(0.98);
+  }
+}
+:root:active-view-transition-type(willkommen) .app-header {
+  view-transition-name: app-header;
+}
+:root:active-view-transition-type(willkommen) .tabbar {
+  view-transition-name: app-tabbar;
+}
+/* What is left of the welcome has lifted off already: it goes at once. */
+:root:active-view-transition-type(willkommen)::view-transition-old(root) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(app-header) {
+  animation: app-header-in 380ms var(--ease-out) both;
+}
+::view-transition-new(.app-in) {
+  animation: app-in 420ms var(--ease-out) 60ms both;
+}
+::view-transition-new(app-tabbar) {
+  animation: app-tabbar-in 380ms var(--ease-out) 120ms both;
+}
+@keyframes app-header-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+  }
+}
+@keyframes app-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.98);
+  }
+}
+@keyframes app-tabbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
 @keyframes note-on {
   from {
     opacity: 0;
@@ -1933,6 +2027,9 @@ main > * {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .welcome-leaving {
+    animation: fade-out 200ms ease forwards;
+  }
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*) {

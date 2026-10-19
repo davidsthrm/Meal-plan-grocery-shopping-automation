@@ -20,6 +20,23 @@ export default async function LoginPage(props: PageProps<"/login">) {
           Du hast den Haushalt verlassen und bist abgemeldet.
         </p>
       )}
+      {params.vorschau === "1" && (
+        <p role="status" className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-warn">
+          Das ist eine Vorschau zum Testen. Hier kann sich nur der Test-Haushalt anmelden
+          {process.env.VERCEL_PROJECT_PRODUCTION_URL && (
+            <>
+              ; die App selbst ist unter{" "}
+              <a
+                className="link underline"
+                href={`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`}
+              >
+                {process.env.VERCEL_PROJECT_PRODUCTION_URL}
+              </a>
+            </>
+          )}
+          .
+        </p>
+      )}
       <LoginForm />
       <p className="mt-6 text-sm text-muted">
         <Link href="/passwort-vergessen" className="link">

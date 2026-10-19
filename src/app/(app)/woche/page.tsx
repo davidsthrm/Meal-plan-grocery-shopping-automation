@@ -18,13 +18,14 @@ import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
   dayAndMonth,
-  isIsoDate,
   mondayOf,
   weekDates,
   weekdayLong,
   weekdayShort,
   weekRange,
   type IsoDate,
+  hasWeekBefore,
+  weekShown,
 } from "@/domain/dates";
 import {
   BY_KIND,
@@ -93,20 +94,28 @@ const HINT_SCORE = 2;
 const PROPOSALS = 12;
 
 export default async function WeekPage(props: PageProps<"/woche">) {
-  // Whoever opens the plan on a device for the first time is shown what the household aims
-  // for in a week, and can change it.
-  if (!(await cookies()).has(TARGETS_SEEN)) redirect("/woche/ziele?start=1");
-
   const params = await props.searchParams;
   const household = await requireHousehold();
+  // Whoever opens the plan on a device for the first time is shown what the household aims
+  // for in a week, and can change it: whoever made the household is asked, everyone else
+  // is welcomed and shown what was set.
+  if (!(await cookies()).has(TARGETS_SEEN)) {
+    const { data: me } = await (
+      await createSessionClient()
+    )
+      .from("household_member")
+      .select("role")
+      .eq("user_id", household.userId)
+      .maybeSingle();
+    redirect(me?.role === "admin" ? "/woche/ziele?start=1" : "/willkommen");
+  }
   const now = today();
   const db = await createSessionClient();
   // The running week decides which week the planner opens on, and what there is today.
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
   const thisWeek = openingWeek(now, runningSlots);
-  const asked = one(params.w);
-  const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
+  const week = weekShown(one(params.w), thisWeek, household.firstWeek);
   // The meal someone asked a suggestion for, and how often they asked for another one.
   const askedFor = one(params.frage) ?? "";
   const draw = Math.max(0, Math.floor(Number(one(params.v)) || 0));
@@ -254,9 +263,16 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const weekNav = (
     <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <span className="capsule">
-        <Link href={weekLink(addDays(week, -7))} aria-label="Vorige Woche">
-          <ArrowIcon back />
-        </Link>
+        {/* Not before the week the household started with the app. */}
+        {hasWeekBefore(week, household.firstWeek) ? (
+          <Link href={weekLink(addDays(week, -7))} aria-label="Vorige Woche">
+            <ArrowIcon back />
+          </Link>
+        ) : (
+          <a aria-disabled="true" aria-label="Vorige Woche" className="opacity-30">
+            <ArrowIcon back />
+          </a>
+        )}
         {week !== thisWeek && <Link href={weekLink(thisWeek)}>Aktuelle</Link>}
         <Link href={weekLink(addDays(week, 7))} aria-label="Nächste Woche">
           <ArrowIcon />
@@ -404,16 +420,22 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                 className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[7.5rem_1fr_1fr]"
               >
                 {/* On an iPad upright the day stands above its meals: beside them, each meal
-                    had a third of the width and a long dish ran into its stepper. */}
-                <h2 className="flex items-baseline gap-2 sm:col-span-2 lg:col-span-1 lg:block">
+                    had a third of the width and a long dish ran into its stepper. The gap
+                    clears the highlighter, which reaches past the name: "Heute" stood right
+                    against it. */}
+                <h2 className="flex items-baseline gap-3 sm:col-span-2 lg:col-span-1 lg:block">
                   <span
                     className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
                   >
                     {weekdayLong(date)}
                   </span>
-                  <span className="text-sm text-muted lg:block">
-                    {date === now ? "Heute" : dayAndMonth(date)}
-                  </span>
+                  {date === now ? (
+                    <span className="text-sm font-semibold text-accent lg:mt-1 lg:block">
+                      Heute
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted lg:block">{dayAndMonth(date)}</span>
+                  )}
                 </h2>
                 {mealsOf(date).map((meal) => (
                   <MealCell

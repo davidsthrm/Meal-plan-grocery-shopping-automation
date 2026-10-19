@@ -33,7 +33,12 @@ import {
   supermarketsWithoutPlace,
 } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
-import { findStreet, findStreets, searchSupermarkets } from "@/server/supermarket-search";
+import {
+  findStreet,
+  findStreets,
+  SEARCH_BUDGET_MS,
+  searchSupermarkets,
+} from "@/server/supermarket-search";
 
 /** What the household sets once. Each action is the target of a plain form on the page. */
 
@@ -173,30 +178,34 @@ export async function removeStaple(form: FormData): Promise<void> {
 /** Looks for the supermarkets near the household's postal code and keeps them to choose. */
 async function findSupermarkets(household: Household, postalCode: string): Promise<never> {
   const db = await createSessionClient();
+  // One deadline for the search and the street lookups after it, inside the function's time.
+  const until = Date.now() + SEARCH_BUDGET_MS;
   let search: Awaited<ReturnType<typeof searchSupermarkets>>;
   try {
-    search = await searchSupermarkets(postalCode);
+    search = await searchSupermarkets(postalCode, undefined, until);
   } catch (error) {
     // The postal code is kept: "Neu suchen" tries again. What went wrong is said on the page.
     const reason = (error instanceof Error ? error.message : String(error)).slice(0, 300);
     console.error(`supermarket search for ${postalCode}: ${reason}`);
     await storePostalCode(db, household.id, postalCode, household.placeName);
     // The markets found before stand on the map by their streets all the same.
-    await placeByStreets(db, postalCode);
+    await placeByStreets(db, postalCode, until);
     back("supermaerkte", { fehler: "suche", grund: reason });
   }
   if (!search) back("supermaerkte", { fehler: "plz" });
   await storePostalCode(db, household.id, postalCode, search.place);
   await storeFoundSupermarkets(db, household.id, postalCode, search.supermarkets);
   // Markets the map search did not find again, such as one typed in with its street.
-  await placeByStreets(db, postalCode);
+  await placeByStreets(db, postalCode, until);
   back("supermaerkte");
 }
 
 /** Gives the household's markets with a street but without a place their place. */
-async function placeByStreets(db: Db, postalCode: string): Promise<void> {
+async function placeByStreets(db: Db, postalCode: string, until: number): Promise<void> {
   const unplaced = await supermarketsWithoutPlace(db);
-  if (unplaced.length > 0) await storeShopPlaces(db, await findStreets(unplaced, postalCode));
+  if (unplaced.length > 0) {
+    await storeShopPlaces(db, await findStreets(unplaced, postalCode, until));
+  }
 }
 
 /**

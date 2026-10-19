@@ -6,6 +6,9 @@ process.loadEnvFile(".env.local");
 // Next.js allows only one dev server per project. If `npm run dev` is already running, point
 // the tests at it: `E2E_PORT=3000 npm run e2e`.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
+// A deployment to test instead of a local server: the smoke test of production
+// (`npm run e2e:production`). It signs in as the test household like every other test.
+const DEPLOYED = process.env.E2E_BASE_URL;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -17,7 +20,7 @@ export default defineConfig({
   reporter: "list",
   timeout: 60_000,
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: DEPLOYED ?? `http://localhost:${PORT}`,
     locale: "de-DE",
     trace: "retain-on-failure",
   },
@@ -37,13 +40,15 @@ export default defineConfig({
       grep: /@look/,
     },
   ],
-  webServer: {
-    // The test of the shop without a connection needs a production build (`e2e:offline`).
-    command: process.env.E2E_PROD
-      ? `npx next build && npx next start --port ${PORT}`
-      : `npx next dev --port ${PORT}`,
-    url: `http://localhost:${PORT}/login`,
-    reuseExistingServer: true,
-    timeout: process.env.E2E_PROD ? 600_000 : 120_000,
-  },
+  webServer: DEPLOYED
+    ? undefined
+    : {
+        // The test of the shop without a connection needs a production build (`e2e:offline`).
+        command: process.env.E2E_PROD
+          ? `npx next build && npx next start --port ${PORT}`
+          : `npx next dev --port ${PORT}`,
+        url: `http://localhost:${PORT}/login`,
+        reuseExistingServer: true,
+        timeout: process.env.E2E_PROD ? 600_000 : 120_000,
+      },
 });

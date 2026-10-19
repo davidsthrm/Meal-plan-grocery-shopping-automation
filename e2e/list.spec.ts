@@ -354,6 +354,11 @@ test("a note written next to a line stays with it", async ({ page }) => {
   await plan(page, "Dienstag Abend", "Pfeffersteak");
   await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
   await sheet(page, MONDAY).getByText("200 ml Sahne").click();
+  // What an opened line holds runs the width of the note, under the line's actions, not in a
+  // narrow column beside them.
+  const panel = await sheet(page, MONDAY).locator("details[open] > div").boundingBox();
+  const note = await sheet(page, MONDAY).boundingBox();
+  expect(panel!.width).toBeGreaterThan(note!.width * 0.7);
   await page.getByLabel("Notiz zu Sahne").fill("Angebot 1,29");
   await page.getByRole("button", { name: "Merken" }).click();
   // The note's own field was called like the field naming the note, and the page broke.

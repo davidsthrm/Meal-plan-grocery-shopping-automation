@@ -60,6 +60,20 @@ export function isMarked(recipe: RecipeSummary): boolean {
   return recipe.isFavorite || recipe.wanted;
 }
 
+/**
+ * What "Entdecken" offers of the library for a filter: the recipes nobody has marked yet, on
+ * the shelves, in the directory and in every list a filter or a tile of it makes. The marked
+ * ones have "Favoriten". Words typed into the search find every recipe, so that a favourite
+ * is found by its name.
+ */
+export function toDiscover(
+  recipes: readonly RecipeSummary[],
+  filter: RecipeFilter,
+): RecipeSummary[] {
+  if (filter.text.trim() !== "") return [...recipes];
+  return recipes.filter((recipe) => !isMarked(recipe));
+}
+
 /** The shelves on top of the library, without the empty ones. */
 export function discover(recipes: readonly RecipeSummary[], options: DiscoverOptions): Shelf[] {
   const { today, history } = options;

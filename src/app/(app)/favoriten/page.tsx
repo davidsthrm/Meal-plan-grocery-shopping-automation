@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ListMemory } from "@/components/list-return";
 import Link from "next/link";
 import { WishIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
@@ -35,6 +36,7 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <ListMemory />
       <p className="eyebrow">
         {favorites.length === 1 ? "1 Favorit" : `${favorites.length} Favoriten`}
       </p>
