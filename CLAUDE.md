@@ -393,7 +393,10 @@ Household
   admin cannot leave). Only the membership goes: the account stays and sees nothing
   (`/kein-haushalt`). Leaving signs out and forgets what the device kept for the shop.
 - How many the household cooks for (`household.default_servings`, 1 to 12) is asked on the
-  first visit next to the goals and set on the family card.
+  first visit next to the goals and set under "Wochenplan" in the settings.
+- The settings put first what is changed most (October 2026): "Einkaufen" (shopping days,
+  Vorrat, fresh places, supermarkets), then "Wochenplan" (goals, persons), and last
+  "Familie & Konto", which is set once.
 - The household's name (`household.name`, "Stührmann", set in the family card of
   `/einstellungen`) is spoken of as the family in two places, read from the data: the empty
   shopping notes ("Bei den Stührmanns …") and the invitation ("Die Stührmanns laden dich
@@ -781,7 +784,9 @@ Shopping list
   the others are under "Weitere anzeigen". All found stand on a small map (`minimap`,
   `SupermarketMap`): tiles of OpenStreetMap laid out as pictures, without a script, with
   its attribution. A market's place comes from the search (`shop.lat`, `lon`), or from its
-  street when the household types one ("Angaben", looked up with Nominatim). "Angaben" also
+  street (Nominatim, one request a second): when the household types one ("Angaben"), and
+  for every market with a street but no place after each search, also a failed one. From
+  Vercel the main Overpass server often cannot be reached; four are tried. "Angaben" also
   takes the kinds of grocery bought there (`shop.aisle_group_ids`, `kindsText`): shown on
   its tile, and deciding nothing about the notes. While
   the search runs, which can take up to a minute, the card says so (`SearchPending`). A tap
@@ -931,7 +936,8 @@ Shopping list
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
   moves an entry to the note of the next errand from today on that sells it (`restockTrip`),
   where it is a typed line, and takes it off. Flour noted on a Saturday waits for Monday;
-  carrots are bought at the market that day. What the drugstore sells (`isDrugstoreItem`,
+  carrots are bought at the market that day; bread goes on the bakery's note that day, on
+  a Sunday Monday's (the bakery has no day to wait for), packed bread to the supermarket. What the drugstore sells (`isDrugstoreItem`,
   "Zahnpasta", also "Spülmittel" that the food catalog knows) goes to the next dm note, a
   number in front, in digits or words, as its quantity (`drugstoreEntryFromText`: "2
   Duschgel", "zwei Zahnpasta"), and is sorted
