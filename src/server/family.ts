@@ -126,27 +126,42 @@ export async function withdrawInvite(db: Db, id: string): Promise<void> {
  * The household an invitation leads into, for someone who holds its secret and is no member
  * yet. Knowing the secret is what gives access here, so this reads with the secret key.
  */
-export async function findInvite(
-  token: string,
-): Promise<{ id: string; householdId: string; householdName: string } | null> {
+export async function findInvite(token: string): Promise<{
+  id: string;
+  householdId: string;
+  householdName: string;
+  /** How the household calls whoever made the invitation. Null when nobody knows. */
+  inviterName: string | null;
+} | null> {
   if (!/^[\w-]{20,80}$/.test(token)) return null;
   const admin = createAdminClient();
   const { data: invite } = await admin
     .from("household_invite")
-    .select("id, household_id, expires_at, used_at")
+    .select("id, household_id, created_by, expires_at, used_at")
     .eq("token_hash", hashOf(token))
     .maybeSingle();
   if (!invite) return null;
   if (!inviteIsOpen({ usedAt: invite.used_at, expiresAt: invite.expires_at }, new Date())) {
     return null;
   }
-  const { data: household } = await admin
-    .from("household")
-    .select("name")
-    .eq("id", invite.household_id)
-    .maybeSingle();
+  const [{ data: household }, { data: inviter }] = await Promise.all([
+    admin.from("household").select("name").eq("id", invite.household_id).maybeSingle(),
+    invite.created_by
+      ? admin
+          .from("household_member")
+          .select("display_name")
+          .eq("household_id", invite.household_id)
+          .eq("user_id", invite.created_by)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
   if (!household) return null;
-  return { id: invite.id, householdId: invite.household_id, householdName: household.name };
+  return {
+    id: invite.id,
+    householdId: invite.household_id,
+    householdName: household.name,
+    inviterName: inviter?.display_name ?? null,
+  };
 }
 
 /**

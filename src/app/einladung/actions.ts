@@ -40,6 +40,7 @@ export async function joinHousehold(
     email: value.email,
     password: value.password,
   });
-  // The account exists either way. Without a session the login page takes over.
-  redirect(error ? "/login" : "/");
+  // The account exists either way. Without a session the login page takes over; with one,
+  // the newcomer is welcomed and shown what the household has set.
+  redirect(error ? "/login" : "/willkommen");
 }

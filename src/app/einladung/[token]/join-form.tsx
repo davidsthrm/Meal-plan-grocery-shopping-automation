@@ -65,7 +65,7 @@ export function JoinForm({ token }: { token: string }) {
         </p>
       )}
       <button className="btn btn-primary w-full" disabled={pending}>
-        {pending ? "Einen Moment …" : "Beitreten"}
+        {pending ? "Einen Moment …" : "Konto anlegen und beitreten"}
       </button>
     </form>
   );
