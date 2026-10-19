@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stepAfter, stepText } from "@/domain/cooking";
 import { TickIcon } from "./icons";
+import { leaveSheet } from "./sheet";
 import { useWakeLock } from "./wake-lock";
 
 /** An ingredient as the cooking view lists it: "200 g", "Spaghetti", ", gekocht". */
@@ -38,10 +39,7 @@ export function CookView({
   const [step, setStep] = useState<number | null>(null);
   useWakeLock(open);
 
-  const close = useCallback(() => {
-    dialog.current?.close();
-    setOpen(false);
-  }, []);
+  const close = useCallback(() => leaveSheet(dialog.current, () => setOpen(false)), []);
 
   useEffect(() => {
     if (open && dialog.current && !dialog.current.open) dialog.current.showModal();

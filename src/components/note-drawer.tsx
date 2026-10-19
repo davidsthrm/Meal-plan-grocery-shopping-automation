@@ -6,7 +6,7 @@ import { RestockNote } from "./restock-note";
 import type { ComponentProps } from "react";
 
 /** How long the note takes to go back up, as the stylesheet has it. */
-const UP_MS = 180;
+const UP_MS = 220;
 
 /**
  * The note for what ran out at home, in the header of every page. It does not lead to a

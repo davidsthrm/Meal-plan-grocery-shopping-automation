@@ -206,7 +206,7 @@ function ChosenCard({ shop, onClose }: { shop: MapShop; onClose: () => void }) {
     <div
       role="dialog"
       aria-label={shop.name}
-      className="absolute inset-x-2 bottom-2 z-[1000] rounded-lg border border-line bg-surface p-2 shadow-lg sm:right-auto sm:w-80"
+      className="map-card absolute inset-x-2 bottom-2 z-[1000] rounded-lg border border-line bg-surface p-2 shadow-lg sm:right-auto sm:w-80"
     >
       <div className="flex items-center gap-3">
         <ShopLogo shop={shop} size={40} />

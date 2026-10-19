@@ -5,6 +5,7 @@ import type { Shop } from "@/domain/catalog";
 import type { Pictogram } from "@/domain/library/pictogram";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
+import { leaveSheet } from "./sheet";
 import { useWakeLock } from "./wake-lock";
 import {
   CompleteNote,
@@ -50,10 +51,7 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
   const allTicked = useAllTicked(page, lines);
   useWakeLock(open);
 
-  const close = useCallback(() => {
-    dialog.current?.close();
-    setOpen(false);
-  }, []);
+  const close = useCallback(() => leaveSheet(dialog.current, () => setOpen(false)), []);
 
   useEffect(() => {
     if (open && dialog.current && !dialog.current.open) dialog.current.showModal();

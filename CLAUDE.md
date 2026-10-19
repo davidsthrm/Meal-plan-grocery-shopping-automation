@@ -367,7 +367,13 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   when taken back (a transition on `stroke-dashoffset`, the path's length 1); what a fold
   holds comes out with a short fade and drop (`unfold`); the bars of the week's balance grow
   when a meal is planned (`scaleX`, not the width); the views for the shop and for cooking
-  rise like a sheet (`sheet-up`); a note picked up comes from 95%, not from 80%. Hover is
+  rise like a sheet (`sheet-up`) and go back down the way they came (`leaveSheet`,
+  `sheet-down`, 200ms, as the Merkzettel goes up on its string); the Regal's bar for ticked
+  recipes rises from the foot and goes back down (`@starting-style` and `display` with
+  `allow-discrete`); the offline bar comes up a little and goes at once; a heart swells
+  while the favourite is saved; the stamp of an errand finished moments ago is pressed on
+  (`justFinished`: its last tick less than two minutes ago), and simply there on every later
+  visit; a market's card on the map comes up from its lower edge; a note picked up comes from 95%, not from 80%. Hover is
   for a mouse or trackpad only, and a press answers on every screen (`:active`). Asked for
   less motion, what comes and goes still fades but does not travel, and nothing is drawn.
 - Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`

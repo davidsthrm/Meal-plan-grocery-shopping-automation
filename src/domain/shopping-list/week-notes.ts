@@ -74,6 +74,19 @@ export interface LineTick {
  * on it and leaves it done (`ErrandRules.doneAt`): a meal planned on a shopping day after
  * the shopping. Null while anything else is open, and for a note with nothing to buy.
  */
+/** How long after its last tick an errand counts as finished just now: its stamp lands. */
+export const JUST_FINISHED_MS = 2 * 60 * 1000;
+
+/**
+ * True when an errand was finished moments ago, by the time of its last tick: its stamp is
+ * pressed on as the notes are shown, once, not on every later visit. A tick from the future
+ * (another device's clock) counts as now; an errand ticked off before ticks had times
+ * (`at` 0) never.
+ */
+export function justFinished(at: number, now: number): boolean {
+  return at > 0 && now - at < JUST_FINISHED_MS;
+}
+
 export function completion(
   toBuy: readonly ViewLine[],
   tickOf: (lineKey: string) => LineTick | undefined,

@@ -18,10 +18,11 @@ import { familyName } from "@/domain/family";
 import { groupAtHome, type AtHomeGroup } from "@/domain/shopping-list/at-home";
 import { marketsOfNote } from "@/domain/shopping-list/supermarkets";
 import { noteId } from "@/domain/shopping-list/trips";
+import { justFinished } from "@/domain/shopping-list/week-notes";
 import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
-import { today } from "@/lib/today";
+import { momentNow, today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { loadShoppingNotes, type NoteList } from "@/server/shopping/list";
 import { loadRestock } from "@/server/shopping/restock";
@@ -45,6 +46,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const params = await props.searchParams;
   const household = await requireHousehold();
   const now = today();
+  const moment = momentNow();
   const asked = one(params.w);
   const thisWeek = planningWeek(now);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
@@ -159,6 +161,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
               markets={
                 note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : []
               }
+              justDone={note.completed !== null && justFinished(note.completed.at, moment)}
             />
           </li>
         ))}
@@ -278,12 +281,15 @@ function NoteTile({
   week,
   today: now,
   markets,
+  justDone,
 }: {
   note: NoteList;
   week: IsoDate;
   today: IsoDate;
   /** The supermarkets a supermarket note is taken to, the main one first. */
   markets: Shop[];
+  /** Finished moments ago: its stamp is pressed on (`justFinished`). */
+  justDone: boolean;
 }) {
   const lines = note.view.groups.flatMap((group) => group.lines);
   const more = lines.length - PREVIEW;
@@ -331,15 +337,18 @@ function NoteTile({
           </span>
         </span>
       )}
-      {note.completed && <Stamp by={note.completed.by} />}
+      {note.completed && <Stamp by={note.completed.by} pressed={justDone} />}
     </Link>
   );
 }
 
-/** The stamp on an errand that is done, with the name of whoever did it. */
-function Stamp({ by }: { by: string | null }) {
+/**
+ * The stamp on an errand that is done, with the name of whoever did it. Done moments ago, it
+ * is pressed on (`.stamp-pressed`); on every later visit it is simply there.
+ */
+function Stamp({ by, pressed }: { by: string | null; pressed: boolean }) {
   return (
-    <span className="stamp">
+    <span className={`stamp ${pressed ? "stamp-pressed" : ""}`}>
       <span className="flex items-center gap-1.5 text-lg font-bold">
         <TickIcon />
         Erledigt

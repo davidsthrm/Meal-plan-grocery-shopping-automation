@@ -608,6 +608,17 @@ summary,
     font-size: 0.9rem;
     font-weight: 600;
     box-shadow: 0 8px 20px -12px rgb(35 33 29 / 0.5);
+    /* Comes up a little from below when the connection drops; it goes at once when it is
+       back, which needs no telling. */
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 200ms var(--ease-out);
+  }
+  @starting-style {
+    .offline-bar {
+      opacity: 0;
+      transform: translate(-50%, 0.75rem);
+    }
   }
   .offline-bar[data-refused="true"] {
     border-color: var(--color-warn);
@@ -637,8 +648,25 @@ summary,
     border-radius: 1.1rem;
     background: var(--color-surface);
     box-shadow: 0 14px 30px -14px rgb(35 33 29 / 0.45);
+    /*
+     * Rises from the foot of the screen with the first recipe ticked and goes back down with
+     * the last. Transitions, so that ticking and unticking quickly follows instead of
+     * starting over; `display` goes with them (`allow-discrete`).
+     */
+    transition:
+      opacity 200ms var(--ease-out),
+      transform 240ms var(--ease-drawer),
+      display 240ms allow-discrete;
+  }
+  @starting-style {
+    .selection-bar {
+      opacity: 0;
+      transform: translateY(100%);
+    }
   }
   .selection-bar[data-empty="true"] {
+    opacity: 0;
+    transform: translateY(100%);
     display: none;
   }
   @media (width >= 40rem) {
@@ -815,6 +843,13 @@ summary,
     text-align: center;
     white-space: nowrap;
   }
+  /*
+   * An errand done moments ago: the stamp comes down onto the note. Its place and its slant
+   * are `translate` and `rotate`, so the press is `transform` alone and adds to them.
+   */
+  .stamp-pressed {
+    animation: stamp-in 220ms var(--ease-out) both;
+  }
 
   /* A word marked with a highlighter: today on the plan. One stroke over the whole word. */
   .marked {
@@ -982,6 +1017,13 @@ summary,
     justify-content: center;
     border-radius: 999px;
     color: var(--color-muted);
+  }
+  /* The heart swells while the favourite is being saved and settles once it is stored. */
+  .heart > svg {
+    transition: transform 160ms var(--ease-out);
+  }
+  .heart:disabled[data-on="true"] > svg {
+    transform: scale(1.2);
   }
   .heart[data-on="true"],
   .icon-button[data-on="true"] {
@@ -1424,9 +1466,24 @@ summary,
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+/* The market tapped on the map: its card comes up a little from the map's lower edge. */
+.map-card {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 200ms var(--ease-drawer);
+}
+@starting-style {
+  .map-card {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .map-mark {
     transition: none;
+  }
+  .map-card {
+    transition: opacity 160ms ease;
   }
 }
 
@@ -1504,6 +1561,27 @@ summary,
     transform: translateY(2.5rem);
   }
 }
+/* Back down the way it came up (`leaveSheet`, 200ms). */
+@keyframes sheet-down {
+  to {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+}
+.store-view.going {
+  animation: sheet-down 200ms var(--ease-drawer) both;
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
 /* What a fold holds comes out of it: a short fade and a little drop. */
 @keyframes unfold {
   from {
@@ -1566,8 +1644,19 @@ main > * {
   /* Less motion is not none: what comes and goes still fades, it only does not travel. */
   .store-view[open],
   .cook-view[open],
-  details[open] > :not(summary) {
+  details[open] > :not(summary),
+  .stamp-pressed {
     animation: fade-in 160ms ease both;
+  }
+  .store-view.going {
+    animation: fade-out 160ms ease both;
+  }
+  .offline-bar,
+  .selection-bar {
+    transition: opacity 160ms ease;
+  }
+  .heart:disabled[data-on="true"] > svg {
+    transform: none;
   }
   .lift,
   .tickbox > svg path,
