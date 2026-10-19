@@ -34,6 +34,7 @@ is easier than pen and paper.
 | Browser test of the shop without a connection (builds for production)     | `npm run e2e:offline`                           |
 | Redraw the home screen icons from `src/app/icon.svg`                      | `npm run icons:build`                           |
 | The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                     |
+| Smoke test of production, as the test household                           | `npm run e2e:production`                        |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`     |
 | Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                            |
 | Screenshots of every screen, phone, iPad (both ways) and desktop          | `npm run e2e:look`                              |
@@ -88,6 +89,12 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   day or shop; "Nicht gekaufte Einträge"; notes that close once nothing is open. The
   receipt upload is specified in `docs/receipts.md`, its tables are migrated, nothing
   writes them yet.
+- Phase 10 (branch `phase-10-deployment`): production on Vercel for the family
+  (https://familyessensplan.vercel.app, `docs/DEPLOYMENT.md`, `docs/FAMILIE.md`), previews
+  only for the test household, security headers, the invitation as a greeting and a
+  welcome with the household's settings, the hint to put the app on the home screen, the
+  first week of a household, and the way back from a recipe to its list. Cost tracking and
+  a feedback button come later.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -111,9 +118,23 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   table must grant to `authenticated` and `service_role` explicitly and revoke from `anon`.
 - Keys are the new Supabase ones: the publishable key for the browser, the secret key for the
   server only.
-- Hosting on Vercel. Login with email and password, accounts by invite only, sign-up disabled.
+- Hosting on Vercel Hobby, functions in `fra1` next to the database, Fluid compute
+  (`vercel.json`): a function has 300 seconds. A model request gives up after 90 seconds
+  and is retried once only when the service is busy (`sharedClient` in
+  `anthropic-reader.ts`); the supermarket search has one deadline of 240 seconds for itself
+  and its street lookups (`SEARCH_BUDGET_MS`). Setup, variables, rollback and backups are in
+  `docs/DEPLOYMENT.md`.
+- Login with email and password, accounts by invite only, sign-up disabled.
   An account is made in one place only: `acceptInvite`, with the secret key, for someone who
   holds the link of an invitation a member made.
+- A preview deployment works on the real database. It lets only `PREVIEW_ONLY_EMAIL` (the
+  test household) sign in, the proxy signs anyone else out, and invitations are not taken
+  there (`src/lib/preview.ts`), so every invitation link is one of production. Vercel's
+  Standard Protection keeps previews to the team as well.
+- Every response carries security headers (`SECURITY_HEADERS` in `next.config.ts`): no
+  frames, no sniffing, the origin only as referrer (an invitation's secret is in its path),
+  HSTS, and a policy without frames, plugins or foreign form targets. Scripts are not
+  limited by it: the pages need Next.js's inline scripts.
 - The shopping list must work offline in the shop: cached list, queued check-offs.
 - Installable: `app/manifest.ts`, icons drawn from the logo (`scripts/build-icons.ts`: the
   logo as it is, green to the edges for Android's mask and the iPhone), `appleWebApp` in
@@ -290,7 +311,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   more sheets underneath), a list has ruled lines and a margin (`.ruled`) with a tick made by
   a pen (`.tickbox`), what ran out at home is written on a yellow note stuck on with tape
   (`.note`), a meal without a recipe carries a small yellow slip, and today is marked with a
-  highlighter (`.marked`). No handwriting typeface. On real paper only a note's ruled lines
+  highlighter (`.marked`), "Heute" beside it in the green, far enough away for the mark to
+  reach past the name. No handwriting typeface. On real paper only a note's ruled lines
   are printed, faint, as in its PDF.
 - The shopping notes of a week lie next to each other as small notes, a little askew
   (`.tiles`), each with the pictogram of its place on that place's pastel (`PLACE_LOOK`).
@@ -381,8 +403,11 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
 - What moves, moves a little: a card lifts under the finger (`.lift`), a page comes in
   softly, and both are off for whoever asked for less motion. Nothing depends on it. Every
   animation takes one of three curves (`--ease-out`, `--ease-in-out`, `--ease-drawer` in
-  `@theme`) and stays under 300ms, except the Merkzettel's swing and the rubber, which are
-  meant to be seen. A tick on a note is drawn like a pen stroke in 200ms and goes at once
+  `@theme`) and stays under 300ms, except the Merkzettel's swing, the rubber and the way
+  from the welcome into the app, which are meant to be seen. The welcome lifts off on the
+  tap (`.welcome-leaving`: React runs no exit transition for a page Next.js leaves), and
+  the app comes in under it in three parts 60ms apart, header, page and the bar of the
+  sections (the transition type `willkommen`, `:active-view-transition-type`). A tick on a note is drawn like a pen stroke in 200ms and goes at once
   when taken back (a transition on `stroke-dashoffset`, the path's length 1); what a fold
   holds comes out with a short fade and drop (`unfold`); the bars of the week's balance grow
   when a meal is planned (`scaleX`, not the width); the views for the shop and for cooking
@@ -447,8 +472,12 @@ Household
 - A family shares one household, everyone with an account of their own
   (`household_member`, with the name the household calls them by). A member makes an
   invitation on `/einstellungen` (`household_invite`): a link that works once and for seven
-  days, of which only a hash is stored. Whoever opens it gives a name, an e-mail and a
-  password, gets an account and belongs to the household (`acceptInvite`). An account
+  days, of which only a hash is stored. Whoever opens it is greeted ("Hallo!", "Einladung
+  von David", "Du wurdest zur Essensplanung der Stührmanns eingeladen") and gives a name, an
+  e-mail and a password on a sheet of the pad, gets an account and belongs to the household
+  (`acceptInvite`). Then `/willkommen` shows what the household has set, persons, goals,
+  shopping days and supermarkets, "Diese Einstellungen hat David festgelegt", the admin's
+  first name: "So lassen" or "Speichern", and the plan opens. An account
   belongs to one household; someone who has one cannot use an invitation, unless the
   account belongs to none any more: it then joins with its own password.
 - Whoever made a household is its admin (`household_member.role`). The admin removes a
@@ -535,7 +564,13 @@ Week plan
   1 fish meal, at most 2 with poultry and 2 with red meat. The household sets its own on
   `/woche/ziele` (`household.balance_targets`, read with `readTargets`). Every device is shown
   that page once before the plan, remembered in the cookie `ziele-gesehen`: each person
-  should see the goals and be able to change them, but they belong to the household.
+  should see the goals and be able to change them, but they belong to the household. The
+  admin is asked on `/woche/ziele?start=1`; every other member is welcomed on `/willkommen`.
+- A household starts with the app in a week of its own (`household.first_week`, the
+  family's is 19 October 2026, the week it went live). The plan, the shopping notes and
+  "Alle Wochen" go back no further (`weekShown`, `hasWeekBefore`): an older week in the
+  address shows the first one, and the arrow back is off. Null is no limit, as for the
+  test household.
 - Sunday has a third meal, "Kaffee & Kuchen" (`meal` value `coffee`, `mealsOf`). It is
   optional: nothing is suggested on the plan, and choosing for it suggests cakes and desserts.
   Cakes and desserts are never suggested for lunch or dinner.
@@ -592,6 +627,10 @@ Week plan
 - A recipe opened from the week plan or from the favourites leads back there
   (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`); from
   anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
+  Opened from a list, the link back is a step back in the history (`BackToList`,
+  `canStepBack`), so the filter and the place on the page are kept, and each shelf is
+  scrolled sideways as it was (`ListMemory`, `cameBack`). The link opened the list afresh
+  before, unfiltered and at the top.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
   `SlotItem.plannedOn`) and the moment (`planned_at`, `plannedAt`; an extra its
   `created_at`). A meal written again with other servings or another side keeps the day and
@@ -802,7 +841,10 @@ Library
   quick meals, what is tagged for the season, long not cooked, new. They bring up what nobody
   has marked yet (`isMarked`): favourites and what someone wants to cook are on "Favoriten"
   and on no shelf. A shelf shows ten recipes in an order that changes by the day; its "Alle"
-  link lists everything behind it, marked or not. "Entdecken" has no favourites chip
+  link lists everything behind it that is not marked. Marked recipes are on no list of
+  "Entdecken" a filter or a tile makes, and Stöbern does not count them (`toDiscover`); only
+  words typed into the search find them, so that a favourite is found by its name (October
+  2026). "Entdecken" has no favourites chip
   (`/rezepte?favoriten=1` leads to `/favoriten`) and no button to add a recipe: that is
   under Import ("Ohne Foto: Rezept eintippen"). Below the shelves "Stöbern" is a directory (`directory`): every category,
   tag, diet and cookbook as a tile with the number of recipes behind it. A library of up to
@@ -1072,7 +1114,14 @@ Shopping list
   without asking. A swipe to the right buys, to the left removes; a finger held still
   opens the same as a menu. Each decision can be taken back for five seconds from the bar
   at the foot ("Widerrufen"). The view for the shop has its own menu, sheets and bar
-  (`LineActionsHere`): a modal dialog makes everything outside it inert.
+  (`LineActionsHere`): a modal dialog makes everything outside it inert. On a note the
+  actions stand at the end of the line's first row, and an opened line runs the width of
+  the note under them; beside them it was a narrow column on a phone.
+- Outside the installed app, every page carries a hint above its content how to put the
+  app on the home screen (`InstallHintCard`, `installHint`): Safari, known by `navigator.standalone`,
+  is told where Teilen and "Zum Home-Bildschirm" are, Android gets its install prompt, and
+  both say that the installed app asks for the login once more. It goes once used or put
+  away (`installieren-weg` in the device's storage).
 - Nothing is deleted from a note. A removed line, typed or planned, keeps its row
   (`shopping_line_state.status`, `removed_reason`), and what the plan had stays beside what
   was bought (`planned`, `bought_name`, `bought_quantity`, `bought_unit`, `substituted`).
