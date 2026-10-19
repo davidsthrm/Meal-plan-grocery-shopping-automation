@@ -79,6 +79,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   tags' own page, tags changed in place and offered while typing, the wishes sorted by a
   group of tags, a lunch on a working day bought on the errand before, a magazine's
   editions as one stack, and the week as a note for the pinboard.
+- Phase 8 (branch `phase-8-family-sync`): one household proven unable to touch another's
+  data in any table, live updates for everything the family shares, members who leave or
+  are removed, passwords changed and reset, the family's size, the settings by topic with
+  a map of the supermarkets, and bread from the bakery.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -139,7 +143,17 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   forget the kept pages and the waiting ticks of the device.
 - Supabase Realtime tells an open page that the household changed something
   (`LiveRefresh`). A table that should do so is added to the publication `supabase_realtime`
-  in a migration, guarded, because the embedded Postgres of the tests has no such publication.
+  in a migration, guarded, because the embedded Postgres of the tests has no such publication,
+  and to `DAILY_TABLES` or `LIBRARY_TABLES` in `src/lib/live-refresh.ts`:
+  `supabase/tests/realtime.test.ts` holds the two to each other. The plan, the notes and the
+  Merkzettel are read again half a second after a change; recipes, tags, the catalog, the
+  shops and the members, which an import writes by the hundred, after three seconds of
+  quiet and at least every ten seconds while it goes on (`refreshAt`).
+- Passwords are Supabase Auth's. "Passwort ändern" on `/einstellungen` asks for the current
+  one first. "Passwort vergessen?" on the login page (`/passwort-vergessen`) has Supabase
+  send a link to `/auth/bestaetigen`, which signs in, and `/passwort-neu` takes the new
+  password. The answer never says whether an address has an account. The proxy lets those
+  two pages through without a login.
 - Vitest for unit tests, Playwright for a few end-to-end flows.
 - Recipe import uses the Anthropic API, server side only. Model IDs come from
   `ANTHROPIC_EXTRACT_MODEL` and `ANTHROPIC_VERIFY_MODEL`. Never hard-code a model ID.
@@ -189,7 +203,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   (all notes, or with `zettel` one, as a PDF), `/merkzettel` (what ran out at home, as a
   page; the header pulls the same note down over any page), `/einstellungen` with `/einstellungen/vorrat` (what is usually at home), `/import`
   (`?d=<date>&m=<meal>` when it was opened from a meal planned as text), and outside the
-  login `/einladung/[token]` (joining a household).
+  login `/einladung/[token]` (joining a household), `/passwort-vergessen` and
+  `/auth/bestaetigen` (the link of its e-mail). `/passwort-neu` and `/kein-haushalt` need a
+  login but no household.
 - `LiveRefresh` in the layout listens for changes to the plan, the lists, the note, the goals
   and to recipes, and calls `router.refresh()`: the page is read again from the server, under
   the same rules as on a reload. It also does so when a page comes back into view. The pages
@@ -231,6 +247,12 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   and seed recipes; `supabase/seed.sql` is generated from it.
 - `supabase/tests/`: applies migrations and seed to an embedded Postgres and tests schema
   constraints and RLS. A new table must have `household_id`, RLS and a policy, or these fail.
+  `isolation.test.ts` has a member of a second household try to read, change, delete, add
+  and move rows of the first in every table; a new table needs a row in its fixture, or it
+  fails.
+- Every photo path a row names lies in its household's folder of the bucket
+  (`private.in_household_folder`): the server signs and removes whatever path a row says,
+  with the secret key, and a member can write those rows.
 - `tests/fixtures/sample-week/`: the handwritten plan, list and recipes, transcribed, plus
   `inputs.json` with what else the list depends on (free entries, at-home ticks, what is
   bought later, which recipes are still pending).
@@ -363,7 +385,15 @@ Household
   invitation on `/einstellungen` (`household_invite`): a link that works once and for seven
   days, of which only a hash is stored. Whoever opens it gives a name, an e-mail and a
   password, gets an account and belongs to the household (`acceptInvite`). An account
-  belongs to one household; someone who has one cannot use an invitation.
+  belongs to one household; someone who has one cannot use an invitation, unless the
+  account belongs to none any more: it then joins with its own password.
+- Whoever made a household is its admin (`household_member.role`). The admin removes a
+  member, any other member can leave, both after being asked (`?entfernen=<id>`,
+  `?verlassen=1`; `remove_household_member`, `leave_household`, which check who asks; the
+  admin cannot leave). Only the membership goes: the account stays and sees nothing
+  (`/kein-haushalt`). Leaving signs out and forgets what the device kept for the shop.
+- How many the household cooks for (`household.default_servings`, 1 to 12) is asked on the
+  first visit next to the goals and set on the family card.
 - The household's name (`household.name`, "Stührmann", set in the family card of
   `/einstellungen`) is spoken of as the family in two places, read from the data: the empty
   shopping notes ("Bei den Stührmanns …") and the invitation ("Die Stührmanns laden dich
@@ -746,7 +776,14 @@ Shopping list
   the nearest five left out Aldi and Lidl in Laupheim. Chosen ones stand first, then the
   chains and the rest by name (`src/server/supermarket-search.ts`,
   `pickSupermarkets`). They are kept as shops (`shop.found_near`, `logo_url`, `address`).
-  None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app. While
+  None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app.
+  The card shows five: the chosen ones, then the biggest chains (`offeredSupermarkets`);
+  the others are under "Weitere anzeigen". All found stand on a small map (`minimap`,
+  `SupermarketMap`): tiles of OpenStreetMap laid out as pictures, without a script, with
+  its attribution. A market's place comes from the search (`shop.lat`, `lon`), or from its
+  street when the household types one ("Angaben", looked up with Nominatim). "Angaben" also
+  takes the kinds of grocery bought there (`shop.aisle_group_ids`, `kindsText`): shown on
+  its tile, and deciding nothing about the notes. While
   the search runs, which can take up to a minute, the card says so (`SearchPending`). A tap
   on a market makes it one of the household's or no longer one, the first one chosen being
   the main market; the star next to a chosen one makes it the main one
@@ -788,8 +825,10 @@ Shopping list
   most three days before the meal and it keeps until then: the weekend and the start of the
   week, also though Monday is a supermarket day. Meat is a note for the butcher on its butcher
   day (see above). A kind of grocery can also come from the bakery (`fresh_place` "bakery",
-  e.g. "Brot & Backwaren"): it is then a note for the bakery on the day of its meal, for a
-  Sunday on the Saturday, like bread named for a cold supper. A household that buys everything in one go, like the one of the handwritten
+  e.g. "Brot & Backwaren", the default since October 2026): it is then a note for the bakery
+  on the day of its meal, for a Sunday on the Saturday, like bread named for a cold supper.
+  What of such a kind keeps longer than five days or has no shelf life is packed (toast,
+  wraps, crispbread) and stays at the supermarket (`BAKERY_FRESH_DAYS`). A household that buys everything in one go, like the one of the handwritten
   list, says so with `onDemand: []`.
 - An errand does not buy for what was planned after it. A week planned on Sunday gets
   nothing from Saturday's market; its vegetables for Monday are on Monday's note.
@@ -1128,8 +1167,12 @@ Import
 - Cheese and antipasti come from the market in this household, but the catalog keeps cheese
   with the dairy and antipasti with the jars. The settings choose per kind of grocery, not
   per ingredient, so they stay on the supermarket's notes unless each line is moved.
-- A member cannot be removed from a household in the app, and there is no way to change a
-  password or to recover a forgotten one. Both are done in the Supabase dashboard.
+- "Passwort vergessen" sends its e-mail through Supabase, whose own mail server writes only
+  to the project's team and twice an hour. The family needs a mail server of its own set in
+  the dashboard (SMTP). The link of Supabase's default template works only in the browser
+  that asked for it; with the template set to `token_hash` it works on any device.
+- The map tiles of the settings are fetched from tile.openstreetmap.org by the browser, as
+  a visitor of OpenStreetMap: they show the household's area, nothing of its data.
 - Inviting someone needs no e-mail to be sent: the link is passed on by hand. Supabase's own
   mail server only writes to the project's team, so mail from the app would need another one.
 - Other families: a household of its own cannot be opened from the app yet. Before that,
