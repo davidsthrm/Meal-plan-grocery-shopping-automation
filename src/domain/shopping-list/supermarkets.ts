@@ -3,9 +3,10 @@ import type { AisleView, ViewLine } from "./present";
 
 /**
  * The household's supermarkets: one main one and any others it goes to now and then. A note
- * for the supermarket buys everything at the main one. A line the household moves to
- * another one for a week ("Kaufe ich bei Rewe") stands in a section of that supermarket on
- * the same note, and a supermarket without such a line has no section.
+ * for the supermarket buys everything at the main one, except the kinds of grocery the
+ * household says it buys at another one (Tiefkühl at Aldi) and a line it moves to another
+ * one for a week ("Kaufe ich bei Rewe"). Those stand in a section of that supermarket on the
+ * same note, and a supermarket without such a line has no section.
  */
 
 /** The household's supermarkets, the main one first. Empty until it has named one. */
@@ -72,21 +73,48 @@ export function offeredSupermarkets(
 const ADDRESS_LENGTH = 120;
 
 /**
- * What the household typed about one of its markets: its street, null for none, and the
- * kinds of grocery it buys there, only those the household has, in their order.
+ * What the household typed about one of its markets: its street, null for none, the kinds of
+ * grocery it buys there, only those the household has, in their order, and where the street
+ * lies when it was picked from the suggestions (null when it was typed, or its place does
+ * not belong to the street any more).
  */
 export function readShopDetails(
-  typed: { address: string; kinds: readonly string[] },
+  typed: {
+    address: string;
+    kinds: readonly string[];
+    lat?: string;
+    lon?: string;
+    /** The street the place was picked with. */
+    picked?: string;
+  },
   aisleGroups: readonly Pick<AisleGroup, "id" | "sortOrder">[],
-): { address: string | null; aisleGroupIds: string[] } {
-  const address = typed.address.trim().replace(/\s+/g, " ").slice(0, ADDRESS_LENGTH);
+): {
+  address: string | null;
+  aisleGroupIds: string[];
+  position: { lat: number; lon: number } | null;
+} {
+  const tidy = (text: string) => text.trim().replace(/\s+/g, " ").slice(0, ADDRESS_LENGTH);
+  const address = tidy(typed.address);
   const wanted = new Set(typed.kinds);
+  const lat = Number(typed.lat);
+  const lon = Number(typed.lon);
+  const placed =
+    address !== "" &&
+    typed.picked !== undefined &&
+    tidy(typed.picked) === address &&
+    typed.lat !== "" &&
+    typed.lon !== "" &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lon) <= 180;
   return {
     address: address === "" ? null : address,
     aisleGroupIds: [...aisleGroups]
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .filter((group) => wanted.has(group.id))
       .map((group) => group.id),
+    position: placed ? { lat, lon } : null,
   };
 }
 
@@ -112,9 +140,30 @@ export interface ShopSection {
   groups: AisleView["groups"];
 }
 
-/** The supermarket a line of a note is bought at: the one chosen for it, or the main one. */
+/**
+ * The supermarket a kind of grocery is bought at: the first of the household's supermarkets
+ * that names it among what is bought there, the main one first, or else the main one. Null
+ * while the household has named none.
+ */
+export function supermarketForKind(
+  aisleGroupId: string | null,
+  favourites: readonly Pick<Shop, "id" | "aisleGroupIds">[],
+): string | null {
+  const named = aisleGroupId
+    ? favourites.find((shop) => shop.aisleGroupIds?.includes(aisleGroupId))
+    : undefined;
+  return (named ?? favourites[0])?.id ?? null;
+}
+
+/**
+ * The supermarket a line of a note is bought at: the one chosen for it this week, or the one
+ * its kind of grocery is bought at (`supermarketForKind`).
+ */
 export function supermarketOf(view: ViewLine, favourites: readonly Shop[]): Shop | null {
-  return favourites.find((shop) => shop.id === view.chosenShopId) ?? favourites[0] ?? null;
+  const id =
+    favourites.find((shop) => shop.id === view.chosenShopId)?.id ??
+    supermarketForKind(view.line.aisleGroupId, favourites);
+  return favourites.find((shop) => shop.id === id) ?? null;
 }
 
 /**

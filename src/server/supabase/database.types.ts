@@ -1136,6 +1136,7 @@ export type Database = {
       }
       restock_item: {
         Row: {
+          aisle_group_id: string | null
           created_at: string
           created_by: string | null
           fresh_place: string | null
@@ -1144,6 +1145,7 @@ export type Database = {
           text: string
         }
         Insert: {
+          aisle_group_id?: string | null
           created_at?: string
           created_by?: string | null
           fresh_place?: string | null
@@ -1152,6 +1154,7 @@ export type Database = {
           text: string
         }
         Update: {
+          aisle_group_id?: string | null
           created_at?: string
           created_by?: string | null
           fresh_place?: string | null

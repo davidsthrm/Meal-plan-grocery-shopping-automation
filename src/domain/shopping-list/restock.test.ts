@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { createCatalogIndex } from "../catalog";
-import { freshPlaceOf, readRestock, restockTrip } from "./restock";
+import {
+  aisleGroupOf,
+  freshPlaceOf,
+  readRestock,
+  restockSupermarket,
+  restockTrip,
+} from "./restock";
 import { testCatalog, testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS, withDrugstore } from "./trips";
 
@@ -98,5 +104,33 @@ describe("restockTrip", () => {
     // Food still goes where it did.
     expect(at("Milch", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
     expect(at("Karotten", SATURDAY)).toEqual({ date: SATURDAY, place: "market" });
+  });
+});
+
+describe("the supermarket of an entry", () => {
+  const aldi = { id: "aldi", name: "Aldi", aisleGroupIds: ["tk"] };
+  const rewe = { id: "rewe", name: "Rewe", aisleGroupIds: ["molkerei"] };
+  const monday = { date: NEXT_MONDAY, place: "supermarket" as const };
+
+  it("knows an entry's kind of grocery from the catalog, and none for what it does not know", () => {
+    expect(aisleGroupOf("Sahne", testIndex)).toBe("molkerei");
+    expect(aisleGroupOf("Glühbirne", testIndex)).toBeNull();
+  });
+
+  it("is the supermarket the household buys its kind at", () => {
+    const item = { aisleGroupId: aisleGroupOf("Sahne", testIndex) };
+    expect(restockSupermarket(item, monday, [aldi, rewe])?.name).toBe("Rewe");
+  });
+
+  it("is the main one for any other kind, and for an entry of no known kind", () => {
+    expect(restockSupermarket({ aisleGroupId: "obst" }, monday, [aldi, rewe])?.name).toBe("Aldi");
+    expect(restockSupermarket({ aisleGroupId: null }, monday, [aldi, rewe])?.name).toBe("Aldi");
+  });
+
+  it("is none for another errand, or while the household has named no supermarket", () => {
+    const market = { date: SATURDAY, place: "market" as const };
+    expect(restockSupermarket({ aisleGroupId: "molkerei" }, market, [aldi, rewe])).toBeNull();
+    expect(restockSupermarket({ aisleGroupId: "molkerei" }, null, [aldi, rewe])).toBeNull();
+    expect(restockSupermarket({ aisleGroupId: "molkerei" }, monday, [])).toBeNull();
   });
 });

@@ -1,7 +1,8 @@
-import type { CatalogIndex } from "../catalog";
+import type { CatalogIndex, Shop } from "../catalog";
 import { addDays, isoWeekday, type IsoDate } from "../dates";
 import { isDrugstoreItem, nextDrugstoreTrip } from "./drugstore";
 import { parseFreeEntry } from "./free-entry";
+import { supermarketForKind } from "./supermarkets";
 import {
   freshPlaceFor,
   nextTrip,
@@ -23,6 +24,8 @@ export interface RestockItem {
   text: string;
   /** Where it is bought fresh, if not at the supermarket. */
   freshPlace: FreshPlace | null;
+  /** Its kind of grocery, which decides the supermarket. Null where the catalog knows none. */
+  aisleGroupId: string | null;
 }
 
 const MAX_LENGTH = 120;
@@ -42,6 +45,26 @@ export function freshPlaceOf(text: string, index: CatalogIndex): FreshPlace | nu
   if (!ingredient) return null;
   const fresh = index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null;
   return freshPlaceFor(fresh, ingredient.shelfLifeDays ?? null);
+}
+
+/** An entry's kind of grocery, going by the catalog. Looked up once, when it is written. */
+export function aisleGroupOf(text: string, index: CatalogIndex): string | null {
+  return parseFreeEntry(text, index).ingredient?.aisleGroupId ?? null;
+}
+
+/**
+ * The supermarket an entry is bought at when it goes to a supermarket note: the one the
+ * household buys its kind of grocery at, or the main one (`supermarketForKind`). Null for
+ * any other errand, and while the household has named no supermarket.
+ */
+export function restockSupermarket<T extends Pick<Shop, "id" | "aisleGroupIds">>(
+  item: Pick<RestockItem, "aisleGroupId">,
+  trip: ShoppingTrip | null,
+  favourites: readonly T[],
+): T | null {
+  if (trip?.place !== "supermarket") return null;
+  const id = supermarketForKind(item.aisleGroupId, favourites);
+  return favourites.find((shop) => shop.id === id) ?? null;
 }
 
 /**

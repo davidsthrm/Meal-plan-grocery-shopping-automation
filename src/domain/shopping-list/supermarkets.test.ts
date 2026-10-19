@@ -10,6 +10,7 @@ import {
   offeredSupermarkets,
   readShopDetails,
   sectionsByShop,
+  supermarketForKind,
   withAdded,
   withMain,
   without,
@@ -106,6 +107,41 @@ describe("sectionsByShop", () => {
     expect(sections({ "sahne@main": { shopId: "rewe" } }, [ALDI])).toEqual([
       ["Aldi", ["2x Karotten", "Milch", "200 ml Sahne"]],
     ]);
+  });
+
+  it("buys a kind of grocery at the supermarket the household buys it at", () => {
+    const rewe = { ...REWE, aisleGroupIds: ["molkerei"] };
+    expect(sections({}, [ALDI, rewe])).toEqual([
+      ["Aldi", ["2x Karotten"]],
+      ["Rewe", ["Milch", "200 ml Sahne"]],
+    ]);
+  });
+
+  it("keeps a kind at the main supermarket when the main one names it too", () => {
+    const aldi = { ...ALDI, aisleGroupIds: ["molkerei"] };
+    const rewe = { ...REWE, aisleGroupIds: ["molkerei", "obst"] };
+    expect(sections({}, [aldi, rewe])).toEqual([
+      ["Aldi", ["Milch", "200 ml Sahne"]],
+      ["Rewe", ["2x Karotten"]],
+    ]);
+  });
+
+  it("lets a line chosen for another supermarket win over its kind", () => {
+    const rewe = { ...REWE, aisleGroupIds: ["molkerei"] };
+    expect(sections({ "sahne@main": { shopId: "aldi" } }, [ALDI, rewe])).toEqual([
+      ["Aldi", ["2x Karotten", "200 ml Sahne"]],
+      ["Rewe", ["Milch"]],
+    ]);
+  });
+
+  it("does not follow the kinds of a supermarket that is no favourite", () => {
+    const ec = { ...shop("ec", null), aisleGroupIds: ["molkerei"] };
+    expect(
+      sections(
+        {},
+        [ALDI, REWE, ec].filter((each) => each.supermarketRank),
+      ),
+    ).toEqual([["Aldi", ["2x Karotten", "Milch", "200 ml Sahne"]]]);
   });
 
   it("is one section without a name while the household has named no supermarket", () => {
@@ -230,10 +266,47 @@ describe("what the household says about a market", () => {
     ).toEqual(["obst", "eier"]);
   });
 
+  it("keeps where a street picked from the suggestions lies", () => {
+    const picked = {
+      address: "Biberacher Straße 12",
+      kinds: [],
+      lat: "48.22",
+      lon: "9.88",
+      picked: "Biberacher Straße 12",
+    };
+    expect(readShopDetails(picked, kinds).position).toEqual({ lat: 48.22, lon: 9.88 });
+    // Changed by hand after picking, the place is no longer the street's.
+    expect(readShopDetails({ ...picked, address: "Ulmer Straße 3" }, kinds).position).toBeNull();
+    expect(readShopDetails({ ...picked, lat: "", lon: "" }, kinds).position).toBeNull();
+    expect(readShopDetails({ ...picked, lat: "123" }, kinds).position).toBeNull();
+    expect(readShopDetails({ address: "Biberacher Straße 12", kinds: [] }, kinds).position).toBe(
+      null,
+    );
+  });
+
   it("names the kinds bought there, and nothing for a kind deleted since", () => {
     expect(kindsText({ aisleGroupIds: ["eier", "geloescht", "obst"] }, kinds)).toBe(
       "Obst & Gemüse · Eier",
     );
     expect(kindsText({}, kinds)).toBe("");
+  });
+});
+
+describe("supermarketForKind", () => {
+  const aldi = { id: "aldi", aisleGroupIds: ["tk"] };
+  const rewe = { id: "rewe", aisleGroupIds: ["obst", "tk"] };
+
+  it("is the first supermarket that buys the kind, the main one first", () => {
+    expect(supermarketForKind("tk", [aldi, rewe])).toBe("aldi");
+    expect(supermarketForKind("obst", [aldi, rewe])).toBe("rewe");
+  });
+
+  it("is the main one for a kind no supermarket names, or without a kind", () => {
+    expect(supermarketForKind("brot", [aldi, rewe])).toBe("aldi");
+    expect(supermarketForKind(null, [rewe, aldi])).toBe("rewe");
+  });
+
+  it("is null while the household has no supermarket", () => {
+    expect(supermarketForKind("tk", [])).toBeNull();
   });
 });
