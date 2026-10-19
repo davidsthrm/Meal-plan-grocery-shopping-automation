@@ -1782,6 +1782,15 @@ summary,
   }
 }
 
+/* The shape of a page on its way: after a moment, so that a quick page does not flash. */
+.page-loading {
+  animation: fade-in 200ms ease 150ms both;
+}
+.loading-bar {
+  border-radius: 0.5rem;
+  background: rgb(35 33 29 / 0.06);
+}
+
 /* A page comes in softly. Whoever asked for less motion gets none. */
 @keyframes page-in {
   from {

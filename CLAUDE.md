@@ -231,6 +231,11 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   field (`LiveSearch`) fetches it once per visit and searches it with the same pure
   `searchRecipes` the server uses, so a list unfolds with the first letter and changes with
   every further one. Sending the search still goes to the server and works without scripts.
+- Every main section has a `loading.tsx` (`PageLoading`: its name and the pale shape of a
+  sheet or of cards, faded in after 150ms). Without one a dynamic route is not prefetched,
+  and a tap on a tab waited half a second for the whole page with nothing to show for it.
+  A change of the search part of the address and the redirect after a form do not show
+  it; a full load streams it first, so it carries no status role.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request and cuts a longer answer off without saying
