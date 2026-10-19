@@ -62,6 +62,18 @@ export function readEmail(text: string): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
+/**
+ * How many a household cooks for: the persons a meal is planned for unless a recipe counts
+ * something else. From one to twelve, as the forms offer it.
+ */
+export const FAMILY_SIZES = Array.from({ length: 12 }, (_, at) => at + 1);
+
+/** A family size as a form sends it, or null for anything that is none. */
+export function readFamilySize(value: unknown): number | null {
+  const size = Number(typeof value === "string" ? value.trim() : NaN);
+  return FAMILY_SIZES.includes(size) ? size : null;
+}
+
 /** A household has one admin, whoever made it. Everyone else is a member. */
 export type Role = "admin" | "member";
 

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isIsoDate, mondayOf } from "@/domain/dates";
+import { readFamilySize } from "@/domain/family";
 import type { Meal, NewSlot, SlotContent } from "@/domain/plan";
 import { byDayAndMeal, namedMeal, slotKey } from "@/domain/plan";
 import { plannedServings } from "@/domain/recipe";
@@ -451,9 +452,11 @@ export async function saveTargets(form: FormData): Promise<void> {
   if (days === null) redirect("/woche/ziele?start=1&fehler=tage");
   const household = await requireHousehold();
   const db = await createSessionClient();
+  // The first visit also asks for how many the household cooks.
+  const size = readFamilySize(form.get("personen"));
   const stored = await db
     .from("household")
-    .update({ balance_targets: targets })
+    .update({ balance_targets: targets, ...(size === null ? {} : { default_servings: size }) })
     .eq("id", household.id);
   if (stored.error) throw new Error(`store targets: ${stored.error.message}`);
   if (days) await storeShoppingDays(db, household.id, days);

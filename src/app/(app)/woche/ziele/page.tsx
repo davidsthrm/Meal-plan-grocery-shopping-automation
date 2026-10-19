@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { FamilySizeField } from "@/components/family-size-field";
 import { ShoppingDaysFields } from "@/components/shopping-days-fields";
 import { SubmitButton } from "@/components/submit-button";
 import { BALANCE_GROUPS, MEALS_PER_WEEK } from "@/domain/recommend/balance";
@@ -45,6 +46,19 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
       )}
 
       <form action={saveTargets} className="mt-6">
+        {/* A household that opens the app for the first time also says for how many it cooks. */}
+        {first && (
+          <section className="mb-8" aria-labelledby="personen">
+            <h2 id="personen" className="text-xl font-bold tracking-tight">
+              Für wie viele kocht ihr?
+            </h2>
+            <p className="mt-1 mb-3 text-muted">
+              So viele Portionen plant jede Mahlzeit, außer ein Rezept zählt etwas anderes, wie ein
+              Blech oder eine Springform. Das lässt sich später in den Einstellungen ändern.
+            </p>
+            <FamilySizeField size={household.defaultServings} />
+          </section>
+        )}
         <div className="card divide-y divide-line">
           {BALANCE_GROUPS.map((group) => (
             <fieldset

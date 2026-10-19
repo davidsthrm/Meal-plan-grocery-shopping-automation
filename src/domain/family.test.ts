@@ -7,6 +7,7 @@ import {
   initialOf,
   inviteIsOpen,
   readEmail,
+  readFamilySize,
   readJoin,
   readNewPassword,
   readName,
@@ -158,5 +159,21 @@ describe("readEmail", () => {
     expect(readEmail("lena")).toBeNull();
     expect(readEmail("lena@example")).toBeNull();
     expect(readEmail("")).toBeNull();
+  });
+});
+
+describe("readFamilySize", () => {
+  it("takes one to twelve persons", () => {
+    expect(readFamilySize("1")).toBe(1);
+    expect(readFamilySize(" 4 ")).toBe(4);
+    expect(readFamilySize("12")).toBe(12);
+  });
+
+  it("is null for nothing, none, too many and parts of a person", () => {
+    expect(readFamilySize(null)).toBeNull();
+    expect(readFamilySize("")).toBeNull();
+    expect(readFamilySize("0")).toBeNull();
+    expect(readFamilySize("13")).toBeNull();
+    expect(readFamilySize("2.5")).toBeNull();
   });
 });
