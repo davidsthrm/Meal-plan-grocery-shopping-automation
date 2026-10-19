@@ -24,6 +24,9 @@ import { LIBRARY_CHANGED } from "./live-search";
  * missed a message. A page that comes back into view, back online, or back to Realtime
  * reads itself again as well.
  */
+/** How often a read that waits for a form looks again. */
+const BUSY_RETRY_MS = 300;
+
 export function LiveRefresh() {
   const router = useRouter();
 
@@ -43,7 +46,14 @@ export function LiveRefresh() {
       searchStale = false;
       router.refresh();
     };
+    // A form of this page still on its way: reading the page now could draw it as it was
+    // before, after the form's own answer. The read waits for the form.
+    const busy = () => document.querySelector('[aria-busy="true"]') !== null;
     const read = () => {
+      if (busy()) {
+        timer = setTimeout(read, BUSY_RETRY_MS);
+        return;
+      }
       timer = undefined;
       pace = null;
       refresh();
@@ -65,6 +75,7 @@ export function LiveRefresh() {
     };
     const seen = () => {
       if (document.visibilityState !== "visible" || quiet() || !navigator.onLine) return;
+      if (busy()) return;
       refresh();
     };
     // Every button of the app is a form. A tap moves a waiting read behind itself.
