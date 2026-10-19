@@ -42,6 +42,24 @@ export function planningWeek(today: IsoDate): IsoDate {
   return isoWeekday(today) >= 6 ? addDays(monday, 7) : monday;
 }
 
+/**
+ * The week a page shows: the one asked for in its address, else `opening`, and never one
+ * before the household's first week, the week it started with the app. Null is no limit.
+ */
+export function weekShown(
+  asked: string | undefined,
+  opening: IsoDate,
+  first: IsoDate | null,
+): IsoDate {
+  const week = asked && isIsoDate(asked) ? mondayOf(asked) : opening;
+  return first !== null && week < first ? first : week;
+}
+
+/** Whether there is a week before this one to go back to. */
+export function hasWeekBefore(week: IsoDate, first: IsoDate | null): boolean {
+  return first === null || week > first;
+}
+
 /** True for a string that is a real calendar date in ISO form. */
 export function isIsoDate(text: string): text is IsoDate {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return false;

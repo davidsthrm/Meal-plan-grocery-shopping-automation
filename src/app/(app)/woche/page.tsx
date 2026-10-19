@@ -18,13 +18,14 @@ import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
   dayAndMonth,
-  isIsoDate,
   mondayOf,
   weekDates,
   weekdayLong,
   weekdayShort,
   weekRange,
   type IsoDate,
+  hasWeekBefore,
+  weekShown,
 } from "@/domain/dates";
 import {
   BY_KIND,
@@ -105,8 +106,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
   const thisWeek = openingWeek(now, runningSlots);
-  const asked = one(params.w);
-  const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
+  const week = weekShown(one(params.w), thisWeek, household.firstWeek);
   // The meal someone asked a suggestion for, and how often they asked for another one.
   const askedFor = one(params.frage) ?? "";
   const draw = Math.max(0, Math.floor(Number(one(params.v)) || 0));
@@ -254,9 +254,16 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const weekNav = (
     <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <span className="capsule">
-        <Link href={weekLink(addDays(week, -7))} aria-label="Vorige Woche">
-          <ArrowIcon back />
-        </Link>
+        {/* Not before the week the household started with the app. */}
+        {hasWeekBefore(week, household.firstWeek) ? (
+          <Link href={weekLink(addDays(week, -7))} aria-label="Vorige Woche">
+            <ArrowIcon back />
+          </Link>
+        ) : (
+          <a aria-disabled="true" aria-label="Vorige Woche" className="opacity-30">
+            <ArrowIcon back />
+          </a>
+        )}
         {week !== thisWeek && <Link href={weekLink(thisWeek)}>Aktuelle</Link>}
         <Link href={weekLink(addDays(week, 7))} aria-label="Nächste Woche">
           <ArrowIcon />

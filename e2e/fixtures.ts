@@ -607,7 +607,10 @@ export async function planAsExtra(title: string, week: string): Promise<void> {
  */
 export async function resetHousehold(): Promise<void> {
   const household = await testHousehold();
-  const cleared = await db.from("household").update({ shopping_days: null }).eq("id", household);
+  const cleared = await db
+    .from("household")
+    .update({ shopping_days: null, first_week: null })
+    .eq("id", household);
   if (cleared.error) throw new Error(`reset shopping days: ${cleared.error.message}`);
   await db.from("household_invite").delete().eq("household_id", household);
   const members = check(
@@ -621,6 +624,15 @@ export async function resetHousehold(): Promise<void> {
     if (!data.user.email?.startsWith("e2e-gast-")) continue;
     await db.auth.admin.deleteUser(member.user_id);
   }
+}
+
+/** Lets the test household start with the app in this week, as a household that went live. */
+export async function startHouseholdOn(week: string): Promise<void> {
+  const set = await db
+    .from("household")
+    .update({ first_week: week })
+    .eq("id", await testHousehold());
+  if (set.error) throw new Error(`set first week: ${set.error.message}`);
 }
 
 /**

@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { isIsoDate, type IsoDate } from "@/domain/dates";
 import { DEFAULT_TARGETS, readTargets, type BalanceTargets } from "@/domain/recommend/balance";
 import {
   DEFAULT_DRUGSTORE_WEEKDAY,
@@ -28,6 +29,11 @@ export interface Household {
    */
   postalCode: string | null;
   placeName: string | null;
+  /**
+   * The week the household started with the app (a Monday): the plan, the shopping notes and
+   * the list of all weeks go back no further. Null for no limit.
+   */
+  firstWeek: IsoDate | null;
   userId: string;
 }
 
@@ -45,7 +51,7 @@ export async function requireHousehold(): Promise<Household> {
   const { data, error } = await supabase
     .from("household")
     .select(
-      "id, name, default_servings, balance_targets, shopping_days, drugstore_weekday, postal_code, place_name",
+      "id, name, default_servings, balance_targets, shopping_days, drugstore_weekday, postal_code, place_name, first_week",
     )
     .limit(1)
     .maybeSingle();
@@ -62,6 +68,7 @@ export async function requireHousehold(): Promise<Household> {
     targets: readTargets(data.balance_targets) ?? DEFAULT_TARGETS,
     postalCode: data.postal_code,
     placeName: data.place_name,
+    firstWeek: data.first_week && isIsoDate(data.first_week) ? data.first_week : null,
     userId,
   };
 }

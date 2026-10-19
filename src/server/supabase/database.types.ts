@@ -55,6 +55,7 @@ export type Database = {
           created_at: string
           default_servings: number
           drugstore_weekday: number | null
+          first_week: string | null
           id: string
           model_budget_cents: number | null
           name: string
@@ -68,6 +69,7 @@ export type Database = {
           created_at?: string
           default_servings?: number
           drugstore_weekday?: number | null
+          first_week?: string | null
           id?: string
           model_budget_cents?: number | null
           name: string
@@ -81,6 +83,7 @@ export type Database = {
           created_at?: string
           default_servings?: number
           drugstore_weekday?: number | null
+          first_week?: string | null
           id?: string
           model_budget_cents?: number | null
           name?: string

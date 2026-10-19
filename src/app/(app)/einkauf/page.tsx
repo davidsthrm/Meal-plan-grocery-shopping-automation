@@ -8,11 +8,11 @@ import { SubmitButton } from "@/components/submit-button";
 import type { Shop } from "@/domain/catalog";
 import {
   addDays,
-  isIsoDate,
-  mondayOf,
   planningWeek,
   weekRange,
   type IsoDate,
+  hasWeekBefore,
+  weekShown,
 } from "@/domain/dates";
 import { familyName } from "@/domain/family";
 import { groupAtHome, type AtHomeGroup } from "@/domain/shopping-list/at-home";
@@ -47,9 +47,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const household = await requireHousehold();
   const now = today();
   const moment = momentNow();
-  const asked = one(params.w);
   const thisWeek = planningWeek(now);
-  const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
+  const week = weekShown(one(params.w), thisWeek, household.firstWeek);
   const db = await createSessionClient();
   const [{ notes, atHome, index, members, supermarkets, alsoOn, readAt, choices, history }, noted] =
     await Promise.all([loadShoppingNotes(db, household, week), loadRestock(db, household, now)]);
@@ -126,9 +125,16 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         {/* The week as one control, as on the plan; the plan itself a word next to it. */}
         <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="capsule">
-            <Link href={`/einkauf?w=${addDays(week, -7)}`}>
-              <span aria-hidden>←</span> Vorige
-            </Link>
+            {/* Not before the week the household started with the app. */}
+            {hasWeekBefore(week, household.firstWeek) ? (
+              <Link href={`/einkauf?w=${addDays(week, -7)}`}>
+                <span aria-hidden>←</span> Vorige
+              </Link>
+            ) : (
+              <a aria-disabled="true" className="opacity-30">
+                <span aria-hidden>←</span> Vorige
+              </a>
+            )}
             {week !== thisWeek && <Link href={`/einkauf?w=${thisWeek}`}>Aktuelle</Link>}
             <Link href={`/einkauf?w=${addDays(week, 7)}`}>
               Nächste <span aria-hidden>→</span>

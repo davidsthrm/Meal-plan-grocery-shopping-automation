@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasWeekBefore,
+  weekShown,
   addDays,
   dayAndMonth,
   daysBetween,
@@ -94,5 +96,27 @@ describe("dates", () => {
 
   it("rejects anything that is not an ISO date", () => {
     expect(() => daysBetween("12.10.2026", "2026-10-18")).toThrow(/not an ISO date/);
+  });
+});
+
+describe("the weeks a household can look at", () => {
+  const first = "2026-10-19";
+
+  it("shows the week asked for, by any of its days, or the opening week", () => {
+    expect(weekShown("2026-11-04", "2026-10-26", first)).toBe("2026-11-02");
+    expect(weekShown(undefined, "2026-10-26", first)).toBe("2026-10-26");
+    expect(weekShown("kein Datum", "2026-10-26", first)).toBe("2026-10-26");
+  });
+
+  it("goes back no further than the week the household started with", () => {
+    expect(weekShown("2026-10-12", "2026-10-26", first)).toBe(first);
+    expect(weekShown("2026-10-21", "2026-10-26", first)).toBe(first);
+    expect(hasWeekBefore("2026-10-26", first)).toBe(true);
+    expect(hasWeekBefore(first, first)).toBe(false);
+  });
+
+  it("has no limit for a household without a first week", () => {
+    expect(weekShown("2025-01-08", "2026-10-26", null)).toBe("2025-01-06");
+    expect(hasWeekBefore("2025-01-06", null)).toBe(true);
   });
 });

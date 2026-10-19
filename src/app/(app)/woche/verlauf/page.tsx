@@ -43,13 +43,20 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
   const opened = one(params.w);
   const cameFrom = opened && isIsoDate(opened) ? mondayOf(opened) : current;
   const back = Math.min(MOST, Math.max(STEP, Math.floor(Number(one(params.n)) || STEP)));
-  const from = addDays(current, -7 * back);
+  // Never before the week the household started with the app.
+  const reach = addDays(current, -7 * back);
+  const first = household.firstWeek;
+  const from = first !== null && reach < first ? first : reach;
 
   const db = await createSessionClient();
   const [library, weeks, older] = await Promise.all([
     loadLibrary(db),
     loadWeeks(db, from, addDays(current, 7 * AHEAD)),
-    db.from("week_plan").select("id", { count: "exact", head: true }).lt("week_start", from),
+    db
+      .from("week_plan")
+      .select("id", { count: "exact", head: true })
+      .lt("week_start", from)
+      .gte("week_start", first ?? "0001-01-01"),
   ]);
   const recipeOf = new Map(library.recipes.map((recipe) => [recipe.id, recipe]));
   const months = weeksByMonth(withCurrentWeek(weeks, current));
