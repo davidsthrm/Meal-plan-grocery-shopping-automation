@@ -22,6 +22,7 @@ import {
 import { loadIngredientNames, must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { readOrigin } from "@/lib/origin";
+import { BackToList } from "@/components/list-return";
 import { MEAL_NAME } from "@/lib/plan-text";
 import { today } from "@/lib/today";
 import { loadLastCooked, loadPlannedAt } from "@/server/planning/week";
@@ -128,9 +129,9 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   return (
     // Wider on an iPad, where ingredients and steps stand side by side.
     <article className="mx-auto max-w-3xl tablet:max-w-5xl">
-      <Link href={back.href} className="link text-sm">
+      <BackToList href={back.href} className="link text-sm">
         ← {back.label}
-      </Link>
+      </BackToList>
       <div className="mt-3 flex items-start gap-3.5">
         <RecipeBadge
           recipe={{
