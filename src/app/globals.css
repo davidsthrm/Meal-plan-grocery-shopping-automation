@@ -1565,8 +1565,27 @@ summary,
     flex: none;
     align-items: center;
   }
+  /*
+   * On a note the actions stand at the end of the line's first row, beside its text; what an
+   * opened line holds runs underneath them, the whole width of the note. Beside them it was
+   * a narrow column on a phone, its fields and buttons one under the other (October 2026).
+   */
   .tick-line .row-actions {
-    margin-top: -0.1rem;
+    position: absolute;
+    top: -0.1rem;
+    right: 0;
+  }
+  .tick-line summary {
+    padding-right: calc(3 * 2.75rem);
+  }
+  .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
+    padding-right: calc(2 * 2.75rem);
+  }
+  @media print {
+    .tick-line summary,
+    .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
+      padding-right: 0;
+    }
   }
 
   /* Bought on another note now: said quietly where it was, "Eier → Di". */
