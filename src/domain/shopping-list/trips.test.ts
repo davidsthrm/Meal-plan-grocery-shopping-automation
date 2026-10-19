@@ -289,6 +289,19 @@ describe("assignTrip", () => {
     });
   });
 
+  it("leaves packed bread at the supermarket when the bakery sells its kind", () => {
+    const toast = { fresh: "bakery" as const, shelfLifeDays: 10 };
+    const crispbread = { fresh: "bakery" as const, shelfLifeDays: null };
+    expect(assignTrip(need(WEDNESDAY, toast), trips)).toEqual(shop(MONDAY));
+    expect(assignTrip(need(WEDNESDAY, crispbread), trips)).toEqual(shop(MONDAY));
+    // Named for a cold supper, it comes from the bakery all the same.
+    expect(assignTrip(need(WEDNESDAY, { ...toast, at: "bakery" }), trips)).toEqual({
+      date: WEDNESDAY,
+      place: "bakery",
+      trip: "main",
+    });
+  });
+
   it("goes on the Saturday for a Sunday: the shops are closed then", () => {
     const meat = { fresh: "butcher" as const, shelfLifeDays: 3 };
     expect(assignTrip(need(SUNDAY, meat), trips)).toEqual(butcher(SATURDAY));

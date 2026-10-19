@@ -142,13 +142,28 @@ export async function storeFoundSupermarkets(
   db: Db,
   householdId: string,
   postalCode: string,
-  found: readonly { name: string; address: string | null; logoUrl: string | null }[],
+  found: readonly {
+    name: string;
+    address: string | null;
+    logoUrl: string | null;
+    position: { lat: number; lon: number };
+  }[],
 ): Promise<void> {
-  const shops = must(await db.from("shop").select("id, name, kind, sort_order"), "load shops");
+  const shops = must(
+    await db.from("shop").select("id, name, kind, sort_order, address"),
+    "load shops",
+  );
   let order = Math.max(0, ...shops.map((shop) => shop.sort_order));
   for (const shop of found) {
     const known = shops.find((each) => each.name.toLowerCase() === shop.name.toLowerCase());
-    const details = { logo_url: shop.logoUrl, address: shop.address, found_near: postalCode };
+    const details = {
+      logo_url: shop.logoUrl,
+      // A street the household typed is kept: it knows its market better than the map.
+      address: known?.address ?? shop.address,
+      found_near: postalCode,
+      lat: shop.position.lat,
+      lon: shop.position.lon,
+    };
     // A butcher of the same name is no supermarket: it is left as it is.
     if (known && known.kind !== "supermarket") continue;
     const stored = known
@@ -163,4 +178,39 @@ export async function storeFoundSupermarkets(
         });
     if (stored.error) throw new Error(`store supermarket: ${stored.error.message}`);
   }
+}
+
+/** Stores for how many the household cooks: the persons a meal is planned for. */
+export async function storeFamilySize(db: Db, householdId: string, size: number): Promise<void> {
+  const stored = await db
+    .from("household")
+    .update({ default_servings: size })
+    .eq("id", householdId);
+  if (stored.error) throw new Error(`store family size: ${stored.error.message}`);
+}
+
+/**
+ * Stores what the household says about one of its shops: its street, where it stands on the
+ * map (null: where it was, if the street could not be found), and the kinds of
+ * grocery bought there. Row level security keeps this to the household's own shops.
+ */
+export async function storeShopDetails(
+  db: Db,
+  shopId: string,
+  details: {
+    address: string | null;
+    position: { lat: number; lon: number } | null;
+    aisleGroupIds: readonly string[];
+  },
+): Promise<void> {
+  const stored = await db
+    .from("shop")
+    .update({
+      address: details.address,
+      aisle_group_ids: [...details.aisleGroupIds],
+      // A street that cannot be found leaves the mark where it was.
+      ...(details.position ? { lat: details.position.lat, lon: details.position.lon } : {}),
+    })
+    .eq("id", shopId);
+  if (stored.error) throw new Error(`store shop: ${stored.error.message}`);
 }

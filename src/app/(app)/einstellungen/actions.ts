@@ -3,26 +3,35 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { readName } from "@/domain/family";
-import { withAdded, withMain, without } from "@/domain/shopping-list/supermarkets";
+import { readFamilySize, readName, readNewPassword } from "@/domain/family";
+import { readShopDetails, withAdded, withMain, without } from "@/domain/shopping-list/supermarkets";
 import { readPostalCode } from "@/domain/supermarket-search";
 import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
 import { requireHousehold, type Household } from "@/server/auth";
-import { createInvite, renameSelf, withdrawInvite } from "@/server/family";
-import { loadSupermarkets } from "@/server/catalog";
+import {
+  createInvite,
+  leaveHousehold,
+  removeMember,
+  renameSelf,
+  withdrawInvite,
+} from "@/server/family";
+import { changePassword } from "@/server/password";
+import { loadCatalogIndex, loadSupermarkets } from "@/server/catalog";
 import {
   renameHousehold,
   storeDrugstoreWeekday,
+  storeFamilySize,
   storeFoundSupermarkets,
   storeFreshPlaces,
   storePantryStaple,
   storePostalCode,
+  storeShopDetails,
   storeShoppingDays,
   storeSupermarkets,
   supermarketNamed,
 } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
-import { searchSupermarkets } from "@/server/supermarket-search";
+import { findStreet, searchSupermarkets } from "@/server/supermarket-search";
 
 /** What the household sets once. Each action is the target of a plain form on the page. */
 
@@ -65,6 +74,14 @@ export async function saveHouseholdName(form: FormData): Promise<void> {
   back("familie");
 }
 
+/** Stores for how many the household cooks. Meals planned before keep their persons. */
+export async function saveFamilySize(form: FormData): Promise<void> {
+  const size = readFamilySize(form.get("personen"));
+  const household = await requireHousehold();
+  if (size !== null) await storeFamilySize(await createSessionClient(), household.id, size);
+  back("familie", { ok: "personen" });
+}
+
 /** Sets how the signed-in member is called in the household. */
 export async function saveName(form: FormData): Promise<void> {
   const household = await requireHousehold();
@@ -84,6 +101,48 @@ export async function withdrawInvitation(form: FormData): Promise<void> {
   await requireHousehold();
   await withdrawInvite(await createSessionClient(), id);
   back("familie");
+}
+
+/**
+ * The admin removes a member. The account stays; it no longer sees anything of the
+ * household. The database checks that the one asking is the admin.
+ */
+export async function removeFamilyMember(form: FormData): Promise<void> {
+  const id = z.guid().parse(form.get("id"));
+  await requireHousehold();
+  await removeMember(await createSessionClient(), id);
+  back("familie");
+}
+
+/**
+ * The signed-in member leaves the household and is signed out: the account has nothing to
+ * show any more. The form is marked as a sign-out, so the device forgets the notes kept
+ * for the shop and the ticks not sent yet.
+ */
+export async function leaveFamily(): Promise<void> {
+  await requireHousehold();
+  const db = await createSessionClient();
+  await leaveHousehold(db);
+  await db.auth.signOut();
+  redirect("/login?verlassen=1");
+}
+
+export interface PasswordChange {
+  error: string | null;
+  done: boolean;
+}
+
+/** Changes the signed-in member's password, once the one they have now is right. */
+export async function changeOwnPassword(
+  _previous: PasswordChange,
+  form: FormData,
+): Promise<PasswordChange> {
+  await requireHousehold();
+  const next = String(form.get("password") ?? "");
+  const wrong = readNewPassword(next, String(form.get("repeated") ?? ""));
+  if (wrong) return { error: wrong, done: false };
+  const failed = await changePassword(String(form.get("current") ?? ""), next);
+  return { error: failed, done: failed === null };
 }
 
 /** Back to the page of what is usually at home, with the search that was open. */
@@ -191,4 +250,29 @@ export async function addSupermarket(form: FormData): Promise<void> {
   if (!id) back("supermaerkte", { fehler: "supermarkt" });
   await storeSupermarkets(db, withAdded(await rankedSupermarkets(), id));
   back("supermaerkte");
+}
+
+/**
+ * Stores the street of one of the household's markets and the kinds of grocery bought
+ * there. A street that changed is looked up on the map, so that the market stands where it
+ * is.
+ */
+export async function saveSupermarketDetails(form: FormData): Promise<void> {
+  const id = z.guid().parse(form.get("id"));
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const index = await loadCatalogIndex(db);
+  const shop = index.shopById.get(id);
+  if (!shop) back("supermaerkte");
+  const details = readShopDetails(
+    { address: String(form.get("address") ?? ""), kinds: form.getAll("kinds").map(String) },
+    index.catalog.aisleGroups,
+  );
+  const moved = details.address !== null && details.address !== (shop.address ?? null);
+  const position =
+    moved && household.postalCode
+      ? await findStreet(details.address as string, household.postalCode)
+      : null;
+  await storeShopDetails(db, id, { ...details, position });
+  back("supermaerkte", { ok: `markt-${id}` });
 }

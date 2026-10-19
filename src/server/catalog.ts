@@ -97,7 +97,7 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
     db
       .from("shop")
       .select(
-        "id, name, short_label, sort_order, is_default, kind, supermarket_rank, logo_url, address, found_near",
+        "id, name, short_label, sort_order, is_default, kind, supermarket_rank, logo_url, address, found_near, lat, lon, aisle_group_ids",
       )
       .order("sort_order"),
     db.from("shop_aisle_order").select("shop_id, aisle_group_id, sort_order"),
@@ -134,6 +134,8 @@ export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
       logoUrl: shop.logo_url,
       address: shop.address,
       foundNear: shop.found_near,
+      position: shop.lat !== null && shop.lon !== null ? { lat: shop.lat, lon: shop.lon } : null,
+      aisleGroupIds: shop.aisle_group_ids,
       aisleSortOverrides: Object.fromEntries(
         overrideRows
           .filter((row) => row.shop_id === shop.id)

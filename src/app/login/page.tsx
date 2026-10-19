@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LogoMark } from "@/components/logo";
 import { ForgetSignedOut } from "@/components/service-worker";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Anmelden" };
 
-export default function LoginPage() {
+export default async function LoginPage(props: PageProps<"/login">) {
+  const params = await props.searchParams;
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6">
       <LogoMark className="mb-4 h-14 w-14" />
@@ -13,10 +15,18 @@ export default function LoginPage() {
         Essens<span className="text-accent">plan</span>
       </h1>
       <p className="mt-1 mb-8 text-muted">Wochenplan und Einkaufsliste</p>
+      {params.verlassen === "1" && (
+        <p role="status" className="mb-4 rounded-lg bg-accent-soft px-3 py-2">
+          Du hast den Haushalt verlassen und bist abgemeldet.
+        </p>
+      )}
       <LoginForm />
       <p className="mt-6 text-sm text-muted">
-        Zugang gibt es nur auf Einladung. Passwort vergessen? Frag David.
+        <Link href="/passwort-vergessen" className="link">
+          Passwort vergessen?
+        </Link>
       </p>
+      <p className="mt-2 text-sm text-muted">Zugang gibt es nur auf Einladung.</p>
       <ForgetSignedOut />
     </main>
   );

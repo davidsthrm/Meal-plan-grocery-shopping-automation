@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  canLeave,
+  canRemove,
   familyName,
   firstName,
   initialOf,
   inviteIsOpen,
+  readEmail,
+  readFamilySize,
   readJoin,
+  readNewPassword,
   readName,
   salutation,
 } from "./family";
@@ -107,5 +112,68 @@ describe("salutation", () => {
     expect(salutation(22)).toBe("Guten Abend");
     expect(salutation(23)).toBe("Hallo");
     expect(salutation(3)).toBe("Hallo");
+  });
+});
+
+describe("canLeave", () => {
+  it("lets a member leave, but not the admin", () => {
+    expect(canLeave("member")).toBe(true);
+    expect(canLeave("admin")).toBe(false);
+  });
+});
+
+describe("canRemove", () => {
+  it("lets the admin remove everyone but themselves", () => {
+    expect(canRemove("admin", { isSelf: false })).toBe(true);
+    expect(canRemove("admin", { isSelf: true })).toBe(false);
+  });
+
+  it("lets nobody else remove anyone", () => {
+    expect(canRemove("member", { isSelf: false })).toBe(false);
+    expect(canRemove("member", { isSelf: true })).toBe(false);
+  });
+});
+
+describe("readNewPassword", () => {
+  it("takes a password of eight characters or more, typed the same twice", () => {
+    expect(readNewPassword("geheim123", "geheim123")).toBeNull();
+  });
+
+  it("says when it is too short", () => {
+    expect(readNewPassword("kurz", "kurz")).toBe("Das neue Passwort braucht mindestens 8 Zeichen.");
+  });
+
+  it("says when the two differ", () => {
+    expect(readNewPassword("geheim123", "geheim124")).toBe(
+      "Die beiden Passwörter sind nicht gleich.",
+    );
+  });
+});
+
+describe("readEmail", () => {
+  it("takes an address without stray spaces and capitals", () => {
+    expect(readEmail("  Lena@Example.org ")).toBe("lena@example.org");
+  });
+
+  it("is null for anything that is no address", () => {
+    expect(readEmail("lena")).toBeNull();
+    expect(readEmail("lena@example")).toBeNull();
+    expect(readEmail("")).toBeNull();
+  });
+});
+
+describe("readFamilySize", () => {
+  it("takes one to twelve persons", () => {
+    expect(readFamilySize("1")).toBe(1);
+    expect(readFamilySize(" 4 ")).toBe(4);
+    expect(readFamilySize("12")).toBe(12);
+  });
+
+  it("is null for nothing, none, too many and parts of a person", () => {
+    expect(readFamilySize(null)).toBeNull();
+    expect(readFamilySize("")).toBeNull();
+    expect(readFamilySize("0")).toBeNull();
+    expect(readFamilySize("13")).toBeNull();
+    expect(readFamilySize("2.5")).toBeNull();
   });
 });

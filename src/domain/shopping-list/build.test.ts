@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
+import type { Ingredient } from "../catalog";
 import type { Recipe, RecipeIngredient, Servings } from "../recipe";
 import { buildShoppingList, moveKey, originsOf, partKey, toDefaultUnit } from "./build";
-import { line, testIndex } from "./test-catalog";
+import { createCatalogIndex } from "../catalog";
+import { line, testCatalog, testIndex } from "./test-catalog";
 import {
   butcherWeekdays,
   DEFAULT_SHOPPING_DAYS,
@@ -765,6 +767,37 @@ describe("several errands", () => {
     // The butcher's Saturday does not reach Thursday.
     expect(on(lines, `${THURSDAY}.butcher`)).toEqual(["leberkaese@main@metzger"]);
     expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["milch@main"]);
+  });
+
+  it("puts the bread of a meal on the bakery's note when the bakery sells bread", () => {
+    // "Brot & Backwaren" from the bakery; toast keeps for ten days and is packed.
+    const fromTheBakery = createCatalogIndex({
+      ...testCatalog,
+      aisleGroups: testCatalog.aisleGroups.map((group) =>
+        group.id === "brot" ? { ...group, freshPlace: "bakery" as const } : group,
+      ),
+      ingredients: [
+        ...testCatalog.ingredients.map((each) =>
+          each.id === "brot" ? { ...each, shelfLifeDays: 3 } : each,
+        ),
+        {
+          ...(testCatalog.ingredients.find((each) => each.id === "brot") as Ingredient),
+          id: "toast",
+          name: "Toast",
+          shelfLifeDays: 10,
+        },
+      ],
+    });
+    const soup = recipe("suppe", [line("brot", 1, "Stück"), line("toast", 1, "Stück")]);
+    const lines = buildShoppingList({
+      index: fromTheBakery,
+      recipes: [soup],
+      slots: [slot("2026-10-14", "suppe")],
+      trips,
+      manualEntries: [],
+    });
+    expect(on(lines, `2026-10-14.bakery`)).toEqual(["brot@main"]);
+    expect(on(lines, `${MONDAY}.supermarket`)).toEqual(["toast@main"]);
   });
 
   it("keeps a typed line on the note it was written on", () => {

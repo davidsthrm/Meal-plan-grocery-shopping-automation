@@ -1,26 +1,32 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { CopyLink } from "@/components/copy-link";
+import { FamilySizeField } from "@/components/family-size-field";
+import { ArrowIcon } from "@/components/icons";
 import { DrugstoreDayField, ShoppingDaysFields } from "@/components/shopping-days-fields";
 import { SubmitButton } from "@/components/submit-button";
-import { INVITE_DAYS } from "@/domain/family";
+import { canLeave, canRemove, INVITE_DAYS } from "@/domain/family";
 import { BALANCE_GROUPS } from "@/domain/recommend/balance";
+import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import { PLACE_NAME } from "@/lib/list-text";
 import { GROUP_NAME, targetText } from "@/lib/plan-text";
-import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import { requireHousehold } from "@/server/auth";
-import { loadCatalogIndex, must } from "@/server/catalog";
+import { loadCatalogIndex } from "@/server/catalog";
 import { loadInvites, loadMembers } from "@/server/family";
+import { requestOrigin } from "@/server/request-origin";
 import { createSessionClient } from "@/server/supabase/server";
 import {
   inviteMember,
+  leaveFamily,
+  removeFamilyMember,
+  saveFamilySize,
   saveFreshPlaces,
   saveHouseholdName,
   saveName,
   saveShoppingDays,
   withdrawInvitation,
 } from "./actions";
+import { PasswordForm } from "./password-form";
 import { PantryTile, SupermarketsCard } from "./shop-settings";
 
 export const metadata: Metadata = { title: "Einstellungen" };
@@ -28,32 +34,51 @@ export const metadata: Metadata = { title: "Einstellungen" };
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 const until = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long" });
 
+/** The three parts of the page, to jump to on a phone, where the page is long. */
+const PARTS = [
+  { id: "haushalt", name: "Familie & Konto" },
+  { id: "wochenplan", name: "Wochenplan" },
+  { id: "einkaufen", name: "Einkaufen" },
+] as const;
+
+function Saved({ when }: { when: boolean }) {
+  return when ? (
+    <span role="status" className="text-sm text-accent">
+      Gespeichert
+    </span>
+  ) : null;
+}
+
 /**
- * What a household sets once and that then holds for every week: what a week should
- * contain, when it shops and where, what is usually at home, and who belongs to it.
+ * What a household sets once and that then holds for every week, in three parts: who
+ * belongs to it and the signed-in member's own account; what a week should contain and what
+ * is usually at home; when it shops, what comes from where, and its supermarkets.
  */
 export default async function SettingsPage(props: PageProps<"/einstellungen">) {
   const params = await props.searchParams;
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const [groups, members, invites, address, index] = await Promise.all([
-    db.from("aisle_group").select("id, name, fresh_place").order("sort_order"),
+  const [members, invites, origin, index] = await Promise.all([
     loadMembers(db, household),
     loadInvites(db),
-    headers(),
+    requestOrigin(),
     loadCatalogIndex(db),
   ]);
   const supermarkets = favouriteSupermarkets(index.catalog.shops);
-  const { ingredients } = index.catalog;
-  const aisles = must(groups, "load aisle groups");
+  const { ingredients, aisleGroups } = index.catalog;
+  const aisles = [...aisleGroups].sort((a, b) => a.sortOrder - b.sortOrder);
   const said = one(params.ok);
   const token = one(params.einladung);
-  const host = address.get("x-forwarded-host") ?? address.get("host");
-  const origin = `${address.get("x-forwarded-proto") ?? "http"}://${host}`;
   const self = members.find((member) => member.isSelf);
+  const role = self?.role ?? "member";
+  // Asked before it is done: whom to remove, or whether to leave.
+  const removing = members.find(
+    (member) => member.userId === one(params.entfernen) && canRemove(role, member),
+  );
+  const leaving = one(params.verlassen) === "1" && canLeave(role);
   const fresh = (place: "market" | "butcher" | "bakery") =>
     aisles
-      .filter((group) => group.fresh_place === place)
+      .filter((group) => group.freshPlace === place)
       .map((group) => group.name)
       .join(", ") || "nichts";
 
@@ -61,125 +86,104 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
     <div className="mx-auto max-w-5xl">
       <h1 className="title">Einstellungen</h1>
       <p className="mt-1 text-muted">Haushalt „{household.name}“</p>
+      <nav aria-label="Teile der Einstellungen" className="mt-4 flex flex-wrap gap-2 lg:hidden">
+        {PARTS.map((part) => (
+          <a key={part.id} href={`#${part.id}`} className="chip">
+            {part.name}
+          </a>
+        ))}
+      </nav>
 
-      {/* One column on a phone; on a large screen the week and the shops on the left, the
-          family on the right. */}
-      <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
-        <div className="grid gap-4">
-          <section className="card p-4" aria-labelledby="ziele">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 id="ziele" className="text-lg font-bold tracking-tight">
-                Ziele der Woche
-              </h2>
-              <Link href="/woche/ziele" className="link">
-                Ändern
-              </Link>
-            </div>
-            <ul className="mt-1 text-muted">
-              {BALANCE_GROUPS.map((group) => {
-                const aim = targetText({ group, count: 0, ...household.targets[group] });
-                return (
-                  <li key={group}>
-                    {GROUP_NAME[group]}: {aim === "" ? "egal" : aim}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          <section className="card scroll-mt-4 p-4" aria-labelledby="einkaufstage">
-            <h2 id="einkaufstage" className="text-lg font-bold tracking-tight">
-              Einkaufstage
-            </h2>
-            <p className="mt-1 mb-3 text-sm text-muted">
-              Jeder Einkauf bekommt seinen eigenen Zettel. Zum Metzger geht es an seinen Tagen, und
-              nur wenn ein Essen Fleisch braucht. Der Bäcker hat keinen festen Tag: was eine
-              Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit, für
-              einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
-              bereit und wird von Hand geschrieben.
-            </p>
-            {one(params.fehler) === "tage" && (
-              <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
-                Es braucht mindestens einen Tag im Supermarkt: dort gibt es alles, was Markt und
-                Metzger nicht haben.
-              </p>
-            )}
-            <form action={saveShoppingDays}>
-              <ShoppingDaysFields days={household.shoppingDays} />
-              <div className="mt-3">
-                <DrugstoreDayField days={household.shoppingDays} />
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
-                {said === "tage" && (
-                  <span role="status" className="text-sm text-accent">
-                    Gespeichert
-                  </span>
-                )}
-              </div>
-            </form>
-          </section>
-
-          <SupermarketsCard
-            postalCode={household.postalCode}
-            placeName={household.placeName}
-            found={index.catalog.shops.filter(
-              (shop) => household.postalCode !== null && shop.foundNear === household.postalCode,
-            )}
-            chosen={supermarkets}
-            problem={one(params.fehler) ?? null}
-            reason={one(params.grund)?.slice(0, 300) ?? null}
-          />
-        </div>
-
-        <div className="grid gap-4">
+      {/* Familie & Konto: the household on the left, the member's own account on the right. */}
+      <section aria-labelledby="haushalt" className="mt-8 scroll-mt-4">
+        <h2 id="haushalt" className="eyebrow">
+          Familie & Konto
+        </h2>
+        <div className="mt-2 grid items-start gap-4 lg:grid-cols-2">
           <section className="card scroll-mt-4 p-4" aria-labelledby="familie">
-            <h2 id="familie" className="text-lg font-bold tracking-tight">
+            <h3 id="familie" className="text-lg font-bold tracking-tight">
               Familie
-            </h2>
-            <form action={saveHouseholdName} className="mt-3">
-              <label htmlFor="haushalt" className="label">
-                Name des Haushalts
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="haushalt"
-                  name="household"
-                  defaultValue={household.name}
-                  maxLength={40}
-                  required
-                  className="field flex-1"
-                  placeholder="z. B. Stührmann"
-                />
+            </h3>
+            <div className="mt-3 grid gap-3">
+              <form action={saveHouseholdName}>
+                <label htmlFor="haushalt-name" className="label">
+                  Name des Haushalts
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="haushalt-name"
+                    name="household"
+                    defaultValue={household.name}
+                    maxLength={40}
+                    required
+                    className="field min-w-0 flex-1"
+                    placeholder="z. B. Stührmann"
+                  />
+                  <SubmitButton>Speichern</SubmitButton>
+                </div>
+              </form>
+              <form action={saveFamilySize} className="flex items-end gap-2">
+                <FamilySizeField size={household.defaultServings} />
                 <SubmitButton>Speichern</SubmitButton>
-              </div>
-            </form>
+              </form>
+            </div>
             <p className="mt-1 text-sm text-muted">
+              Jede Mahlzeit wird für {household.defaultServings}{" "}
+              {household.defaultServings === 1 ? "Person" : "Personen"} geplant, außer ein Rezept
+              zählt etwas anderes. <Saved when={said === "personen"} />
+            </p>
+
+            <h4 className="mt-5 font-semibold">Wer dazugehört</h4>
+            <p className="text-sm text-muted">
               Alle sehen denselben Plan, dieselben Zettel und Favoriten, jeder mit eigenem Konto.
             </p>
-            <ul className="mt-3 divide-y divide-line">
+            <ul className="mt-2 divide-y divide-line">
               {members.map((member) => (
                 <li key={member.userId} className="flex items-center justify-between gap-3 py-2">
-                  <span className="font-semibold">{member.name ?? "Ohne Namen"}</span>
-                  {member.isSelf && <span className="text-sm text-muted">das bist du</span>}
+                  <span>
+                    <span className="font-semibold">{member.name ?? "Ohne Namen"}</span>
+                    <span className="block text-sm text-muted">
+                      {[
+                        member.isSelf ? "das bist du" : null,
+                        member.role === "admin" ? "verwaltet den Haushalt" : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                  {canRemove(role, member) && (
+                    <Link
+                      href={`/einstellungen?entfernen=${member.userId}#familie`}
+                      className="link inline-flex min-h-10 items-center text-sm"
+                    >
+                      Entfernen
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
-            <form action={saveName} className="mt-2 flex items-end gap-2">
-              <label className="flex-1">
-                <span className="label">Dein Name</span>
-                <input
-                  name="name"
-                  defaultValue={self?.name ?? ""}
-                  maxLength={40}
-                  className="field"
-                  placeholder="Dein Name"
-                />
-              </label>
-              <SubmitButton>Name speichern</SubmitButton>
-            </form>
+            {removing && (
+              <div role="alertdialog" className="mt-2 rounded-lg bg-warn-soft p-3">
+                <p className="font-semibold text-warn">
+                  {removing.name ?? "Dieses Mitglied"} aus dem Haushalt entfernen?
+                </p>
+                <p className="mt-1 text-sm">
+                  Das Konto bleibt bestehen, sieht aber nichts mehr von Plan, Zetteln und Rezepten.
+                  Mit einer neuen Einladung kommt es wieder dazu.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <form action={removeFamilyMember}>
+                    <input type="hidden" name="id" value={removing.userId} />
+                    <SubmitButton className="btn btn-danger">Entfernen</SubmitButton>
+                  </form>
+                  <Link href="/einstellungen#familie" className="link">
+                    Abbrechen
+                  </Link>
+                </div>
+              </div>
+            )}
 
-            <h3 className="mt-5 font-semibold">Jemanden einladen</h3>
+            <h4 className="mt-5 font-semibold">Jemanden einladen</h4>
             <p className="text-sm text-muted">
               Ein Link, der einmal gilt und {INVITE_DAYS} Tage lang. Wer ihn öffnet, legt sich ein
               Konto an und gehört dazu.
@@ -211,62 +215,185 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </ul>
             )}
           </section>
-          <section className="card scroll-mt-4 p-4" aria-labelledby="frisch">
-            <h2 id="frisch" className="text-lg font-bold tracking-tight">
-              Frisch vom Markt, vom Metzger und vom Bäcker
-            </h2>
-            <p className="mt-1 text-muted">
-              Markt: {fresh("market")}
-              <br />
-              Metzger: {fresh("butcher")}
-              <br />
-              Bäcker: {fresh("bakery")}
-            </p>
-            {said === "frisch" && (
-              <p role="status" className="mt-1 text-sm text-accent">
-                Gespeichert
-              </p>
-            )}
-            <details className="mt-2" open={said === "frisch"}>
-              <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
-              <p className="text-sm text-muted">
-                Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens drei
-                Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger gehört, kommt
-                auf seinen Zettel am Metzgertag vor der Mahlzeit. Was dem Bäcker gehört, bekommt
-                einen Zettel für den Tag der Mahlzeit, für den Sonntag am Samstag. Alles andere
-                kommt aus dem Supermarkt.
-              </p>
-              <form action={saveFreshPlaces} className="mt-3">
-                <ul className="divide-y divide-line">
-                  {aisles.map((group) => (
-                    <li key={group.id} className="flex items-center justify-between gap-3 py-1.5">
-                      <label htmlFor={`frisch-${group.id}`}>{group.name}</label>
-                      <select
-                        id={`frisch-${group.id}`}
-                        name={`frisch-${group.id}`}
-                        defaultValue={group.fresh_place ?? ""}
-                        className="field w-40"
-                      >
-                        <option value="">{PLACE_NAME.supermarket}</option>
-                        <option value="market">{PLACE_NAME.market}</option>
-                        <option value="butcher">{PLACE_NAME.butcher}</option>
-                        <option value="bakery">{PLACE_NAME.bakery}</option>
-                      </select>
-                    </li>
-                  ))}
-                </ul>
-                <SubmitButton className="btn btn-primary mt-3">Speichern</SubmitButton>
-              </form>
-            </details>
-          </section>
 
+          <section className="card scroll-mt-4 p-4" aria-labelledby="konto">
+            <h3 id="konto" className="text-lg font-bold tracking-tight">
+              Dein Konto
+            </h3>
+            <form action={saveName} className="mt-3 flex items-end gap-2">
+              <label className="min-w-0 flex-1">
+                <span className="label">Dein Name</span>
+                <input
+                  name="name"
+                  defaultValue={self?.name ?? ""}
+                  maxLength={40}
+                  className="field"
+                  placeholder="Dein Name"
+                />
+              </label>
+              <SubmitButton>Speichern</SubmitButton>
+            </form>
+
+            <h4 className="mt-5 font-semibold">Passwort ändern</h4>
+            <PasswordForm />
+
+            {canLeave(role) && !leaving && (
+              <Link href="/einstellungen?verlassen=1#konto" className="link mt-5 inline-block">
+                Haushalt verlassen
+              </Link>
+            )}
+            {leaving && (
+              <div role="alertdialog" className="mt-5 rounded-lg bg-warn-soft p-3">
+                <p className="font-semibold text-warn">Den Haushalt verlassen?</p>
+                <p className="mt-1 text-sm">
+                  Du siehst danach nichts mehr von Plan, Zetteln und Rezepten und wirst abgemeldet.
+                  Mit einer neuen Einladung kommst du wieder dazu.
+                </p>
+                <div className="mt-3 flex items-center gap-3">
+                  <form action={leaveFamily} data-sign-out>
+                    <SubmitButton className="btn btn-danger">Verlassen</SubmitButton>
+                  </form>
+                  <Link href="/einstellungen#konto" className="link">
+                    Abbrechen
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
+
+      {/* Wochenplan: two tiles that lead to pages of their own. */}
+      <section aria-labelledby="wochenplan" className="mt-10 scroll-mt-4">
+        <h2 id="wochenplan" className="eyebrow">
+          Wochenplan
+        </h2>
+        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+          <Link
+            id="ziele"
+            href="/woche/ziele"
+            className="card lift flex scroll-mt-4 items-center justify-between gap-4 p-4"
+            aria-label="Ziele der Woche ansehen und ändern"
+          >
+            <span className="min-w-0">
+              <span className="block text-lg font-bold tracking-tight">Ziele der Woche</span>
+              <span className="mt-1 block text-sm text-muted">
+                {BALANCE_GROUPS.map((group) => {
+                  const aim = targetText({ group, count: 0, ...household.targets[group] });
+                  return `${GROUP_NAME[group]}: ${aim === "" ? "egal" : aim}`;
+                }).join(" · ")}
+              </span>
+            </span>
+            <span className="text-accent">
+              <ArrowIcon />
+            </span>
+          </Link>
           <PantryTile
             staples={ingredients
               .filter((ingredient) => ingredient.isPantryStaple)
               .sort((a, b) => a.name.localeCompare(b.name, "de"))}
           />
         </div>
-      </div>
+      </section>
+
+      {/* Einkaufen: when and what comes from where on the left, the supermarkets and their
+          map on the right. */}
+      <section aria-labelledby="einkaufen" className="mt-10 scroll-mt-4">
+        <h2 id="einkaufen" className="eyebrow">
+          Einkaufen
+        </h2>
+        <div className="mt-2 grid items-start gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
+            <section className="card scroll-mt-4 p-4" aria-labelledby="einkaufstage">
+              <h3 id="einkaufstage" className="text-lg font-bold tracking-tight">
+                Einkaufstage
+              </h3>
+              <p className="mt-1 mb-3 text-sm text-muted">
+                Jeder Einkauf bekommt seinen eigenen Zettel. Zum Metzger geht es an seinen Tagen,
+                und nur wenn ein Essen Fleisch braucht. Der Bäcker hat keinen festen Tag: was eine
+                Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit, für
+                einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
+                bereit und wird von Hand geschrieben.
+              </p>
+              {one(params.fehler) === "tage" && (
+                <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
+                  Es braucht mindestens einen Tag im Supermarkt: dort gibt es alles, was Markt und
+                  Metzger nicht haben.
+                </p>
+              )}
+              <form action={saveShoppingDays}>
+                <ShoppingDaysFields days={household.shoppingDays} />
+                <div className="mt-3">
+                  <DrugstoreDayField days={household.shoppingDays} />
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
+                  <Saved when={said === "tage"} />
+                </div>
+              </form>
+            </section>
+
+            <section className="card scroll-mt-4 p-4" aria-labelledby="frisch">
+              <h3 id="frisch" className="text-lg font-bold tracking-tight">
+                Frisch vom Markt, vom Metzger und vom Bäcker
+              </h3>
+              <p className="mt-1 text-muted">
+                Markt: {fresh("market")}
+                <br />
+                Metzger: {fresh("butcher")}
+                <br />
+                Bäcker: {fresh("bakery")}
+              </p>
+              <Saved when={said === "frisch"} />
+              <details className="mt-2" open={said === "frisch"}>
+                <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
+                <p className="text-sm text-muted">
+                  Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens
+                  drei Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger
+                  gehört, kommt auf seinen Zettel am Metzgertag vor der Mahlzeit. Was dem Bäcker
+                  gehört, bekommt einen Zettel für den Tag der Mahlzeit, für den Sonntag am Samstag;
+                  was sich länger als fünf Tage hält, wie Toast oder Knäckebrot, bleibt im
+                  Supermarkt. Alles andere kommt aus dem Supermarkt.
+                </p>
+                <form action={saveFreshPlaces} className="mt-3">
+                  <ul className="divide-y divide-line">
+                    {aisles.map((group) => (
+                      <li key={group.id} className="flex items-center justify-between gap-3 py-1.5">
+                        <label htmlFor={`frisch-${group.id}`}>{group.name}</label>
+                        <select
+                          id={`frisch-${group.id}`}
+                          name={`frisch-${group.id}`}
+                          defaultValue={group.freshPlace ?? ""}
+                          className="field w-40"
+                        >
+                          <option value="">{PLACE_NAME.supermarket}</option>
+                          <option value="market">{PLACE_NAME.market}</option>
+                          <option value="butcher">{PLACE_NAME.butcher}</option>
+                          <option value="bakery">{PLACE_NAME.bakery}</option>
+                        </select>
+                      </li>
+                    ))}
+                  </ul>
+                  <SubmitButton className="btn btn-primary mt-3">Speichern</SubmitButton>
+                </form>
+              </details>
+            </section>
+          </div>
+
+          <SupermarketsCard
+            postalCode={household.postalCode}
+            placeName={household.placeName}
+            found={index.catalog.shops.filter(
+              (shop) => household.postalCode !== null && shop.foundNear === household.postalCode,
+            )}
+            chosen={supermarkets}
+            problem={one(params.fehler) ?? null}
+            reason={one(params.grund)?.slice(0, 300) ?? null}
+            aisleGroups={aisles}
+            saved={said?.startsWith("markt-") ? said.slice("markt-".length) : null}
+          />
+        </div>
+      </section>
     </div>
   );
 }

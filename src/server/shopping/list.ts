@@ -496,9 +496,6 @@ async function storeState(
   trip: ShoppingTrip,
   lineKey: string,
   values: {
-    checked_at?: string | null;
-    checked_by?: string | null;
-    checked_changed_at?: string;
     at_home?: boolean;
     note?: string;
     moved_date?: string | null;
@@ -528,7 +525,7 @@ async function storeState(
  */
 export async function changeLine(
   db: Db,
-  household: Pick<Household, "id" | "userId">,
+  household: Pick<Household, "id">,
   trip: ShoppingTrip,
   lineKey: string,
   change:
@@ -538,19 +535,17 @@ export async function changeLine(
     | { amount: Amount | null }
     | { shopId: string | null },
 ): Promise<void> {
-  await storeState(db, household, trip, lineKey, stateOf(change, household.userId));
+  if ("checked" in change) {
+    // A tick goes the one way every tick goes, so that the tick made last stays.
+    const listId = await ensureList(db, household.id, trip);
+    await tickLine(db, listId, lineKey, change.checked, new Date());
+    return;
+  }
+  await storeState(db, household, trip, lineKey, stateOf(change));
 }
 
-/** The columns a change of a line is stored in. */
-function stateOf(change: Parameters<typeof changeLine>[4], userId: string) {
-  if ("checked" in change) {
-    const now = new Date().toISOString();
-    return {
-      checked_at: change.checked ? now : null,
-      checked_by: change.checked ? userId : null,
-      checked_changed_at: now,
-    };
-  }
+/** The columns a change of a line other than its tick is stored in. */
+function stateOf(change: Exclude<Parameters<typeof changeLine>[4], { checked: boolean }>) {
   if ("atHome" in change) return { at_home: change.atHome };
   // Null: the amount the plan works out again.
   if ("amount" in change) {
@@ -612,26 +607,35 @@ export async function moveLines(
 /** Ticks every line named: the errand is done, and whoever says so has done it. */
 export async function completeNote(
   db: Db,
-  household: Pick<Household, "id" | "userId">,
+  household: Pick<Household, "id">,
   trip: ShoppingTrip,
   lineKeys: readonly string[],
 ): Promise<void> {
   if (lineKeys.length === 0) return;
   const listId = await ensureList(db, household.id, trip);
-  const now = new Date().toISOString();
-  const stored = await db.from("shopping_line_state").upsert(
-    lineKeys.map((key) => ({
-      household_id: household.id,
-      shopping_list_id: listId,
-      line_key: key,
-      updated_at: now,
-      checked_at: now,
-      checked_by: household.userId,
-      checked_changed_at: now,
-    })),
-    { onConflict: "shopping_list_id,line_key" },
-  );
-  if (stored.error) throw new Error(`complete note: ${stored.error.message}`);
+  const now = new Date();
+  await Promise.all(lineKeys.map((key) => tickLine(db, listId, key, true, now)));
+}
+
+/**
+ * Ticks a line or opens it again, unless a tick made later is stored (`tick_shopping_line`).
+ * Every tick is stored this way: from the queue of a device, from the plain form, and by
+ * "Einkauf erledigt". Whoever is signed in is the one who ticked.
+ */
+async function tickLine(
+  db: Db,
+  listId: string,
+  key: string,
+  checked: boolean,
+  at: Date,
+): Promise<void> {
+  const stored = await db.rpc("tick_shopping_line", {
+    list_id: listId,
+    tick_key: key,
+    tick_checked: checked,
+    ticked_at: at.toISOString(),
+  });
+  if (stored.error) throw new Error(`tick line: ${stored.error.message}`);
 }
 
 /**
@@ -650,13 +654,7 @@ export async function applyTicks(
   for (const tick of ticks) {
     const id = noteId(tick.note);
     if (!lists.has(id)) lists.set(id, await ensureList(db, household.id, tick.note));
-    const stored = await db.rpc("tick_shopping_line", {
-      list_id: lists.get(id) as string,
-      tick_key: tick.key,
-      tick_checked: tick.checked,
-      ticked_at: tick.at.toISOString(),
-    });
-    if (stored.error) throw new Error(`tick line: ${stored.error.message}`);
+    await tickLine(db, lists.get(id) as string, tick.key, tick.checked, tick.at);
     taken.push(tick.id);
   }
   return taken;

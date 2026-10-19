@@ -115,6 +115,7 @@ describe("pickSupermarkets", () => {
         address: "Bahnhofstraße",
         brandWikidata: "Q284688",
         distanceKm: distanceKm(center, { lat: 48.24, lon: 9.88 }),
+        position: { lat: 48.24, lon: 9.88 },
       },
     ]);
   });

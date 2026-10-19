@@ -222,9 +222,10 @@ test("a member invites someone, who joins the household with an account of their
   baseURL,
 }) => {
   await page.goto("/einstellungen");
-  const family = page.getByRole("region", { name: "Familie" });
-  await family.getByLabel("Dein Name").fill("Testkoch");
-  await family.getByRole("button", { name: "Name speichern" }).click();
+  const family = page.getByRole("region", { name: "Familie", exact: true });
+  const account = page.getByRole("region", { name: "Dein Konto" });
+  await account.getByLabel("Dein Name").fill("Testkoch");
+  await account.getByRole("button", { name: "Speichern" }).click();
   await expect(family).toContainText("Testkoch");
 
   await family.getByRole("button", { name: "Einladung erstellen" }).click();
@@ -238,8 +239,9 @@ test("a member invites someone, who joins the household with an account of their
   await guest.goto(new URL(link).pathname);
   await expect(guest.getByText("E2E-Test (automatisch)")).toBeVisible();
   // What is typed is checked before an account is made.
+  const email = `e2e-gast-${Date.now()}@example.org`;
   await guest.getByLabel("Dein Name").fill("Gast");
-  await guest.getByLabel("E-Mail").fill(`e2e-gast-${Date.now()}@example.org`);
+  await guest.getByLabel("E-Mail").fill(email);
   await guest.getByLabel("Passwort").fill("kurz");
   await guest
     .getByLabel("Passwort")
@@ -254,9 +256,43 @@ test("a member invites someone, who joins the household with an account of their
   await expect(guest.getByRole("heading", { name: "Einkaufstage" })).toBeVisible();
   await guest.getByRole("button", { name: "So lassen" }).click();
   await guest.goto("/einstellungen");
-  const theirs = guest.getByRole("region", { name: "Familie" });
+  const theirs = guest.getByRole("region", { name: "Familie", exact: true });
   await expect(theirs).toContainText("Testkoch");
   await expect(theirs).toContainText("Gast");
+  // Only the admin removes anyone.
+  await expect(theirs.getByRole("link", { name: "Entfernen" })).toHaveCount(0);
+
+  // The admin removes the guest, after being asked. The account stays and sees nothing.
+  await page.reload();
+  await family.getByRole("link", { name: "Entfernen" }).click();
+  await expect(family.getByRole("alertdialog")).toContainText("Gast aus dem Haushalt entfernen?");
+  await family.getByRole("button", { name: "Entfernen" }).click();
+  await expect(family).not.toContainText("Gast");
+  await guest.goto("/woche");
+  await guest.waitForURL("**/kein-haushalt");
+
+  // With a new invitation the same account comes back, by its own password.
+  await family.getByRole("button", { name: "Einladung erstellen" }).click();
+  const second = await family.getByLabel("Einladung zu Essensplan").inputValue();
+  await guest.goto(new URL(second).pathname);
+  await guest.getByLabel("Dein Name").fill("Gast");
+  await guest.getByLabel("E-Mail").fill(email);
+  await guest.getByLabel("Passwort").fill("ein falsches passwort");
+  await guest.getByRole("button", { name: "Beitreten" }).click();
+  await expect(guest.getByText("Gib sein Passwort ein")).toBeVisible();
+  await guest.getByLabel("Passwort").fill("ein gutes passwort");
+  await guest.getByRole("button", { name: "Beitreten" }).click();
+  await guest.waitForURL("**/woche**");
+
+  // And leaves by itself, after being asked, signed out.
+  await guest.goto("/einstellungen");
+  const own = guest.getByRole("region", { name: "Dein Konto" });
+  await own.getByRole("link", { name: "Haushalt verlassen" }).click();
+  await own.getByRole("button", { name: "Verlassen" }).click();
+  await guest.waitForURL("**/login?verlassen=1");
+  await expect(guest.getByText("Du hast den Haushalt verlassen")).toBeVisible();
+  await page.reload();
+  await expect(family).not.toContainText("Gast");
 
   // The link worked once.
   const again = await (await browser.newContext({ baseURL })).newPage();

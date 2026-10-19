@@ -1,4 +1,4 @@
-import type { Shop } from "../catalog";
+import { normalizeName, type AisleGroup, type Shop } from "../catalog";
 import type { AisleView, ViewLine } from "./present";
 
 /**
@@ -17,6 +17,93 @@ export function favouriteSupermarkets(shops: readonly Shop[]): Shop[] {
         (a.supermarketRank as number) - (b.supermarketRank as number) ||
         a.name.localeCompare(b.name, "de"),
     );
+}
+
+/**
+ * The chains most of Germany buys its groceries at, the biggest first. A supermarket named
+ * after one of them ("Aldi Süd", "EDEKA Riedmüller") is offered before other markets.
+ */
+const BEST_KNOWN = [
+  "edeka",
+  "rewe",
+  "lidl",
+  "aldi",
+  "kaufland",
+  "netto",
+  "penny",
+  "norma",
+  "globus",
+  "marktkauf",
+  "tegut",
+];
+
+/** Where a supermarket stands among the best-known chains: lower first, unknown last. */
+function popularity(shop: Shop): number {
+  const first = normalizeName(shop.name.split(/[\s-]+/)[0]);
+  const at = BEST_KNOWN.indexOf(first);
+  return at === -1 ? BEST_KNOWN.length : at;
+}
+
+/**
+ * The supermarkets found near the household as the settings offer them: the household's
+ * own first, the main one first; then the best-known chains, the biggest first; then other
+ * chains, whose logo is known; then the rest, each by name. `shown` are the first five, or
+ * every chosen one where there are more; `more` lie folded away under "Weitere anzeigen".
+ */
+export function offeredSupermarkets(
+  found: readonly Shop[],
+  chosen: readonly Shop[],
+  count = 5,
+): { shown: Shop[]; more: Shop[] } {
+  const rest = found
+    .filter((shop) => !chosen.some((each) => each.id === shop.id))
+    .sort(
+      (a, b) =>
+        popularity(a) - popularity(b) ||
+        Number(!a.logoUrl) - Number(!b.logoUrl) ||
+        a.name.localeCompare(b.name, "de"),
+    );
+  const all = [...chosen, ...rest];
+  const shown = Math.max(count, chosen.length);
+  return { shown: all.slice(0, shown), more: all.slice(shown) };
+}
+
+/** How long a street may be, as the database keeps it. */
+const ADDRESS_LENGTH = 120;
+
+/**
+ * What the household typed about one of its markets: its street, null for none, and the
+ * kinds of grocery it buys there, only those the household has, in their order.
+ */
+export function readShopDetails(
+  typed: { address: string; kinds: readonly string[] },
+  aisleGroups: readonly Pick<AisleGroup, "id" | "sortOrder">[],
+): { address: string | null; aisleGroupIds: string[] } {
+  const address = typed.address.trim().replace(/\s+/g, " ").slice(0, ADDRESS_LENGTH);
+  const wanted = new Set(typed.kinds);
+  return {
+    address: address === "" ? null : address,
+    aisleGroupIds: [...aisleGroups]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .filter((group) => wanted.has(group.id))
+      .map((group) => group.id),
+  };
+}
+
+/**
+ * The kinds of grocery the household buys at a market, by name in the order of a walk
+ * through a shop: "Obst & Gemüse · Eier". A kind deleted since is left out.
+ */
+export function kindsText(
+  shop: Pick<Shop, "aisleGroupIds">,
+  aisleGroups: readonly Pick<AisleGroup, "id" | "name" | "sortOrder">[],
+): string {
+  const ids = new Set(shop.aisleGroupIds ?? []);
+  return [...aisleGroups]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .filter((group) => ids.has(group.id))
+    .map((group) => group.name)
+    .join(" · ");
 }
 
 /** One supermarket's part of a note. `shop` is null while the household has named none. */
