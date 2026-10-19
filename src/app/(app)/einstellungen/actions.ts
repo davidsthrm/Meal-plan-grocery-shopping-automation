@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { readName, readNewPassword } from "@/domain/family";
-import { withAdded, withMain, without } from "@/domain/shopping-list/supermarkets";
+import { readFamilySize, readName, readNewPassword } from "@/domain/family";
+import { readShopDetails, withAdded, withMain, without } from "@/domain/shopping-list/supermarkets";
 import { readPostalCode } from "@/domain/supermarket-search";
 import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
 import { requireHousehold, type Household } from "@/server/auth";
@@ -16,20 +16,22 @@ import {
   withdrawInvite,
 } from "@/server/family";
 import { changePassword } from "@/server/password";
-import { loadSupermarkets } from "@/server/catalog";
+import { loadCatalogIndex, loadSupermarkets } from "@/server/catalog";
 import {
   renameHousehold,
   storeDrugstoreWeekday,
+  storeFamilySize,
   storeFoundSupermarkets,
   storeFreshPlaces,
   storePantryStaple,
   storePostalCode,
+  storeShopDetails,
   storeShoppingDays,
   storeSupermarkets,
   supermarketNamed,
 } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
-import { searchSupermarkets } from "@/server/supermarket-search";
+import { findStreet, searchSupermarkets } from "@/server/supermarket-search";
 
 /** What the household sets once. Each action is the target of a plain form on the page. */
 
@@ -70,6 +72,14 @@ export async function saveHouseholdName(form: FormData): Promise<void> {
   const name = readName(String(form.get("household") ?? ""));
   if (name !== "") await renameHousehold(await createSessionClient(), household.id, name);
   back("familie");
+}
+
+/** Stores for how many the household cooks. Meals planned before keep their persons. */
+export async function saveFamilySize(form: FormData): Promise<void> {
+  const size = readFamilySize(form.get("personen"));
+  const household = await requireHousehold();
+  if (size !== null) await storeFamilySize(await createSessionClient(), household.id, size);
+  back("familie", { ok: "personen" });
 }
 
 /** Sets how the signed-in member is called in the household. */
@@ -240,4 +250,29 @@ export async function addSupermarket(form: FormData): Promise<void> {
   if (!id) back("supermaerkte", { fehler: "supermarkt" });
   await storeSupermarkets(db, withAdded(await rankedSupermarkets(), id));
   back("supermaerkte");
+}
+
+/**
+ * Stores the street of one of the household's markets and the kinds of grocery bought
+ * there. A street that changed is looked up on the map, so that the market stands where it
+ * is.
+ */
+export async function saveSupermarketDetails(form: FormData): Promise<void> {
+  const id = z.guid().parse(form.get("id"));
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const index = await loadCatalogIndex(db);
+  const shop = index.shopById.get(id);
+  if (!shop) back("supermaerkte");
+  const details = readShopDetails(
+    { address: String(form.get("address") ?? ""), kinds: form.getAll("kinds").map(String) },
+    index.catalog.aisleGroups,
+  );
+  const moved = details.address !== null && details.address !== (shop.address ?? null);
+  const position =
+    moved && household.postalCode
+      ? await findStreet(details.address as string, household.postalCode)
+      : null;
+  await storeShopDetails(db, id, { ...details, position });
+  back("supermaerkte", { ok: `markt-${id}` });
 }

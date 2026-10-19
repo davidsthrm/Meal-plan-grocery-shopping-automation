@@ -37,6 +37,13 @@ export interface Shop {
   address?: string | null;
   /** The postal code it was found near. Null for shops not found that way. */
   foundNear?: string | null;
+  /** Where it stands, for the map of the settings. Null where nobody knows. */
+  position?: { lat: number; lon: number } | null;
+  /**
+   * The kinds of grocery (aisle group ids) the household buys there: "Eier", "Obst &
+   * Gemüse". Information only: which note a line goes on does not depend on it.
+   */
+  aisleGroupIds?: readonly string[];
 }
 
 export interface AisleGroup {

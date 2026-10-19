@@ -1172,12 +1172,15 @@ export type Database = {
       shop: {
         Row: {
           address: string | null
+          aisle_group_ids: string[]
           found_near: string | null
           household_id: string
           id: string
           is_default: boolean
           kind: string
+          lat: number | null
           logo_url: string | null
+          lon: number | null
           name: string
           short_label: string
           sort_order: number
@@ -1185,12 +1188,15 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          aisle_group_ids?: string[]
           found_near?: string | null
           household_id: string
           id?: string
           is_default?: boolean
           kind?: string
+          lat?: number | null
           logo_url?: string | null
+          lon?: number | null
           name: string
           short_label: string
           sort_order?: number
@@ -1198,12 +1204,15 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          aisle_group_ids?: string[]
           found_near?: string | null
           household_id?: string
           id?: string
           is_default?: boolean
           kind?: string
+          lat?: number | null
           logo_url?: string | null
+          lon?: number | null
           name?: string
           short_label?: string
           sort_order?: number

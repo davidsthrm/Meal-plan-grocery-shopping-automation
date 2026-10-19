@@ -146,3 +146,30 @@ export async function searchSupermarkets(
     }),
   };
 }
+
+/**
+ * Where a street of the household's postal code is, for a market the household typed in or
+ * corrected: "Biberacher Straße 12". Null when OpenStreetMap does not know it, or cannot be
+ * reached: the market is then simply not on the map.
+ */
+export async function findStreet(
+  street: string,
+  postalCode: string,
+): Promise<{ lat: number; lon: number } | null> {
+  const lookup = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
+    street,
+    postalcode: postalCode,
+    countrycodes: "de",
+    format: "json",
+    limit: "1",
+  })}`;
+  try {
+    const answer = (await getJson(lookup)) as { lat?: string; lon?: string }[];
+    const lat = Number(answer[0]?.lat);
+    const lon = Number(answer[0]?.lon);
+    return Number.isFinite(lat) && Number.isFinite(lon) && answer.length > 0 ? { lat, lon } : null;
+  } catch (error) {
+    console.error(`find street ${street}: ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
+}

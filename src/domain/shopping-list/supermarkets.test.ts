@@ -4,8 +4,11 @@ import { buildShoppingList } from "./build";
 import { presentByAisle } from "./present";
 import {
   favouriteSupermarkets,
+  kindsText,
   marketsOfNote,
   namesText,
+  offeredSupermarkets,
+  readShopDetails,
   sectionsByShop,
   withAdded,
   withMain,
@@ -155,5 +158,82 @@ describe("the title of a supermarket note", () => {
     expect(namesText([])).toBe("");
     expect(namesText(["Aldi"])).toBe("Aldi");
     expect(namesText(["Aldi", "Rewe", "Botzenhardt"])).toBe("Aldi, Rewe & Botzenhardt");
+  });
+});
+
+describe("offeredSupermarkets", () => {
+  const market = (name: string, logo = true): Shop => ({
+    ...shop(name.toLowerCase().replace(/\W+/g, "-"), null),
+    name,
+    logoUrl: logo ? `https://commons.wikimedia.org/wiki/Special:FilePath/${name}.svg` : null,
+  });
+  const names = (shops: readonly Shop[]) => shops.map((each) => each.name);
+  const found = [
+    market("Hofladen Maier", false),
+    market("Netto Marken-Discount"),
+    market("tegut"),
+    market("Biomarkt Laupheim", false),
+    market("Aldi Süd"),
+    market("EDEKA Riedmüller"),
+    market("Alnatura"),
+    market("Lidl"),
+  ];
+
+  it("offers the best-known chains first, the biggest first, then other chains, then the rest", () => {
+    const { shown, more } = offeredSupermarkets(found, []);
+    expect(names(shown)).toEqual([
+      "EDEKA Riedmüller",
+      "Lidl",
+      "Aldi Süd",
+      "Netto Marken-Discount",
+      "tegut",
+    ]);
+    expect(names(more)).toEqual(["Alnatura", "Biomarkt Laupheim", "Hofladen Maier"]);
+  });
+
+  it("puts the household's own markets first, the main one first", () => {
+    const chosen = [found[0], found[3]];
+    const { shown } = offeredSupermarkets(found, chosen);
+    expect(names(shown)).toEqual([
+      "Hofladen Maier",
+      "Biomarkt Laupheim",
+      "EDEKA Riedmüller",
+      "Lidl",
+      "Aldi Süd",
+    ]);
+  });
+
+  it("shows every chosen market, however many", () => {
+    const { shown, more } = offeredSupermarkets(found, found.slice(0, 6));
+    expect(shown).toHaveLength(6);
+    expect(more).toHaveLength(2);
+  });
+});
+
+describe("what the household says about a market", () => {
+  const kinds = [
+    { id: "eier", name: "Eier", sortOrder: 100 },
+    { id: "obst", name: "Obst & Gemüse", sortOrder: 10 },
+    { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80 },
+  ];
+
+  it("reads the street without stray spaces, and none for an empty field", () => {
+    expect(
+      readShopDetails({ address: "  Biberacher   Straße 12 ", kinds: [] }, kinds).address,
+    ).toBe("Biberacher Straße 12");
+    expect(readShopDetails({ address: "  ", kinds: [] }, kinds).address).toBeNull();
+  });
+
+  it("keeps only the household's kinds of grocery, in the order of a walk through a shop", () => {
+    expect(
+      readShopDetails({ address: "", kinds: ["eier", "erfunden", "obst"] }, kinds).aisleGroupIds,
+    ).toEqual(["obst", "eier"]);
+  });
+
+  it("names the kinds bought there, and nothing for a kind deleted since", () => {
+    expect(kindsText({ aisleGroupIds: ["eier", "geloescht", "obst"] }, kinds)).toBe(
+      "Obst & Gemüse · Eier",
+    );
+    expect(kindsText({}, kinds)).toBe("");
   });
 });

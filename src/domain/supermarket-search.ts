@@ -76,6 +76,8 @@ export interface FoundSupermarket {
   brandWikidata: string | null;
   /** From the middle of the postal code's area. */
   distanceKm: number;
+  /** Where it stands. */
+  position: Point;
 }
 
 /** The distance between two points on the earth, in kilometres. */
@@ -116,6 +118,7 @@ export function pickSupermarkets(
         ? (tags["brand:wikidata"] as string)
         : null,
       distanceKm: distanceKm(center, at),
+      position: at,
     };
     const key = normalizeName(name);
     const known = nearest.get(key);
