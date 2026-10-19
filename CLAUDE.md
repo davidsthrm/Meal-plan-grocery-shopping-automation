@@ -83,6 +83,11 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   data in any table, live updates for everything the family shares, members who leave or
   are removed, passwords changed and reset, the family's size, the settings by topic with
   a map of the supermarkets, and bread from the bakery.
+- Phase 9 (branch `phase-9-shopping-deviations`): what really happens in the shop, in one or
+  two taps: a line removed, bought in part, bought as another product, or moved to another
+  day or shop; "Nicht gekaufte Einträge"; notes that close once nothing is open. The
+  receipt upload is specified in `docs/receipts.md`, its tables are migrated, nothing
+  writes them yet.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -126,6 +131,15 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Under `next dev` a kept page does not come to life offline (the dev runtime needs its
   socket), so the offline browser test runs on a production build (`npm run e2e:offline`)
   and skips itself under `npm run e2e`.
+- A tick is one kind of decision about a line (`Decision`,
+  `src/domain/shopping-list/decisions.ts`): bought (maybe another product or amount),
+  bought in part with the rest discarded or moved, removed, moved, or open again. Every
+  decision goes the way ticks go, below, and on the server through `decide_shopping_line`
+  (one clock per line, `checked_changed_at`, shared with `tick_shopping_line`), so all of
+  them work offline and two people never undo each other. `applyDecisions` does what
+  follows: a move records the note it was made on (`moved_with`) so that taking it back
+  finds every part, a rest becomes an entry on its note (`carried_from_*`), and each
+  purchase is counted in `shop_item_history`.
 - A tick is "this line is ticked (or open) since then", not "toggle" (`Tick`,
   `src/domain/shopping-list/ticks.ts`). It is kept in IndexedDB first (`TickQueue`,
   `src/lib/tick-sync.ts`, `src/lib/tick-store.ts`) and sent to `/api/einkauf/haken` at once,
@@ -217,6 +231,11 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   field (`LiveSearch`) fetches it once per visit and searches it with the same pure
   `searchRecipes` the server uses, so a list unfolds with the first letter and changes with
   every further one. Sending the search still goes to the server and works without scripts.
+- Every main section has a `loading.tsx` (`PageLoading`: its name and the pale shape of a
+  sheet or of cards, faded in after 150ms). Without one a dynamic route is not prefetched,
+  and a tap on a tab waited half a second for the whole page with nothing to show for it.
+  A change of the search part of the address and the redirect after a form do not show
+  it; a full load streams it first, so it carries no status role.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request and cuts a longer answer off without saying
@@ -947,8 +966,9 @@ Shopping list
   of the note to the same place on the new day; what the plan adds later is again put where
   it belongs by itself. Any note can be done on its own day by these rules: whole weeks on
   the real errands are held against it (`tests/acceptance/sample-weeks.test.ts`).
-- An errand is done when every line of its note is ticked: by the last tick, or by
-  "Einkauf erledigt", which ticks what is still open. The note then pales among the others
+- An errand is done when no line of its note is open: each is bought, in full or in part,
+  or removed, by the last decision, or by "Einkauf erledigt", which ticks what is still
+  open. The note then pales among the others
   and carries a stamp with the name of whoever made the last tick (`NoteList.completed`,
   from `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored
   for it (`completion`): a line the plan adds afterwards opens the errand again, which is
@@ -1046,6 +1066,34 @@ Shopping list
   in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out). A note taken to several
   supermarkets has a section per supermarket in the PDF too, its name once above its kinds
   of grocery (`pdfSections`), not in front of every heading.
+- Every row of a note and of the view for the shop has its actions at its end, quiet and
+  without words (`ActionRow`, `src/components/line-actions.tsx`): the arrow moves it, the
+  pen says what was bought (a stepper "3 von 6", another product), the bin removes it
+  without asking. A swipe to the right buys, to the left removes; a finger held still
+  opens the same as a menu. Each decision can be taken back for five seconds from the bar
+  at the foot ("Widerrufen"). The view for the shop has its own menu, sheets and bar
+  (`LineActionsHere`): a modal dialog makes everything outside it inert.
+- Nothing is deleted from a note. A removed line, typed or planned, keeps its row
+  (`shopping_line_state.status`, `removed_reason`), and what the plan had stays beside what
+  was bought (`planned`, `bought_name`, `bought_quantity`, `bought_unit`, `substituted`).
+  Removed lines and discarded rests are the note's "Nicht gekaufte Einträge"
+  (`notBoughtOf`), with "Wieder aufnehmen". What was moved is not among them: it is still
+  to buy, and its own note says where it went ("Eier → Di", `movedAway`). A finished note
+  lies green among the others and says how much was not bought. A removed dm entry does
+  not come along to the next dm note.
+- A line can be moved to any day from the day after its note (or from tomorrow where that
+  day is over) up to a week after it (`moveDays`, `canMoveTo`), also where the plan needs
+  it earlier: the decision is made in the shop. "An einem anderen Tag einkaufen" for a
+  whole errand and "Lieber woanders kaufen" keep their checks.
+- The shops offered for a line (`suggestShops`, `shop-choice.ts`): where it was bought
+  before first (`shop_item_history`), then those that sell its kind of grocery; the rest
+  behind "Alle Geschäfte". The butcher, bakery and market sell what is bought fresh there
+  (`fresh_place`), a supermarket found on the map everything, a shop typed in by hand the
+  kinds ticked for it under "Angaben", or everything while none is. Trauben never offer
+  the Bäcker; Brezeln offer the Bäcker and the supermarkets, not the Metzger.
+- A typed line the catalog does not know gets its kind of grocery guessed once as it is
+  written, from the end of its last word (`guessKind`: "Bio-Heumilch" is dairy,
+  "Ingwer-Shots" stay unsorted), and "Gehört zu" corrects it.
 - "Jetzt einkaufen" on a note opens the view for the shop (`StoreView`, a `<dialog>` over
   the whole screen; `#laden` opens it too): the note's lines by supermarket and kind of
   grocery, each row one large button to tick, how many are ticked of how many, whether

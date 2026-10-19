@@ -1,6 +1,7 @@
 import { aisleSortOrder, type AisleGroup, type CatalogIndex, type Shop } from "../catalog";
+import { convert } from "../units";
 import { formatLine, labelFor } from "./format";
-import type { Amount, LineState, ShoppingLine } from "./types";
+import type { Amount, LineState, LineStatus, ShoppingLine } from "./types";
 
 /** A line with the household's changes applied. */
 export interface ViewLine {
@@ -16,7 +17,21 @@ export interface ViewLine {
   chosenShopId: string | null;
   note: string | null;
   atHome: boolean;
+  /** Bought, in full or in part. */
   checked: boolean;
+  status: LineStatus;
+  /** What was bought where it differs from the plan. Null where it was bought as planned. */
+  bought: { name: string | null; amount: Amount | null } | null;
+  /** For a line bought in part: what became of the rest. */
+  remainder: LineState["remainder"] | null;
+  removedReason: string | null;
+}
+
+/** Something on a note that was not bought on purpose: removed, or the rest discarded. */
+export interface NotBought {
+  view: ViewLine;
+  /** How much of it was not bought, where that is known. */
+  amount: Amount | null;
 }
 
 export interface ListView {
@@ -34,6 +49,14 @@ export function resolveLine(line: ShoppingLine, state: LineState = {}): ViewLine
   const edited = Boolean(state.amount);
   const purchase = state.amount ?? line.purchase;
   const label = edited ? labelFor(line.forms, line.label, purchase) : line.label;
+  const checked = state.checked ?? false;
+  const status: LineStatus = checked
+    ? state.remainder
+      ? "partially_bought"
+      : "bought"
+    : state.removed
+      ? "removed"
+      : "open";
   return {
     line,
     text: formatLine(label, purchase, note),
@@ -43,8 +66,43 @@ export function resolveLine(line: ShoppingLine, state: LineState = {}): ViewLine
     chosenShopId: state.shopId ?? null,
     note,
     atHome: state.atHome ?? line.defaultAtHome,
-    checked: state.checked ?? false,
+    checked,
+    status,
+    bought: checked && state.bought ? state.bought : null,
+    remainder: status === "partially_bought" ? (state.remainder ?? null) : null,
+    removedReason: status === "removed" ? (state.removedReason ?? null) : null,
   };
+}
+
+/**
+ * What of a line bought in part was not bought: the planned amount less the bought one,
+ * where both are in units that convert. Null where that cannot be said.
+ */
+export function restOf(view: ViewLine): Amount | null {
+  const bought = view.bought?.amount;
+  const planned = view.purchase;
+  if (!bought || !planned) return null;
+  const inPlanned = convert(bought.quantity, bought.unit, planned.unit);
+  if (inPlanned === null || inPlanned >= planned.quantity) return null;
+  return { quantity: Math.round((planned.quantity - inPlanned) * 1000) / 1000, unit: planned.unit };
+}
+
+/**
+ * What a note did not buy on purpose: every line removed, and the rest of every line
+ * bought in part whose rest was discarded. What was moved to another note is not among
+ * them: it is still to be bought.
+ */
+export function notBoughtOf(resolved: readonly ViewLine[]): NotBought[] {
+  return resolved
+    .flatMap((view): NotBought[] => {
+      if (view.atHome) return [];
+      if (view.status === "removed") return [{ view, amount: view.purchase }];
+      if (view.status === "partially_bought" && view.remainder?.kind === "discarded") {
+        return [{ view, amount: restOf(view) }];
+      }
+      return [];
+    })
+    .sort((a, b) => byLabel(a.view, b.view));
 }
 
 /** Lines in the order of their names, as a German reader expects them. */
@@ -60,7 +118,7 @@ export function presentList(
   index: CatalogIndex,
 ): ListView {
   const resolved = lines.map((line) => resolveLine(line, states[line.key]));
-  const toBuy = resolved.filter((v) => !v.atHome);
+  const toBuy = resolved.filter((v) => !v.atHome && v.status !== "removed");
   const shopOrder = (shopId: string) =>
     index.shopById.get(shopId)?.sortOrder ?? Number.MAX_SAFE_INTEGER;
 
@@ -99,6 +157,8 @@ export interface AisleView {
   groups: { aisleGroup: AisleGroup; lines: ViewLine[] }[];
   /** Already at home. Not on the list, but listed under "Haben wir schon". */
   atHome: ViewLine[];
+  /** "Nicht gekaufte Einträge": removed, or the rest discarded. */
+  notBought: NotBought[];
 }
 
 /**
@@ -111,7 +171,7 @@ export function presentByAisle(
   index: CatalogIndex,
 ): AisleView {
   const resolved = lines.map((line) => resolveLine(line, states[line.key]));
-  const toBuy = resolved.filter((view) => !view.atHome);
+  const toBuy = resolved.filter((view) => !view.atHome && view.status !== "removed");
   const inOrder = (a: ViewLine, b: ViewLine) =>
     byLabel(a, b) ||
     Number(a.line.trip === "later") - Number(b.line.trip === "later") ||
@@ -125,5 +185,6 @@ export function presentByAisle(
       }))
       .filter((group) => group.lines.length > 0),
     atHome: resolved.filter((view) => view.atHome).sort(byLabel),
+    notBought: notBoughtOf(resolved),
   };
 }

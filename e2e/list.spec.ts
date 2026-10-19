@@ -130,7 +130,13 @@ test("the week becomes a note for every errand, to pick up and work through", as
   // The wrapping paper is bought on Friday after all: the line moves to that note.
   await sheet(page, MONDAY).getByText("Geschenkpapier", { exact: true }).click();
   await page.getByRole("button", { name: "Geschenkpapier verschieben: Fr 5. Supermarkt" }).click();
-  await expect(sheet(page, MONDAY).getByText("Geschenkpapier", { exact: true })).toHaveCount(0);
+  // On Monday's note it is said, quietly, where it went.
+  await expect(
+    sheet(page, MONDAY).getByRole("button", { name: "Geschenkpapier: erledigt" }),
+  ).toHaveCount(0);
+  await expect(sheet(page, MONDAY).getByRole("region", { name: "Verschoben" })).toContainText(
+    "Geschenkpapier→ Fr 5.",
+  );
   await all(page).click();
   await expect(tile(page, FRIDAY)).toContainText("Geschenkpapier");
   await tile(page, FRIDAY).click();
@@ -160,7 +166,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await page.goto(`/einkauf?w=${WEEK}`);
   await expect(tile(page, MARKET_ON_FRIDAY)).not.toContainText("2x Karotten");
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
-  await expect(tile(page, BUTCHER)).toContainText("0 offen, 1 erledigt");
+  await expect(tile(page, BUTCHER)).toContainText("1 gekauft");
 
   // Every note is a file of its own, and all of them are one.
   const files = page.getByRole("navigation", { name: "Als PDF" });
@@ -191,7 +197,7 @@ test("a meal planned after the shopping leaves the errand done", async ({ page }
   await plan(page, "Mittwoch Abend", "Kartoffelsuppe");
   await page.goto(`/einkauf?w=${WEEK}`);
   await expect(tile(page, MONDAY)).toContainText("Erledigt");
-  await expect(tile(page, MONDAY)).toContainText("0 offen, 1 erledigt");
+  await expect(tile(page, MONDAY)).toContainText("1 gekauft");
   await expect(tile(page, "Supermarkt, Freitag, 26. Februar")).toContainText("Sahne");
 });
 
@@ -217,7 +223,12 @@ test("the drugstore's note is written by hand: what, how many, for whom", async 
   await dm.getByText("Klopapier", { exact: true }).click();
   await expect(dm.getByText("Lieber woanders kaufen:")).toHaveCount(0);
   await dm.getByRole("button", { name: "Klopapier entfernen" }).click();
-  await expect(dm).not.toContainText("Klopapier");
+  // Not deleted: it is among what was not bought, to be put back on the note.
+  await expect(group(page, DRUGSTORE, "Haushalt")).toHaveCount(0);
+  await page.reload();
+  await expect(dm.getByRole("region", { name: "Nicht gekaufte Einträge" })).toContainText(
+    "Klopapier",
+  );
 });
 
 /** A day as the app writes it, `days` from today in the household's time zone. */

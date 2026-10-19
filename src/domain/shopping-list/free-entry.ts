@@ -1,4 +1,4 @@
-import { findIngredient, type CatalogIndex, type Ingredient } from "../catalog";
+import { findIngredient, normalizeName, type CatalogIndex, type Ingredient } from "../catalog";
 import { describedName, nameVariants } from "../import/map-ingredient";
 import { parseUnit, type Amount, type Unit } from "../units";
 
@@ -83,4 +83,30 @@ export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
 /** A match found behind describing words keeps those words in front of its note. */
 function mapped<T extends { rest: string[] }>(found: T | null, described: string[]): T | null {
   return found ? { ...found, rest: [...described, ...found.rest] } : null;
+}
+
+/** The shortest catalog name a compound may end with: "Vollmilch" in "milch", not "Ei". */
+const HEAD_MIN = 4;
+
+/**
+ * The kind of grocery a typed line the catalog does not know probably is, from the end of
+ * its last word: a German compound names what it is last. "Bio-Vollmilch" ends with
+ * "Milch" and is dairy, "Pestonudeln" pasta; "Ingwer-Shots" end with nothing the catalog
+ * knows and stay unsorted, though they start with ginger. The longest such ending wins.
+ * Null where none fits: the line stands under "Sonstiges" until the household says.
+ */
+export function guessKind(text: string, index: CatalogIndex): string | null {
+  const words = parseFreeEntry(text, index)
+    .label.split(/[\s-]+/)
+    .filter(Boolean);
+  const last = normalizeName(words.at(-1) ?? "");
+  if (last.length < HEAD_MIN) return null;
+  let best: { length: number; aisleGroupId: string } | null = null;
+  for (const [name, ingredient] of index.ingredientByName) {
+    if (name.length < HEAD_MIN || name.length > last.length || !last.endsWith(name)) continue;
+    if (!best || name.length > best.length) {
+      best = { length: name.length, aisleGroupId: ingredient.aisleGroupId };
+    }
+  }
+  return best?.aisleGroupId ?? null;
 }

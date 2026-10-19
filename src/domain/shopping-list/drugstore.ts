@@ -1,7 +1,7 @@
 import { normalizeName, type AisleGroup } from "../catalog";
 import type { IsoDate } from "../dates";
 import type { AisleView, ViewLine } from "./present";
-import { byLabel, resolveLine } from "./present";
+import { byLabel, notBoughtOf, resolveLine } from "./present";
 import { noteId, type ShoppingTrip } from "./trips";
 import type { LineState, ShoppingLine } from "./types";
 
@@ -317,10 +317,12 @@ export function presentDrugstore(
       (section, at): { aisleGroup: AisleGroup; lines: ViewLine[] } => ({
         aisleGroup: { id: sectionId(section.key), name: section.name, sortOrder: at },
         lines: resolved
+          .filter((view) => view.status !== "removed")
           .filter((view) => view.line.aisleGroupId === sectionId(section.key))
           .sort(byLabel),
       }),
     ).filter((group) => group.lines.length > 0),
     atHome: [],
+    notBought: notBoughtOf(resolved),
   };
 }

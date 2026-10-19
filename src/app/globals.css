@@ -826,8 +826,11 @@ summary,
 
   /* An errand that is done: its note pales, and a stamp says so and who did it. */
   .done-note {
-    opacity: 0.45;
-    filter: grayscale(1);
+    opacity: 0.5;
+  }
+  /* A finished errand lies on the green's pastel among the others: done, at a glance. */
+  .sheet.done-sheet {
+    background: var(--color-accent-soft);
   }
   .stamp {
     position: absolute;
@@ -1485,6 +1488,307 @@ summary,
   .map-card {
     transition: opacity 160ms ease;
   }
+}
+
+/*
+ * A line's actions in the shop (`ActionRow`): the bin, the pen and the arrow quiet at the end
+ * of the row, in the ink's grey, so that the name is what is read. A swipe moves the row
+ * with the finger and shows underneath what letting go will do: green "Gekauft" to the
+ * right, the bin to the left.
+ */
+@layer components {
+  .swipe-row {
+    position: relative;
+    overflow-x: clip;
+    touch-action: pan-y;
+  }
+  .swipe-under {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: 1rem;
+    font-weight: 600;
+  }
+  .swipe-under > span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .swipe-row[data-swipe="right"] .swipe-under {
+    display: flex;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .swipe-row[data-swipe="left"] .swipe-under {
+    display: flex;
+    justify-content: flex-end;
+    background: var(--color-danger-soft);
+    color: var(--color-danger);
+  }
+  .swipe-row[data-swipe="right"] .swipe-remove,
+  .swipe-row[data-swipe="left"] .swipe-buy {
+    display: none;
+  }
+  .swipe-face {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  /* Only while it moves does the row carry the paper it lies on, over what is underneath. */
+  .swipe-row[data-swipe="right"] .swipe-face,
+  .swipe-row[data-swipe="left"] .swipe-face {
+    background: var(--row-paper, var(--color-surface));
+  }
+  .tick-line .swipe-face {
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .store-view .swipe-row {
+    --row-paper: var(--color-paper);
+  }
+  .store-view .swipe-face {
+    border-bottom: 1px solid var(--color-rule);
+  }
+  /* A row being swiped is not being pressed: no highlight under the finger. */
+  .swipe-row[data-swipe="right"] .store-row:active,
+  .swipe-row[data-swipe="left"] .store-row:active {
+    background: transparent;
+  }
+  .store-view .moved-line {
+    padding-inline: 0.5rem;
+  }
+  .row-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+  }
+  .tick-line .row-actions {
+    margin-top: -0.1rem;
+  }
+
+  /* Bought on another note now: said quietly where it was, "Eier → Di". */
+  .moved-line {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--color-rule);
+    color: var(--color-muted);
+  }
+
+  .chip[data-on="true"] {
+    border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  /*
+   * The menu of a row held still: the same actions, named, on frosted paper. It grows out of
+   * the row it belongs to.
+   */
+  .row-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    width: max-content;
+    min-width: 14rem;
+    max-width: calc(100vw - 1.5rem);
+    padding: 0.35rem;
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    color: var(--color-ink);
+    box-shadow: 0 16px 34px -14px rgb(35 33 29 / 0.45);
+  }
+  .row-menu:popover-open {
+    animation: menu-in 160ms var(--ease-out) both;
+  }
+  .row-menu-title {
+    padding: 0.4rem 0.75rem 0.3rem;
+    overflow: hidden;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .row-menu button {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+    border-radius: 0.65rem;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Every sign the same size, so that the words stand in one column. */
+  .row-menu button > svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex: none;
+    color: var(--color-muted);
+  }
+  .row-menu button {
+    white-space: nowrap;
+  }
+  .row-menu button:active {
+    background: rgb(35 33 29 / 0.07);
+  }
+  .row-menu button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .row-menu .text-danger,
+  .row-menu .text-danger > svg {
+    color: var(--color-danger);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .row-menu {
+      background: var(--color-surface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  /*
+   * A sheet from the foot of the screen, over the dimmed note: what was bought instead, or
+   * where it is bought. Its top can be pulled down.
+   */
+  .action-sheet {
+    width: 100%;
+    max-width: 34rem;
+    max-height: 90dvh;
+    margin: auto auto 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 -12px 30px -14px rgb(35 33 29 / 0.35);
+  }
+  .action-sheet::backdrop {
+    background: rgb(35 33 29 / 0.38);
+  }
+  .action-sheet[open] {
+    animation: sheet-up 280ms var(--ease-drawer) both;
+  }
+  .action-sheet[open]::backdrop {
+    animation: fade-in 200ms ease-out both;
+  }
+  .action-sheet.going {
+    animation: sheet-down 200ms var(--ease-drawer) both;
+  }
+  .action-sheet-head {
+    padding: 0.5rem 1rem 0.5rem;
+    touch-action: none;
+  }
+  .action-sheet-grip {
+    display: block;
+    width: 2.25rem;
+    height: 0.3rem;
+    margin: 0 auto 0.6rem;
+    border-radius: 999px;
+    background: rgb(35 33 29 / 0.18);
+  }
+  .choice-row {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.35rem 0.25rem;
+    border-bottom: 1px solid var(--color-rule);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice-row:active {
+    background: rgb(35 33 29 / 0.05);
+  }
+  .choice-row:has(input:checked) {
+    font-weight: 600;
+  }
+  .choice-row:has(input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .choice-check {
+    display: flex;
+    width: 1.5rem;
+    color: var(--color-accent);
+    opacity: 0;
+  }
+  .choice-row:has(input:checked) .choice-check {
+    opacity: 1;
+  }
+
+  /* What was just decided, with "Widerrufen", for a few seconds at the foot of the screen. */
+  .undo-bar {
+    position: fixed;
+    inset: auto max(0.75rem, env(safe-area-inset-right)) calc(5.25rem + env(safe-area-inset-bottom))
+      max(0.75rem, env(safe-area-inset-left));
+    width: auto;
+    max-width: 30rem;
+    margin: 0 auto;
+    padding: 0.35rem 0.35rem 0.35rem 1rem;
+    border: 0;
+    border-radius: 1rem;
+    background: var(--color-ink);
+    color: var(--color-surface);
+    box-shadow: 0 14px 30px -14px rgb(35 33 29 / 0.6);
+  }
+  .undo-bar:popover-open {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: bar-in 200ms var(--ease-out) both;
+  }
+  .undo-button {
+    min-height: 2.75rem;
+    padding: 0 0.85rem;
+    border-radius: 0.7rem;
+    color: #cfe3dc;
+    font-weight: 700;
+  }
+  .undo-button:active {
+    background: rgb(255 255 255 / 0.1);
+  }
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-menu:popover-open,
+  .action-sheet[open],
+  .undo-bar:popover-open {
+    animation: fade-in 160ms ease both;
+  }
+  .action-sheet.going {
+    animation: fade-out 160ms ease both;
+  }
+}
+
+/* The shape of a page on its way: after a moment, so that a quick page does not flash. */
+.page-loading {
+  animation: fade-in 200ms ease 150ms both;
+}
+.loading-bar {
+  border-radius: 0.5rem;
+  background: rgb(35 33 29 / 0.06);
 }
 
 /* A page comes in softly. Whoever asked for less motion gets none. */

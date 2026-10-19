@@ -20,7 +20,6 @@ import {
   isNote,
   loadShoppingNotes,
   moveLines,
-  removeEntry,
   setEntryKind,
 } from "@/server/shopping/list";
 import { loadSupermarkets } from "@/server/catalog";
@@ -93,13 +92,6 @@ export async function addDrugstoreEntry(form: FormData): Promise<void> {
       forWhom: entry.forWhom,
     });
   }
-  backToList(input);
-}
-
-export async function removeListEntry(form: FormData): Promise<void> {
-  const input = read(place.extend({ entry: z.guid() }), form);
-  await requireHousehold();
-  await removeEntry(await createSessionClient(), input.entry);
   backToList(input);
 }
 

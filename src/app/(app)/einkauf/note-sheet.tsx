@@ -1,4 +1,11 @@
 import { TickIcon } from "@/components/icons";
+import {
+  ActionRow,
+  LineActions,
+  MovedAwayRow,
+  NotBoughtRow,
+  type ActionLine,
+} from "@/components/line-actions";
 import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ShopLogo } from "@/components/shop-logo";
@@ -7,7 +14,6 @@ import { SubmitButton } from "@/components/submit-button";
 import {
   CompleteNote,
   SyncStatus,
-  TickButton,
   TickCount,
   TickRefresh,
   type NotePage,
@@ -21,10 +27,18 @@ import {
   moveTargets,
   type DayProblem,
 } from "@/domain/shopping-list/change-day";
+import { decisionOf, plannedOf } from "@/domain/shopping-list/decisions";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
 import { lineOnNote } from "@/domain/shopping-list/duplicates";
-import { formatPurchase } from "@/domain/shopping-list/format";
+import { formatAmount, formatPurchase } from "@/domain/shopping-list/format";
 import type { ViewLine } from "@/domain/shopping-list/present";
+import {
+  choiceOf,
+  itemKey,
+  suggestShops,
+  type PastChoice,
+  type ShopChoice,
+} from "@/domain/shopping-list/shop-choice";
 import {
   marketsOfNote,
   namesText,
@@ -57,7 +71,6 @@ import {
   moveListLine,
   noteLine,
   kindOfEntry,
-  removeListEntry,
 } from "./actions";
 
 /** The heading every note has: where, and when. */
@@ -116,6 +129,40 @@ function Where({ week, note }: { week: IsoDate; note: string }) {
 /** The units an amount can be written in by hand, the line's own first. */
 const AMOUNT_UNITS: readonly Unit[] = ["Stück", "g", "kg", "ml", "l", "Bund", "Packung"];
 
+/** What a row's actions need to know of a line: the plan, the shops to offer, the units. */
+interface RowContext {
+  trip: ShoppingTrip;
+  index: CatalogIndex;
+  supermarkets: Shop[];
+  choices: ShopChoice[];
+  history: ReadonlyMap<string, PastChoice[]>;
+}
+
+export function actionLineOf(view: ViewLine, context: RowContext): ActionLine {
+  const { trip, index, supermarkets, choices, history } = context;
+  const item = itemKey(view.line);
+  const stands = choiceOf(
+    trip.place,
+    trip.place === "supermarket" ? (supermarketOf(view, supermarkets)?.id ?? null) : null,
+    choices,
+  );
+  const { suggested, others } = suggestShops(view.line, choices, history.get(item) ?? [], index);
+  return {
+    key: view.line.key,
+    checked: view.checked,
+    decision: decisionOf(view),
+    label: view.line.label,
+    text: view.text,
+    purchase: view.purchase,
+    units: [...new Set([...(view.purchase ? [view.purchase.unit] : []), ...AMOUNT_UNITS])],
+    about: { planned: plannedOf(view, trip), item, shop: stands?.id ?? null },
+    suggested: suggested.map((choice) => choice.id),
+    others: others.map((choice) => choice.id),
+    movable: trip.place !== "drugstore",
+    hint: chosenShop(index, view),
+  };
+}
+
 /** Where a line is also on another note, and whether it can be bought there instead. */
 interface Elsewhere {
   trip: ShoppingTrip;
@@ -134,10 +181,15 @@ export function NoteSheet({
   supermarkets,
   alsoOn,
   renderedAt,
+  choices,
+  history,
 }: {
   note: NoteList;
   week: IsoDate;
   index: CatalogIndex;
+  /** Every shop a line can be moved to, and where the household bought what before. */
+  choices: ShopChoice[];
+  history: ReadonlyMap<string, PastChoice[]>;
   /** The notes a line can be moved to. */
   others: ShoppingTrip[];
   today: IsoDate;
@@ -154,7 +206,7 @@ export function NoteSheet({
   const page: NotePage = { week, note: note.id, renderedAt };
   const pageLines = view.groups
     .flatMap((group) => group.lines)
-    .map((entry) => ({ key: entry.line.key, checked: entry.checked }));
+    .map((entry) => ({ key: entry.line.key, checked: entry.checked, decision: decisionOf(entry) }));
   const drugstore = trip.place === "drugstore";
   const covers = coversText(view);
   // The kinds of grocery a typed line the catalog does not know can be put under.
@@ -174,7 +226,33 @@ export function NoteSheet({
   const sections = sectionsByShop(view, favourites);
   const named = sections.some((section) => section.shop && section.shop !== favourites[0]);
   const markets = marketsOfNote(view, favourites);
-  // The same note for the shop: large rows, nothing but ticking.
+  // What the actions of a row need, on the note and in the view for the shop alike.
+  const context: RowContext = { trip, index, supermarkets: favourites, choices, history };
+  const notBought = view.notBought.map((entry) => ({
+    line: actionLineOf(entry.view, context),
+    amount: entry.amount ? formatAmount(entry.amount) : null,
+    reason: entry.view.removedReason,
+  }));
+  const moved = note.movedAway.map(({ line, to }) => ({
+    line: {
+      key: line.key,
+      label: line.label,
+      about: {
+        planned: {
+          name: line.label,
+          quantity: line.purchase?.quantity ?? null,
+          unit: line.purchase?.unit ?? null,
+          date: trip.date,
+          place: trip.place,
+          shopId: null,
+        },
+        item: itemKey(line),
+        shop: null,
+      },
+    },
+    to,
+  }));
+  // The same note for the shop: large rows, a tap buys.
   const forShop: StoreNote = {
     title:
       markets.length > 0 ? namesText(markets.map((shop) => shop.name)) : PLACE_NAME[trip.place],
@@ -191,14 +269,11 @@ export function NoteSheet({
           : null,
       groups: section.groups.map(({ aisleGroup, lines: entries }) => ({
         name: aisleGroup.name,
-        lines: entries.map((entry) => ({
-          key: entry.line.key,
-          checked: entry.checked,
-          text: entry.text,
-          shop: chosenShop(index, entry),
-        })),
+        lines: entries.map((entry) => actionLineOf(entry, context)),
       })),
     })),
+    notBought,
+    moved,
   };
   const elsewhere = (entry: ViewLine): Elsewhere[] =>
     (alsoOn.get(lineOnNote(trip, entry.line.key)) ?? []).map((other) => ({
@@ -212,162 +287,198 @@ export function NoteSheet({
       className="sheet zoom-in mt-4 print:mt-0"
     >
       <SheetHoles />
-      <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h1>
-            <NoteHead note={note} markets={markets} />
-          </h1>
-          {pageLines.length > 0 && (
-            <p className="text-sm text-muted tabular-nums print:hidden">
-              <TickCount page={page} lines={pageLines} />
+      <LineActions page={page} note={trip} today={now} choices={choices}>
+        <div className="px-4 pt-4 pb-5 sm:px-6 print:p-0">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h1>
+              <NoteHead note={note} markets={markets} />
+            </h1>
+            {pageLines.length > 0 && (
+              <p className="text-sm text-muted tabular-nums print:hidden">
+                <TickCount page={page} lines={pageLines} />
+              </p>
+            )}
+          </div>
+          {covers !== "" && <p className="mt-2 text-sm text-muted print:text-black">{covers}</p>}
+          <TickRefresh />
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 print:hidden">
+            <StoreView page={page} note={forShop} />
+            <SyncStatus className="text-sm" />
+          </div>
+          {note.completed && (
+            <p
+              role="status"
+              className="mt-3 flex items-start gap-2 rounded-lg bg-accent-soft px-3 py-2 text-accent print:hidden"
+            >
+              <TickIcon />
+              <span>
+                <span className="block font-semibold">
+                  Erledigt{note.completed.by ? ` von ${note.completed.by}` : ""}
+                </span>
+                {notBought.length > 0 && (
+                  <span className="block text-sm text-ink">{notBoughtText(notBought.length)}</span>
+                )}
+              </span>
             </p>
           )}
-        </div>
-        {covers !== "" && <p className="mt-2 text-sm text-muted print:text-black">{covers}</p>}
-        <TickRefresh />
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 print:hidden">
-          <StoreView page={page} note={forShop} />
-          <SyncStatus className="text-sm" />
-        </div>
-        {note.completed && (
-          <p
-            role="status"
-            className="mt-3 flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-2 font-semibold text-accent print:hidden"
-          >
-            <TickIcon />
-            Erledigt{note.completed.by ? ` von ${note.completed.by}` : ""}
-          </p>
-        )}
-        {view.groups.length === 0 && (
-          <p className="mt-4 text-muted print:hidden">
-            {drugstore
-              ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
-              : "Nichts zu kaufen."}
-          </p>
-        )}
+          {view.groups.length === 0 && (
+            <p className="mt-4 text-muted print:hidden">
+              {drugstore
+                ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
+                : "Nichts zu kaufen."}
+            </p>
+          )}
 
-        {sections.map((section) => (
-          <section
-            key={section.shop?.id ?? "alle"}
-            aria-label={named && section.shop ? section.shop.name : undefined}
-            className="mt-4"
-          >
-            {named && section.shop && (
-              <h2 className="mb-2 flex items-center gap-2 border-b border-line pb-1.5 text-base font-bold tracking-tight print:text-black">
-                <span className="print:hidden">
-                  <ShopLogo shop={section.shop} size={32} />
-                </span>
-                {section.shop.name}
-              </h2>
-            )}
-            {/* One column on screen, so that an opened line has the sheet's whole width;
-                on paper the columns of `printRules`. */}
-            <div className="note-columns gap-x-10">
-              {section.groups.map(({ aisleGroup, lines }) => (
-                <section
-                  key={aisleGroup.id}
-                  aria-label={aisleGroup.name}
-                  className="mb-5 break-inside-avoid-column"
-                >
-                  <h3 className="eyebrow print:font-bold print:text-black">{aisleGroup.name}</h3>
-                  <ul className="ruled mt-1">
-                    {lines.map((line) => (
-                      <Line
-                        key={line.line.key}
-                        view={line}
-                        week={week}
-                        page={page}
-                        note={trip}
-                        shop={chosenShop(index, line)}
-                        others={moveTargets(line.line, trip, others, now, index)}
-                        drugstore={drugstore}
-                        elsewhere={elsewhere(line)}
-                        supermarkets={favourites}
-                        kinds={kinds}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          </section>
-        ))}
-
-        {drugstore ? (
-          <DrugstoreForm week={week} note={note.id} members={members} />
-        ) : (
-          <>
-            <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
-              <Where week={week} note={note.id} />
-              <label className="flex-1">
-                <span className="sr-only">Auf den Zettel schreiben</span>
-                <input
-                  name="text"
-                  maxLength={120}
-                  list="zutaten"
-                  autoComplete="off"
-                  className="field"
-                  placeholder="Dazuschreiben"
-                />
-              </label>
-              <SubmitButton>Hinzufügen</SubmitButton>
-            </form>
-            <datalist id="zutaten">
-              {index.catalog.ingredients.map((ingredient) => (
-                <option key={ingredient.id} value={ingredient.name} />
-              ))}
-            </datalist>
-          </>
-        )}
-
-        <div className="mt-5 print:hidden">
-          <CompleteNote page={page} lines={pageLines} />
-        </div>
-
-        {lines.length > 0 && !drugstore && (
-          <details className="mt-3 print:hidden">
-            <summary className="link inline-flex min-h-11 items-center">
-              An einem anderen Tag einkaufen
-            </summary>
-            <div
-              className="mt-1 flex flex-wrap gap-2"
-              role="group"
-              aria-label="Geht an diesen Tagen"
+          {sections.map((section) => (
+            <section
+              key={section.shop?.id ?? "alle"}
+              aria-label={named && section.shop ? section.shop.name : undefined}
+              className="mt-4"
             >
-              {days
-                .filter((option) => option.problems.length === 0)
-                .map(({ day }) => (
-                  <form key={day} action={changeNoteDay}>
-                    <Where week={week} note={note.id} />
-                    <input type="hidden" name="day" value={day} />
-                    <SubmitButton
-                      className="chip"
-                      label={`Einkauf verlegen auf ${dayTitle({ date: day })}`}
-                    >
-                      {dayName(day)}
-                    </SubmitButton>
-                  </form>
+              {named && section.shop && (
+                <h2 className="mb-2 flex items-center gap-2 border-b border-line pb-1.5 text-base font-bold tracking-tight print:text-black">
+                  <span className="print:hidden">
+                    <ShopLogo shop={section.shop} size={32} />
+                  </span>
+                  {section.shop.name}
+                </h2>
+              )}
+              {/* One column on screen, so that an opened line has the sheet's whole width;
+                on paper the columns of `printRules`. */}
+              <div className="note-columns gap-x-10">
+                {section.groups.map(({ aisleGroup, lines }) => (
+                  <section
+                    key={aisleGroup.id}
+                    aria-label={aisleGroup.name}
+                    className="mb-5 break-inside-avoid-column"
+                  >
+                    <h3 className="eyebrow print:font-bold print:text-black">{aisleGroup.name}</h3>
+                    <ul className="ruled mt-1">
+                      {lines.map((line) => (
+                        <Line
+                          key={line.line.key}
+                          view={line}
+                          action={actionLineOf(line, context)}
+                          week={week}
+                          note={trip}
+                          shop={chosenShop(index, line)}
+                          others={moveTargets(line.line, trip, others, now, index)}
+                          drugstore={drugstore}
+                          elsewhere={elsewhere(line)}
+                          supermarkets={favourites}
+                          kinds={kinds}
+                        />
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-            </div>
-            <ul className="mt-2 space-y-1 text-sm text-muted">
-              {days
-                .filter((option) => option.problems.length > 0)
-                .map(({ day, problems }) => (
-                  <li key={day}>
-                    <span className="font-semibold text-ink">{dayName(day)} geht nicht:</span>{" "}
-                    {problemText(problems[0])}
-                    {problems.length > 1 &&
-                      ` Dasselbe gilt für ${problems.length - 1} ${
-                        problems.length === 2 ? "weitere Zeile" : "weitere Zeilen"
-                      }.`}
-                  </li>
+              </div>
+            </section>
+          ))}
+
+          {moved.length > 0 && (
+            <section aria-label="Verschoben" className="mb-5 print:hidden">
+              <h3 className="eyebrow">Verschoben</h3>
+              <ul className="mt-1">
+                {moved.map((entry) => (
+                  <MovedAwayRow key={`${entry.line.key}-${noteId(entry.to)}`} {...entry} />
                 ))}
-            </ul>
-          </details>
-        )}
-      </div>
+              </ul>
+            </section>
+          )}
+
+          {drugstore ? (
+            <DrugstoreForm week={week} note={note.id} members={members} />
+          ) : (
+            <>
+              <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
+                <Where week={week} note={note.id} />
+                <label className="flex-1">
+                  <span className="sr-only">Auf den Zettel schreiben</span>
+                  <input
+                    name="text"
+                    maxLength={120}
+                    list="zutaten"
+                    autoComplete="off"
+                    className="field"
+                    placeholder="Dazuschreiben"
+                  />
+                </label>
+                <SubmitButton>Hinzufügen</SubmitButton>
+              </form>
+              <datalist id="zutaten">
+                {index.catalog.ingredients.map((ingredient) => (
+                  <option key={ingredient.id} value={ingredient.name} />
+                ))}
+              </datalist>
+            </>
+          )}
+
+          <div className="mt-5 print:hidden">
+            <CompleteNote page={page} lines={pageLines} />
+          </div>
+
+          {notBought.length > 0 && (
+            <section aria-label="Nicht gekaufte Einträge" className="mt-6 print:hidden">
+              <h2 className="text-base font-bold tracking-tight">Nicht gekaufte Einträge</h2>
+              <ul className="mt-1">
+                {notBought.map((entry) => (
+                  <NotBoughtRow key={entry.line.key} {...entry} />
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {lines.length > 0 && !drugstore && (
+            <details className="mt-3 print:hidden">
+              <summary className="link inline-flex min-h-11 items-center">
+                An einem anderen Tag einkaufen
+              </summary>
+              <div
+                className="mt-1 flex flex-wrap gap-2"
+                role="group"
+                aria-label="Geht an diesen Tagen"
+              >
+                {days
+                  .filter((option) => option.problems.length === 0)
+                  .map(({ day }) => (
+                    <form key={day} action={changeNoteDay}>
+                      <Where week={week} note={note.id} />
+                      <input type="hidden" name="day" value={day} />
+                      <SubmitButton
+                        className="chip"
+                        label={`Einkauf verlegen auf ${dayTitle({ date: day })}`}
+                      >
+                        {dayName(day)}
+                      </SubmitButton>
+                    </form>
+                  ))}
+              </div>
+              <ul className="mt-2 space-y-1 text-sm text-muted">
+                {days
+                  .filter((option) => option.problems.length > 0)
+                  .map(({ day, problems }) => (
+                    <li key={day}>
+                      <span className="font-semibold text-ink">{dayName(day)} geht nicht:</span>{" "}
+                      {problemText(problems[0])}
+                      {problems.length > 1 &&
+                        ` Dasselbe gilt für ${problems.length - 1} ${
+                          problems.length === 2 ? "weitere Zeile" : "weitere Zeilen"
+                        }.`}
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      </LineActions>
     </section>
   );
+}
+
+/** "2 Einträge nicht gekauft". */
+export function notBoughtText(count: number): string {
+  return count === 1 ? "1 Eintrag nicht gekauft" : `${count} Einträge nicht gekauft`;
 }
 
 /**
@@ -442,8 +553,8 @@ function DrugstoreForm({
 /** One line of a note: a box to tick, the text, and behind it where it comes from. */
 function Line({
   view,
+  action,
   week,
-  page,
   note,
   shop,
   others,
@@ -453,8 +564,9 @@ function Line({
   kinds,
 }: {
   view: ViewLine;
+  /** The line as its actions know it: bin, pen and arrow, swipe and the menu. */
+  action: ActionLine;
   week: IsoDate;
-  page: NotePage;
   note: ShoppingTrip;
   /** The shop, where the line names one on purpose. */
   shop: string | null;
@@ -490,206 +602,185 @@ function Line({
   const boughtAt = supermarketOf(view, supermarkets);
 
   return (
-    <li className="tick-line flex items-start gap-3 print:gap-2 print:py-0.5">
-      <TickButton
-        page={page}
-        line={{ key: line.key, checked: view.checked }}
-        label={view.text}
-        className="print:hidden"
-      />
-      <span aria-hidden className="mt-1 hidden size-3 shrink-0 border border-black print:block" />
-      <div className="min-w-0 flex-1">
-        <details>
-          <summary className="tick-text flex min-h-11 items-center py-1 print:min-h-0 print:py-0">
-            <span>
-              {view.text}
-              {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
-              {view.edited && (
-                <span className="text-sm text-muted print:hidden">
-                  {" "}
-                  ({origin}: {planned})
-                </span>
-              )}
-            </span>
-          </summary>
-          <div className="mt-1 mb-2 grid gap-x-6 gap-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm sm:grid-cols-2 print:hidden">
-            <div className="space-y-1">
-              {/* The day is said here, not on the line: on every line it was too much. */}
-              {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
-              {exact !== "" && <p>Genau: {exact}</p>}
-              <ul className="text-muted">
-                {line.contributions.map((entry, at) => (
-                  <li key={at}>
-                    {sourceText(entry)}
-                    {entry.origin && noteId(entry.origin) !== here && (
-                      <> · verschoben von {noteName(entry.origin)}</>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            {!drugstore && (
-              <div className="space-y-2">
-                <form action={amountLine} className="flex flex-wrap items-center gap-2">
-                  {where}
-                  <input
-                    name="quantity"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    maxLength={8}
-                    defaultValue={quantityText(view.purchase?.quantity ?? null)}
-                    className="field w-20"
-                    aria-label={`Menge von ${line.label}`}
-                    placeholder="Menge"
-                  />
-                  <select
-                    name="unit"
-                    defaultValue={view.purchase?.unit ?? "Stück"}
-                    className="field w-28"
-                    aria-label={`Einheit von ${line.label}`}
-                  >
-                    {units.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                  <SubmitButton className="btn btn-small">Menge ändern</SubmitButton>
-                </form>
-                {view.edited && (
-                  <form action={amountLine}>
-                    {where}
-                    <input type="hidden" name="reset" value="1" />
-                    <SubmitButton className="link min-h-11">
-                      {written ? "Wie geschrieben" : "Wie geplant"}: {planned}
-                    </SubmitButton>
-                  </form>
-                )}
-                <form action={noteLine} className="flex gap-2">
-                  {where}
-                  <label className="flex-1">
-                    <span className="sr-only">Notiz zu {line.label}</span>
-                    {/* Not "note": that field names the shopping note the form belongs to. */}
-                    <input
-                      name="text"
-                      defaultValue={view.note ?? ""}
-                      maxLength={80}
-                      className="field"
-                      placeholder="Notiz, z. B. Marke oder Angebot"
-                    />
-                  </label>
-                  <SubmitButton className="btn btn-small">Merken</SubmitButton>
-                </form>
-                {/* Typed, and unknown to the catalog: it stood under "Sonstiges" until the
-                    household said what it is. The same text written again goes there too. */}
-                {line.ingredientId === null && typed.length > 0 && (
-                  <form action={kindOfEntry} className="flex gap-2">
-                    {where}
-                    <input type="hidden" name="entry" value={typed[0].id} />
-                    <label className="flex flex-1 items-center gap-2">
-                      <span className="shrink-0 text-muted">Gehört zu</span>
-                      <select name="kind" defaultValue={line.aisleGroupId} className="field">
-                        {kinds.map((kind) => (
-                          <option key={kind.id} value={kind.id}>
-                            {kind.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <SubmitButton className="btn btn-small">Einordnen</SubmitButton>
-                  </form>
-                )}
-              </div>
+    <ActionRow line={action} variant="note" className="print:py-0.5">
+      <details>
+        <summary className="tick-text flex min-h-11 items-center py-1 print:min-h-0 print:py-0">
+          <span>
+            {view.text}
+            {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
+            {view.edited && (
+              <span className="text-sm text-muted print:hidden">
+                {" "}
+                ({origin}: {planned})
+              </span>
             )}
-            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-              {!drugstore && (
-                <form action={markAtHome}>
+          </span>
+        </summary>
+        <div className="mt-1 mb-2 grid gap-x-6 gap-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm sm:grid-cols-2 print:hidden">
+          <div className="space-y-1">
+            {/* The day is said here, not on the line: on every line it was too much. */}
+            {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
+            {exact !== "" && <p>Genau: {exact}</p>}
+            <ul className="text-muted">
+              {line.contributions.map((entry, at) => (
+                <li key={at}>
+                  {sourceText(entry)}
+                  {entry.origin && noteId(entry.origin) !== here && (
+                    <> · verschoben von {noteName(entry.origin)}</>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {!drugstore && (
+            <div className="space-y-2">
+              <form action={amountLine} className="flex flex-wrap items-center gap-2">
+                {where}
+                <input
+                  name="quantity"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  maxLength={8}
+                  defaultValue={quantityText(view.purchase?.quantity ?? null)}
+                  className="field w-20"
+                  aria-label={`Menge von ${line.label}`}
+                  placeholder="Menge"
+                />
+                <select
+                  name="unit"
+                  defaultValue={view.purchase?.unit ?? "Stück"}
+                  className="field w-28"
+                  aria-label={`Einheit von ${line.label}`}
+                >
+                  {units.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+                <SubmitButton className="btn btn-small">Menge ändern</SubmitButton>
+              </form>
+              {view.edited && (
+                <form action={amountLine}>
                   {where}
-                  <input type="hidden" name="atHome" value="1" />
-                  <SubmitButton className="btn btn-small" label={`${line.label} haben wir schon`}>
-                    Haben wir schon
+                  <input type="hidden" name="reset" value="1" />
+                  <SubmitButton className="link min-h-11">
+                    {written ? "Wie geschrieben" : "Wie geplant"}: {planned}
                   </SubmitButton>
                 </form>
               )}
-              {/* Another of the household's supermarkets for this week: a button like the
+              <form action={noteLine} className="flex gap-2">
+                {where}
+                <label className="flex-1">
+                  <span className="sr-only">Notiz zu {line.label}</span>
+                  {/* Not "note": that field names the shopping note the form belongs to. */}
+                  <input
+                    name="text"
+                    defaultValue={view.note ?? ""}
+                    maxLength={80}
+                    className="field"
+                    placeholder="Notiz, z. B. Marke oder Angebot"
+                  />
+                </label>
+                <SubmitButton className="btn btn-small">Merken</SubmitButton>
+              </form>
+              {/* Typed, and unknown to the catalog: it stood under "Sonstiges" until the
+                    household said what it is. The same text written again goes there too. */}
+              {line.ingredientId === null && typed.length > 0 && (
+                <form action={kindOfEntry} className="flex gap-2">
+                  {where}
+                  <input type="hidden" name="entry" value={typed[0].id} />
+                  <label className="flex flex-1 items-center gap-2">
+                    <span className="shrink-0 text-muted">Gehört zu</span>
+                    <select name="kind" defaultValue={line.aisleGroupId} className="field">
+                      {kinds.map((kind) => (
+                        <option key={kind.id} value={kind.id}>
+                          {kind.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <SubmitButton className="btn btn-small">Einordnen</SubmitButton>
+                </form>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+            {!drugstore && (
+              <form action={markAtHome}>
+                {where}
+                <input type="hidden" name="atHome" value="1" />
+                <SubmitButton className="btn btn-small" label={`${line.label} haben wir schon`}>
+                  Haben wir schon
+                </SubmitButton>
+              </form>
+            )}
+            {/* Another of the household's supermarkets for this week: a button like the
                   others, with the market's logo. */}
-              {supermarkets.length > 1 &&
-                supermarkets
-                  .filter((market) => market.id !== boughtAt?.id)
-                  .map((market) => (
-                    <form key={market.id} action={buyAtSupermarket}>
-                      {where}
-                      <input type="hidden" name="shop" value={market.id} />
-                      <SubmitButton
-                        className="btn btn-small gap-2 pl-2"
-                        label={`${line.label} bei ${market.name} kaufen`}
-                      >
-                        <ShopLogo shop={market} size={22} />
-                        Bei {market.name} kaufen
-                      </SubmitButton>
-                    </form>
-                  ))}
-              {typed.map((entry) => (
-                <form key={entry.id} action={removeListEntry}>
-                  <Where week={week} note={here} />
-                  <input type="hidden" name="entry" value={entry.id} />
+            {supermarkets.length > 1 &&
+              supermarkets
+                .filter((market) => market.id !== boughtAt?.id)
+                .map((market) => (
+                  <form key={market.id} action={buyAtSupermarket}>
+                    {where}
+                    <input type="hidden" name="shop" value={market.id} />
+                    <SubmitButton
+                      className="btn btn-small gap-2 pl-2"
+                      label={`${line.label} bei ${market.name} kaufen`}
+                    >
+                      <ShopLogo shop={market} size={22} />
+                      Bei {market.name} kaufen
+                    </SubmitButton>
+                  </form>
+                ))}
+          </div>
+          {others.length > 0 && (
+            <div
+              role="group"
+              aria-label={`${line.label} verschieben`}
+              className="flex flex-wrap items-center gap-2 sm:col-span-2"
+            >
+              <span className="text-muted">Lieber woanders kaufen:</span>
+              {others.map((other) => (
+                <form key={noteId(other)} action={moveListLine}>
+                  {where}
+                  <input type="hidden" name="to" value={noteId(other)} />
                   <SubmitButton
-                    className="btn btn-small btn-danger"
-                    label={`${entry.text} entfernen`}
+                    className="chip min-h-11 text-sm"
+                    label={`${line.label} verschieben: ${noteName(other)}`}
                   >
-                    Eintrag entfernen
+                    {noteName(other)}
                   </SubmitButton>
                 </form>
               ))}
             </div>
-            {others.length > 0 && (
-              <div
-                role="group"
-                aria-label={`${line.label} verschieben`}
-                className="flex flex-wrap items-center gap-2 sm:col-span-2"
-              >
-                <span className="text-muted">Lieber woanders kaufen:</span>
-                {others.map((other) => (
-                  <form key={noteId(other)} action={moveListLine}>
-                    {where}
-                    <input type="hidden" name="to" value={noteId(other)} />
-                    <SubmitButton
-                      className="chip min-h-11 text-sm"
-                      label={`${line.label} verschieben: ${noteName(other)}`}
-                    >
-                      {noteName(other)}
-                    </SubmitButton>
-                  </form>
-                ))}
-              </div>
-            )}
-          </div>
-        </details>
-        {/* The same thing on another note of the week: said, and bought there in one go
+          )}
+        </div>
+      </details>
+      {/* The same thing on another note of the week: said, and bought there in one go
             where that is not too late. */}
-        {elsewhere.length > 0 && !view.checked && (
-          <ul className="-mt-1 mb-1 space-y-0.5 text-sm text-muted print:hidden">
-            {elsewhere.map((other) => (
-              <li key={noteId(other.trip)} className="flex flex-wrap items-center gap-x-2">
-                <span>Auch auf: {noteName(other.trip)}</span>
-                {other.problem && <span>· {problemText(other.problem)}</span>}
-                {!other.problem && (
-                  <form action={moveListLine}>
-                    {where}
-                    <input type="hidden" name="to" value={noteId(other.trip)} />
-                    <SubmitButton
-                      className="link min-h-11 text-sm"
-                      label={`${line.label} mit ${noteName(other.trip)} kaufen`}
-                    >
-                      Dort mitkaufen
-                    </SubmitButton>
-                  </form>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </li>
+      {elsewhere.length > 0 && !view.checked && (
+        <ul className="-mt-1 mb-1 space-y-0.5 text-sm text-muted print:hidden">
+          {elsewhere.map((other) => (
+            <li key={noteId(other.trip)} className="flex flex-wrap items-center gap-x-2">
+              <span>Auch auf: {noteName(other.trip)}</span>
+              {other.problem && <span>· {problemText(other.problem)}</span>}
+              {!other.problem && (
+                <form action={moveListLine}>
+                  {where}
+                  <input type="hidden" name="to" value={noteId(other.trip)} />
+                  <SubmitButton
+                    className="link min-h-11 text-sm"
+                    label={`${line.label} mit ${noteName(other.trip)} kaufen`}
+                  >
+                    Dort mitkaufen
+                  </SubmitButton>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </ActionRow>
   );
 }

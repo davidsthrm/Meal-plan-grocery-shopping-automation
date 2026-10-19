@@ -554,6 +554,26 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
   }
 
   for (const entry of input.manualEntries ?? []) {
+    // The rest of a line bought in part on another note: its ingredient and amount are
+    // known, and it adds up with whatever this note buys of the same.
+    const carried = entry.carried && index.ingredientById.get(entry.carried.ingredientId);
+    if (entry.carried && carried) {
+      add(
+        carried,
+        {
+          date: entry.shoppingDate ?? first.date,
+          place: entry.place ?? "supermarket",
+          trip: "main",
+        },
+        {
+          source: { type: "manual", entryId: entry.id, from: entry.carried.from },
+          amount: entry.carried.amount,
+          originalText: entry.text,
+          optional: false,
+        },
+      );
+      continue;
+    }
     const parsed = parseFreeEntry(entry.text, index);
     const contribution: Contribution = {
       source: { type: "manual", entryId: entry.id },

@@ -186,7 +186,7 @@ describe("the title of a supermarket note", () => {
   });
 
   it("names the main supermarket on an empty note, and none while there is none", () => {
-    expect(marketsOfNote({ groups: [], atHome: [] }, [ALDI, REWE])).toEqual([ALDI]);
+    expect(marketsOfNote({ groups: [], atHome: [], notBought: [] }, [ALDI, REWE])).toEqual([ALDI]);
     expect(marketsOfNote(view({}), [])).toEqual([]);
   });
 
