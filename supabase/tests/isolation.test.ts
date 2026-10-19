@@ -44,6 +44,8 @@ const ROWS_OF_A = `
     values ('${A}', 'a0000000-0000-4000-8000-000000000005', 'milch@main', 'WS');
   insert into public.shopping_manual_entry (household_id, shopping_list_id, text)
     values ('${A}', 'a0000000-0000-4000-8000-000000000005', 'Milch WS 1.29');
+  insert into public.shop_item_history (household_id, item_key, choice)
+    values ('${A}', 'brezeln', 'market');
   insert into public.shopping_line (household_id, shopping_list_id, line_key, label, shop_id, aisle_group_id)
     select '${A}', 'a0000000-0000-4000-8000-000000000005', 'milch@main', 'Milch',
       (select id from public.shop where household_id = '${A}' limit 1),
