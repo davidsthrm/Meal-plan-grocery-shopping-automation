@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPreview, mayUseDeployment } from "@/lib/preview";
 
 /**
  * Runs before every page: keeps the login session fresh and sends anyone who is not signed
@@ -39,6 +40,19 @@ export async function proxy(request: NextRequest) {
   const onInvitation = path.startsWith("/einladung/");
   // Asking for a new password, and the link from that e-mail, which signs in.
   const onPasswordReset = path === "/passwort-vergessen" || path === "/auth/bestaetigen";
+
+  // A preview works on the real database: anyone but the test household is signed out there,
+  // and an invitation is not taken (see `lib/preview.ts`).
+  const email = typeof data?.claims?.email === "string" ? data.claims.email : null;
+  if ((signedIn && !mayUseDeployment(email)) || (onInvitation && isPreview())) {
+    if (signedIn) await supabase.auth.signOut();
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "?vorschau=1";
+    const away = NextResponse.redirect(url);
+    for (const cookie of response.cookies.getAll()) away.cookies.set(cookie);
+    return away;
+  }
 
   if (!signedIn && !onLoginPage && !onInvitation && !onPasswordReset) {
     const url = request.nextUrl.clone();

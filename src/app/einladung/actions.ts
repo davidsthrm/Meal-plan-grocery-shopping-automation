@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { readJoin, type JoinErrors } from "@/domain/family";
+import { isPreview } from "@/lib/preview";
 import { acceptInvite } from "@/server/family";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -26,6 +27,9 @@ export async function joinHousehold(
     password: String(form.get("password") ?? ""),
   };
   const keep = { name: typed.name, email: typed.email };
+  // The proxy keeps previews off this page; this is where it counts.
+  if (isPreview())
+    return { errors: { invite: "Einladungen gelten nur in der App selbst." }, ...keep };
   const { value, errors } = readJoin(typed);
   if (!value) return { errors, ...keep };
   const failed = await acceptInvite(token, value);
