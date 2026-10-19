@@ -24,6 +24,7 @@ const WHO =
  */
 const OVERPASS = [
   "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
@@ -106,7 +107,7 @@ export async function searchSupermarkets(
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({ data: query }).toString(),
         },
-        45,
+        30,
       )) as { elements?: OverpassElement[] };
       elements = answer.elements ?? [];
       break;
@@ -172,4 +173,25 @@ export async function findStreet(
     console.error(`find street ${street}: ${error instanceof Error ? error.message : error}`);
     return null;
   }
+}
+
+/** Nominatim asks for at most one request a second. */
+const NOMINATIM_GAP_MS = 1100;
+
+/**
+ * Where each of these markets stands, found by its street, one after the other at the pace
+ * Nominatim asks for. For markets found before their place was kept, when Overpass cannot
+ * be reached: they stand on the map all the same. A street that is not found is left out.
+ */
+export async function findStreets(
+  shops: readonly { id: string; address: string }[],
+  postalCode: string,
+): Promise<Map<string, { lat: number; lon: number }>> {
+  const found = new Map<string, { lat: number; lon: number }>();
+  for (const [at, shop] of shops.entries()) {
+    if (at > 0) await new Promise((done) => setTimeout(done, NOMINATIM_GAP_MS));
+    const position = await findStreet(shop.address, postalCode);
+    if (position) found.set(shop.id, position);
+  }
+  return found;
 }

@@ -214,3 +214,28 @@ export async function storeShopDetails(
     .eq("id", shopId);
   if (stored.error) throw new Error(`store shop: ${stored.error.message}`);
 }
+
+/** The household's supermarkets that have a street but no place on the map yet. */
+export async function supermarketsWithoutPlace(db: Db): Promise<{ id: string; address: string }[]> {
+  const rows = must(
+    await db
+      .from("shop")
+      .select("id, address")
+      .eq("kind", "supermarket")
+      .is("lat", null)
+      .not("address", "is", null),
+    "load supermarkets without a place",
+  );
+  return rows.map((row) => ({ id: row.id, address: row.address as string }));
+}
+
+/** Keeps where each of these shops stands. */
+export async function storeShopPlaces(
+  db: Db,
+  places: ReadonlyMap<string, { lat: number; lon: number }>,
+): Promise<void> {
+  for (const [id, place] of places) {
+    const stored = await db.from("shop").update({ lat: place.lat, lon: place.lon }).eq("id", id);
+    if (stored.error) throw new Error(`store shop place: ${stored.error.message}`);
+  }
+}

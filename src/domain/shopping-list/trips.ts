@@ -102,6 +102,18 @@ export const FRESH_REACH_DAYS = 3;
 export const BAKERY_FRESH_DAYS = 5;
 
 /**
+ * Where something is bought fresh, given its kind's fresh place and its shelf life: packed
+ * bread of a kind the bakery sells is bought at the supermarket (`BAKERY_FRESH_DAYS`).
+ */
+export function freshPlaceFor(
+  fresh: FreshPlace | null,
+  shelfLifeDays: number | null,
+): FreshPlace | null {
+  const packed = shelfLifeDays === null || shelfLifeDays > BAKERY_FRESH_DAYS;
+  return fresh === "bakery" && packed ? null : fresh;
+}
+
+/**
  * The weekdays the household shops in the afternoon, after lunch: Monday to Friday. On a
  * Saturday it shops in the morning, so Saturday's errand still buys Saturday's lunch.
  */
@@ -329,10 +341,7 @@ function assignOn(
     );
 
   const named = need.at && need.at !== "supermarket" ? need.at : null;
-  const packed =
-    need.fresh === "bakery" &&
-    (need.shelfLifeDays === null || need.shelfLifeDays > BAKERY_FRESH_DAYS);
-  const elsewhere = named ?? (packed ? null : need.fresh);
+  const elsewhere = named ?? freshPlaceFor(need.fresh, need.shelfLifeDays);
   if (elsewhere && onDemand.includes(elsewhere)) {
     const day = elsewhere === "butcher" ? butcherDay(need, butcherDays, strict) : null;
     const bundled = day && !doneBefore({ date: day, place: "butcher" }) ? day : null;

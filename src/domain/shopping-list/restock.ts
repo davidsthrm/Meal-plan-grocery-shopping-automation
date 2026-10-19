@@ -1,8 +1,9 @@
 import type { CatalogIndex } from "../catalog";
-import { addDays, type IsoDate } from "../dates";
+import { addDays, isoWeekday, type IsoDate } from "../dates";
 import { isDrugstoreItem, nextDrugstoreTrip } from "./drugstore";
 import { parseFreeEntry } from "./free-entry";
 import {
+  freshPlaceFor,
   nextTrip,
   tripsBetween,
   type FreshPlace,
@@ -32,21 +33,23 @@ export function readRestock(text: string): string {
 }
 
 /**
- * Where an entry is bought fresh, going by the catalog: at the market, at the butcher, or
- * null for the supermarket and for what the catalog does not know. Looked up once, when the
- * entry is written.
+ * Where an entry is bought fresh, going by the catalog: at the market, the butcher or the
+ * bakery, or null for the supermarket, for packed bread and for what the catalog does not
+ * know. Looked up once, when the entry is written.
  */
 export function freshPlaceOf(text: string, index: CatalogIndex): FreshPlace | null {
   const { ingredient } = parseFreeEntry(text, index);
-  return ingredient
-    ? (index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null)
-    : null;
+  if (!ingredient) return null;
+  const fresh = index.aisleGroupById.get(ingredient.aisleGroupId)?.freshPlace ?? null;
+  return freshPlaceFor(fresh, ingredient.shelfLifeDays ?? null);
 }
 
 /**
  * The errand an entry goes to: the next one from `today` on that sells it. What the
  * drugstore sells goes to its note ("Zahnpasta", "Duschgel"), also where the food catalog
- * knows it too. Something not sold fresh elsewhere waits for the supermarket.
+ * knows it too. Bread that ran out is fetched from the bakery that day, on a Sunday on the
+ * Monday: the bakery has no day of its own to wait for. Something not sold fresh elsewhere
+ * waits for the supermarket.
  */
 export function restockTrip(
   item: Pick<RestockItem, "freshPlace" | "text">,
@@ -56,6 +59,9 @@ export function restockTrip(
   if (isDrugstoreItem(item.text)) {
     const drugstore = nextDrugstoreTrip(tripsBetween(days, today, addDays(today, 13)), today);
     if (drugstore) return drugstore;
+  }
+  if (item.freshPlace === "bakery" && days.length > 0) {
+    return { date: isoWeekday(today) === 7 ? addDays(today, 1) : today, place: "bakery" };
   }
   return nextTrip(days, today, item.freshPlace);
 }

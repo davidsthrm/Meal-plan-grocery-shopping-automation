@@ -1,12 +1,34 @@
 import { describe, expect, it } from "vitest";
+import { createCatalogIndex } from "../catalog";
 import { freshPlaceOf, readRestock, restockTrip } from "./restock";
-import { testIndex } from "./test-catalog";
+import { testCatalog, testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS, withDrugstore } from "./trips";
 
 const TUESDAY = "2026-10-13";
 const FRIDAY = "2026-10-16";
 const SATURDAY = "2026-10-17";
+const SUNDAY = "2026-10-18";
 const NEXT_MONDAY = "2026-10-19";
+
+// The bakery sells "Brot & Backwaren": bread keeps three days, toast ten.
+const withBakery = createCatalogIndex({
+  ...testCatalog,
+  aisleGroups: testCatalog.aisleGroups.map((group) =>
+    group.id === "brot" ? { ...group, freshPlace: "bakery" as const } : group,
+  ),
+  ingredients: [
+    ...testCatalog.ingredients.map((each) =>
+      each.id === "brot" ? { ...each, shelfLifeDays: 3 } : each,
+    ),
+    {
+      ...testCatalog.ingredients.find((each) => each.id === "brot")!,
+      id: "toast",
+      name: "Toast",
+      synonyms: [],
+      shelfLifeDays: 10,
+    },
+  ],
+});
 
 const errand = (text: string, today: string) =>
   restockTrip({ text, freshPlace: freshPlaceOf(text, testIndex) }, DEFAULT_SHOPPING_DAYS, today);
@@ -45,6 +67,21 @@ describe("restockTrip", () => {
     // The butcher has no day to wait for: meat that ran out is on the supermarket's note.
     expect(errand("Leberkäse", SATURDAY)).toEqual({ date: NEXT_MONDAY, place: "supermarket" });
     expect(errand("Karotten", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
+  });
+
+  it("fetches bread that ran out from the bakery that day, packed bread at the supermarket", () => {
+    const at = (text: string, today: string) =>
+      restockTrip(
+        { text, freshPlace: freshPlaceOf(text, withBakery) },
+        DEFAULT_SHOPPING_DAYS,
+        today,
+      );
+    expect(freshPlaceOf("Brot", withBakery)).toBe("bakery");
+    expect(freshPlaceOf("Toast", withBakery)).toBeNull();
+    expect(at("Brot", TUESDAY)).toEqual({ date: TUESDAY, place: "bakery" });
+    // The bakery is closed on a Sunday.
+    expect(at("Brot", SUNDAY)).toEqual({ date: NEXT_MONDAY, place: "bakery" });
+    expect(at("Toast", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
   });
 
   it("has no errand for a household that never shops", () => {
