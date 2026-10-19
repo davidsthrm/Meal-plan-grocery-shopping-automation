@@ -11,6 +11,7 @@ import {
   saveSupermarketDetails,
   searchAgain,
 } from "./actions";
+import { AddressField } from "./address-field";
 import { SearchPending } from "./search-pending";
 import { SupermarketMap } from "./supermarket-map";
 
@@ -79,8 +80,9 @@ export function SupermarketsCard({
         Supermärkte
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Alles für den Supermarkt steht unter dem Hauptmarkt. Eine Zeile lässt sich auf dem Zettel zu
-        einem weiteren Markt schieben, der dann einen eigenen Abschnitt bekommt.
+        Alles für den Supermarkt steht unter dem Hauptmarkt. Was ihr bei einem weiteren Markt kauft
+        (unter „Angaben“, etwa Tiefkühl bei Aldi), bekommt dort einen eigenen Abschnitt, und eine
+        einzelne Zeile lässt sich auf dem Zettel hinschieben.
       </p>
 
       <form action={savePostalCode} className="mt-3 flex flex-wrap items-end gap-2">
@@ -123,7 +125,7 @@ export function SupermarketsCard({
               {placeName ? `In ${placeName}` : `Rund um ${postalCode}`}
             </h3>
             <form action={searchAgain} className="flex flex-wrap items-center justify-end gap-2">
-              <SubmitButton className="link min-h-10 text-sm">Neu suchen</SubmitButton>
+              <SubmitButton className="link min-h-11 text-sm">Neu suchen</SubmitButton>
               <SearchPending />
             </form>
           </div>
@@ -140,16 +142,20 @@ export function SupermarketsCard({
               <SupermarketMap
                 shops={[...found, ...chosen.filter((shop) => !found.includes(shop))]}
                 chosen={chosen}
+                aisleGroups={aisleGroups}
               />
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Supermärkte">
+              <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label="Supermärkte">
                 {shown.map(tile)}
               </ul>
               {more.length > 0 && (
                 <details className="mt-2">
-                  <summary className="link inline-flex min-h-10 items-center text-sm">
+                  <summary className="link inline-flex min-h-11 items-center text-sm">
                     Weitere anzeigen ({more.length})
                   </summary>
-                  <ul className="mt-1 grid gap-2 sm:grid-cols-2" aria-label="Weitere Supermärkte">
+                  <ul
+                    className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2"
+                    aria-label="Weitere Supermärkte"
+                  >
                     {more.map(tile)}
                   </ul>
                 </details>
@@ -157,7 +163,7 @@ export function SupermarketsCard({
             </>
           )}
           <details className="mt-3">
-            <summary className="link inline-flex min-h-10 items-center text-sm">
+            <summary className="link inline-flex min-h-11 items-center text-sm">
               Ein Markt fehlt?
             </summary>
             <form action={addSupermarket} className="mt-1 flex gap-2">
@@ -247,7 +253,7 @@ function SupermarketTile({
         {chosen &&
           (role === "main" ? (
             <span
-              className="flex size-10 items-center justify-center text-accent"
+              className="flex size-11 items-center justify-center text-accent"
               title="Hauptmarkt"
               aria-label={`${shop.name} ist der Hauptmarkt`}
             >
@@ -258,7 +264,7 @@ function SupermarketTile({
               <input type="hidden" name="id" value={shop.id} />
               <input type="hidden" name="as" value="main" />
               <SubmitButton
-                className="flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent"
+                className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent"
                 label={`${shop.name} zum Hauptmarkt machen`}
               >
                 <StarIcon />
@@ -268,7 +274,7 @@ function SupermarketTile({
       </div>
       {chosen && (
         <details className="border-t border-line/70 px-3 pb-2">
-          <summary className="link inline-flex min-h-10 items-center text-sm">
+          <summary className="link inline-flex min-h-11 items-center text-sm">
             Angaben
             {saved && (
               <span role="status" className="ml-2 text-accent no-underline">
@@ -278,19 +284,13 @@ function SupermarketTile({
           </summary>
           <form action={saveSupermarketDetails} className="grid gap-3 pb-1">
             <input type="hidden" name="id" value={shop.id} />
-            <label>
-              <span className="label">Adresse</span>
-              <input
-                name="address"
-                defaultValue={shop.address ?? ""}
-                maxLength={120}
-                autoComplete="off"
-                className="field"
-                placeholder="z. B. Biberacher Straße 12"
-              />
-            </label>
+            <AddressField defaultValue={shop.address ?? ""} />
             <fieldset>
               <legend className="label">Was ihr dort kauft</legend>
+              <p className="mb-2 text-sm text-muted">
+                Steht auf dem Supermarktzettel unter diesem Markt. Was auf dem Markt, beim Metzger
+                oder Bäcker gekauft wird, bleibt auf deren Zetteln.
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {aisleGroups.map((group) => (
                   <label key={group.id} className="chip cursor-pointer">
