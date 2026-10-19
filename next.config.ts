@@ -1,6 +1,29 @@
 import type { NextConfig } from "next";
 
+/**
+ * Sent with every answer. No page is shown inside another site's frame, nothing is read as a
+ * type it does not say it is, and a link out of the app (a logo, the map) tells the other
+ * site no more than the app's address: an invitation's secret is part of its path. Scripts
+ * are not limited here: the pages need Next.js's inline scripts, and the household's data is
+ * guarded by the login and row level security, not by the page.
+ */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), browsing-topics=()",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+  },
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   // Every page of this app is private and reads the signed-in household's data on each
   // request, so there is nothing to prerender or cache. Cache Components would only add
   // Suspense boundaries around everything.
@@ -13,6 +36,7 @@ const nextConfig: NextConfig = {
   // for the shop: Wikimedia Commons sends them on from another of its servers.
   async headers() {
     return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
       {
         source: "/sw.js",
         headers: [
