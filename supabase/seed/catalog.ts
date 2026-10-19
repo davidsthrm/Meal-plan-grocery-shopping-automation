@@ -46,7 +46,7 @@ export const aisleGroups: AisleGroup[] = [
   { id: "backzutaten", name: "Backzutaten", sortOrder: 30 },
   { id: "trockenwaren", name: "Nudeln, Reis & Hülsenfrüchte", sortOrder: 40 },
   { id: "gewuerze", name: "Gewürze, Öl & Essig", sortOrder: 50 },
-  { id: "brot", name: "Brot & Backwaren", sortOrder: 60 },
+  { id: "brot", name: "Brot & Backwaren", sortOrder: 60, freshPlace: "bakery" },
   { id: "molkerei", name: "Molkerei & Kühlregal", sortOrder: 70 },
   { id: "fleisch", name: "Fleisch & Wurst", sortOrder: 80, freshPlace: "butcher" },
   { id: "fisch", name: "Fisch & Meeresfrüchte", sortOrder: 90, freshPlace: "market" },

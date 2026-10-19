@@ -95,6 +95,13 @@ export const BUTCHER_REACH_DAYS = 3;
 export const FRESH_REACH_DAYS = 3;
 
 /**
+ * Bread from the bakery keeps a few days. What keeps longer, or has no shelf life in the
+ * catalog, is packed: toast, wraps, crispbread and rusks of "Brot & Backwaren" stay on the
+ * supermarket's note when the bakery sells the rest of the kind.
+ */
+export const BAKERY_FRESH_DAYS = 5;
+
+/**
  * The weekdays the household shops in the afternoon, after lunch: Monday to Friday. On a
  * Saturday it shops in the morning, so Saturday's errand still buys Saturday's lunch.
  */
@@ -322,7 +329,10 @@ function assignOn(
     );
 
   const named = need.at && need.at !== "supermarket" ? need.at : null;
-  const elsewhere = named ?? need.fresh;
+  const packed =
+    need.fresh === "bakery" &&
+    (need.shelfLifeDays === null || need.shelfLifeDays > BAKERY_FRESH_DAYS);
+  const elsewhere = named ?? (packed ? null : need.fresh);
   if (elsewhere && onDemand.includes(elsewhere)) {
     const day = elsewhere === "butcher" ? butcherDay(need, butcherDays, strict) : null;
     const bundled = day && !doneBefore({ date: day, place: "butcher" }) ? day : null;
