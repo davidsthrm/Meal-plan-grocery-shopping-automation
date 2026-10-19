@@ -34,11 +34,14 @@ export const metadata: Metadata = { title: "Einstellungen" };
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 const until = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long" });
 
-/** The three parts of the page, to jump to on a phone, where the page is long. */
+/**
+ * The three parts of the page, what is changed most first, to jump to on a phone, where the
+ * page is long.
+ */
 const PARTS = [
-  { id: "haushalt", name: "Familie & Konto" },
-  { id: "wochenplan", name: "Wochenplan" },
   { id: "einkaufen", name: "Einkaufen" },
+  { id: "wochenplan", name: "Wochenplan" },
+  { id: "haushalt", name: "Familie & Konto" },
 ] as const;
 
 function Saved({ when }: { when: boolean }) {
@@ -50,9 +53,10 @@ function Saved({ when }: { when: boolean }) {
 }
 
 /**
- * What a household sets once and that then holds for every week, in three parts: who
- * belongs to it and the signed-in member's own account; what a week should contain and what
- * is usually at home; when it shops, what comes from where, and its supermarkets.
+ * What a household sets once and that then holds for every week, in three parts, what is
+ * changed most first: when it shops, what is usually at home, what comes from where, and its
+ * supermarkets; what a week should contain and for how many; who belongs to it and the
+ * signed-in member's own account.
  */
 export default async function SettingsPage(props: PageProps<"/einstellungen">) {
   const params = await props.searchParams;
@@ -94,8 +98,156 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
         ))}
       </nav>
 
-      {/* Familie & Konto: the household on the left, the member's own account on the right. */}
-      <section aria-labelledby="haushalt" className="mt-8 scroll-mt-4">
+      {/* Einkaufen, what the household changes most: when it shops, what is at home and what
+          comes from where on the left, the supermarkets and their map on the right. */}
+      <section aria-labelledby="einkaufen" className="mt-8 scroll-mt-4">
+        <h2 id="einkaufen" className="eyebrow">
+          Einkaufen
+        </h2>
+        <div className="mt-2 grid items-start gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
+            <section className="card scroll-mt-4 p-4" aria-labelledby="einkaufstage">
+              <h3 id="einkaufstage" className="text-lg font-bold tracking-tight">
+                Einkaufstage
+              </h3>
+              <p className="mt-1 mb-3 text-sm text-muted">
+                Jeder Einkauf bekommt seinen eigenen Zettel. Zum Metzger geht es an seinen Tagen,
+                und nur wenn ein Essen Fleisch braucht. Der Bäcker hat keinen festen Tag: was eine
+                Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit, für
+                einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
+                bereit und wird von Hand geschrieben.
+              </p>
+              {one(params.fehler) === "tage" && (
+                <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
+                  Es braucht mindestens einen Tag im Supermarkt: dort gibt es alles, was Markt und
+                  Metzger nicht haben.
+                </p>
+              )}
+              <form action={saveShoppingDays}>
+                <ShoppingDaysFields days={household.shoppingDays} />
+                <div className="mt-3">
+                  <DrugstoreDayField days={household.shoppingDays} />
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
+                  <Saved when={said === "tage"} />
+                </div>
+              </form>
+            </section>
+
+            <PantryTile
+              staples={ingredients
+                .filter((ingredient) => ingredient.isPantryStaple)
+                .sort((a, b) => a.name.localeCompare(b.name, "de"))}
+            />
+
+            <section className="card scroll-mt-4 p-4" aria-labelledby="frisch">
+              <h3 id="frisch" className="text-lg font-bold tracking-tight">
+                Frisch vom Markt, vom Metzger und vom Bäcker
+              </h3>
+              <p className="mt-1 text-muted">
+                Markt: {fresh("market")}
+                <br />
+                Metzger: {fresh("butcher")}
+                <br />
+                Bäcker: {fresh("bakery")}
+              </p>
+              <Saved when={said === "frisch"} />
+              <details className="mt-2" open={said === "frisch"}>
+                <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
+                <p className="text-sm text-muted">
+                  Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens
+                  drei Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger
+                  gehört, kommt auf seinen Zettel am Metzgertag vor der Mahlzeit. Was dem Bäcker
+                  gehört, bekommt einen Zettel für den Tag der Mahlzeit, für den Sonntag am Samstag;
+                  was sich länger als fünf Tage hält, wie Toast oder Knäckebrot, bleibt im
+                  Supermarkt. Alles andere kommt aus dem Supermarkt.
+                </p>
+                <form action={saveFreshPlaces} className="mt-3">
+                  <ul className="divide-y divide-line">
+                    {aisles.map((group) => (
+                      <li key={group.id} className="flex items-center justify-between gap-3 py-1.5">
+                        <label htmlFor={`frisch-${group.id}`}>{group.name}</label>
+                        <select
+                          id={`frisch-${group.id}`}
+                          name={`frisch-${group.id}`}
+                          defaultValue={group.freshPlace ?? ""}
+                          className="field w-40"
+                        >
+                          <option value="">{PLACE_NAME.supermarket}</option>
+                          <option value="market">{PLACE_NAME.market}</option>
+                          <option value="butcher">{PLACE_NAME.butcher}</option>
+                          <option value="bakery">{PLACE_NAME.bakery}</option>
+                        </select>
+                      </li>
+                    ))}
+                  </ul>
+                  <SubmitButton className="btn btn-primary mt-3">Speichern</SubmitButton>
+                </form>
+              </details>
+            </section>
+          </div>
+
+          <SupermarketsCard
+            postalCode={household.postalCode}
+            placeName={household.placeName}
+            found={index.catalog.shops.filter(
+              (shop) => household.postalCode !== null && shop.foundNear === household.postalCode,
+            )}
+            chosen={supermarkets}
+            problem={one(params.fehler) ?? null}
+            reason={one(params.grund)?.slice(0, 300) ?? null}
+            aisleGroups={aisles}
+            saved={said?.startsWith("markt-") ? said.slice("markt-".length) : null}
+          />
+        </div>
+      </section>
+
+      {/* Wochenplan: what a week should contain, and for how many it is cooked. */}
+      <section aria-labelledby="wochenplan" className="mt-10 scroll-mt-4">
+        <h2 id="wochenplan" className="eyebrow">
+          Wochenplan
+        </h2>
+        <div className="mt-2 grid items-start gap-4 sm:grid-cols-2">
+          <Link
+            id="ziele"
+            href="/woche/ziele"
+            className="card lift flex scroll-mt-4 items-center justify-between gap-4 p-4"
+            aria-label="Ziele der Woche ansehen und ändern"
+          >
+            <span className="min-w-0">
+              <span className="block text-lg font-bold tracking-tight">Ziele der Woche</span>
+              <span className="mt-1 block text-sm text-muted">
+                {BALANCE_GROUPS.map((group) => {
+                  const aim = targetText({ group, count: 0, ...household.targets[group] });
+                  return `${GROUP_NAME[group]}: ${aim === "" ? "egal" : aim}`;
+                }).join(" · ")}
+              </span>
+            </span>
+            <span className="text-accent">
+              <ArrowIcon />
+            </span>
+          </Link>
+          <section className="card scroll-mt-4 p-4" aria-labelledby="personen">
+            <h3 id="personen" className="text-lg font-bold tracking-tight">
+              Personen
+            </h3>
+            <form action={saveFamilySize} className="mt-3 flex items-end gap-2">
+              <FamilySizeField size={household.defaultServings} />
+              <SubmitButton>Speichern</SubmitButton>
+            </form>
+            <p className="mt-1 text-sm text-muted">
+              Jede Mahlzeit wird für {household.defaultServings}{" "}
+              {household.defaultServings === 1 ? "Person" : "Personen"} geplant, außer ein Rezept
+              zählt etwas anderes. <Saved when={said === "personen"} />
+            </p>
+          </section>
+        </div>
+      </section>
+
+      {/* Familie & Konto, set once and seldom changed: the household on the left, the
+          member's own account on the right. */}
+      <section aria-labelledby="haushalt" className="mt-10 scroll-mt-4">
         <h2 id="haushalt" className="eyebrow">
           Familie & Konto
         </h2>
@@ -104,7 +256,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
             <h3 id="familie" className="text-lg font-bold tracking-tight">
               Familie
             </h3>
-            <div className="mt-3 grid gap-3">
+            <div className="mt-3">
               <form action={saveHouseholdName}>
                 <label htmlFor="haushalt-name" className="label">
                   Name des Haushalts
@@ -122,16 +274,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
                   <SubmitButton>Speichern</SubmitButton>
                 </div>
               </form>
-              <form action={saveFamilySize} className="flex items-end gap-2">
-                <FamilySizeField size={household.defaultServings} />
-                <SubmitButton>Speichern</SubmitButton>
-              </form>
             </div>
-            <p className="mt-1 text-sm text-muted">
-              Jede Mahlzeit wird für {household.defaultServings}{" "}
-              {household.defaultServings === 1 ? "Person" : "Personen"} geplant, außer ein Rezept
-              zählt etwas anderes. <Saved when={said === "personen"} />
-            </p>
 
             <h4 className="mt-5 font-semibold">Wer dazugehört</h4>
             <p className="text-sm text-muted">
@@ -260,138 +403,6 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </div>
             )}
           </section>
-        </div>
-      </section>
-
-      {/* Wochenplan: two tiles that lead to pages of their own. */}
-      <section aria-labelledby="wochenplan" className="mt-10 scroll-mt-4">
-        <h2 id="wochenplan" className="eyebrow">
-          Wochenplan
-        </h2>
-        <div className="mt-2 grid gap-4 sm:grid-cols-2">
-          <Link
-            id="ziele"
-            href="/woche/ziele"
-            className="card lift flex scroll-mt-4 items-center justify-between gap-4 p-4"
-            aria-label="Ziele der Woche ansehen und ändern"
-          >
-            <span className="min-w-0">
-              <span className="block text-lg font-bold tracking-tight">Ziele der Woche</span>
-              <span className="mt-1 block text-sm text-muted">
-                {BALANCE_GROUPS.map((group) => {
-                  const aim = targetText({ group, count: 0, ...household.targets[group] });
-                  return `${GROUP_NAME[group]}: ${aim === "" ? "egal" : aim}`;
-                }).join(" · ")}
-              </span>
-            </span>
-            <span className="text-accent">
-              <ArrowIcon />
-            </span>
-          </Link>
-          <PantryTile
-            staples={ingredients
-              .filter((ingredient) => ingredient.isPantryStaple)
-              .sort((a, b) => a.name.localeCompare(b.name, "de"))}
-          />
-        </div>
-      </section>
-
-      {/* Einkaufen: when and what comes from where on the left, the supermarkets and their
-          map on the right. */}
-      <section aria-labelledby="einkaufen" className="mt-10 scroll-mt-4">
-        <h2 id="einkaufen" className="eyebrow">
-          Einkaufen
-        </h2>
-        <div className="mt-2 grid items-start gap-4 lg:grid-cols-2">
-          <div className="grid gap-4">
-            <section className="card scroll-mt-4 p-4" aria-labelledby="einkaufstage">
-              <h3 id="einkaufstage" className="text-lg font-bold tracking-tight">
-                Einkaufstage
-              </h3>
-              <p className="mt-1 mb-3 text-sm text-muted">
-                Jeder Einkauf bekommt seinen eigenen Zettel. Zum Metzger geht es an seinen Tagen,
-                und nur wenn ein Essen Fleisch braucht. Der Bäcker hat keinen festen Tag: was eine
-                Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit, für
-                einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
-                bereit und wird von Hand geschrieben.
-              </p>
-              {one(params.fehler) === "tage" && (
-                <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
-                  Es braucht mindestens einen Tag im Supermarkt: dort gibt es alles, was Markt und
-                  Metzger nicht haben.
-                </p>
-              )}
-              <form action={saveShoppingDays}>
-                <ShoppingDaysFields days={household.shoppingDays} />
-                <div className="mt-3">
-                  <DrugstoreDayField days={household.shoppingDays} />
-                </div>
-                <div className="mt-4 flex items-center gap-3">
-                  <SubmitButton className="btn btn-primary">Speichern</SubmitButton>
-                  <Saved when={said === "tage"} />
-                </div>
-              </form>
-            </section>
-
-            <section className="card scroll-mt-4 p-4" aria-labelledby="frisch">
-              <h3 id="frisch" className="text-lg font-bold tracking-tight">
-                Frisch vom Markt, vom Metzger und vom Bäcker
-              </h3>
-              <p className="mt-1 text-muted">
-                Markt: {fresh("market")}
-                <br />
-                Metzger: {fresh("butcher")}
-                <br />
-                Bäcker: {fresh("bakery")}
-              </p>
-              <Saved when={said === "frisch"} />
-              <details className="mt-2" open={said === "frisch"}>
-                <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
-                <p className="text-sm text-muted">
-                  Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens
-                  drei Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger
-                  gehört, kommt auf seinen Zettel am Metzgertag vor der Mahlzeit. Was dem Bäcker
-                  gehört, bekommt einen Zettel für den Tag der Mahlzeit, für den Sonntag am Samstag;
-                  was sich länger als fünf Tage hält, wie Toast oder Knäckebrot, bleibt im
-                  Supermarkt. Alles andere kommt aus dem Supermarkt.
-                </p>
-                <form action={saveFreshPlaces} className="mt-3">
-                  <ul className="divide-y divide-line">
-                    {aisles.map((group) => (
-                      <li key={group.id} className="flex items-center justify-between gap-3 py-1.5">
-                        <label htmlFor={`frisch-${group.id}`}>{group.name}</label>
-                        <select
-                          id={`frisch-${group.id}`}
-                          name={`frisch-${group.id}`}
-                          defaultValue={group.freshPlace ?? ""}
-                          className="field w-40"
-                        >
-                          <option value="">{PLACE_NAME.supermarket}</option>
-                          <option value="market">{PLACE_NAME.market}</option>
-                          <option value="butcher">{PLACE_NAME.butcher}</option>
-                          <option value="bakery">{PLACE_NAME.bakery}</option>
-                        </select>
-                      </li>
-                    ))}
-                  </ul>
-                  <SubmitButton className="btn btn-primary mt-3">Speichern</SubmitButton>
-                </form>
-              </details>
-            </section>
-          </div>
-
-          <SupermarketsCard
-            postalCode={household.postalCode}
-            placeName={household.placeName}
-            found={index.catalog.shops.filter(
-              (shop) => household.postalCode !== null && shop.foundNear === household.postalCode,
-            )}
-            chosen={supermarkets}
-            problem={one(params.fehler) ?? null}
-            reason={one(params.grund)?.slice(0, 300) ?? null}
-            aisleGroups={aisles}
-            saved={said?.startsWith("markt-") ? said.slice("markt-".length) : null}
-          />
         </div>
       </section>
     </div>
