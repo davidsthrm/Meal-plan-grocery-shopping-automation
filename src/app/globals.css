@@ -1965,29 +1965,59 @@ main > * {
   }
 }
 /*
- * From the welcome into the app: the welcome goes up and away like a sheet lifted off, and
- * the app rises into its place under it. Slower than the rest, as the rubber and the
- * Merkzettel are: it happens once and is meant to be seen.
+ * From the welcome into the app, a moment that happens once per device and is meant to be
+ * seen. The welcome lifts off the moment a button is tapped (`.welcome-leaving`, a class:
+ * React runs no exit transition for a page Next.js leaves), and the app comes in under it
+ * in three parts, 60ms apart: the header drops into place, the page rises, the bar of the
+ * sections comes up from the foot. The header and the bar get names of their own only
+ * during this transition (`willkommen`), so no other navigation moves them.
  */
-::view-transition-group(.welcome-out) {
-  z-index: 1;
-}
-::view-transition-old(.welcome-out) {
-  animation: welcome-out 0.42s var(--ease-in-out) both;
-}
-::view-transition-new(.app-in) {
-  animation: app-in 0.5s var(--ease-out) 0.14s both;
+.welcome-leaving {
+  pointer-events: none;
+  animation: welcome-out 360ms var(--ease-drawer) forwards;
 }
 @keyframes welcome-out {
   to {
     opacity: 0;
-    transform: translateY(-3rem) scale(0.97);
+    transform: translateY(-2.5rem) scale(0.98);
+  }
+}
+:root:active-view-transition-type(willkommen) .app-header {
+  view-transition-name: app-header;
+}
+:root:active-view-transition-type(willkommen) .tabbar {
+  view-transition-name: app-tabbar;
+}
+/* What is left of the welcome has lifted off already: it goes at once. */
+:root:active-view-transition-type(willkommen)::view-transition-old(root) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-new(app-header) {
+  animation: app-header-in 380ms var(--ease-out) both;
+}
+::view-transition-new(.app-in) {
+  animation: app-in 420ms var(--ease-out) 60ms both;
+}
+::view-transition-new(app-tabbar) {
+  animation: app-tabbar-in 380ms var(--ease-out) 120ms both;
+}
+@keyframes app-header-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem);
   }
 }
 @keyframes app-in {
   from {
     opacity: 0;
-    transform: translateY(2rem) scale(0.98);
+    transform: translateY(1.5rem) scale(0.98);
+  }
+}
+@keyframes app-tabbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
   }
 }
 @keyframes note-on {
@@ -1997,6 +2027,9 @@ main > * {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .welcome-leaving {
+    animation: fade-out 200ms ease forwards;
+  }
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*) {
