@@ -46,6 +46,17 @@ const ROWS_OF_A = `
     values ('${A}', 'a0000000-0000-4000-8000-000000000005', 'Milch WS 1.29');
   insert into public.shop_item_history (household_id, item_key, choice)
     values ('${A}', 'brezeln', 'market');
+  insert into public.receipt (id, household_id, photo_path, shopping_list_id)
+    values ('a0000000-0000-4000-8000-000000000007', '${A}', '${A}/receipts/0000.jpg',
+      'a0000000-0000-4000-8000-000000000005');
+  insert into public.receipt_line (id, household_id, receipt_id, position, text_read, price_cents)
+    values ('a0000000-0000-4000-8000-000000000008', '${A}', 'a0000000-0000-4000-8000-000000000007',
+      0, 'ENSINGER SPORT', 89);
+  insert into public.receipt_match (household_id, receipt_line_id, shopping_list_id, line_key, score)
+    values ('${A}', 'a0000000-0000-4000-8000-000000000008', 'a0000000-0000-4000-8000-000000000005',
+      'manual:wasser', 0.9);
+  insert into public.model_usage (household_id, purpose, model, input_tokens, output_tokens, cost_microcents)
+    values ('${A}', 'receipt', 'claude-haiku-5-5', 1200, 300, 210000);
   insert into public.shopping_line (household_id, shopping_list_id, line_key, label, shop_id, aisle_group_id)
     select '${A}', 'a0000000-0000-4000-8000-000000000005', 'milch@main', 'Milch',
       (select id from public.shop where household_id = '${A}' limit 1),
@@ -217,6 +228,7 @@ describe("two households", () => {
         `update public.recipe_photo set crop_path = '${foreign}' where household_id = '${A}'`,
         `update public.import_page set full_path = '${foreign}' where household_id = '${A}'`,
         `update public.import_job set photo_paths = array['${A}/x.jpg', '${foreign}'] where household_id = '${A}'`,
+        `update public.receipt set photo_path = '${foreign}' where household_id = '${A}'`,
       ]) {
         await expect(db.query(sql), sql).rejects.toThrow(/in_household_folder/);
       }

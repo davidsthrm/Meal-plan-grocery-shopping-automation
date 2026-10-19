@@ -56,6 +56,7 @@ export type Database = {
           default_servings: number
           drugstore_weekday: number | null
           id: string
+          model_budget_cents: number | null
           name: string
           place_name: string | null
           postal_code: string | null
@@ -68,6 +69,7 @@ export type Database = {
           default_servings?: number
           drugstore_weekday?: number | null
           id?: string
+          model_budget_cents?: number | null
           name: string
           place_name?: string | null
           postal_code?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           default_servings?: number
           drugstore_weekday?: number | null
           id?: string
+          model_budget_cents?: number | null
           name?: string
           place_name?: string | null
           postal_code?: string | null
@@ -540,6 +543,67 @@ export type Database = {
           },
         ]
       }
+      model_usage: {
+        Row: {
+          cost_microcents: number
+          created_at: string
+          household_id: string
+          id: string
+          import_batch_id: string | null
+          input_tokens: number
+          model: string
+          output_tokens: number
+          purpose: string
+          receipt_id: string | null
+        }
+        Insert: {
+          cost_microcents: number
+          created_at?: string
+          household_id: string
+          id?: string
+          import_batch_id?: string | null
+          input_tokens: number
+          model: string
+          output_tokens: number
+          purpose: string
+          receipt_id?: string | null
+        }
+        Update: {
+          cost_microcents?: number
+          created_at?: string
+          household_id?: string
+          id?: string
+          import_batch_id?: string | null
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          purpose?: string
+          receipt_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_usage_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "model_usage_household_id_import_batch_id_fkey"
+            columns: ["household_id", "import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batch"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "model_usage_household_id_receipt_id_fkey"
+            columns: ["household_id", "receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipt"
+            referencedColumns: ["household_id", "id"]
+          },
+        ]
+      }
       plan_extra: {
         Row: {
           created_at: string
@@ -772,6 +836,213 @@ export type Database = {
             columns: ["household_id", "recipe_id"]
             isOneToOne: false
             referencedRelation: "recipe"
+            referencedColumns: ["household_id", "id"]
+          },
+        ]
+      }
+      receipt: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          doubts: Json
+          failure: string | null
+          household_id: string
+          id: string
+          original_path: string | null
+          photo_path: string | null
+          purchased_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shop_id: string | null
+          shop_name_read: string | null
+          shopping_list_id: string | null
+          status: string
+          total_cents: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          doubts?: Json
+          failure?: string | null
+          household_id: string
+          id?: string
+          original_path?: string | null
+          photo_path?: string | null
+          purchased_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_id?: string | null
+          shop_name_read?: string | null
+          shopping_list_id?: string | null
+          status?: string
+          total_cents?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          doubts?: Json
+          failure?: string | null
+          household_id?: string
+          id?: string
+          original_path?: string | null
+          photo_path?: string | null
+          purchased_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_id?: string | null
+          shop_name_read?: string | null
+          shopping_list_id?: string | null
+          status?: string
+          total_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_household_id_shop_id_fkey"
+            columns: ["household_id", "shop_id"]
+            isOneToOne: false
+            referencedRelation: "shop"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "receipt_household_id_shopping_list_id_fkey"
+            columns: ["household_id", "shopping_list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_list"
+            referencedColumns: ["household_id", "id"]
+          },
+        ]
+      }
+      receipt_line: {
+        Row: {
+          household_id: string
+          id: string
+          ingredient_id: string | null
+          kind: string
+          position: number
+          price_cents: number
+          quantity: number | null
+          receipt_id: string
+          text: string | null
+          text_read: string
+          unit: string | null
+          unit_price_cents: number | null
+        }
+        Insert: {
+          household_id: string
+          id?: string
+          ingredient_id?: string | null
+          kind?: string
+          position: number
+          price_cents: number
+          quantity?: number | null
+          receipt_id: string
+          text?: string | null
+          text_read: string
+          unit?: string | null
+          unit_price_cents?: number | null
+        }
+        Update: {
+          household_id?: string
+          id?: string
+          ingredient_id?: string | null
+          kind?: string
+          position?: number
+          price_cents?: number
+          quantity?: number | null
+          receipt_id?: string
+          text?: string | null
+          text_read?: string
+          unit?: string | null
+          unit_price_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_line_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_line_household_id_ingredient_id_fkey"
+            columns: ["household_id", "ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "receipt_line_household_id_receipt_id_fkey"
+            columns: ["household_id", "receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipt"
+            referencedColumns: ["household_id", "id"]
+          },
+        ]
+      }
+      receipt_match: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          household_id: string
+          id: string
+          line_key: string
+          receipt_line_id: string
+          score: number
+          shopping_list_id: string
+          status: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          household_id: string
+          id?: string
+          line_key: string
+          receipt_line_id: string
+          score: number
+          shopping_list_id: string
+          status?: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          household_id?: string
+          id?: string
+          line_key?: string
+          receipt_line_id?: string
+          score?: number
+          shopping_list_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_match_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_match_household_id_receipt_line_id_fkey"
+            columns: ["household_id", "receipt_line_id"]
+            isOneToOne: false
+            referencedRelation: "receipt_line"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "receipt_match_household_id_shopping_list_id_fkey"
+            columns: ["household_id", "shopping_list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_list"
             referencedColumns: ["household_id", "id"]
           },
         ]
