@@ -1,7 +1,7 @@
 import type { Place } from "../catalog";
 import { addDays, type IsoDate } from "../dates";
 import type { Amount } from "../units";
-import type { ViewLine } from "./present";
+import { restOf, type ViewLine } from "./present";
 import { noteId, readNoteId, type ShoppingTrip } from "./trips";
 import type { ShoppingLine } from "./types";
 
@@ -45,14 +45,14 @@ export function isBought(decision: Decision): boolean {
  * The line as the plan has it, kept next to what was bought at the first decision that
  * departs from it.
  */
-export interface PlannedLine {
+export type PlannedLine = {
   name: string;
   quantity: number | null;
   unit: string | null;
   date: IsoDate;
   place: Place;
   shopId: string | null;
-}
+};
 
 export function plannedOf(view: ViewLine, note: ShoppingTrip): PlannedLine {
   return {
@@ -72,17 +72,27 @@ export function decisionOf(view: ViewLine): Decision {
       return { kind: "removed", reason: view.removedReason };
     case "bought":
       return { kind: "bought", amount: view.bought?.amount ?? null, name: view.bought?.name };
-    case "partially_bought":
-      // The rest of a part moved elsewhere is not known here as a decision: the page gives
-      // it back as discarded, which keeps the line closed and the amount bought.
-      return view.bought?.amount
-        ? {
-            kind: "partial",
-            amount: view.bought.amount,
-            name: view.bought.name,
-            remainder: { kind: "discarded" },
-          }
-        : { kind: "bought" };
+    case "partially_bought": {
+      if (!view.bought?.amount) return { kind: "bought" };
+      const moved = view.remainder?.kind === "moved" ? view.remainder : null;
+      return {
+        kind: "partial",
+        amount: view.bought.amount,
+        name: view.bought.name,
+        // A rest moved elsewhere says where it went. Its entry is not known here: such a
+        // decision is for showing, and sent again it is refused (`entryId` is no id).
+        remainder: moved
+          ? {
+              kind: "moved",
+              // Empty where the note lies beyond the weeks read.
+              to: moved.to ? noteId(moved.to) : "",
+              shopId: null,
+              amount: restOf(view) ?? view.bought.amount,
+              entryId: "",
+            }
+          : { kind: "discarded" },
+      };
+    }
     case "open":
       return { kind: "open" };
   }
@@ -109,21 +119,39 @@ export function movedAway(note: ShoppingTrip, lines: readonly ShoppingLine[]): M
     .sort((a, b) => a.line.label.localeCompare(b.line.label, "de"));
 }
 
-/** How many days ahead a line can be moved: the notes are read for the week around. */
+/** How many days after its note a line can be moved: the notes are read for the week around. */
 export const MOVE_DAYS = 7;
 
-/**
- * The days a line can be bought on instead, from today: "Morgen" and "Übermorgen" first,
- * then any day up to a week ahead. Whether it is then too late does not matter: the
- * decision is made in the shop, where the thing is not to be had today.
- */
-export function moveDays(today: IsoDate): IsoDate[] {
-  return Array.from({ length: MOVE_DAYS }, (_, at) => addDays(today, at + 1));
+/** The first day a line of a note can be bought on instead: the day after it, never before today. */
+function firstDay(noteDate: IsoDate, today: IsoDate): IsoDate {
+  return noteDate >= today ? addDays(noteDate, 1) : addDays(today, 1);
 }
 
-/** Whether a note named in a decision is one a line may go to: today or up to a week on. */
-export function canMoveTo(to: string, today: IsoDate): ShoppingTrip | null {
+/**
+ * The days a line can be bought on instead: from the day after its note, or from tomorrow
+ * where that note's day is over, up to a week after its note. Whether that is too late for
+ * the plan does not matter: in the shop the thing is not to be had today, and on a note for
+ * later the household knows its week.
+ */
+export function moveDays(noteDate: IsoDate, today: IsoDate): IsoDate[] {
+  const days: IsoDate[] = [];
+  for (
+    let day = firstDay(noteDate, today);
+    day <= addDays(noteDate, MOVE_DAYS) || days.length < 2;
+    day = addDays(day, 1)
+  ) {
+    days.push(day);
+  }
+  return days;
+}
+
+/**
+ * Whether a note named in a decision is one a line of `from` may go to: a food errand from
+ * today on, at most a week after `from`. The same day is another shop on it.
+ */
+export function canMoveTo(to: string, from: ShoppingTrip, today: IsoDate): ShoppingTrip | null {
   const trip = readNoteId(to);
   if (!trip || trip.place === "drugstore") return null;
-  return trip.date >= today && trip.date <= addDays(today, MOVE_DAYS) ? trip : null;
+  const last = moveDays(from.date, today).at(-1) as IsoDate;
+  return trip.date >= today && trip.date >= from.date && trip.date <= last ? trip : null;
 }

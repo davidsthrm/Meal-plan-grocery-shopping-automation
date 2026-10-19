@@ -1274,6 +1274,38 @@ export type Database = {
           },
         ]
       }
+      shop_item_history: {
+        Row: {
+          choice: string
+          household_id: string
+          item_key: string
+          last_at: string
+          times: number
+        }
+        Insert: {
+          choice: string
+          household_id: string
+          item_key: string
+          last_at?: string
+          times?: number
+        }
+        Update: {
+          choice?: string
+          household_id?: string
+          item_key?: string
+          last_at?: string
+          times?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_item_history_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shopping_line: {
         Row: {
           aisle_group_id: string
@@ -1375,17 +1407,28 @@ export type Database = {
           amount: number | null
           amount_instead: number | null
           at_home: boolean | null
+          bought_name: string | null
+          bought_quantity: number | null
+          bought_unit: string | null
           checked_at: string | null
           checked_by: string | null
           checked_changed_at: string | null
+          decided_by: string | null
           household_id: string
           line_key: string
           moved_date: string | null
           moved_place: string | null
+          moved_shop_id: string | null
+          moved_with: string | null
           note: string | null
+          planned: Json | null
           quantity: number | null
+          remainder: string | null
+          removed_reason: string | null
           shop_id: string | null
           shopping_list_id: string
+          status: string | null
+          substituted: boolean
           unit: Database["public"]["Enums"]["unit"] | null
           updated_at: string
         }
@@ -1393,17 +1436,28 @@ export type Database = {
           amount?: number | null
           amount_instead?: number | null
           at_home?: boolean | null
+          bought_name?: string | null
+          bought_quantity?: number | null
+          bought_unit?: string | null
           checked_at?: string | null
           checked_by?: string | null
           checked_changed_at?: string | null
+          decided_by?: string | null
           household_id: string
           line_key: string
           moved_date?: string | null
           moved_place?: string | null
+          moved_shop_id?: string | null
+          moved_with?: string | null
           note?: string | null
+          planned?: Json | null
           quantity?: number | null
+          remainder?: string | null
+          removed_reason?: string | null
           shop_id?: string | null
           shopping_list_id: string
+          status?: string | null
+          substituted?: boolean
           unit?: Database["public"]["Enums"]["unit"] | null
           updated_at?: string
         }
@@ -1411,17 +1465,28 @@ export type Database = {
           amount?: number | null
           amount_instead?: number | null
           at_home?: boolean | null
+          bought_name?: string | null
+          bought_quantity?: number | null
+          bought_unit?: string | null
           checked_at?: string | null
           checked_by?: string | null
           checked_changed_at?: string | null
+          decided_by?: string | null
           household_id?: string
           line_key?: string
           moved_date?: string | null
           moved_place?: string | null
+          moved_shop_id?: string | null
+          moved_with?: string | null
           note?: string | null
+          planned?: Json | null
           quantity?: number | null
+          remainder?: string | null
+          removed_reason?: string | null
           shop_id?: string | null
           shopping_list_id?: string
+          status?: string | null
+          substituted?: boolean
           unit?: Database["public"]["Enums"]["unit"] | null
           updated_at?: string
         }
@@ -1445,6 +1510,13 @@ export type Database = {
             columns: ["household_id", "shopping_list_id"]
             isOneToOne: false
             referencedRelation: "shopping_list"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "shopping_line_state_moved_shop"
+            columns: ["household_id", "moved_shop_id"]
+            isOneToOne: false
+            referencedRelation: "shop"
             referencedColumns: ["household_id", "id"]
           },
         ]
@@ -1494,11 +1566,16 @@ export type Database = {
       shopping_manual_entry: {
         Row: {
           aisle_group_id: string | null
+          carried_from_key: string | null
+          carried_from_list_id: string | null
+          carried_quantity: number | null
+          carried_unit: string | null
           created_at: string
           created_by: string | null
           for_whom: string | null
           household_id: string
           id: string
+          ingredient_id: string | null
           quantity: number | null
           shop_id: string | null
           shopping_list_id: string
@@ -1506,11 +1583,16 @@ export type Database = {
         }
         Insert: {
           aisle_group_id?: string | null
+          carried_from_key?: string | null
+          carried_from_list_id?: string | null
+          carried_quantity?: number | null
+          carried_unit?: string | null
           created_at?: string
           created_by?: string | null
           for_whom?: string | null
           household_id: string
           id?: string
+          ingredient_id?: string | null
           quantity?: number | null
           shop_id?: string | null
           shopping_list_id: string
@@ -1518,17 +1600,29 @@ export type Database = {
         }
         Update: {
           aisle_group_id?: string | null
+          carried_from_key?: string | null
+          carried_from_list_id?: string | null
+          carried_quantity?: number | null
+          carried_unit?: string | null
           created_at?: string
           created_by?: string | null
           for_whom?: string | null
           household_id?: string
           id?: string
+          ingredient_id?: string | null
           quantity?: number | null
           shop_id?: string | null
           shopping_list_id?: string
           text?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "shopping_manual_entry_carried_from"
+            columns: ["household_id", "carried_from_list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_list"
+            referencedColumns: ["household_id", "id"]
+          },
           {
             foreignKeyName: "shopping_manual_entry_household_id_aisle_group_id_fkey"
             columns: ["household_id", "aisle_group_id"]
@@ -1555,6 +1649,13 @@ export type Database = {
             columns: ["household_id", "shopping_list_id"]
             isOneToOne: false
             referencedRelation: "shopping_list"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "shopping_manual_entry_ingredient"
+            columns: ["household_id", "ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient"
             referencedColumns: ["household_id", "id"]
           },
         ]
@@ -1677,9 +1778,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decide_shopping_line: {
+        Args: {
+          decided_at: string
+          decided_key: string
+          decision: Json
+          list_id: string
+        }
+        Returns: string
+      }
       leave_household: { Args: never; Returns: undefined }
       merge_recipes: {
         Args: { drop_id: string; keep_id: string }
+        Returns: undefined
+      }
+      remember_shop_choice: {
+        Args: { chosen: string; home: string; item: string }
         Returns: undefined
       }
       remove_household_member: { Args: { member: string }; Returns: undefined }

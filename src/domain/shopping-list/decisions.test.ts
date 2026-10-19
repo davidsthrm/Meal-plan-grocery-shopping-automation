@@ -195,8 +195,8 @@ describe("moving a line to another day", () => {
     ]);
   });
 
-  it("offers today up to a week ahead, whatever the plan needs, and no drugstore", () => {
-    expect(moveDays(MONDAY)).toEqual([
+  it("offers the days after the note up to a week, whatever the plan needs, and no drugstore", () => {
+    expect(moveDays(MONDAY, MONDAY)).toEqual([
       TUESDAY,
       "2026-10-21",
       "2026-10-22",
@@ -205,10 +205,30 @@ describe("moving a line to another day", () => {
       "2026-10-25",
       "2026-10-26",
     ]);
-    expect(canMoveTo(noteId(tuesday), MONDAY)).toEqual(tuesday);
-    expect(canMoveTo("2026-10-18.supermarket", MONDAY)).toBeNull();
-    expect(canMoveTo("2026-10-27.supermarket", MONDAY)).toBeNull();
-    expect(canMoveTo("2026-10-20.drugstore", MONDAY)).toBeNull();
+    expect(canMoveTo(noteId(tuesday), monday, MONDAY)).toEqual(tuesday);
+    // Another shop on the same day, today.
+    expect(canMoveTo("2026-10-19.bakery", monday, MONDAY)).toEqual({
+      date: MONDAY,
+      place: "bakery",
+    });
+    expect(canMoveTo("2026-10-18.supermarket", monday, MONDAY)).toBeNull();
+    expect(canMoveTo("2026-10-27.supermarket", monday, MONDAY)).toBeNull();
+    expect(canMoveTo("2026-10-20.drugstore", monday, MONDAY)).toBeNull();
+  });
+
+  it("offers a note for later the week after its own day", () => {
+    expect(moveDays("2027-03-01", MONDAY)[0]).toBe("2027-03-02");
+    expect(canMoveTo("2027-03-08.market", { date: "2027-03-01", place: "market" }, MONDAY)).toEqual(
+      { date: "2027-03-08", place: "market" },
+    );
+  });
+
+  it("offers tomorrow for a note whose day is over", () => {
+    expect(moveDays("2026-10-16", MONDAY)[0]).toBe(TUESDAY);
+    // Up to a week after the note: Friday's note reaches the next Friday.
+    expect(moveDays("2026-10-16", MONDAY).at(-1)).toBe(FRIDAY);
+    // Long over, it still offers two days.
+    expect(moveDays("2026-10-01", MONDAY)).toEqual([TUESDAY, "2026-10-21"]);
   });
 });
 
