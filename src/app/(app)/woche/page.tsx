@@ -420,16 +420,22 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                 className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[7.5rem_1fr_1fr]"
               >
                 {/* On an iPad upright the day stands above its meals: beside them, each meal
-                    had a third of the width and a long dish ran into its stepper. */}
-                <h2 className="flex items-baseline gap-2 sm:col-span-2 lg:col-span-1 lg:block">
+                    had a third of the width and a long dish ran into its stepper. The gap
+                    clears the highlighter, which reaches past the name: "Heute" stood right
+                    against it. */}
+                <h2 className="flex items-baseline gap-3 sm:col-span-2 lg:col-span-1 lg:block">
                   <span
                     className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
                   >
                     {weekdayLong(date)}
                   </span>
-                  <span className="text-sm text-muted lg:block">
-                    {date === now ? "Heute" : dayAndMonth(date)}
-                  </span>
+                  {date === now ? (
+                    <span className="text-sm font-semibold text-accent lg:mt-1 lg:block">
+                      Heute
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted lg:block">{dayAndMonth(date)}</span>
+                  )}
                 </h2>
                 {mealsOf(date).map((meal) => (
                   <MealCell
