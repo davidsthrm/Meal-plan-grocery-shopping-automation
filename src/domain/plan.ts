@@ -181,3 +181,35 @@ export interface NewSlot {
 export function slotKey(date: IsoDate, meal: Meal): string {
   return `${date}:${meal}`;
 }
+
+/** One meal of the week as the strip beside the recipe chooser shows it. */
+export interface StripMeal {
+  meal: Meal;
+  /** What it holds, or null while nothing is planned. */
+  slot: PlanSlot | null;
+  /** The meal a recipe is being chosen for. */
+  current: boolean;
+}
+
+/**
+ * The week beside the recipe chooser on an iPad, day by day: lunch and dinner always, coffee
+ * on Sunday only when something is planned for it or it is the meal being chosen for.
+ */
+export function weekStrip(
+  week: IsoDate,
+  slots: readonly PlanSlot[],
+  current: { date: IsoDate; meal: Meal } | null,
+): { date: IsoDate; meals: StripMeal[] }[] {
+  const at = new Map(slots.map((slot) => [slotKey(slot.date, slot.meal), slot]));
+  return Array.from({ length: 7 }, (_, offset) => {
+    const date = addDays(week, offset);
+    const meals = mealsOf(date)
+      .map((meal) => ({
+        meal,
+        slot: at.get(slotKey(date, meal)) ?? null,
+        current: current?.date === date && current.meal === meal,
+      }))
+      .filter((entry) => entry.meal !== "coffee" || entry.slot !== null || entry.current);
+    return { date, meals };
+  });
+}

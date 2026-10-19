@@ -23,7 +23,7 @@ export function CopyLink({ link, what }: { link: string; what: string }) {
         readOnly
         value={link}
         aria-label={what}
-        className="field min-w-0 flex-1 text-sm"
+        className="field min-w-0 flex-1"
         onFocus={(event) => event.target.select()}
       />
       <button type="button" className="btn" onClick={pass}>

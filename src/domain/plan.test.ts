@@ -7,6 +7,8 @@ import {
   nextOpenMeal,
   openMealsAfter,
   slotKey,
+  weekStrip,
+  type PlanSlot,
 } from "./plan";
 
 describe("namedMeal", () => {
@@ -109,5 +111,54 @@ describe("cookedServings", () => {
 
   it("leaves a recipe that makes something else as it is: one cake tin stays one", () => {
     expect(cookedServings(1, 2, false)).toBe(1);
+  });
+});
+
+describe("weekStrip", () => {
+  const WEEK = "2026-10-12";
+  const slot = (date: string, meal: PlanSlot["meal"]): PlanSlot => ({
+    id: `${date}.${meal}`,
+    date,
+    meal,
+    kind: "free_text",
+    label: "Vesper",
+  });
+
+  it("lists the seven days with lunch and dinner, planned or not", () => {
+    const strip = weekStrip(WEEK, [slot("2026-10-13", "dinner")], null);
+    expect(strip.map((day) => day.date)).toEqual([
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16",
+      "2026-10-17",
+      "2026-10-18",
+    ]);
+    expect(strip[1].meals.map((entry) => [entry.meal, entry.slot?.id ?? null])).toEqual([
+      ["lunch", null],
+      ["dinner", "2026-10-13.dinner"],
+    ]);
+  });
+
+  it("marks the meal a recipe is chosen for", () => {
+    const strip = weekStrip(WEEK, [], { date: "2026-10-14", meal: "lunch" });
+    expect(strip.flatMap((day) => day.meals.filter((entry) => entry.current))).toHaveLength(1);
+    expect(strip[2].meals[0]).toMatchObject({ meal: "lunch", current: true });
+  });
+
+  it("shows Sunday's coffee only when it is planned or being chosen for", () => {
+    const sunday = (strip: ReturnType<typeof weekStrip>) => strip[6].meals.map((e) => e.meal);
+    expect(sunday(weekStrip(WEEK, [], null))).toEqual(["lunch", "dinner"]);
+    expect(sunday(weekStrip(WEEK, [slot("2026-10-18", "coffee")], null))).toEqual([
+      "lunch",
+      "coffee",
+      "dinner",
+    ]);
+    expect(sunday(weekStrip(WEEK, [], { date: "2026-10-18", meal: "coffee" }))).toEqual([
+      "lunch",
+      "coffee",
+      "dinner",
+    ]);
   });
 });

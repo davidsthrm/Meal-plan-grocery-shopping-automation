@@ -6,16 +6,12 @@ import Link from "next/link";
  */
 export function RecipeViews({ current }: { current: "entdecken" | "regal" }) {
   const view = (key: typeof current, href: string, label: string) => (
-    <Link
-      href={href}
-      className={`chip ${current === key ? "chip-on" : ""}`}
-      aria-current={current === key ? "page" : undefined}
-    >
+    <Link href={href} className="segment" aria-current={current === key ? "page" : undefined}>
       {label}
     </Link>
   );
   return (
-    <nav aria-label="Ansicht" className="flex gap-2">
+    <nav aria-label="Ansicht" className="segmented">
       {view("entdecken", "/rezepte", "Entdecken")}
       {view("regal", "/rezepte/regal", "Regal")}
     </nav>

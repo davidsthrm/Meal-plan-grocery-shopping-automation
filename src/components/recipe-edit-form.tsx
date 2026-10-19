@@ -274,7 +274,7 @@ export function RecipeEditForm({
                 <button
                   key={tag.ref}
                   type="button"
-                  className="chip min-h-9 px-3 text-sm"
+                  className="chip min-h-11 px-3 text-sm"
                   onClick={() => {
                     if (!tags.includes(tag.ref)) setTags(toggleTag(tags, tag, allTags));
                     setOwnTags(ownTags.split(",").slice(0, -1).join(","));

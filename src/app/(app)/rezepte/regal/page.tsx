@@ -356,8 +356,8 @@ function SortLink({
       href={href(sortedBy(view, sort))}
       className={
         chip
-          ? `chip min-h-9 px-3 text-sm ${active ? "chip-on" : ""}`
-          : `inline-flex min-h-10 items-center hover:text-ink ${active ? "text-ink" : ""}`
+          ? `chip min-h-11 px-3 text-sm ${active ? "chip-on" : ""}`
+          : `inline-flex min-h-11 items-center hover:text-ink ${active ? "text-ink" : ""}`
       }
       aria-current={active ? "true" : undefined}
       scroll={false}
@@ -519,7 +519,7 @@ function ShelfRow({
               </p>
               {tagList && <div className="mt-1 hidden sm:block xl:hidden">{tagList}</div>}
               <details className="group mt-1 sm:hidden">
-                <summary className="link inline-flex min-h-9 cursor-pointer list-none items-center text-sm [&::-webkit-details-marker]:hidden">
+                <summary className="link inline-flex min-h-11 cursor-pointer list-none items-center text-sm [&::-webkit-details-marker]:hidden">
                   <span className="group-open:hidden">Mehr</span>
                   <span className="hidden group-open:inline">Weniger</span>
                 </summary>

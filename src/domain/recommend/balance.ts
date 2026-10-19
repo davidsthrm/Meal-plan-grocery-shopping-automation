@@ -121,3 +121,16 @@ export function missing(line: BalanceLine): number {
 export function isFull(line: BalanceLine): boolean {
   return line.max !== null && line.count >= line.max;
 }
+
+/**
+ * How far a group has come towards its goal, from 0 to 1, for the bar on its tile: towards
+ * the most it may have where there is one, else towards the least it should have. Over the
+ * most, the bar is full and says so. Null for a group without any goal.
+ */
+export function progress(line: BalanceLine): { share: number; over: boolean } | null {
+  const goal = line.max ?? line.min;
+  if (goal === null) return null;
+  const over = line.max !== null && line.count > line.max;
+  const share = goal === 0 ? (line.count > 0 ? 1 : 0) : Math.min(1, line.count / goal);
+  return { share, over };
+}

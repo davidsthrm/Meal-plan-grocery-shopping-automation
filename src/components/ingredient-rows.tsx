@@ -194,7 +194,7 @@ export function IngredientRows({
                   value={row.note}
                   onChange={(event) => change(row.key, { note: event.target.value })}
                 />
-                <label className="flex min-h-10 items-center gap-2">
+                <label className="flex min-h-11 items-center gap-2">
                   <input
                     type="checkbox"
                     className="size-5 accent-accent"
@@ -205,7 +205,7 @@ export function IngredientRows({
                 </label>
                 <button
                   type="button"
-                  className="btn btn-danger min-h-10 px-3 text-sm"
+                  className="btn btn-danger min-h-11 px-3 text-sm"
                   aria-label={`Zeile ${row.ingredient || at + 1} entfernen`}
                   onClick={() => remove(row.key)}
                 >

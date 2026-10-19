@@ -115,7 +115,7 @@ export function RecipeFilterBar({
       </div>
 
       <details open={narrowed} className="group">
-        <summary className="link inline-flex min-h-10 items-center">
+        <summary className="link inline-flex min-h-11 items-center">
           <span className="group-open:hidden">Mehr Filter: Art, Aufwand, Küche, Kochbuch</span>
           <span className="hidden group-open:inline">Mehr Filter</span>
         </summary>
@@ -181,7 +181,7 @@ export function RecipeFilterBar({
       {!isNoFilter(favoritesOnly ? { ...filter, favorites: false } : filter) && (
         <Link
           href={href({ ...NO_FILTER, favorites: favoritesOnly })}
-          className="link inline-flex min-h-10 items-center"
+          className="link inline-flex min-h-11 items-center"
         >
           Alle Filter zurücksetzen
         </Link>

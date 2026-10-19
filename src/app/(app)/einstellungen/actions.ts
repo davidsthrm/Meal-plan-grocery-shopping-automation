@@ -277,14 +277,22 @@ export async function saveSupermarketDetails(form: FormData): Promise<void> {
   const shop = index.shopById.get(id);
   if (!shop) back("supermaerkte");
   const details = readShopDetails(
-    { address: String(form.get("address") ?? ""), kinds: form.getAll("kinds").map(String) },
+    {
+      address: String(form.get("address") ?? ""),
+      kinds: form.getAll("kinds").map(String),
+      lat: String(form.get("lat") ?? ""),
+      lon: String(form.get("lon") ?? ""),
+      picked: String(form.get("picked") ?? ""),
+    },
     index.catalog.aisleGroups,
   );
+  // A street picked from the suggestions knows where it lies; a typed one is looked up.
   const moved = details.address !== null && details.address !== (shop.address ?? null);
   const position =
-    moved && household.postalCode
+    details.position ??
+    (moved && household.postalCode
       ? await findStreet(details.address as string, household.postalCode)
-      : null;
+      : null);
   await storeShopDetails(db, id, { ...details, position });
   back("supermaerkte", { ok: `markt-${id}` });
 }

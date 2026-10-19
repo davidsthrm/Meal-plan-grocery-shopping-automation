@@ -56,7 +56,8 @@ export interface NoteList {
    * The errand is done: everything on the note is ticked. With the name of whoever made the
    * last tick, where the household knows it.
    */
-  completed: { by: string | null } | null;
+  /** Who made the last tick, and when (epoch milliseconds, 0 where unknown). */
+  completed: { by: string | null; at: number } | null;
 }
 
 export interface WeekNotes {
@@ -370,7 +371,10 @@ export async function loadShoppingNotes(
       view,
       open: toBuy.length - done,
       done,
-      completed: finished && { by: (finished.by && nameOf.get(finished.by)) || null },
+      completed: finished && {
+        by: (finished.by && nameOf.get(finished.by)) || null,
+        at: finished.at,
+      },
     };
   });
   atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));

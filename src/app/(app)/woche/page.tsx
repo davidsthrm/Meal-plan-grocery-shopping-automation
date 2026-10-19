@@ -2,7 +2,15 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowIcon, PenIcon, PinIcon, PlusIcon, TrashIcon, WishIcon } from "@/components/icons";
+import {
+  ArrowIcon,
+  PenIcon,
+  PersonIcon,
+  PinIcon,
+  PlusIcon,
+  TrashIcon,
+  WishIcon,
+} from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -41,7 +49,7 @@ import {
   type PlanExtra,
   type PlanSlot,
 } from "@/domain/plan";
-import { missing, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
+import { progress, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
 import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
 import { rank } from "@/domain/rank";
 import {
@@ -242,28 +250,19 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
     </div>
   );
+  // Back, the running week and forward as one control; all weeks a word next to it.
   const weekNav = (
-    <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-2">
-      <Link
-        href={weekLink(addDays(week, -7))}
-        className="btn btn-small px-2.5"
-        aria-label="Vorige Woche"
-      >
-        <ArrowIcon back />
-      </Link>
-      {week !== thisWeek && (
-        <Link href={weekLink(thisWeek)} className="btn btn-small">
-          Aktuelle
+    <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <span className="capsule">
+        <Link href={weekLink(addDays(week, -7))} aria-label="Vorige Woche">
+          <ArrowIcon back />
         </Link>
-      )}
-      <Link
-        href={weekLink(addDays(week, 7))}
-        className="btn btn-small px-2.5"
-        aria-label="Nächste Woche"
-      >
-        <ArrowIcon />
-      </Link>
-      <Link href={`/woche/verlauf?w=${week}`} className="btn btn-small">
+        {week !== thisWeek && <Link href={weekLink(thisWeek)}>Aktuelle</Link>}
+        <Link href={weekLink(addDays(week, 7))} aria-label="Nächste Woche">
+          <ArrowIcon />
+        </Link>
+      </span>
+      <Link href={`/woche/verlauf?w=${week}`} className="link inline-flex min-h-11 items-center">
         Alle Wochen
       </Link>
     </nav>
@@ -314,17 +313,17 @@ export default async function WeekPage(props: PageProps<"/woche">) {
          * whole plan, saving it last. On a phone they wrap below the views.
          */
         <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-3">
-          <nav aria-label="Ansicht" className="flex gap-2">
+          <nav aria-label="Ansicht" className="segmented">
             <Link
               href={`/woche?w=${week}`}
-              className={`chip ${showExtras ? "" : "chip-on"}`}
+              className="segment"
               aria-current={showExtras ? undefined : "page"}
             >
               Mahlzeiten
             </Link>
             <Link
               href={`/woche?w=${week}&t=extra`}
-              className={`chip ${showExtras ? "chip-on" : ""}`}
+              className="segment"
               aria-current={showExtras ? "page" : undefined}
             >
               Außerdem{extras.length > 0 ? ` (${extras.length})` : ""}
@@ -402,15 +401,17 @@ export default async function WeekPage(props: PageProps<"/woche">) {
               <li
                 key={date}
                 id={`tag-${date}`}
-                className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[7.5rem_1fr_1fr] sm:px-5"
+                className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[7.5rem_1fr_1fr]"
               >
-                <h2 className="flex items-baseline gap-2 sm:block">
+                {/* On an iPad upright the day stands above its meals: beside them, each meal
+                    had a third of the width and a long dish ran into its stepper. */}
+                <h2 className="flex items-baseline gap-2 sm:col-span-2 lg:col-span-1 lg:block">
                   <span
                     className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
                   >
                     {weekdayLong(date)}
                   </span>
-                  <span className="text-sm text-muted sm:block">
+                  <span className="text-sm text-muted lg:block">
                     {date === now ? "Heute" : dayAndMonth(date)}
                   </span>
                 </h2>
@@ -527,7 +528,7 @@ function Wishes({
             key={way}
             href={address({}, way)}
             scroll={false}
-            className={`chip min-h-9 px-3 text-sm ${by === way ? "chip-on" : ""}`}
+            className={`chip min-h-11 px-3 text-sm ${by === way ? "chip-on" : ""}`}
             aria-current={by === way ? "true" : undefined}
           >
             {WISH_GROUPING_NAME[way]}
@@ -545,7 +546,7 @@ function Wishes({
               aria-label={name}
               className={`${group.tone} flex flex-wrap items-center gap-1.5 sm:grid sm:grid-cols-[8.5rem_1fr] sm:items-start sm:gap-3`}
             >
-              <span className="flex min-h-9 items-center gap-1.5 pr-1 text-sm font-semibold text-muted">
+              <span className="flex min-h-11 items-center gap-1.5 pr-1 text-sm font-semibold text-muted">
                 <span className="dot" />
                 {name}
               </span>
@@ -554,7 +555,7 @@ function Wishes({
                   <Link
                     key={recipe.id}
                     href={`/woche?w=${week}&rezept=${recipe.id}`}
-                    className="chip min-h-9 max-w-full border-transparent bg-[var(--kind,var(--color-surface))] px-3 text-sm"
+                    className="chip min-h-11 max-w-full border-transparent bg-[var(--kind,var(--color-surface))] px-3 text-sm"
                     aria-label={`${recipe.title} einplanen`}
                   >
                     <span className="truncate">{recipe.title}</span>
@@ -564,7 +565,7 @@ function Wishes({
                   <Link
                     href={address({ wuensche: "alle" })}
                     scroll={false}
-                    className="chip min-h-9 px-3 text-sm text-muted"
+                    className="chip min-h-11 px-3 text-sm text-muted"
                   >
                     {more} weitere
                   </Link>
@@ -699,7 +700,7 @@ function KindTitle({
       {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
       <Link
         href={`/rezepte/${id}${fromPlan(week)}`}
-        className="min-w-0 font-semibold decoration-line underline-offset-4 hover:underline"
+        className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
       </Link>
@@ -707,7 +708,10 @@ function KindTitle({
   );
 }
 
-/** Plus and minus for how much of a recipe is made. Zero takes the recipe away. */
+/**
+ * Plus and minus for how much of a recipe is made, as a small stepper: "− 4 +" with a sign
+ * for persons, or the recipe's own unit ("1 Springform"). Zero takes the recipe away.
+ */
 function Amount({
   action,
   fields,
@@ -728,18 +732,26 @@ function Amount({
         <input key={name} type="hidden" name={name} value={value} />
       ))}
       <input type="hidden" name="servings" value={to} />
-      <SubmitButton
-        className="btn h-10 min-h-0 w-10 rounded-full p-0 text-lg leading-none"
-        label={label}
-      >
+      <SubmitButton className="" label={label}>
         {sign}
       </SubmitButton>
     </form>
   );
+  const amount = plannedText(servings, unit);
   return (
-    <div className="mt-1 flex items-center gap-2">
+    <div className="stepper" title={amount}>
       {step(servings - 1, "−", `Weniger von ${title}`)}
-      <span className="min-w-24 text-center text-sm text-muted">{plannedText(servings, unit)}</span>
+      <span className="stepper-value">
+        {unit === null ? (
+          <>
+            <PersonIcon />
+            <span aria-hidden>{servings}</span>
+            <span className="sr-only">{amount}</span>
+          </>
+        ) : (
+          <span className="px-1 text-sm">{amount}</span>
+        )}
+      </span>
       {step(Math.min(99, servings + 1), "+", `Mehr von ${title}`)}
     </div>
   );
@@ -834,44 +846,42 @@ function Extras({
 /** The week counted: how many meals of each kind, against what the household aims for. */
 function Balance({ lines }: { lines: BalanceLine[] }) {
   return (
-    <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-y border-line py-3">
-      <ul
-        aria-label="Ausgewogenheit der Woche"
-        className="grid flex-1 grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4"
-      >
+    <div className="mt-5">
+      {/* A tile per group in its pastel, with a bar that fills towards the goal: the week can
+          be read at a glance. */}
+      <ul aria-label="Ausgewogenheit der Woche" className="balance-tiles">
         {lines.map((line) => {
-          const over = line.max !== null && line.count > line.max;
-          const reached = line.min !== null ? missing(line) === 0 : !over && line.count > 0;
+          const filled = progress(line);
           return (
-            <li key={line.group} className={`kind-${line.group}`}>
-              <span className="eyebrow flex items-center gap-1.5">
-                <span className="dot" />
+            <li key={line.group} className={`balance-tile kind-${line.group}`}>
+              <span className="truncate text-[0.7rem] font-semibold tracking-[-0.01em]">
                 {GROUP_NAME[line.group]}
               </span>
-              <span className="flex items-baseline gap-2">
-                <span
-                  className={`text-2xl font-semibold tabular-nums ${
-                    over ? "text-warn" : reached ? "text-accent" : ""
-                  }`}
-                >
-                  {line.count}
-                </span>
-                <span className="text-sm text-muted">{targetText(line)}</span>
+              <span className="text-[1.6rem] leading-tight font-semibold tabular-nums">
+                {line.count}
               </span>
+              <span className="truncate text-[0.72rem] text-muted">{targetText(line)}</span>
+              {filled && (
+                <span className="balance-bar" data-over={filled.over} aria-hidden>
+                  <span style={{ transform: `scaleX(${filled.share.toFixed(3)})` }} />
+                </span>
+              )}
             </li>
           );
         })}
       </ul>
-      <Link href="/woche/ziele" className="btn btn-small">
-        Ziele ändern
-      </Link>
+      <p className="mt-1 text-right">
+        <Link href="/woche/ziele" className="link inline-flex min-h-11 items-center text-sm">
+          Ziele ändern
+        </Link>
+      </p>
     </div>
   );
 }
 
 /** A meal's action shown as a sign: round, large enough for a finger. */
 const ICON_ACTION =
-  "-mx-1 flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent";
+  "-mx-1 flex size-11 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent";
 
 interface CellProps {
   week: IsoDate;
@@ -942,13 +952,14 @@ function MealCell({
     slot?.kind === "recipes" &&
     !(slot.extra ?? 0) &&
     slot.items.some((item) => !recipeOf.get(item.recipeId)?.servings?.unit);
-  // From tablet width on, coffee sits below lunch and dinner stays in the right column.
+  // From tablet width on lunch and dinner stand side by side under the day, and from a large
+  // screen on beside it; coffee sits below lunch.
   const column =
     meal === "coffee"
-      ? "sm:col-start-2 sm:row-start-2"
+      ? "sm:col-start-1 sm:row-start-3 lg:col-start-2 lg:row-start-2"
       : meal === "dinner"
-        ? "sm:col-start-3 sm:row-start-1"
-        : "";
+        ? "sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
+        : "sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1";
 
   // A saved plan is read, not planned: what there is, and a small pen for a change.
   if (locked) {
@@ -959,7 +970,7 @@ function MealCell({
           <Link
             href={`/woche?w=${week}&stift=${date}.${meal}#tag-${date}`}
             scroll={false}
-            className="-my-2 flex size-10 items-center justify-center rounded-full text-muted hover:text-accent"
+            className="-my-2 flex size-11 items-center justify-center rounded-full text-muted hover:text-accent"
             aria-label={`${what} bearbeiten`}
           >
             <PenIcon />
@@ -1015,7 +1026,15 @@ function MealCell({
           {slot.items.map((item) => {
             const recipe = recipeOf.get(item.recipeId);
             return (
-              <li key={item.recipeId}>
+              // The stepper next to the name; one with a unit of its own goes below it.
+              <li
+                key={item.recipeId}
+                className={
+                  recipe?.servings?.unit
+                    ? "space-y-1.5"
+                    : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2"
+                }
+              >
                 <KindTitle recipe={recipe} id={item.recipeId} week={week} />
                 <Amount
                   action={changeServings}
@@ -1059,7 +1078,7 @@ function MealCell({
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <Link
               href={`/import?${new URLSearchParams({ d: date, m: meal })}`}
-              className="btn btn-small min-h-9 border-note-line bg-white/60"
+              className="btn btn-small min-h-11 border-note-line bg-white/60"
               aria-label={`${what}: Rezept hochladen`}
             >
               Hochladen
@@ -1074,7 +1093,7 @@ function MealCell({
             <form action={needsNoRecipe}>
               {where}
               <SubmitButton
-                className="min-h-9 font-semibold text-note-ink underline underline-offset-4"
+                className="min-h-11 font-semibold text-note-ink underline underline-offset-4"
                 label={`${what}: braucht kein Rezept`}
               >
                 Braucht keins
@@ -1175,7 +1194,7 @@ function MealCell({
                     : `/woche?w=${week}&mehr=${date}.${meal}#tag-${date}`
                 }
                 scroll={false}
-                className={`btn btn-small min-h-9 ${cookingMore ? "border-accent bg-accent-soft text-accent" : ""}`}
+                className={`link inline-flex min-h-11 items-center rounded-full text-sm ${cookingMore ? "bg-accent-soft px-3" : "px-1"}`}
                 aria-label={`${what}: mehr kochen`}
                 aria-expanded={cookingMore}
               >

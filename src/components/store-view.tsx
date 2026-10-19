@@ -5,6 +5,8 @@ import type { Shop } from "@/domain/catalog";
 import type { Pictogram } from "@/domain/library/pictogram";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
+import { leaveSheet } from "./sheet";
+import { useWakeLock } from "./wake-lock";
 import {
   CompleteNote,
   SyncStatus,
@@ -38,36 +40,6 @@ export interface StoreNote {
 }
 
 /**
- * Keeps the screen on while `active`, where the browser can: nobody wants to unlock the
- * phone between two shelves. The browser lets go when the app goes to the background; it
- * is asked again when it comes back.
- */
-function useWakeLock(active: boolean) {
-  useEffect(() => {
-    if (!active || !("wakeLock" in navigator)) return;
-    let lock: WakeLockSentinel | null = null;
-    let over = false;
-    const take = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const taken = await navigator.wakeLock.request("screen");
-        if (over) void taken.release();
-        else lock = taken;
-      } catch {
-        // Refused (battery saver, no permission): the screen dims as it always does.
-      }
-    };
-    void take();
-    document.addEventListener("visibilitychange", take);
-    return () => {
-      over = true;
-      document.removeEventListener("visibilitychange", take);
-      void lock?.release();
-    };
-  }, [active]);
-}
-
-/**
  * "Jetzt einkaufen": the note alone on the whole screen, for the shop. Large rows, each a
  * button to tick, nothing else to hit by mistake, and the screen stays on. A link to
  * "#laden" opens it too. It needs scripts; without them the note itself is there.
@@ -79,10 +51,7 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
   const allTicked = useAllTicked(page, lines);
   useWakeLock(open);
 
-  const close = useCallback(() => {
-    dialog.current?.close();
-    setOpen(false);
-  }, []);
+  const close = useCallback(() => leaveSheet(dialog.current, () => setOpen(false)), []);
 
   useEffect(() => {
     if (open && dialog.current && !dialog.current.open) dialog.current.showModal();

@@ -5,7 +5,14 @@ import { buildShoppingList } from "./build";
 import { resolveLine } from "./present";
 import { line, testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS, noteId, tripsBetween } from "./trips";
-import { completion, extrasToBuy, notesOf, notesOfWeek } from "./week-notes";
+import {
+  completion,
+  extrasToBuy,
+  JUST_FINISHED_MS,
+  justFinished,
+  notesOf,
+  notesOfWeek,
+} from "./week-notes";
 
 const SAT_BEFORE = "2026-10-10";
 const MONDAY = "2026-10-12";
@@ -148,5 +155,24 @@ describe("completion", () => {
     const one = lines.map((entry, at) => resolveLine(entry, { checked: at === 0 }));
     expect(completion(one, (key) => ticks.get(key))).toBeNull();
     expect(completion([], (key) => ticks.get(key))).toBeNull();
+  });
+});
+
+describe("justFinished", () => {
+  const now = 1_800_000_000_000;
+
+  it("is an errand whose last tick was moments ago", () => {
+    expect(justFinished(now - 10_000, now)).toBe(true);
+    expect(justFinished(now - JUST_FINISHED_MS + 1, now)).toBe(true);
+  });
+
+  it("is not one finished earlier, or one whose last tick has no time", () => {
+    expect(justFinished(now - JUST_FINISHED_MS, now)).toBe(false);
+    expect(justFinished(now - 86_400_000, now)).toBe(false);
+    expect(justFinished(0, now)).toBe(false);
+  });
+
+  it("takes a tick from another device's clock ahead of this one as now", () => {
+    expect(justFinished(now + 30_000, now)).toBe(true);
   });
 });

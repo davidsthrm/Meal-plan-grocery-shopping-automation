@@ -353,6 +353,12 @@ const LIBRARY: {
       ["Karotten", 2, "Stück"],
       ["Sahne", 100, "ml"],
     ],
+    // Ingredients and steps both: the cooking view and the recipe on an iPad show them.
+    steps: [
+      "Kartoffeln und Karotten schälen und würfeln.",
+      "In einem großen Topf mit Wasser bedecken und 20 Minuten weich kochen.",
+      "Fein pürieren, die Sahne unterrühren und mit Salz und Pfeffer abschmecken.",
+    ],
   },
   { title: "Tomatensalat", category: "salat", protein: "vegan", minutes: 10, book: "E2E Kochbuch" },
   {

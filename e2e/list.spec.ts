@@ -94,6 +94,8 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await all(page).click();
   await expect(tile(page, MARKET)).toHaveCount(0);
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
+  // Finished moments ago, its stamp is pressed on rather than simply there.
+  await expect(tile(page, MARKET_ON_FRIDAY).locator(".stamp-pressed")).toHaveCount(1);
 
   // Salt is assumed to be at home. What is at home is one list for the whole week.
   await page.getByText("Haben wir schon").click();

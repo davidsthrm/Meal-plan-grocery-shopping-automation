@@ -70,7 +70,9 @@ export async function loadSupermarkets(db: Db): Promise<Shop[]> {
   const rows = must(
     await db
       .from("shop")
-      .select("id, name, short_label, sort_order, kind, supermarket_rank, logo_url")
+      .select(
+        "id, name, short_label, sort_order, kind, supermarket_rank, logo_url, aisle_group_ids",
+      )
       .not("supermarket_rank", "is", null),
     "load supermarkets",
   );
@@ -83,6 +85,7 @@ export async function loadSupermarkets(db: Db): Promise<Shop[]> {
       kind: row.kind as Place,
       supermarketRank: row.supermarket_rank,
       logoUrl: row.logo_url,
+      aisleGroupIds: row.aisle_group_ids,
       aisleSortOverrides: {},
     })),
   );

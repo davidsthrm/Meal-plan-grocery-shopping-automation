@@ -128,7 +128,7 @@ function Row({
         <input type="hidden" name="q" value={query} />
         {staple ? (
           <SubmitButton
-            className="flex size-10 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-danger"
+            className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-danger"
             label={`${ingredient.name} aus dem Vorrat nehmen`}
           >
             <CloseIcon />

@@ -162,7 +162,7 @@ export function TypedRecipeForm({ initial, categories, extra = {}, submitLabel }
       </div>
 
       <details className="group" open={values.book !== "" || values.page !== ""}>
-        <summary className="link inline-flex min-h-10 items-center">
+        <summary className="link inline-flex min-h-11 items-center">
           Aus einem Kochbuch oder Heft?
         </summary>
         <div className="mt-2 grid grid-cols-3 gap-3">

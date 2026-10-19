@@ -1,4 +1,5 @@
 import "server-only";
+import { readAddressSuggestions, type AddressSuggestion } from "@/domain/address-search";
 import {
   commonsImageUrl,
   pickSupermarkets,
@@ -194,4 +195,47 @@ export async function findStreets(
     if (position) found.set(shop.id, position);
   }
   return found;
+}
+
+/** How far around the household's markets an address is looked for, in degrees: about 9 km. */
+const NEAR_LAT = 0.08;
+const NEAR_LON = 0.12;
+
+/**
+ * Addresses for what someone is typing into the street of a market, from Photon: near the
+ * household's markets where any stands on the map, otherwise in its postal code's town.
+ * Empty when Photon cannot be reached: the field then takes what is typed, as before.
+ */
+export async function searchAddresses(
+  typed: string,
+  around: {
+    near: { lat: number; lon: number } | null;
+    postalCode: string | null;
+    place: string | null;
+  },
+): Promise<AddressSuggestion[]> {
+  const { near, postalCode, place } = around;
+  const params = new URLSearchParams({ q: typed, lang: "de", limit: "10" });
+  if (near) {
+    params.set("lat", String(near.lat));
+    params.set("lon", String(near.lon));
+    params.set(
+      "bbox",
+      [near.lon - NEAR_LON, near.lat - NEAR_LAT, near.lon + NEAR_LON, near.lat + NEAR_LAT]
+        .map((value) => value.toFixed(4))
+        .join(","),
+    );
+  } else {
+    const town = [postalCode, place].filter(Boolean).join(" ");
+    if (town) params.set("q", `${typed}, ${town}`);
+  }
+  try {
+    return readAddressSuggestions(
+      await getJson(`https://photon.komoot.io/api/?${params}`, {}, 5),
+      postalCode,
+    );
+  } catch (error) {
+    console.error(`search addresses: ${error instanceof Error ? error.message : error}`);
+    return [];
+  }
 }

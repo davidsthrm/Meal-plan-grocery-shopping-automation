@@ -114,7 +114,18 @@ export function NoteIcon() {
 export function TickIcon() {
   return (
     <svg {...base} width={24} height={24} strokeWidth={2.6}>
-      <path d="M4.500 12.500 9.500 18 20 4.500" />
+      {/* Its length is 1, so that the tick on a note can be drawn (`.tickbox`). */}
+      <path d="M4.500 12.500 9.500 18 20 4.500" pathLength={1} />
+    </svg>
+  );
+}
+
+/** A person, in front of how many a meal is cooked for. */
+export function PersonIcon() {
+  return (
+    <svg {...base} width={15} height={15} strokeWidth={2} className="text-muted">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" />
     </svg>
   );
 }

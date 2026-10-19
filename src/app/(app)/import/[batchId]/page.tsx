@@ -212,7 +212,7 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
                     </p>
                     {page.photo_path && (
                       <form action={readIgnoredPage.bind(null, page.id)} className="mt-2">
-                        <button className="btn min-h-10 px-3 text-sm">Trotzdem einlesen</button>
+                        <button className="btn min-h-11 px-3 text-sm">Trotzdem einlesen</button>
                       </form>
                     )}
                   </div>

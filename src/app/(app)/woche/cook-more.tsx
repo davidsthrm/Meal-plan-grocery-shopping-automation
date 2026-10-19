@@ -113,19 +113,17 @@ export function ExtraPortions({
     <form action={changeExtraPortions}>
       <Where week={week} date={date} meal={meal} />
       <input type="hidden" name="extra" value={to} />
-      <SubmitButton
-        className="btn h-10 min-h-0 w-10 rounded-full p-0 text-lg leading-none"
-        label={label}
-      >
+      <SubmitButton className="" label={label}>
         {sign}
       </SubmitButton>
     </form>
   );
+  // The same small stepper as the persons of a meal, on a dashed note: it is for later.
   return (
-    <div className="mt-1 rounded-lg border border-dashed border-accent/40 px-2 py-1.5">
-      <div className="flex items-center gap-2">
+    <div className="mt-1.5 rounded-lg border border-dashed border-accent/40 px-2 py-1.5">
+      <div className="stepper">
         {step(extra - 1, "−", `${what}: eine Extra-Portion weniger`)}
-        <span className="min-w-24 text-center text-sm font-semibold text-accent">
+        <span className="stepper-value px-1 text-sm text-accent">
           {extra === 1 ? "1 Extra-Portion" : `${extra} Extra-Portionen`}
         </span>
         {step(Math.min(20, extra + 1), "+", `${what}: eine Extra-Portion mehr`)}

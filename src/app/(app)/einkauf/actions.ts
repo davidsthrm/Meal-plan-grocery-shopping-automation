@@ -213,7 +213,9 @@ export async function amountLine(form: FormData): Promise<void> {
 
 /**
  * Buys a line of a supermarket note at another of the household's supermarkets this week:
- * "Kaufe ich bei Rewe". No shop, or the main one, puts it back under the main one.
+ * "Kaufe ich bei Rewe". The main one is stored by name too: a kind of grocery the household
+ * buys at Rewe would otherwise go back there. No shop puts the line back where its kind is
+ * bought.
  */
 export async function buyAtSupermarket(form: FormData): Promise<void> {
   const input = read(line.extend({ shop: z.union([z.guid(), z.literal("")]) }), form);
@@ -224,7 +226,7 @@ export async function buyAtSupermarket(form: FormData): Promise<void> {
   const shop = favourites.find((each) => each.id === input.shop);
   if (trip.place !== "supermarket" || (input.shop !== "" && !shop)) backToList(input);
   await changeLine(db, household, trip, input.key, {
-    shopId: shop && shop.id !== favourites[0]?.id ? shop.id : null,
+    shopId: shop?.id ?? null,
   });
   backToList(input);
 }

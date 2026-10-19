@@ -71,7 +71,7 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
                   {where}
                   <input type="hidden" name="label" value={food.label} />
                   <SubmitButton
-                    className="min-h-10 text-sm font-semibold text-muted hover:text-danger"
+                    className="min-h-11 text-sm font-semibold text-muted hover:text-danger"
                     label={`${food.label} entfernen`}
                   >
                     Entfernen

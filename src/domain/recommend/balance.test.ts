@@ -9,6 +9,7 @@ import {
   readTargets,
   weekBalance,
   withMeal,
+  progress,
 } from "./balance";
 
 const recipes = [
@@ -122,5 +123,32 @@ describe("readTargets", () => {
     expect(readTargets({ ...stored, fish: { min: 1.5, max: null } })).toBeNull();
     expect(readTargets({ ...stored, fish: { min: null, max: 15 } })).toBeNull();
     expect(readTargets({ ...stored, fish: { min: "1", max: null } })).toBeNull();
+  });
+});
+
+describe("progress", () => {
+  const line = (count: number, min: number | null, max: number | null) => ({
+    group: "fish" as const,
+    count,
+    min,
+    max,
+  });
+
+  it("fills towards the least a week should have", () => {
+    expect(progress(line(1, 3, null))).toEqual({ share: 1 / 3, over: false });
+    expect(progress(line(5, 3, null))).toEqual({ share: 1, over: false });
+  });
+
+  it("fills towards the most a week may have, and says when there are too many", () => {
+    expect(progress(line(1, null, 2))).toEqual({ share: 0.5, over: false });
+    expect(progress(line(2, null, 2))).toEqual({ share: 1, over: false });
+    expect(progress(line(3, null, 2))).toEqual({ share: 1, over: true });
+    expect(progress(line(2, 1, 4))).toEqual({ share: 0.5, over: false });
+  });
+
+  it("is full at once for none allowed, and nothing without a goal", () => {
+    expect(progress(line(0, null, 0))).toEqual({ share: 0, over: false });
+    expect(progress(line(1, null, 0))).toEqual({ share: 1, over: true });
+    expect(progress(line(2, null, null))).toBeNull();
   });
 });

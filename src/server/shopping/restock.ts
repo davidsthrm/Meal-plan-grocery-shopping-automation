@@ -2,39 +2,57 @@ import "server-only";
 import type { IsoDate } from "@/domain/dates";
 import { drugstoreEntryFromText } from "@/domain/shopping-list/drugstore";
 import {
+  aisleGroupOf,
   freshPlaceOf,
   readRestock,
+  restockSupermarket,
   restockTrip,
   type RestockItem,
 } from "@/domain/shopping-list/restock";
 import type { FreshPlace, ShoppingTrip } from "@/domain/shopping-list/trips";
 import type { Household } from "../auth";
-import { loadCatalogIndex, must, type Db } from "../catalog";
+import { loadCatalogIndex, loadSupermarkets, must, type Db } from "../catalog";
 import { addEntry } from "./list";
 
 /** The note for what ran out at home: reading it, writing on it, and moving it to a list. */
 
-/** An entry with the errand it would go to. */
+/** An entry with the errand it would go to, and the supermarket where that is one. */
 export interface PlacedRestock extends RestockItem {
   trip: ShoppingTrip | null;
+  supermarket: string | null;
 }
 
 /**
- * The note, with the errand that buys each entry. Read on every page, for the header: one
- * small request, and no catalog.
+ * The note, with the errand that buys each entry. Read on every page, for the header: two
+ * small requests side by side, and no catalog.
  */
 export async function loadRestock(
   db: Db,
   household: Pick<Household, "shoppingDays">,
   today: IsoDate,
 ): Promise<PlacedRestock[]> {
-  const rows = must(
-    await db.from("restock_item").select("id, text, fresh_place").order("created_at").limit(200),
-    "load the note",
-  );
+  const [read, supermarkets] = await Promise.all([
+    db
+      .from("restock_item")
+      .select("id, text, fresh_place, aisle_group_id")
+      .order("created_at")
+      .limit(200),
+    loadSupermarkets(db),
+  ]);
+  const rows = must(read, "load the note");
   return rows.map((row) => {
-    const item = { id: row.id, text: row.text, freshPlace: row.fresh_place as FreshPlace | null };
-    return { ...item, trip: restockTrip(item, household.shoppingDays, today) };
+    const item = {
+      id: row.id,
+      text: row.text,
+      freshPlace: row.fresh_place as FreshPlace | null,
+      aisleGroupId: row.aisle_group_id,
+    };
+    const trip = restockTrip(item, household.shoppingDays, today);
+    return {
+      ...item,
+      trip,
+      supermarket: restockSupermarket(item, trip, supermarkets)?.name ?? null,
+    };
   });
 }
 
@@ -49,10 +67,12 @@ export async function addRestock(
 ): Promise<void> {
   const entry = readRestock(text);
   if (entry === "") return;
+  const index = await loadCatalogIndex(db);
   const stored = await db.from("restock_item").insert({
     household_id: household.id,
     text: entry,
-    fresh_place: freshPlaceOf(entry, await loadCatalogIndex(db)),
+    fresh_place: freshPlaceOf(entry, index),
+    aisle_group_id: aisleGroupOf(entry, index),
     created_by: household.userId,
   });
   // 23505: the note has this entry already.

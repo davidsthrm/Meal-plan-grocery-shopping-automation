@@ -6,7 +6,7 @@ import { RestockNote } from "./restock-note";
 import type { ComponentProps } from "react";
 
 /** How long the note takes to go back up, as the stylesheet has it. */
-const UP_MS = 180;
+const UP_MS = 220;
 
 /**
  * The note for what ran out at home, in the header of every page. It does not lead to a
@@ -53,7 +53,7 @@ export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote
     <>
       <a
         href="/merkzettel"
-        className="btn min-h-10 gap-1.5 border-note-line bg-note px-3 text-sm"
+        className="btn min-h-11 gap-1.5 border-note-line bg-note px-3 text-sm"
         aria-haspopup="dialog"
         aria-label={`Merkzettel, ${items.length === 1 ? "1 Eintrag" : `${items.length} Einträge`}`}
         onClick={(event) => {

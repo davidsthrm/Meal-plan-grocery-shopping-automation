@@ -30,6 +30,12 @@ export default defineConfig({
       use: { ...devices["iPad (gen 7)"], browserName: "chromium" },
       grep: /@look/,
     },
+    // The same iPad held across: the week and the recipes as they are planned on it.
+    {
+      name: "tablet-landscape",
+      use: { ...devices["iPad (gen 7) landscape"], browserName: "chromium" },
+      grep: /@look/,
+    },
   ],
   webServer: {
     // The test of the shop without a connection needs a production build (`e2e:offline`).

@@ -5,13 +5,21 @@ import { useActionState } from "react";
 import { tellRestock } from "@/app/(app)/merkzettel/actions";
 import { mondayOf } from "@/domain/dates";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
-import { noteName } from "@/lib/list-text";
+import { dayName, noteName } from "@/lib/list-text";
 import { CloseIcon } from "./icons";
 import { SubmitButton } from "./submit-button";
 
 interface Props {
-  /** The entries, each with the errand it would be bought on. */
-  items: readonly { id: string; text: string; trip: ShoppingTrip | null }[];
+  /**
+   * The entries, each with the errand it would be bought on, and at a supermarket errand the
+   * supermarket its kind of grocery is bought at.
+   */
+  items: readonly {
+    id: string;
+    text: string;
+    trip: ShoppingTrip | null;
+    supermarket?: string | null;
+  }[];
   /** On its own page the note is the page: its name is the page's title. */
   asPage?: boolean;
   /** Told when a link on the note is followed, so that what holds the note can put it away. */
@@ -77,7 +85,15 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
             <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
               <span className="min-w-32 flex-1">
                 <span className="font-semibold">{item.text}</span>
-                {item.trip && <span className="muted text-sm"> · {noteName(item.trip)}</span>}
+                {item.trip && (
+                  <span className="muted text-sm">
+                    {" "}
+                    ·{" "}
+                    {item.supermarket
+                      ? `${dayName(item.trip.date)} ${item.supermarket}`
+                      : noteName(item.trip)}
+                  </span>
+                )}
               </span>
               <span className="flex items-center gap-1">
                 <form action={tell}>
@@ -94,7 +110,7 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
                   <input type="hidden" name="do" value="strike" />
                   <input type="hidden" name="id" value={item.id} />
                   <SubmitButton
-                    className="muted flex size-10 items-center justify-center rounded-full hover:text-danger"
+                    className="muted flex size-11 items-center justify-center rounded-full hover:text-danger"
                     label={`${item.text} streichen`}
                   >
                     <CloseIcon />
