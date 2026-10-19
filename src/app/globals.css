@@ -48,10 +48,30 @@
 
   /* One sans-serif family for everything, from the fonts the devices bring along. */
   --font-sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /*
+   * How things move. Out: in or out of view, fast at first so it answers at once. In-out:
+   * moving on the screen. Drawer: a sheet or a note that slides, as iOS slides its sheets.
+   * Every animation takes one of these; the built-in curves were too weak to read.
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/*
+ * An iPad, upright or across, an iPad mini upright too, but not a phone held across: wide
+ * enough for two columns and tall enough to plan in them. Decided by the screen, never by
+ * the name of the device.
+ */
+@custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
 html {
   font-size: 17px;
+  /* No grey flash over what is tapped: every control answers the press itself (`:active`). */
+  -webkit-tap-highlight-color: transparent;
+  /* The header stays at the top (`.app-header`): an anchor scrolled to lands below it. */
+  scroll-padding-top: 4.5rem;
 }
 
 body {
@@ -63,6 +83,8 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   line-height: 1.45;
+  /* The frosted strip behind the header reaches the screen's edges without widening it. */
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   /* The page reaches the screen's edges (`viewport-fit=cover`); its text stays clear of the
      notch and the status bar. */
@@ -70,37 +92,93 @@ body {
 }
 
 /*
+ * A tap is a tap at once: no wait for a second one that would zoom. And holding a finger on
+ * a control does not select its words or bring up the callout for a link; text that is read
+ * stays selectable.
+ */
+a,
+button,
+summary,
+label,
+[role="button"] {
+  touch-action: manipulation;
+}
+button,
+summary,
+.btn,
+.chip,
+.tab,
+.segment,
+.capsule > a,
+.tickbox,
+.store-row,
+.map-button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/*
  * The shared parts are a layer below the utilities, so a place that needs a smaller button or
  * a narrower field can say so with a utility class.
+ *
+ * Hover is for a mouse or a trackpad only (`(hover: hover) and (pointer: fine)`): on a touch
+ * screen the first tap leaves a hover style standing, so a card stayed lifted after it was
+ * tapped. Tailwind's own `hover:` already asks; the rules here ask themselves.
  */
 @layer components {
-  /* Every control is at least 44px tall: comfortable for a thumb. */
+  /*
+   * Every control is at least 44px tall: comfortable for a thumb. A button is a soft tint of
+   * the ink over whatever it lies on, paper, a card or a yellow note, not a white box with an
+   * edge: with every button outlined, nothing on a screen stood out. The green one does.
+   */
   .btn {
     display: inline-flex;
     min-height: 2.75rem;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-line);
-    background: var(--color-surface);
+    border-radius: 0.8rem;
+    border: 1px solid transparent;
+    background: rgb(35 33 29 / 0.065);
     padding: 0 1rem;
     font-weight: 600;
     color: var(--color-ink);
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 120ms ease;
   }
-  .btn:hover {
-    border-color: var(--color-muted);
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover {
+      background: rgb(35 33 29 / 0.1);
+    }
   }
   .btn:disabled {
     opacity: 0.5;
   }
   .btn-primary {
-    border-color: var(--color-accent);
     background: var(--color-accent);
     color: var(--color-accent-ink);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 4px 12px -6px rgb(47 93 80 / 0.6);
   }
-  .btn-primary:hover {
-    border-color: var(--color-ink);
+  @media (hover: hover) and (pointer: fine) {
+    .btn-primary:hover {
+      background: color-mix(in srgb, var(--color-accent) 90%, var(--color-ink));
+    }
+  }
+  /*
+   * A control answers the finger the moment it lands, not when it lifts: it gives a little.
+   * Kept for whoever asked for less motion too; it moves nothing across the screen.
+   */
+  .btn:active:not(:disabled),
+  .chip:active,
+  .tab:active,
+  .icon-button:active,
+  .heart:active {
+    transform: scale(0.96);
+    transition-duration: 60ms;
   }
   .btn-danger {
     color: var(--color-danger);
@@ -109,7 +187,7 @@ body {
   .field {
     min-height: 2.75rem;
     width: 100%;
-    border-radius: 0.5rem;
+    border-radius: 0.8rem;
     border: 1px solid var(--color-line);
     background: var(--color-surface);
     padding: 0.5rem 0.75rem;
@@ -220,6 +298,18 @@ body {
   .tickbox[data-on="true"] > svg {
     opacity: 1;
   }
+  /*
+   * The tick is drawn, as a pen draws it, in a fifth of a second; taken back, it is gone at
+   * once. A transition, not an animation: ticked and unticked quickly, it follows.
+   */
+  .tickbox > svg path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  .tickbox[data-on="true"] > svg path {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 200ms var(--ease-out);
+  }
   .tickbox:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
@@ -252,7 +342,8 @@ body {
     color: var(--color-ink);
   }
   .store-view[open] {
-    animation: fade-in 0.2s ease-out both;
+    /* Rises from below like an iOS sheet: it is a layer over the note, not a new page. */
+    animation: sheet-up 320ms var(--ease-drawer) both;
   }
   .store-head {
     position: sticky;
@@ -312,6 +403,72 @@ body {
     padding: 1rem 1rem 1.5rem;
   }
 
+  /*
+   * "Kochen": a step to read from an arm's length at the stove, large and with room. The one
+   * being cooked lies on the green's pastel with a line at its edge; those before it pale.
+   */
+  .cook-step {
+    display: flex;
+    width: 100%;
+    gap: 0.9rem;
+    padding: 0.9rem 0.75rem;
+    border-radius: 0.9rem;
+    text-align: left;
+    font-size: 1.22rem;
+    line-height: 1.5;
+    transition:
+      background-color 200ms ease,
+      color 200ms ease,
+      transform 120ms var(--ease-out);
+  }
+  .cook-step:active {
+    transform: scale(0.985);
+  }
+  .cook-step[aria-current="step"] {
+    background: var(--color-accent-soft);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+  .cook-step[data-done="true"] {
+    color: var(--color-muted);
+  }
+  .cook-step:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .cook-step-number {
+    display: flex;
+    width: 2.1rem;
+    height: 2.1rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .cook-step[aria-current="step"] .cook-step-number {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  /* Back and forward stay at the foot of the screen, clear of the iPhone's home bar. */
+  .cook-foot {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--color-line);
+    background: color-mix(in srgb, var(--color-paper) 82%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+  }
+  .cook-foot .btn {
+    min-height: 3.4rem;
+    font-size: 1.1rem;
+  }
+
   /* Ticks that wait for a connection: said in a small yellow pill, nothing while all is well. */
   .sync-status {
     display: inline-flex;
@@ -341,12 +498,16 @@ body {
     max-width: 30rem;
     margin: 0 auto;
     padding: 0.3rem;
-    border: 1px solid var(--color-line);
+    /* Frosted glass, with light catching its upper edge: the page shows through. */
+    border: 1px solid rgb(255 255 255 / 0.65);
     border-radius: 1.4rem;
-    background: color-mix(in srgb, var(--color-surface) 97%, transparent);
-    box-shadow: 0 14px 30px -14px rgb(35 33 29 / 0.38);
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
+    background: color-mix(in srgb, var(--color-surface) 58%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.8),
+      0 1px 2px rgb(35 33 29 / 0.08),
+      0 18px 36px -16px rgb(35 33 29 / 0.4);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    backdrop-filter: blur(22px) saturate(180%);
   }
   .tab {
     display: flex;
@@ -356,18 +517,59 @@ body {
     justify-content: center;
     gap: 0.15rem;
     border-radius: 1.1rem;
-    color: var(--color-muted);
+    /* Darker than muted: on glass the page behind takes contrast away. */
+    color: color-mix(in srgb, var(--color-ink) 72%, transparent);
     font-size: 0.7rem;
     font-weight: 600;
     -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms var(--ease-out);
   }
   .tab[aria-current="page"] {
-    background: var(--color-accent-soft);
+    background: color-mix(in srgb, var(--color-accent-soft) 85%, transparent);
     color: var(--color-accent);
   }
   .tab:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
+  }
+
+  /*
+   * The header stays at the top of every page, on a strip of frosted paper as wide as the
+   * screen, so that the Merkzettel and the settings are one tap away also halfway down a
+   * long list. The strip fades out at its foot instead of ending in a line.
+   */
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 9;
+    isolation: isolate;
+  }
+  .app-header::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: calc(-1 * env(safe-area-inset-top));
+    /* Inside the header: at rest the strip lies over nothing of the page. */
+    bottom: 0;
+    left: 50%;
+    width: 100vw;
+    translate: -50% 0;
+    background: color-mix(in srgb, var(--color-paper) 70%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+    mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
+  }
+  /* Glass only for whoever wants it: asked for less transparency, the bars are solid. */
+  @media (prefers-reduced-transparency: reduce) {
+    .app-header::before,
+    .tabbar {
+      background: var(--color-surface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .app-header::before {
+      background: var(--color-paper);
+    }
   }
 
   /* Whoever is signed in, by the first letter of their name: the way to the settings. */
@@ -502,7 +704,8 @@ body {
     animation: fade-in 0.25s ease-out both;
   }
   .note-drawer.going {
-    animation: note-up 0.18s ease-in both;
+    /* Fast at first, like a pull on the string: an ease-in held back the moment it answers. */
+    animation: note-up 220ms var(--ease-drawer) both;
   }
   .note-drawer-string {
     position: absolute;
@@ -525,7 +728,7 @@ body {
   /* A shopping note picked up from among the others comes closer. */
   .zoom-in {
     transform-origin: 50% 0;
-    animation: zoom-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: zoom-in 260ms var(--ease-out) both;
   }
   /*
    * Notes lying next to each other do not lie straight. Picked up, one does.
@@ -546,9 +749,13 @@ body {
   .tiles > li:nth-child(3n) > * {
     rotate: -0.3deg;
   }
-  .tiles > li > *:hover,
   .tiles > li > *:focus-visible {
     rotate: 0deg;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .tiles > li > *:hover {
+      rotate: 0deg;
+    }
   }
 
   /*
@@ -652,30 +859,36 @@ body {
     color: var(--color-muted);
   }
 
-  /* A choice among several, such as a filter. */
+  /* A choice among several, such as a filter: a tint like a button, round. */
   .chip {
     display: inline-flex;
-    min-height: 2.5rem;
+    min-height: 2.6rem;
     align-items: center;
     gap: 0.35rem;
     white-space: nowrap;
     border-radius: 999px;
-    border: 1px solid var(--color-line);
-    background: var(--color-surface);
+    border: 1px solid transparent;
+    background: rgb(35 33 29 / 0.065);
     padding: 0 0.9rem;
     font-size: 0.92rem;
     font-weight: 600;
     color: var(--color-ink);
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 120ms ease;
   }
-  .chip:hover {
-    border-color: var(--color-muted);
+  @media (hover: hover) and (pointer: fine) {
+    .chip:hover {
+      background: rgb(35 33 29 / 0.1);
+    }
   }
   .chip:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
-  .chip-on {
-    border-color: var(--color-accent);
+  .chip-on,
+  .chip-on:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
     background: var(--color-accent-soft);
     color: var(--color-accent);
   }
@@ -694,7 +907,7 @@ body {
    * chip looks switched on while the input is.
    */
   .chip:has(> input:checked) {
-    border-color: var(--color-accent);
+    border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
     background: var(--color-accent-soft);
     color: var(--color-accent);
   }
@@ -728,20 +941,28 @@ body {
   /* A card that leads somewhere lifts a little when it is touched or pointed at. */
   .lift {
     transition:
-      transform 0.16s ease,
-      rotate 0.16s ease,
-      box-shadow 0.16s ease,
-      border-color 0.16s ease;
+      transform 160ms var(--ease-out),
+      rotate 160ms var(--ease-out),
+      box-shadow 160ms ease,
+      border-color 160ms ease;
   }
-  .lift:hover,
   .lift:focus-visible,
   .lift:has(> a:focus-visible) {
     transform: translateY(-2px);
     border-color: var(--kind-ink, var(--color-muted));
     box-shadow: 0 10px 22px -14px rgb(35 33 29 / 0.45);
   }
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      transform: translateY(-2px);
+      border-color: var(--kind-ink, var(--color-muted));
+      box-shadow: 0 10px 22px -14px rgb(35 33 29 / 0.45);
+    }
+  }
+  /* Under the finger it gives a little, on every screen. */
   .lift:active {
-    transform: translateY(0);
+    transform: scale(0.985);
+    transition-duration: 80ms;
   }
   /* A card whose link is a part of it: the ring of the focus goes inside the card's edge. */
   .lift > a:focus-visible {
@@ -766,10 +987,12 @@ body {
   .icon-button[data-on="true"] {
     color: var(--color-accent);
   }
-  .heart:hover,
-  .icon-button:hover {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
+  @media (hover: hover) and (pointer: fine) {
+    .heart:hover,
+    .icon-button:hover {
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
+    }
   }
   .heart:focus-visible,
   .icon-button:focus-visible {
@@ -778,11 +1001,17 @@ body {
   }
 
   /* A sheet lifts together with the pad it belongs to: the sheets underneath stay. */
-  .sheet.lift:hover,
   .sheet.lift:focus-visible {
     box-shadow:
       var(--sheets-under),
       0 10px 22px -14px rgb(35 33 29 / 0.45);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .sheet.lift:hover {
+      box-shadow:
+        var(--sheets-under),
+        0 10px 22px -14px rgb(35 33 29 / 0.45);
+    }
   }
 
   /* The pictogram behind a card's text: large and pale, with sharp lines. */
@@ -836,8 +1065,9 @@ body {
     background: var(--kind-ink, var(--color-line));
   }
 
+  /* Small, but never under 44px, the least a finger needs (2.6rem at a root of 17px). */
   .btn-small {
-    min-height: 2.5rem;
+    min-height: 2.6rem;
     padding: 0 0.8rem;
     font-size: 0.92rem;
   }
@@ -847,8 +1077,240 @@ body {
     font-weight: 600;
     color: var(--color-accent);
   }
-  .link:hover {
-    text-decoration: underline;
+  @media (hover: hover) and (pointer: fine) {
+    .link:hover {
+      text-decoration: underline;
+    }
+  }
+
+  /*
+   * Back, the current one and forward as one control: the week on the plan and on the
+   * shopping notes. Its parts are links, so it works before any script.
+   */
+  .capsule {
+    display: inline-flex;
+    border-radius: 999px;
+    background: rgb(35 33 29 / 0.065);
+  }
+  .capsule > a {
+    display: inline-flex;
+    min-height: 2.6rem;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.8rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 120ms var(--ease-out);
+  }
+  .capsule > a + a {
+    box-shadow: inset 1px 0 0 rgb(35 33 29 / 0.09);
+  }
+  .capsule > a:first-child {
+    padding-left: 0.95rem;
+    border-radius: 999px 0 0 999px;
+  }
+  .capsule > a:last-child {
+    padding-right: 0.95rem;
+    border-radius: 0 999px 999px 0;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .capsule > a:hover {
+      background: rgb(35 33 29 / 0.05);
+    }
+  }
+  .capsule > a:active {
+    transform: scale(0.96);
+  }
+  .capsule > a:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  /*
+   * Two views of one page, as a segmented control: "Mahlzeiten" and "Außerdem", "Entdecken"
+   * and "Regal". The open one lies raised on the track. Full width on a phone.
+   */
+  .segmented {
+    display: flex;
+    width: 100%;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgb(35 33 29 / 0.07);
+  }
+  @media (width >= 40rem) {
+    .segmented {
+      display: inline-flex;
+      width: auto;
+    }
+  }
+  .segment {
+    display: flex;
+    min-height: 2.6rem;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1.15rem;
+    border-radius: 999px;
+    color: var(--color-muted);
+    font-size: 0.92rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 120ms var(--ease-out);
+  }
+  .segment[aria-current="page"] {
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow:
+      0 1px 2px rgb(35 33 29 / 0.12),
+      0 2px 8px -2px rgb(35 33 29 / 0.12);
+  }
+  .segment:active {
+    transform: scale(0.97);
+  }
+  .segment:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  /* A meal's persons, as a small stepper next to its name: − 4 +. */
+  .stepper {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    padding: 2px;
+    border-radius: 999px;
+    background: rgb(35 33 29 / 0.06);
+  }
+  .stepper button {
+    display: flex;
+    width: 2.6rem;
+    height: 2.6rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: transform 120ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .stepper button:hover {
+      background: rgb(35 33 29 / 0.06);
+    }
+  }
+  .stepper button:active {
+    transform: scale(0.9);
+  }
+  .stepper button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .stepper-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding-inline: 0.15rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+   * One group of the week's balance: a tile in the kind's pastel with a bar that fills towards
+   * the goal, in the warning colour once there are too many.
+   */
+  /*
+   * Four side by side; two by two on a phone narrower than an iPhone 14, where "Vegetarisch"
+   * no longer fits its tile.
+   */
+  .balance-tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.375rem;
+  }
+  @media (width >= 24rem) {
+    .balance-tiles {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  @media (width >= 40rem) {
+    .balance-tiles {
+      gap: 0.5rem;
+    }
+  }
+  .balance-tile {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 0.55rem 0.5rem 0.85rem;
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--kind) 70%, var(--color-surface));
+    color: var(--kind-ink);
+  }
+  .balance-bar {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    height: 0.22rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--kind-ink) 18%, transparent);
+  }
+  /* Grows when a meal is planned: the page is drawn again and the bar follows. */
+  .balance-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--kind-ink);
+    transform-origin: left;
+    transition: transform 300ms var(--ease-out);
+  }
+  .balance-bar[data-over="true"] > span {
+    background: var(--color-warn);
+  }
+
+  /*
+   * A meal in the week beside the recipe chooser: a row to tap, the one being chosen for on
+   * the green's pastel; an open one has an empty dashed circle where a dish would show.
+   */
+  .strip-meal {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.55rem;
+    margin-inline: -0.35rem;
+    padding: 0.2rem 0.35rem;
+    border-radius: 0.6rem;
+    transition:
+      background-color 160ms ease,
+      transform 120ms var(--ease-out);
+  }
+  .strip-meal:active {
+    transform: scale(0.98);
+  }
+  .strip-meal[aria-current="page"] {
+    background: var(--color-accent-soft);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .strip-meal:hover {
+      background: rgb(35 33 29 / 0.05);
+    }
+    .strip-meal[aria-current="page"]:hover {
+      background: var(--color-accent-soft);
+    }
+  }
+  .strip-meal:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .strip-open {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: none;
+    border: 1.5px dashed var(--color-line);
+    border-radius: 0.5rem;
   }
 
   /* A row of cards to swipe through. It reaches to the edge of the screen on a phone. */
@@ -865,6 +1327,106 @@ body {
   .shelf > * {
     flex: none;
     scroll-snap-align: start;
+  }
+}
+
+/*
+ * The map of the supermarkets (`LiveMap`, and `SupermarketMap` before its script loads).
+ * Outside the layers: Leaflet's own stylesheet has none and would win over them. The tiles
+ * of OpenStreetMap are tinted towards the paper of the app, quieter and warmer, so that the
+ * green rings of the household's markets are what stands out.
+ */
+.map-tiles {
+  filter: grayscale(0.7) sepia(0.28) saturate(0.85) brightness(1.06) contrast(0.88);
+}
+.leaflet-container {
+  background: var(--color-paper);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+.leaflet-container :focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.map-mark-anchor {
+  background: none;
+  border: 0;
+}
+.map-mark {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  background: #fff;
+  color: var(--color-muted);
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(35 33 29 / 0.18);
+  transition: transform 160ms var(--ease-out);
+}
+.map-mark img {
+  object-fit: contain;
+  pointer-events: none;
+}
+.map-mark-none {
+  opacity: 0.88;
+}
+.map-mark-more,
+.map-mark-main {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 2px var(--color-accent),
+    0 2px 6px rgb(35 33 29 / 0.25);
+}
+.map-mark-selected {
+  opacity: 1;
+  transform: scale(1.15);
+}
+.map-mark-star {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.45rem;
+  display: flex;
+  width: 1.05rem;
+  height: 1.05rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 0.65rem;
+}
+.map-button {
+  display: flex;
+  width: 2.6rem;
+  height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 1.25rem;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(35 33 29 / 0.15);
+}
+/* "Alle": a word, not a sign. */
+.map-button-words {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.map-button:active {
+  background: var(--color-accent-soft);
+}
+.map-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-mark {
+    transition: none;
   }
 }
 
@@ -929,14 +1491,31 @@ body {
     opacity: 0;
   }
 }
+/* From close by, not from far away: at 0.8 the note seemed to come out of nowhere. */
 @keyframes zoom-in {
   from {
     opacity: 0;
-    transform: scale(0.8);
+    transform: scale(0.95);
   }
 }
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+}
+/* What a fold holds comes out of it: a short fade and a little drop. */
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+details[open] > :not(summary) {
+  animation: unfold 200ms var(--ease-out);
+}
 main > * {
-  animation: page-in 0.22s ease-out both;
+  animation: page-in 220ms var(--ease-out) both;
 }
 /*
  * On to the next meal: the meal's page is torn off like a sheet of a pad. It stays on top,
@@ -979,20 +1558,44 @@ main > * {
   }
   main > *,
   .zoom-in,
-  .store-view[open],
   .note-drawer[open],
   .note-drawer[open]::backdrop,
   .note-drawer.going {
     animation: none;
   }
-  .lift {
-    transition: none;
+  /* Less motion is not none: what comes and goes still fades, it only does not travel. */
+  .store-view[open],
+  .cook-view[open],
+  details[open] > :not(summary) {
+    animation: fade-in 160ms ease both;
+  }
+  .lift,
+  .tickbox > svg path,
+  .balance-bar > span {
+    transition: none !important;
   }
 }
 
 details > summary {
   cursor: pointer;
   list-style: none;
+}
+/*
+ * A recipe's steps are folded away on a phone, where the household cooks from the book. On an
+ * iPad they stand open beside the ingredients: the fold's content is shown whether it is open
+ * or not (`::details-content`, Safari 18.4 and Chrome 131 on), and its toggle is left out. A
+ * tap on the heading still opens the fold, and so changes nothing to see.
+ */
+@media (width >= 46rem) and (height >= 30rem) {
+  .steps-beside::details-content {
+    content-visibility: visible;
+  }
+  .steps-beside > summary {
+    cursor: default;
+  }
+  .steps-beside > summary .fold-toggle {
+    display: none;
+  }
 }
 details > summary::-webkit-details-marker {
   display: none;

@@ -140,7 +140,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
             {review.neighbours.before && (
               <button
                 type="button"
-                className="btn min-h-10 px-3 text-sm"
+                className="btn min-h-11 px-3 text-sm"
                 disabled={pending}
                 onClick={() => reread("before")}
               >
@@ -150,7 +150,7 @@ export function ReviewForm({ review, waiting, ingredientNames, knownNames, units
             {review.neighbours.after && (
               <button
                 type="button"
-                className="btn min-h-10 px-3 text-sm"
+                className="btn min-h-11 px-3 text-sm"
                 disabled={pending}
                 onClick={() => reread("after")}
               >

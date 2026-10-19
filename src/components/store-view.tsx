@@ -5,6 +5,7 @@ import type { Shop } from "@/domain/catalog";
 import type { Pictogram } from "@/domain/library/pictogram";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
+import { useWakeLock } from "./wake-lock";
 import {
   CompleteNote,
   SyncStatus,
@@ -35,36 +36,6 @@ export interface StoreNote {
       lines: (PageLine & { text: string; shop: string | null })[];
     }[];
   }[];
-}
-
-/**
- * Keeps the screen on while `active`, where the browser can: nobody wants to unlock the
- * phone between two shelves. The browser lets go when the app goes to the background; it
- * is asked again when it comes back.
- */
-function useWakeLock(active: boolean) {
-  useEffect(() => {
-    if (!active || !("wakeLock" in navigator)) return;
-    let lock: WakeLockSentinel | null = null;
-    let over = false;
-    const take = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const taken = await navigator.wakeLock.request("screen");
-        if (over) void taken.release();
-        else lock = taken;
-      } catch {
-        // Refused (battery saver, no permission): the screen dims as it always does.
-      }
-    };
-    void take();
-    document.addEventListener("visibilitychange", take);
-    return () => {
-      over = true;
-      document.removeEventListener("visibilitychange", take);
-      void lock?.release();
-    };
-  }, [active]);
 }
 
 /**

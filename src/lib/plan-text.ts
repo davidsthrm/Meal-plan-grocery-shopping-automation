@@ -108,11 +108,11 @@ export const DIET_NAME: Record<Diet, string> = {
   fleisch: "Fleisch",
 };
 
-/** What a week aims for in a group: "mind. 3", "höchstens 2". */
+/** What a week aims for in a group: "mind. 3", "max. 2", short enough for a small tile. */
 export function targetText(line: BalanceLine): string {
   if (line.min !== null && line.max !== null) return `${line.min} bis ${line.max}`;
   if (line.min !== null) return `mind. ${line.min}`;
-  if (line.max !== null) return `höchstens ${line.max}`;
+  if (line.max !== null) return `max. ${line.max}`;
   return "";
 }
 

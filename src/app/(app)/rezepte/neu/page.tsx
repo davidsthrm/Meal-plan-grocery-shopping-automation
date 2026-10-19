@@ -42,22 +42,19 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
       </Link>
       <h1 className="title mt-3">Neues Rezept</h1>
 
-      <nav aria-label="Wie das Rezept hereinkommt" className="mt-4 flex flex-wrap gap-2">
-        <Link
-          href={way("")}
-          className={`chip ${pasting ? "" : "chip-on"}`}
-          aria-current={pasting ? undefined : "page"}
-        >
-          Eintippen
-        </Link>
-        <Link
-          href={way("text")}
-          className={`chip ${pasting ? "chip-on" : ""}`}
-          aria-current={pasting ? "page" : undefined}
-        >
-          Text einfügen
-        </Link>
-        <Link href="/import" className="chip">
+      <nav
+        aria-label="Wie das Rezept hereinkommt"
+        className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
+      >
+        <span className="segmented">
+          <Link href={way("")} className="segment" aria-current={pasting ? undefined : "page"}>
+            Eintippen
+          </Link>
+          <Link href={way("text")} className="segment" aria-current={pasting ? "page" : undefined}>
+            Text einfügen
+          </Link>
+        </span>
+        <Link href="/import" className="link inline-flex min-h-11 items-center">
           Seite fotografieren
         </Link>
       </nav>

@@ -17,7 +17,7 @@ import {
 } from "@/domain/dates";
 import { filterRecipes, isNoFilter, NO_FILTER, readFilter } from "@/domain/library/filter";
 import type { RecipeSummary } from "@/domain/library/summary";
-import { MEALS_WITHOUT_RECIPE, nextOpenMeal, slotKey, type Meal } from "@/domain/plan";
+import { MEALS_WITHOUT_RECIPE, nextOpenMeal, slotKey, weekStrip, type Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
 import { suggest } from "@/domain/recommend/suggest";
 import { MEAL_ADD, MEAL_NAME, MEAL_PLAN, slotText, whyText } from "@/lib/plan-text";
@@ -26,6 +26,7 @@ import { loadLibrary, searchLibrary } from "@/server/library";
 import { loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { markSlot, planExtra, planRecipe } from "../actions";
+import { WeekStrip } from "./week-strip";
 
 export const metadata: Metadata = { title: "Mahlzeit planen" };
 
@@ -153,161 +154,179 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
     );
   const back = extra ? `/woche?w=${week}&t=extra` : `/woche?w=${week}#tag-${date}`;
 
+  // On an iPad the week stands beside the chooser and stays while the meal's page is torn off.
   return (
-    <ViewTransition
-      key={extra ? "extra" : `${date}.${meal}`}
-      enter={{ [NEXT_MEAL]: "note-on", default: "none" }}
-      exit={{ [NEXT_MEAL]: "note-off", default: "none" }}
-      default="none"
+    <div
+      className={
+        extra
+          ? "mx-auto max-w-3xl"
+          : "mx-auto max-w-3xl tablet:grid tablet:max-w-6xl tablet:grid-cols-[15.5rem_minmax(0,1fr)] tablet:items-start tablet:gap-8"
+      }
     >
-      <div className="mx-auto max-w-3xl">
-        <Link href={back} className="link text-sm">
-          ← Wochenplan
-        </Link>
-        <p className="eyebrow mt-3">
-          {extra ? weekRange(week) : `${weekdayLong(date)}, ${dayAndMonth(date)}`}
-        </p>
-        <h1 className="title mt-1">
-          {extra ? "Außerdem einplanen" : mode === "add" ? MEAL_ADD[meal] : MEAL_PLAN[meal]}
-        </h1>
-
-        {!extra && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-            <p className={current ? "" : "text-muted"} role="status">
-              {current ? (
-                <>
-                  <span className="text-muted">Geplant: </span>
-                  <span className="font-semibold">
-                    {current.kind === "recipes"
-                      ? current.items
-                          .map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept")
-                          .join(" und ")
-                      : slotText(current)}
-                  </span>
-                </>
-              ) : (
-                "Noch nichts geplant"
-              )}
-            </p>
-            <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              {current?.kind === "free_text" && (
-                <Link
-                  href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
-                  className="link text-sm"
-                  aria-label={`${weekdayLong(date)} ${MEAL_NAME[meal]}: Lebensmittel`}
-                >
-                  Lebensmittel
-                </Link>
-              )}
-              {next && (
-                <Link
-                  href={`/woche/auswahl?${new URLSearchParams({ w: mondayOf(next.date), d: next.date, m: next.meal, modus: "replace" })}`}
-                  transitionTypes={[NEXT_MEAL]}
-                  className="btn btn-primary btn-small"
-                  aria-label={`Nächste Mahlzeit: ${weekdayLong(next.date)} ${MEAL_NAME[next.meal]}`}
-                >
-                  Nächste Mahlzeit
-                  <span className="font-normal opacity-80">
-                    {weekdayShort(next.date)} {MEAL_NAME[next.meal]}
-                  </span>
-                  <ArrowIcon />
-                </Link>
-              )}
-            </span>
-          </div>
-        )}
-
-        {!extra && mode === "replace" && (
-          <section className="mt-5" aria-label="Ohne Rezept">
-            <h2 className="eyebrow">Ohne Rezept</h2>
-            {meal !== "coffee" && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {MEALS_WITHOUT_RECIPE.map((option) => (
-                  <form key={option.label} action={markSlot}>
-                    {where}
-                    <input type="hidden" name="kind" value={option.kind} />
-                    <input type="hidden" name="label" value={option.label} />
-                    <SubmitButton className="chip">{option.label}</SubmitButton>
-                  </form>
-                ))}
-              </div>
-            )}
-            <form action={markSlot} className="mt-2 flex gap-2">
-              {where}
-              <input type="hidden" name="kind" value="free_text" />
-              <label className="flex-1">
-                <span className="sr-only">Eigener Eintrag</span>
-                <input
-                  name="label"
-                  maxLength={60}
-                  list="rezepttitel"
-                  autoComplete="off"
-                  className="field"
-                  placeholder={
-                    meal === "coffee"
-                      ? "Eigener Eintrag, z. B. Kuchen vom Bäcker"
-                      : "Eigener Eintrag, z. B. Pestonudeln oder bei Oma"
-                  }
-                />
-              </label>
-              <SubmitButton>Eintragen</SubmitButton>
-            </form>
-            {/* What is typed here and is the title of a recipe is planned as that recipe. */}
-            <datalist id="rezepttitel">
-              {recipes.map((recipe) => (
-                <option key={recipe.id} value={recipe.title} />
-              ))}
-            </datalist>
-          </section>
-        )}
-
-        <section className="mt-6" aria-label="Rezept suchen">
-          <h2 className="eyebrow mb-2">Aus dem Kochbuch</h2>
-          <RecipeFilterBar
-            path="/woche/auswahl"
-            filter={filter}
-            categories={categories}
-            books={books}
-            sources={library.sources}
-            tagGroups={tagGroups}
-            keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
-            plan={{
-              action: extra ? planExtra : planRecipe,
-              fields: extra ? { week } : { week, date, meal, mode, bleiben: "1" },
-            }}
+      {!extra && (
+        <aside className="hidden tablet:sticky tablet:top-[4.6rem] tablet:block tablet:max-h-[calc(100dvh-5.6rem)] tablet:overflow-y-auto tablet:overscroll-contain">
+          <WeekStrip
+            week={week}
+            days={weekStrip(week, slots, { date, meal })}
+            recipeOf={recipeOf}
           />
-        </section>
+        </aside>
+      )}
+      <ViewTransition
+        key={extra ? "extra" : `${date}.${meal}`}
+        enter={{ [NEXT_MEAL]: "note-on", default: "none" }}
+        exit={{ [NEXT_MEAL]: "note-off", default: "none" }}
+        default="none"
+      >
+        <div className="min-w-0">
+          <Link href={back} className="link text-sm">
+            ← Wochenplan
+          </Link>
+          <p className="eyebrow mt-3">
+            {extra ? weekRange(week) : `${weekdayLong(date)}, ${dayAndMonth(date)}`}
+          </p>
+          <h1 className="title mt-1">
+            {extra ? "Außerdem einplanen" : mode === "add" ? MEAL_ADD[meal] : MEAL_PLAN[meal]}
+          </h1>
 
-        {list(
-          "Vorschläge",
-          suggestions.map((entry) => row(entry.recipe, whyText(entry.reasons) || undefined)),
-        )}
-        {list(
-          "Favoriten",
-          favorites.slice(0, 12).map((recipe) => row(recipe)),
-        )}
-        {!browsing && (
-          <section className="mt-6" aria-label="Ergebnisse">
-            <p className="text-muted" role="status">
-              {results.length === 0
-                ? "Kein Rezept passt dazu."
-                : results.length === 1
-                  ? "1 Rezept passt dazu"
-                  : `${results.length} Rezepte passen dazu`}
-              {results.length > RESULTS && `. Die ersten ${RESULTS} davon:`}
-            </p>
-            {results.length > 0 && (
-              <ul className="card mt-2 divide-y divide-line">
-                {results.slice(0, RESULTS).map((recipe) => row(recipe))}
-              </ul>
-            )}
+          {!extra && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+              <p className={current ? "" : "text-muted"} role="status">
+                {current ? (
+                  <>
+                    <span className="text-muted">Geplant: </span>
+                    <span className="font-semibold">
+                      {current.kind === "recipes"
+                        ? current.items
+                            .map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept")
+                            .join(" und ")
+                        : slotText(current)}
+                    </span>
+                  </>
+                ) : (
+                  "Noch nichts geplant"
+                )}
+              </p>
+              <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {current?.kind === "free_text" && (
+                  <Link
+                    href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+                    className="link text-sm"
+                    aria-label={`${weekdayLong(date)} ${MEAL_NAME[meal]}: Lebensmittel`}
+                  >
+                    Lebensmittel
+                  </Link>
+                )}
+                {next && (
+                  <Link
+                    href={`/woche/auswahl?${new URLSearchParams({ w: mondayOf(next.date), d: next.date, m: next.meal, modus: "replace" })}`}
+                    transitionTypes={[NEXT_MEAL]}
+                    className="btn btn-primary btn-small"
+                    aria-label={`Nächste Mahlzeit: ${weekdayLong(next.date)} ${MEAL_NAME[next.meal]}`}
+                  >
+                    Nächste Mahlzeit
+                    <span className="font-normal opacity-80">
+                      {weekdayShort(next.date)} {MEAL_NAME[next.meal]}
+                    </span>
+                    <ArrowIcon />
+                  </Link>
+                )}
+              </span>
+            </div>
+          )}
+
+          {!extra && mode === "replace" && (
+            <section className="mt-5" aria-label="Ohne Rezept">
+              <h2 className="eyebrow">Ohne Rezept</h2>
+              {meal !== "coffee" && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {MEALS_WITHOUT_RECIPE.map((option) => (
+                    <form key={option.label} action={markSlot}>
+                      {where}
+                      <input type="hidden" name="kind" value={option.kind} />
+                      <input type="hidden" name="label" value={option.label} />
+                      <SubmitButton className="chip">{option.label}</SubmitButton>
+                    </form>
+                  ))}
+                </div>
+              )}
+              <form action={markSlot} className="mt-2 flex gap-2">
+                {where}
+                <input type="hidden" name="kind" value="free_text" />
+                <label className="flex-1">
+                  <span className="sr-only">Eigener Eintrag</span>
+                  <input
+                    name="label"
+                    maxLength={60}
+                    list="rezepttitel"
+                    autoComplete="off"
+                    className="field"
+                    placeholder={
+                      meal === "coffee"
+                        ? "Eigener Eintrag, z. B. Kuchen vom Bäcker"
+                        : "Eigener Eintrag, z. B. Pestonudeln oder bei Oma"
+                    }
+                  />
+                </label>
+                <SubmitButton>Eintragen</SubmitButton>
+              </form>
+              {/* What is typed here and is the title of a recipe is planned as that recipe. */}
+              <datalist id="rezepttitel">
+                {recipes.map((recipe) => (
+                  <option key={recipe.id} value={recipe.title} />
+                ))}
+              </datalist>
+            </section>
+          )}
+
+          <section className="mt-6" aria-label="Rezept suchen">
+            <h2 className="eyebrow mb-2">Aus dem Kochbuch</h2>
+            <RecipeFilterBar
+              path="/woche/auswahl"
+              filter={filter}
+              categories={categories}
+              books={books}
+              sources={library.sources}
+              tagGroups={tagGroups}
+              keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
+              plan={{
+                action: extra ? planExtra : planRecipe,
+                fields: extra ? { week } : { week, date, meal, mode, bleiben: "1" },
+              }}
+            />
           </section>
-        )}
-        {list(
-          "Ähnliche Rezepte",
-          related.map((recipe) => row(recipe)),
-        )}
-      </div>
-    </ViewTransition>
+
+          {list(
+            "Vorschläge",
+            suggestions.map((entry) => row(entry.recipe, whyText(entry.reasons) || undefined)),
+          )}
+          {list(
+            "Favoriten",
+            favorites.slice(0, 12).map((recipe) => row(recipe)),
+          )}
+          {!browsing && (
+            <section className="mt-6" aria-label="Ergebnisse">
+              <p className="text-muted" role="status">
+                {results.length === 0
+                  ? "Kein Rezept passt dazu."
+                  : results.length === 1
+                    ? "1 Rezept passt dazu"
+                    : `${results.length} Rezepte passen dazu`}
+                {results.length > RESULTS && `. Die ersten ${RESULTS} davon:`}
+              </p>
+              {results.length > 0 && (
+                <ul className="card mt-2 divide-y divide-line">
+                  {results.slice(0, RESULTS).map((recipe) => row(recipe))}
+                </ul>
+              )}
+            </section>
+          )}
+          {list(
+            "Ähnliche Rezepte",
+            related.map((recipe) => row(recipe)),
+          )}
+        </div>
+      </ViewTransition>
+    </div>
   );
 }

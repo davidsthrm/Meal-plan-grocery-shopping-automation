@@ -83,7 +83,7 @@ export function ResetWeek({
           </button>
           <button
             type="button"
-            className="link min-h-10 text-sm"
+            className="link min-h-11 text-sm"
             disabled={rubbing}
             onClick={() => setAsking(false)}
           >

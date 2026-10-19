@@ -17,9 +17,14 @@ const WEEKDAYS_LONG = [
   "Sonntag",
 ] as const;
 
-/** A weekday as a chip to tick, the same for every place. */
+/**
+ * A weekday as a chip to tick, the same for every place. The seven share a row equally, at
+ * most 3.4rem each. On a phone the row reaches a little into the card's edge, so that each
+ * day is still 44px wide: in a row that wrapped, Sunday stood alone on a second line.
+ */
+const DAYS_ROW = "-mx-1.5 grid max-w-[24.75rem] grid-cols-7 gap-1 sm:mx-0 sm:max-w-[24rem]";
 const CHIP =
-  "chip min-w-11 cursor-pointer justify-center px-0 has-checked:border-accent has-checked:bg-accent-soft has-checked:text-accent has-focus-visible:outline-2 has-focus-visible:outline-accent";
+  "chip min-w-0 cursor-pointer justify-center px-0 has-checked:border-accent has-checked:bg-accent-soft has-checked:text-accent has-focus-visible:outline-2 has-focus-visible:outline-accent";
 
 /**
  * The day the household goes to the drugstore: a row of weekdays like the others, of which
@@ -31,7 +36,7 @@ export function DrugstoreDayField({ days }: { days: readonly ShoppingDay[] }) {
   return (
     <fieldset>
       <legend className="label">{PLACE_NAME.drugstore}</legend>
-      <div className="flex flex-wrap gap-1.5">
+      <div className={DAYS_ROW}>
         {WEEKDAYS.map((name, at) => (
           <label key={name} className={CHIP}>
             <input
@@ -60,7 +65,7 @@ export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
       {WEEKDAY_PLACES.map((place) => (
         <fieldset key={place}>
           <legend className="label">{PLACE_NAME[place]}</legend>
-          <div className="flex flex-wrap gap-1.5">
+          <div className={DAYS_ROW}>
             {WEEKDAYS.map((name, at) => (
               <label key={name} className={CHIP}>
                 <input

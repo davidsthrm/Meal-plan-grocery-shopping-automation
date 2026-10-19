@@ -119,19 +119,18 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             </p>
           )}
         </div>
-        <nav aria-label="Woche wechseln" className="flex flex-wrap gap-2">
-          <Link href={`/einkauf?w=${addDays(week, -7)}`} className="btn btn-small">
-            <span aria-hidden>←</span> Vorige
-          </Link>
-          {week !== thisWeek && (
-            <Link href={`/einkauf?w=${thisWeek}`} className="btn btn-small">
-              Aktuelle
+        {/* The week as one control, as on the plan; the plan itself a word next to it. */}
+        <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="capsule">
+            <Link href={`/einkauf?w=${addDays(week, -7)}`}>
+              <span aria-hidden>←</span> Vorige
             </Link>
-          )}
-          <Link href={`/einkauf?w=${addDays(week, 7)}`} className="btn btn-small">
-            Nächste <span aria-hidden>→</span>
-          </Link>
-          <Link href={`/woche?w=${week}`} className="btn btn-small">
+            {week !== thisWeek && <Link href={`/einkauf?w=${thisWeek}`}>Aktuelle</Link>}
+            <Link href={`/einkauf?w=${addDays(week, 7)}`}>
+              Nächste <span aria-hidden>→</span>
+            </Link>
+          </span>
+          <Link href={`/woche?w=${week}`} className="link inline-flex min-h-11 items-center">
             Zum Wochenplan
           </Link>
         </nav>
@@ -165,10 +164,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         ))}
         {noted.length > 0 && (
           <li>
-            <a
-              href="#merkzettel"
-              className="note lift flex h-full min-h-56 flex-col px-4 pt-6 pb-4"
-            >
+            <a href="#merkzettel" className="note lift flex h-full flex-col px-4 pt-6 pb-4">
               <span className="flex items-center gap-2 text-lg font-bold tracking-tight">
                 <NoteIcon />
                 Merkzettel
@@ -260,7 +256,7 @@ function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; wee
                       />
                     ))}
                     <SubmitButton
-                      className="link min-h-10 text-sm whitespace-nowrap"
+                      className="link min-h-11 text-sm whitespace-nowrap"
                       label={`${item.label} doch kaufen`}
                     >
                       Doch kaufen
@@ -294,40 +290,47 @@ function NoteTile({
   return (
     <Link
       href={`/einkauf?w=${week}&zettel=${note.id}`}
-      className="sheet lift relative flex h-full min-h-56 flex-col"
+      className="sheet lift relative flex h-full flex-col"
       aria-label={`${PLACE_NAME[note.trip.place]}, ${whenText(note.trip)}: ${
         note.completed ? "erledigt" : `${note.open} offen`
       }`}
     >
       <SheetHoles />
-      <span className={`flex flex-1 flex-col px-4 pt-3 pb-4 ${note.completed ? "done-note" : ""}`}>
-        <NoteHead note={note} today={now} markets={markets} />
-        <span className="mt-3 block flex-1 text-[0.95rem]">
-          {lines.slice(0, PREVIEW).map((entry) => (
-            <span
-              key={entry.line.key}
-              className={`block truncate border-b border-rule py-1 ${
-                entry.checked ? "text-muted line-through" : ""
-              }`}
-            >
-              {entry.text}
-            </span>
-          ))}
-          {lines.length === 0 && (
-            <span className="block py-1 text-muted">
-              {note.trip.place === "drugstore" ? "Noch nichts notiert" : "Nichts zu kaufen"}
-            </span>
-          )}
+      {lines.length === 0 ? (
+        // Nothing to buy: a slim strip with its place, its day and that it is empty. A full
+        // page for an empty note made the shopping notes look like more work than they are.
+        <span className="flex items-center justify-between gap-3 px-4 pt-2.5 pb-3">
+          <NoteHead note={note} today={now} markets={markets} />
+          <span className="shrink-0 text-sm text-muted">
+            {note.trip.place === "drugstore" ? "Noch nichts notiert" : "Nichts zu kaufen"}
+          </span>
         </span>
-        <span className="mt-2 flex items-baseline justify-between gap-3 text-sm text-muted">
-          <span>{more > 0 ? `und ${more} weitere` : ""}</span>
-          {lines.length > 0 && (
+      ) : (
+        // As tall as what is on it.
+        <span
+          className={`flex flex-1 flex-col px-4 pt-3 pb-3 ${note.completed ? "done-note" : ""}`}
+        >
+          <NoteHead note={note} today={now} markets={markets} />
+          <span className="mt-3 block flex-1 text-[0.95rem]">
+            {lines.slice(0, PREVIEW).map((entry) => (
+              <span
+                key={entry.line.key}
+                className={`block truncate border-b border-rule py-1 ${
+                  entry.checked ? "text-muted line-through" : ""
+                }`}
+              >
+                {entry.text}
+              </span>
+            ))}
+          </span>
+          <span className="mt-2 flex items-baseline justify-between gap-3 text-sm text-muted">
+            <span>{more > 0 ? `und ${more} weitere` : ""}</span>
             <span className="tabular-nums">
               {note.open} offen{note.done > 0 ? `, ${note.done} erledigt` : ""}
             </span>
-          )}
+          </span>
         </span>
-      </span>
+      )}
       {note.completed && <Stamp by={note.completed.by} />}
     </Link>
   );

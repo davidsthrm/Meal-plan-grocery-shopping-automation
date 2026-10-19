@@ -36,7 +36,7 @@ export function PastedRecipeForm({ categories, extra, submitLabel, again }: Prop
               ))}
             </ul>
           )}
-          <Link href={again} className="link mt-1 inline-flex min-h-10 items-center text-sm">
+          <Link href={again} className="link mt-1 inline-flex min-h-11 items-center text-sm">
             Anderen Text einfügen
           </Link>
         </div>

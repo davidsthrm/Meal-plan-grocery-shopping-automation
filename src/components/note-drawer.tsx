@@ -53,7 +53,7 @@ export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote
     <>
       <a
         href="/merkzettel"
-        className="btn min-h-10 gap-1.5 border-note-line bg-note px-3 text-sm"
+        className="btn min-h-11 gap-1.5 border-note-line bg-note px-3 text-sm"
         aria-haspopup="dialog"
         aria-label={`Merkzettel, ${items.length === 1 ? "1 Eintrag" : `${items.length} Einträge`}`}
         onClick={(event) => {

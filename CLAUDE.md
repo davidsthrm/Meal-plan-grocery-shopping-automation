@@ -36,7 +36,7 @@ is easier than pen and paper.
 | The same while `npm run dev` is already running                           | `E2E_PORT=3000 npm run e2e`                     |
 | Create or remove that test household and its login                        | `npm run e2e:setup`, `npm run e2e:teardown`     |
 | Browser test of a real upload with the models (about 2 ct)                | `npm run e2e:upload`                            |
-| Screenshots of every screen, phone and desktop, into `test-results/look/` | `npm run e2e:look`                              |
+| Screenshots of every screen, phone, iPad (both ways) and desktop          | `npm run e2e:look`                              |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                 |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`     |
 | Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`     |
@@ -279,6 +279,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   one long page of lists unstructured. Each tile is turned as one layer (`will-change`), at rest
   as under the finger, and the holes of a sheet are elements (`SheetHoles`), not a repeated
   background: either way round, the holes lay askew to the note and jumped when it was lifted.
+  A note is as tall as what is on it, and one with nothing on it is a slim strip with its
+  place, its day and "Nichts zu kaufen": a full sheet for every note, empty or with one line,
+  made the shopping page twice as long as it needed to be (October 2026).
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up. A link to `#merkzettel` pulls it down
   too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). Going
@@ -289,9 +292,32 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   variety" or "just for you"; a suggestion without a reason shows none.
 - The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the
   `components` layer of `src/app/globals.css`, so a utility class on the same element wins.
-- One layout for all sizes: a single column on a phone, more columns from `sm` on. The week
-  plan puts lunch and dinner side by side from tablet width. An iPad and an iPhone version
-  with their own layouts are planned for later, so nothing may depend on hover or a mouse.
+- A button or a chip is a soft tint of the ink over whatever it lies on, not a white box with
+  an edge; only `.btn-primary` is solid, so the one green button on a screen is what stands
+  out. Every control gives a little the moment a finger lands on it (`:active`, a scale of
+  0.96), not only when it lifts, also for whoever asked for less motion: nothing travels.
+  The household took over these from previews based on Apple's guidance (October 2026),
+  with the parts below: `.capsule` (back, the current one and forward as one control: the
+  week on the plan and on the shopping notes, with the next step a word beside it),
+  `.segmented` and `.segment` (two views of one page, the open one raised on the track:
+  Mahlzeiten and Außerdem, Entdecken and Regal, Eintippen and Text einfügen), `.stepper`
+  (a meal's persons and its extra portions, "− 4 +").
+- One layout for all sizes: a single column on a phone, more columns from `sm` on. The iPad
+  is for planning, the iPhone for shopping and cooking (October 2026). What a screen can do
+  is asked of the screen, never read from the name of the device: widths, and `(hover:
+hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` in
+  `globals.css`) is at least 46rem wide and 30rem tall: an iPad either way and an iPad mini
+  upright, not a phone held across. On it the recipe chooser has the week beside it, a
+  recipe's ingredients and steps stand side by side, and the cooking view puts its
+  ingredients beside the steps. The week plan stands each day above its lunch and dinner
+  from `sm` to `lg` (an iPad upright) and beside them from `lg` on; in a third of the width a
+  long dish ran into its stepper. Nothing may depend on hover or a mouse.
+- Every control is at least 44px both ways (`min-h-11`, `size-11`, `2.6rem` at the root of
+  17px; `min-h-10` is 42.5px). A small pill such as a tag keeps its size inside a link that
+  is 44px tall. The seven weekdays of the shopping days share a row and reach into the card's
+  edge on a phone, so that each is still 44px wide. Text in a field is never under 16px, or
+  Safari zooms into it. A tap shows no grey flash, waits for no second tap
+  (`touch-action: manipulation`), and holding a control does not select its words.
 - A recipe has a pictogram (`pictogramFor`: pasta, soup, fish, cake, 21 in all, drawn as
   lines in `pictogram-paths.ts`). It stands large and pale behind a card's text
   (`.watermark`) and small on its pastel in front of a name (`.badge`). It is drawn sharp:
@@ -307,9 +333,13 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   or it is shown as a label. To look at a new drawing, render the paths with sharp: at the
   size of a badge a line is about a pixel wide.
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
-  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar that floats above
-  the bottom of the screen (`.tabbar`), with a sign above each name and the open section on
-  the green's pastel. It keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
+  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar of frosted glass
+  that floats above the bottom of the screen (`.tabbar`), the page visible under it, with a
+  sign above each name and the open section on the green's pastel. The header stays at the
+  top of every page on a strip of frosted paper as wide as the screen (`.app-header`), so
+  that the Merkzettel and the settings are one tap away halfway down a long list; anchors
+  land below it (`scroll-padding-top`), and `body` clips sideways so that the strip does not
+  widen the page. Asked for less transparency, both are solid. It keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
   `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
   phone's gestures. It reaches half a rem into that inset: above the whole of it, the bar
   floated too high (October 2026). Next to the Merkzettel stands the first letter of
@@ -319,8 +349,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   at the foot of the page, as on a phone. With both in the header the page was 983 pixels
   wide on an 810 pixel iPad, which zoomed it out and pushed fixed bars off the screen.
 - The sections in the bar are Woche, Einkauf, Rezepte, Favoriten and Import. "Rezepte" has
-  two views at its top, as the week has (`RecipeViews`): "Entdecken" to find something to
-  cook and "Regal" to look after the library.
+  two views at its top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to
+  find something to cook and "Regal" to look after the library.
 - What is done with the recipes ticked in the Regal is a bar at the foot of the screen that
   opens upwards (`.selection-bar`, `SelectionBar`), out of sight while nothing is ticked.
   It is put directly into the body: every page comes in with a transform (`page-in`), and
@@ -330,7 +360,16 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   and the service worker keeps them for the shop: its own Content-Security-Policy (in
   `next.config.ts`) allows `https://*.wikimedia.org` and nothing else from outside.
 - What moves, moves a little: a card lifts under the finger (`.lift`), a page comes in
-  softly, and both are off for whoever asked for less motion. Nothing depends on it.
+  softly, and both are off for whoever asked for less motion. Nothing depends on it. Every
+  animation takes one of three curves (`--ease-out`, `--ease-in-out`, `--ease-drawer` in
+  `@theme`) and stays under 300ms, except the Merkzettel's swing and the rubber, which are
+  meant to be seen. A tick on a note is drawn like a pen stroke in 200ms and goes at once
+  when taken back (a transition on `stroke-dashoffset`, the path's length 1); what a fold
+  holds comes out with a short fade and drop (`unfold`); the bars of the week's balance grow
+  when a meal is planned (`scaleX`, not the width); the views for the shop and for cooking
+  rise like a sheet (`sheet-up`); a note picked up comes from 95%, not from 80%. Hover is
+  for a mouse or trackpad only, and a press answers on every screen (`:active`). Asked for
+  less motion, what comes and goes still fades but does not travel, and nothing is drawn.
 - Every kind of meal has a pastel of its own (vegetarian, fish, poultry, meat: `--color-veg`
   and so on). Cakes and desserts have one too (`kind-sweet`), so a cake is not shown as a
   vegetarian meal. A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside use it.
@@ -454,9 +493,16 @@ Week plan
   plans on the weekend. From Thursday on it opens on the coming week already when nothing is
   planned for the rest of the running one (`openingWeek`); earlier an empty week is still the
   one to plan.
-- Above the sheet stands one row: the views "Mahlzeiten" and "Außerdem" on the left, what is
-  done with the whole plan on the right ("Plan vervollständigen", "Woche leeren", "Plan
-  speichern" last). On a phone the actions wrap below the views.
+- Above the sheet stands one row: the views "Mahlzeiten" and "Außerdem" as a segmented
+  control on the left, what is done with the whole plan on the right ("Plan vervollständigen",
+  "Woche leeren", "Plan speichern" last). On a phone the control is as wide as the screen and
+  the actions wrap below it. The week is changed with one capsule (back, "Aktuelle",
+  forward) and "Alle Wochen" next to it.
+- The week's count stands above it as four tiles in the kinds' pastels, each with its number,
+  its goal ("mind. 3", "max. 2") and a bar that fills towards the goal, in the warning colour
+  once there are too many (`progress`: towards the most where there is one, else the
+  least). Two by two on a phone narrower than an iPhone 14, where "Vegetarisch" no longer
+  fits a quarter of the width.
 - A week is counted by the heaviest protein of each cooked meal: red meat, poultry, fish,
   vegetarian (vegan counts as vegetarian). Only recipes that are a meal by themselves count
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
@@ -490,7 +536,11 @@ Week plan
   is planned and the page stays, saying what the meal is now ("Geplant: …"). "Nächste
   Mahlzeit" leads to the next lunch or dinner that has nothing planned yet, into the next
   week too (`nextOpenMeal`); coffee on Sunday is passed over. "← Wochenplan" leads back.
-  Picked anywhere else (a suggestion, a recipe being placed), the week is shown again.
+  Picked anywhere else (a suggestion, a recipe being placed), the week is shown again. On an
+  iPad the week stands beside it (`WeekStrip`, `weekStrip`): every lunch and dinner with
+  what it holds, Sunday's coffee when planned or being chosen for, the meal being chosen for
+  marked, each a link to choose for it instead. It stays while the meal's page is torn off
+  and scrolls on its own, so that a week is planned with the library open.
 - Some meals never have a recipe and are one tap away (`MEALS_WITHOUT_RECIPE`): Vesper,
   Reste, Auswärts, Oma Heidrun, Keiner daheim. Typed in, such a name is that meal (`namedMeal`),
   and no upload is offered for it. "Braucht keins" on any other typed meal makes it a meal
@@ -575,12 +625,15 @@ Week plan
   from (`plan_slot.leftovers_of_slot_id`), and the extra portions say for which meal they
   are. A meal planned meanwhile is left alone. A meal written again keeps its id
   (`writeSlot` updates in place), so the link holds.
-- A planned meal's actions are signs in one row, each with its words as label and title:
-  a pen to change it, a plus for a side, a bin to empty it; "Mehr kochen" is the one word
-  among them, a small button that opens its form under the row (`?mehr=<date>.<meal>`,
-  "Übernehmen" or "Abbrechen"), the way a suggestion is asked for. The household found the
-  row of words, and "Mehr kochen" on a line of its own, took too much room in the plan;
-  folded open inside the row it stood beside the signs in Safari.
+- A planned meal is two lines: its dish with the persons as a small stepper beside it ("− 4
+  +", a person's sign and the number, "4 Personen" for a screen reader; a recipe with a unit
+  of its own shows that below the dish), and its actions as signs in one row, each with its
+  words as label and title: a pen to change it, a plus for a side, a bin to empty it;
+  "Mehr kochen" is the one word among them, a green word that opens its form under the row
+  (`?mehr=<date>.<meal>`, "Übernehmen" or "Abbrechen"), the way a suggestion is asked for.
+  The household found the row of words, and "Mehr kochen" on a line of its own, took too
+  much room in the plan; folded open inside the row it stood beside the signs in Safari.
+  With the persons on a line of their own, a planned week was 3,800 points tall on a phone.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
   for the month most of its days are in. The week being planned is always listed.
@@ -658,7 +711,13 @@ Library
   an empty list that the photos show none. They are folded away on the recipe page
   ("Arbeitsschritte", a `<details>` below the ingredients, numbered), like the photo: the
   household keeps cooking from the book on the shelf and did not want the app to replace
-  it. The steps matter most for recipes that came in as text. A recipe without any says
+  it. On an iPad they stand open beside the ingredients (`.steps-beside`, shown through
+  `::details-content`, so a tap on the heading changes nothing to see). "Kochen" next to
+  "Einplanen" opens the view for cooking (`CookView`, a `<dialog>` over the whole screen;
+  `#kochen` opens it too): the ingredients to tick off as they are set out, the steps in
+  large writing, the one being cooked marked, "Zurück" and "Weiter" large at the foot
+  (`stepAfter`), and the screen stays on (`useWakeLock`, shared with the view for the
+  shop). Nothing of it is stored. The steps matter most for recipes that came in as text. A recipe without any says
   "Keine Arbeitsschritte vorhanden". A part the
   model could not read is "[…]", never a guess. Steps are typed and corrected one per line,
   on the review screen, on `/rezepte/[id]/bearbeiten` and in the form for a typed or pasted
@@ -781,22 +840,39 @@ Shopping list
   `pickSupermarkets`). They are kept as shops (`shop.found_near`, `logo_url`, `address`).
   None of it is hard-coded: the household's own is 88471 Laupheim, entered in the app.
   The card shows five: the chosen ones, then the biggest chains (`offeredSupermarkets`);
-  the others are under "Weitere anzeigen". All found stand on a small map (`minimap`,
-  `SupermarketMap`): tiles of OpenStreetMap laid out as pictures, without a script, with
-  its attribution. A market's place comes from the search (`shop.lat`, `lon`), or from its
+  the others are under "Weitere anzeigen". All found stand on a map (`SupermarketMap`):
+  Leaflet over the tiles of OpenStreetMap (`LiveMap`, loaded in the browser only), tinted
+  towards the app's paper (`.map-tiles`), each market a logo tile (`.map-mark`), the
+  household's ringed in green and the main one with a star. It moves and zooms with + and
+  −, "Alle" and the fingers; the mouse wheel only after a click into it. A tap on a market
+  shows it in a card on the map, to choose it, put it away or make it the main one.
+  Underneath lies the same map as plain pictures (`minimap`), shown until the script has
+  loaded and without one. Leaflet's stylesheet sets marker pictures to `width: auto`, so a
+  mark's logo has its size inline, as everywhere else. A market's place comes from the search (`shop.lat`, `lon`), or from its
   street (Nominatim, one request a second): when the household types one ("Angaben"), and
   for every market with a street but no place after each search, also a failed one. From
-  Vercel the main Overpass server often cannot be reached; four are tried. "Angaben" also
-  takes the kinds of grocery bought there (`shop.aisle_group_ids`, `kindsText`): shown on
-  its tile, and deciding nothing about the notes. While
+  Vercel the main Overpass server often cannot be reached; four are tried. The street in
+  "Angaben" offers addresses while it is typed (`AddressField`, `/api/adresse`): from Photon
+  (photon.komoot.io), because Nominatim's rules forbid search as you type, near the
+  household's markets and its postal code first (`readAddressSuggestions`). A picked one
+  sends its place along and needs no lookup; one typed by hand is looked up as before.
+  "Angaben" also takes the kinds of grocery bought there (`shop.aisle_group_ids`,
+  `kindsText`): shown on its tile, and on a supermarket note a line of such a kind stands
+  in that market's section (`supermarketForKind`: the first of the household's
+  supermarkets that names the kind, the main one first, else the main one). The household
+  expected Tiefkühl ticked at Aldi to put frozen food under Aldi (October 2026). It decides
+  only between supermarkets: what goes to the market, the butcher or the bakery stays on
+  their notes. The tiles' grid has `grid-cols-1` on a phone: an untruncated address made
+  its column, and with it the page, wider than the screen, which then zoomed out. While
   the search runs, which can take up to a minute, the card says so (`SearchPending`). A tap
   on a market makes it one of the household's or no longer one, the first one chosen being
   the main market; the star next to a chosen one makes it the main one
   (`shop.supermarket_rank`, 1 the main one; `favouriteSupermarkets`). A market the map does
-  not know can be typed in. A supermarket note buys everything at the main one. A
-  line can be bought at another one for the week ("Kaufe ich bei: Rewe",
-  `shopping_line_state.shop_id`): that supermarket then has a section of its own on the
-  note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
+  not know can be typed in. A supermarket note buys everything at the main one,
+  except the kinds of grocery bought at another one (above). A line can be bought at
+  another one for the week ("Kaufe ich bei: Rewe", `shopping_line_state.shop_id`, the main
+  one stored by name too, so that it wins over the kind): that supermarket then has a
+  section of its own on the note, on paper and in the PDF (`sectionsByShop`). One without such a line has none. Where
   the catalog buys a thing (`preferredShopId`) does not decide the section. The logos stand
   wherever a supermarket is named (`ShopLogo`, the name's first letter without one): the
   supermarket note is named after the markets it is taken to, the main one first, and shows
@@ -942,8 +1018,11 @@ Shopping list
   number in front, in digits or words, as its quantity (`drugstoreEntryFromText`: "2
   Duschgel", "zwei Zahnpasta"), and is sorted
   into its section there. Where an entry is bought fresh is looked up in
-  the catalog once, when it is written (`restock_item.fresh_place`), so that the header of
-  every page can say where each entry goes without reading the catalog. While it has
+  the catalog once, when it is written (`restock_item.fresh_place`, and its kind of grocery
+  in `restock_item.aisle_group_id`), so that the header of every page can say where each
+  entry goes without reading the catalog: at a supermarket errand the supermarket its kind
+  is bought at ("TK-Beeren · Mo 19. Aldi", `restockSupermarket`). Entries written before
+  the kind was kept name the main one. While it has
   entries, the Merkzettel also lies among the shopping notes.
 - Besides the cooked meals the lists hold the week's extras, scaled like a meal and bought for
   their day like a meal, or without a day on the week's first supermarket day, and the foods
@@ -1178,7 +1257,10 @@ Import
   the dashboard (SMTP). The link of Supabase's default template works only in the browser
   that asked for it; with the template set to `token_hash` it works on any device.
 - The map tiles of the settings are fetched from tile.openstreetmap.org by the browser, as
-  a visitor of OpenStreetMap: they show the household's area, nothing of its data.
+  a visitor of OpenStreetMap: they show the household's area, nothing of its data. The
+  address suggestions go through the server to Photon, a free service of Komoot without a
+  key and with fair use; without it the field is a plain field.
+- Markets close together lie on top of each other on the map until it is zoomed in.
 - Inviting someone needs no e-mail to be sent: the link is passed on by hand. Supabase's own
   mail server only writes to the project's team, so mail from the app would need another one.
 - Other families: a household of its own cannot be opened from the app yet. Before that,

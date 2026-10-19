@@ -326,7 +326,7 @@ export function NoteSheet({
 
         {lines.length > 0 && !drugstore && (
           <details className="mt-3 print:hidden">
-            <summary className="link inline-flex min-h-10 items-center">
+            <summary className="link inline-flex min-h-11 items-center">
               An einem anderen Tag einkaufen
             </summary>
             <div
@@ -500,7 +500,7 @@ function Line({
       <span aria-hidden className="mt-1 hidden size-3 shrink-0 border border-black print:block" />
       <div className="min-w-0 flex-1">
         <details>
-          <summary className="tick-text flex min-h-10 items-center py-1 print:min-h-0 print:py-0">
+          <summary className="tick-text flex min-h-11 items-center py-1 print:min-h-0 print:py-0">
             <span>
               {view.text}
               {shop && <span className="text-sm text-muted print:text-black"> · {shop}</span>}
@@ -560,7 +560,7 @@ function Line({
                   <form action={amountLine}>
                     {where}
                     <input type="hidden" name="reset" value="1" />
-                    <SubmitButton className="link min-h-9">
+                    <SubmitButton className="link min-h-11">
                       {written ? "Wie geschrieben" : "Wie geplant"}: {planned}
                     </SubmitButton>
                   </form>
@@ -654,7 +654,7 @@ function Line({
                     {where}
                     <input type="hidden" name="to" value={noteId(other)} />
                     <SubmitButton
-                      className="chip min-h-9 text-sm"
+                      className="chip min-h-11 text-sm"
                       label={`${line.label} verschieben: ${noteName(other)}`}
                     >
                       {noteName(other)}
@@ -678,7 +678,7 @@ function Line({
                     {where}
                     <input type="hidden" name="to" value={noteId(other.trip)} />
                     <SubmitButton
-                      className="link min-h-9 text-sm"
+                      className="link min-h-11 text-sm"
                       label={`${line.label} mit ${noteName(other.trip)} kaufen`}
                     >
                       Dort mitkaufen

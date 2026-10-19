@@ -64,7 +64,7 @@ export function TagNameField({
               <button
                 key={tag.ref}
                 type="button"
-                className="chip min-h-9 px-3 text-sm"
+                className="chip min-h-11 px-3 text-sm"
                 onClick={() => pick(tag)}
               >
                 {tag.name}

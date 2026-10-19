@@ -62,6 +62,10 @@ test("screens @look", async ({ page }, info) => {
     await page.getByRole("link", { name: "Montag Mittag ändern" }).waitFor();
   }
   await shot("2-woche-geplant");
+  // Choosing a recipe for one meal: on an iPad the week stands beside it.
+  await page.goto("/woche/auswahl?w=2027-03-01&d=2027-03-04&m=dinner&modus=replace");
+  await page.waitForLoadState("networkidle");
+  await shot("2-auswahl");
   // The note is pulled down over the page that is open.
   await page.getByRole("link", { name: /^Merkzettel/ }).click();
   const note = page.getByRole("dialog", { name: "Merkzettel" });
@@ -163,6 +167,24 @@ test("screens @look", async ({ page }, info) => {
       await shot("2-rezept-foto");
     }
   }
+
+  // A recipe with ingredients and steps: side by side on an iPad, and the view for cooking.
+  await page.goto("/rezepte?q=kartoffelsuppe");
+  await page
+    .getByRole("link", { name: /Kartoffelsuppe/ })
+    .first()
+    .click();
+  await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}$/);
+  await page.waitForLoadState("networkidle");
+  await shot("2-rezept-schritte");
+  await page.getByRole("link", { name: "Kochen" }).click();
+  const cooking = page.getByRole("dialog", { name: "Kochen: Kartoffelsuppe" });
+  await cooking.getByRole("button", { name: "1 kg Kartoffeln" }).click();
+  await cooking.getByRole("button", { name: "Erster Schritt" }).click();
+  await cooking.getByRole("button", { name: "Weiter" }).click();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `test-results/look/${info.project.name}-2-kochen.png` });
+  await cooking.getByRole("button", { name: "Fertig", exact: true }).first().click();
 
   await page.goto("/rezepte/regal");
   await page.waitForLoadState("networkidle");

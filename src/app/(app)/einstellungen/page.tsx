@@ -154,7 +154,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </p>
               <Saved when={said === "frisch"} />
               <details className="mt-2" open={said === "frisch"}>
-                <summary className="link inline-flex min-h-10 items-center">Ändern</summary>
+                <summary className="link inline-flex min-h-11 items-center">Ändern</summary>
                 <p className="text-sm text-muted">
                   Was hier dem Markt gehört, kommt auf seinen Zettel, wenn der Markttag höchstens
                   drei Tage vor der Mahlzeit liegt und es sich so lange hält. Was dem Metzger
@@ -297,7 +297,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
                   {canRemove(role, member) && (
                     <Link
                       href={`/einstellungen?entfernen=${member.userId}#familie`}
-                      className="link inline-flex min-h-10 items-center text-sm"
+                      className="link inline-flex min-h-11 items-center text-sm"
                     >
                       Entfernen
                     </Link>
@@ -351,7 +351,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
                     </span>
                     <form action={withdrawInvitation}>
                       <input type="hidden" name="id" value={invite.id} />
-                      <SubmitButton className="link min-h-10">Zurückziehen</SubmitButton>
+                      <SubmitButton className="link min-h-11">Zurückziehen</SubmitButton>
                     </form>
                   </li>
                 ))}

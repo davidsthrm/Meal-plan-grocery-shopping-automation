@@ -28,7 +28,7 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   const balance = page.getByRole("list", { name: "Ausgewogenheit der Woche" });
   await expect(balance.getByRole("listitem").filter({ hasText: "Fisch" })).toContainText("mind. 2");
   await expect(balance.getByRole("listitem").filter({ hasText: "Fleisch" })).toContainText(
-    "höchstens 1",
+    "max. 1",
   );
 
   // Asked once: the plan opens directly from now on, and the goals stay reachable.
