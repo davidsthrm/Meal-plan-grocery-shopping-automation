@@ -237,6 +237,8 @@ test("a member invites someone, who joins the household with an account of their
   const context = await browser.newContext({ baseURL });
   const guest = await context.newPage();
   await guest.goto(new URL(link).pathname);
+  await expect(guest.getByRole("heading", { name: "Hallo!" })).toBeVisible();
+  await expect(guest.getByText("Einladung von Testkoch")).toBeVisible();
   await expect(guest.getByText("E2E-Test (automatisch)")).toBeVisible();
   // What is typed is checked before an account is made.
   const email = `e2e-gast-${Date.now()}@example.org`;
@@ -246,15 +248,30 @@ test("a member invites someone, who joins the household with an account of their
   await guest
     .getByLabel("Passwort")
     .evaluate((field: HTMLInputElement) => field.removeAttribute("minlength"));
-  await guest.getByRole("button", { name: "Beitreten" }).click();
+  await guest.getByRole("button", { name: /beitreten/ }).click();
   await expect(guest.getByText("Das Passwort braucht mindestens 8 Zeichen.")).toBeVisible();
   await guest.getByLabel("Passwort").fill("ein gutes passwort");
-  await guest.getByRole("button", { name: "Beitreten" }).click();
+  await guest.getByRole("button", { name: /beitreten/ }).click();
 
-  // In, and asked like every first visit what a week should contain and when it shops.
-  await guest.waitForURL("**/woche/ziele?start=1");
+  // In, welcomed by name and shown what whoever made the household has set.
+  await guest.waitForURL("**/willkommen");
+  await expect(guest.getByRole("heading", { name: "Hallo Gast!" })).toBeVisible();
+  await expect(guest.getByText("Diese Einstellungen hat Testkoch festgelegt.")).toBeVisible();
   await expect(guest.getByRole("heading", { name: "Einkaufstage" })).toBeVisible();
+  // "So lassen" leads into the app with the welcome's own transition.
+  await guest.evaluate(() => {
+    const start = document.startViewTransition?.bind(document);
+    if (!start) return;
+    document.startViewTransition = ((options: { types?: string[] }) => {
+      (window as unknown as { types: string[] }).types = [...(options?.types ?? [])];
+      return start(options as never);
+    }) as typeof document.startViewTransition;
+  });
   await guest.getByRole("button", { name: "So lassen" }).click();
+  await guest.waitForURL("**/woche");
+  expect(await guest.evaluate(() => (window as unknown as { types?: string[] }).types)).toEqual([
+    "willkommen",
+  ]);
   await guest.goto("/einstellungen");
   const theirs = guest.getByRole("region", { name: "Familie", exact: true });
   await expect(theirs).toContainText("Testkoch");
@@ -278,11 +295,11 @@ test("a member invites someone, who joins the household with an account of their
   await guest.getByLabel("Dein Name").fill("Gast");
   await guest.getByLabel("E-Mail").fill(email);
   await guest.getByLabel("Passwort").fill("ein falsches passwort");
-  await guest.getByRole("button", { name: "Beitreten" }).click();
+  await guest.getByRole("button", { name: /beitreten/ }).click();
   await expect(guest.getByText("Gib sein Passwort ein")).toBeVisible();
   await guest.getByLabel("Passwort").fill("ein gutes passwort");
-  await guest.getByRole("button", { name: "Beitreten" }).click();
-  await guest.waitForURL("**/woche**");
+  await guest.getByRole("button", { name: /beitreten/ }).click();
+  await guest.waitForURL("**/willkommen");
 
   // And leaves by itself, after being asked, signed out.
   await guest.goto("/einstellungen");

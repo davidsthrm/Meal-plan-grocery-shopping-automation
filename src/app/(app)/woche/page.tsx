@@ -94,12 +94,21 @@ const HINT_SCORE = 2;
 const PROPOSALS = 12;
 
 export default async function WeekPage(props: PageProps<"/woche">) {
-  // Whoever opens the plan on a device for the first time is shown what the household aims
-  // for in a week, and can change it.
-  if (!(await cookies()).has(TARGETS_SEEN)) redirect("/woche/ziele?start=1");
-
   const params = await props.searchParams;
   const household = await requireHousehold();
+  // Whoever opens the plan on a device for the first time is shown what the household aims
+  // for in a week, and can change it: whoever made the household is asked, everyone else
+  // is welcomed and shown what was set.
+  if (!(await cookies()).has(TARGETS_SEEN)) {
+    const { data: me } = await (
+      await createSessionClient()
+    )
+      .from("household_member")
+      .select("role")
+      .eq("user_id", household.userId)
+      .maybeSingle();
+    redirect(me?.role === "admin" ? "/woche/ziele?start=1" : "/willkommen");
+  }
   const now = today();
   const db = await createSessionClient();
   // The running week decides which week the planner opens on, and what there is today.

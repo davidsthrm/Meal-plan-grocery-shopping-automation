@@ -10,7 +10,7 @@ import type { Meal, NewSlot, SlotContent } from "@/domain/plan";
 import { byDayAndMeal, namedMeal, slotKey } from "@/domain/plan";
 import { plannedServings } from "@/domain/recipe";
 import { BALANCE_GROUPS, readTargets } from "@/domain/recommend/balance";
-import { readDaysForm } from "@/domain/shopping-list/trips";
+import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
 import { TARGETS_SEEN } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
 import { must, type Db } from "@/server/catalog";
@@ -28,7 +28,7 @@ import {
   savePlan,
   writeSlot,
 } from "@/server/planning/week";
-import { storeShoppingDays } from "@/server/settings";
+import { storeDrugstoreWeekday, storeShoppingDays } from "@/server/settings";
 import { createSessionClient } from "@/server/supabase/server";
 
 /**
@@ -428,13 +428,13 @@ async function markTargetsSeen(): Promise<void> {
   });
 }
 
-/** Stores what the household aims for in a week. An empty field is no limit. */
-export async function saveTargets(form: FormData): Promise<void> {
+/** The goals as the form (`TargetsFields`) has them. An empty field is no limit. */
+function targetsOf(form: FormData) {
   const limit = (name: string) => {
     const typed = String(form.get(name) ?? "").trim();
     return typed === "" ? null : Number(typed);
   };
-  const targets = readTargets(
+  return readTargets(
     Object.fromEntries(
       BALANCE_GROUPS.map((group) => [
         group,
@@ -442,6 +442,11 @@ export async function saveTargets(form: FormData): Promise<void> {
       ]),
     ),
   );
+}
+
+/** Stores what the household aims for in a week. An empty field is no limit. */
+export async function saveTargets(form: FormData): Promise<void> {
+  const targets = targetsOf(form);
   // What makes no sense is sent back to the form, which says so.
   if (!targets) redirect("/woche/ziele?fehler=1");
   // The first visit also asks when the household shops.
@@ -466,6 +471,34 @@ export async function saveTargets(form: FormData): Promise<void> {
 }
 
 /** Leaves the goals as they are. */
+/**
+ * The end of the welcome of someone who joined the household (`/willkommen`): what they
+ * changed of the household's settings is stored ("Speichern"), or nothing is ("So lassen").
+ * Either way this device has seen the goals, and the plan opens.
+ */
+export async function finishWelcome(form: FormData): Promise<void> {
+  if (form.get("wahl") === "speichern") {
+    const targets = targetsOf(form);
+    if (!targets) redirect("/willkommen?fehler=1");
+    const days = readDaysForm((place) => form.getAll(`tage-${place}`).map(String));
+    if (!days) redirect("/willkommen?fehler=tage");
+    const household = await requireHousehold();
+    const db = await createSessionClient();
+    const size = readFamilySize(form.get("personen"));
+    const stored = await db
+      .from("household")
+      .update({ balance_targets: targets, ...(size === null ? {} : { default_servings: size }) })
+      .eq("id", household.id);
+    if (stored.error) throw new Error(`store targets: ${stored.error.message}`);
+    await storeShoppingDays(db, household.id, days);
+    const drugstore = readWeekday(form.get("tag-drugstore"));
+    if (drugstore !== null) await storeDrugstoreWeekday(db, household.id, drugstore);
+    revalidatePath("/woche");
+  }
+  await markTargetsSeen();
+  redirect("/woche");
+}
+
 export async function keepTargets(): Promise<void> {
   await markTargetsSeen();
   redirect("/woche");

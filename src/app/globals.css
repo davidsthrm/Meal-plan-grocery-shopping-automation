@@ -1560,6 +1560,25 @@ summary,
   .store-view .moved-line {
     padding-inline: 0.5rem;
   }
+  /* "Speichern" and "So lassen" at the foot of the welcome, over the page as it scrolls. */
+  .welcome-actions {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--color-paper) 70%, transparent);
+  }
+  .welcome-actions > .btn {
+    flex: 1;
+  }
+  @media (width >= 40rem) {
+    .welcome-actions > .btn {
+      flex: none;
+    }
+  }
   .row-actions {
     display: flex;
     flex: none;
@@ -1943,6 +1962,32 @@ main > * {
   to {
     opacity: 0;
     transform: translate(-35%, 4%) rotate(-14deg);
+  }
+}
+/*
+ * From the welcome into the app: the welcome goes up and away like a sheet lifted off, and
+ * the app rises into its place under it. Slower than the rest, as the rubber and the
+ * Merkzettel are: it happens once and is meant to be seen.
+ */
+::view-transition-group(.welcome-out) {
+  z-index: 1;
+}
+::view-transition-old(.welcome-out) {
+  animation: welcome-out 0.42s var(--ease-in-out) both;
+}
+::view-transition-new(.app-in) {
+  animation: app-in 0.5s var(--ease-out) 0.14s both;
+}
+@keyframes welcome-out {
+  to {
+    opacity: 0;
+    transform: translateY(-3rem) scale(0.97);
+  }
+}
+@keyframes app-in {
+  from {
+    opacity: 0;
+    transform: translateY(2rem) scale(0.98);
   }
 }
 @keyframes note-on {
