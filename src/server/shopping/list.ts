@@ -756,6 +756,9 @@ async function tickLine(
   if (stored.error) throw new Error(`tick line: ${stored.error.message}`);
 }
 
+/** How many decisions are stored at once. */
+const PARALLEL = 8;
+
 /** A decision about a line from a device, maybe made long ago in the shop. */
 export interface DecisionToApply {
   id: string;
@@ -835,11 +838,12 @@ export async function applyDecisions(
 ): Promise<{ taken: string[]; refused: string[] }> {
   const taken: string[] = [];
   const refused: string[] = [];
-  const lists = new Map<string, string>();
-  const listOf = async (trip: ShoppingTrip) => {
+  // One request per note, also for decisions stored side by side.
+  const lists = new Map<string, Promise<string>>();
+  const listOf = (trip: ShoppingTrip) => {
     const id = noteId(trip);
-    if (!lists.has(id)) lists.set(id, await ensureList(db, household.id, trip));
-    return lists.get(id) as string;
+    if (!lists.has(id)) lists.set(id, ensureList(db, household.id, trip));
+    return lists.get(id) as Promise<string>;
   };
   const weeks = new Map<string, Promise<WeekNotes>>();
   const notesOf = (trip: ShoppingTrip) => {
@@ -849,7 +853,10 @@ export async function applyDecisions(
   };
   const now = today();
 
-  for (const each of decisions) {
+  // Lines are independent of each other, and the queue holds one decision per line: they
+  // are stored a few at a time. One after the other, "Einkauf erledigt" on a full note took
+  // seconds.
+  const apply = async (each: DecisionToApply): Promise<void> => {
     const { decision, note, key } = each;
     const listId = await listOf(note);
     const to =
@@ -861,7 +868,7 @@ export async function applyDecisions(
     const target = to === null ? null : canMoveTo(to, note, now);
     if (to !== null && !target) {
       refused.push(each.id);
-      continue;
+      return;
     }
 
     // Another shop on the same note: no move, the line is bought in that shop's section.
@@ -871,7 +878,7 @@ export async function applyDecisions(
         await rememberChoice(db, household, each.about.item, decision.shopId ?? note.place);
       }
       taken.push(each.id);
-      continue;
+      return;
     }
 
     // A move needs the line as it stands on its note now: the notes its parts are from.
@@ -885,17 +892,24 @@ export async function applyDecisions(
     if (decision.kind === "moved" && !view) {
       // Not on that note any more: moved already, or gone from the plan.
       taken.push(each.id);
-      continue;
+      return;
     }
 
     const answer = await decideLine(db, listId, key, decision, each.at, each.about?.planned);
     if (answer === "older") {
       taken.push(each.id);
-      continue;
+      return;
     }
     const rest = decision.kind === "partial" ? decision.remainder : null;
-    await dropCarried(db, listId, key, rest?.kind === "moved" ? rest.entryId : null);
-    if (decision.kind !== "moved") await takeBackMove(db, household, listId, note, key);
+    // A plain tick changes nothing else: no rest was moved from a line ticked as planned in
+    // the same breath, and only a line opened again can be a move taken back.
+    const plainTick = decision.kind === "bought" && !decision.amount && !decision.name;
+    if (!plainTick) {
+      await Promise.all([
+        dropCarried(db, listId, key, rest?.kind === "moved" ? rest.entryId : null),
+        decision.kind === "open" ? takeBackMove(db, household, listId, note, key) : null,
+      ]);
+    }
 
     if (decision.kind === "moved" && target && view) {
       await moveLines(
@@ -942,6 +956,9 @@ export async function applyDecisions(
       await rememberChoice(db, household, each.about.item, each.about.shop ?? note.place);
     }
     taken.push(each.id);
+  };
+  for (let from = 0; from < decisions.length; from += PARALLEL) {
+    await Promise.all(decisions.slice(from, from + PARALLEL).map(apply));
   }
   return { taken, refused };
 }
