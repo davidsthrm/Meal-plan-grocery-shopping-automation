@@ -2,6 +2,7 @@ import type { Place } from "../catalog";
 import type { IsoDate } from "../dates";
 import type { Meal } from "../plan";
 import type { Amount, Unit } from "../units";
+import type { ShoppingTrip } from "./trips";
 
 /**
  * "main" is bought on the shopping day whose list the line is on, "later" shortly before it
@@ -28,7 +29,8 @@ export type ContributionSource =
     }
   /** Something to buy for a meal without a recipe: bread for the "Vesper". */
   | { type: "food"; slotId: string; date: IsoDate; meal: Meal; mealLabel: string }
-  | { type: "manual"; entryId: string };
+  /** Typed onto the note, or (`from`) the rest of a line bought in part on another note. */
+  | { type: "manual"; entryId: string; from?: ShoppingTrip };
 
 /** The day what a source buys for is eaten or needed. Null for what belongs to no day. */
 export function dayOf(source: ContributionSource): IsoDate | null {
@@ -64,6 +66,11 @@ export interface Contribution {
 export interface ManualEntry {
   id: string;
   text: string;
+  /**
+   * The rest of a line bought in part, carried to this note: the catalog ingredient and the
+   * amount, which no text has to be read for.
+   */
+  carried?: { ingredientId: string; amount: Amount; from: ShoppingTrip };
   /** The note it was written on: a place on a day. Without one, the first. */
   shoppingDate?: IsoDate;
   place?: Place;
@@ -118,10 +125,27 @@ export interface ShoppingLine {
   optional: boolean;
 }
 
+/**
+ * What became of a line in the shop. "moved" lines stand on another note and are shown on
+ * this one only as where they went.
+ */
+export type LineStatus = "open" | "bought" | "partially_bought" | "removed";
+
 /** What the household changed on a line. Stored per line key, survives regeneration. */
 export interface LineState {
   atHome?: boolean;
+  /** Bought, in full or in part. */
   checked?: boolean;
+  /** Removed: not bought, on purpose. Only while it is not ticked. */
+  removed?: boolean;
+  removedReason?: string | null;
+  /** What was bought where it differs from the plan: another product, or another amount. */
+  bought?: { name: string | null; amount: Amount | null };
+  /** For a line bought in part: what became of the rest, and where it went. */
+  remainder?: { kind: "discarded" } | { kind: "moved"; to: ShoppingTrip | null };
+  /** When the decision that stands was made, in milliseconds, and by whom. */
+  decidedAt?: number;
+  decidedBy?: string | null;
   note?: string | null;
   /** The supermarket it is bought at this week, where it is not the household's main one. */
   shopId?: string | null;

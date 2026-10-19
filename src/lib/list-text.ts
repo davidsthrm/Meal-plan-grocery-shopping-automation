@@ -23,7 +23,7 @@ export function sourceText(contribution: Contribution): string {
     case "food":
       return `${weekdayShort(source.date)} ${MEAL_NAME[source.meal]}: ${source.mealLabel}`;
     case "manual":
-      return "von Hand eingetragen";
+      return source.from ? `Rest von ${noteName(source.from)}` : "von Hand eingetragen";
   }
 }
 

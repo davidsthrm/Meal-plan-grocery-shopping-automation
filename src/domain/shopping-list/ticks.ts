@@ -1,3 +1,5 @@
+import type { Decision, PlannedLine } from "./decisions";
+
 /**
  * Ticks made on a device, before and after the server has them. In the shop the phone may
  * have no connection, so a tick is kept on the device first and sent when it can be.
@@ -16,7 +18,19 @@ export interface Tick {
   note: string;
   /** The line on that note (`ShoppingLine.key`). */
   key: string;
+  /** Bought, in full or in part (`isBought`). Read by the app before decisions. */
   checked: boolean;
+  /**
+   * What became of the line, where it is more than a tick: removed, bought in part, moved,
+   * another product. Without one, `checked` says bought or open.
+   */
+  decision?: Decision;
+  /**
+   * What the decision is about, as the device saw it: the line as planned, the thing it
+   * buys (`itemKey`) and the shop it stood at, so that the household's history of where it
+   * buys what can be written.
+   */
+  about?: { planned: PlannedLine; item: string; shop: string | null };
   /** When it was made, in milliseconds, by the device's clock. */
   at: number;
   /** When the server took it, by the device's clock. Null while it waits. */
@@ -81,6 +95,27 @@ export function shownChecked(
   if (!own) return page.checked;
   if (own.sentAt === null || own.sentAt > page.renderedAt) return own.checked;
   return page.checked;
+}
+
+/** The decision a tick stands for. */
+export function decisionOfTick(tick: Pick<Tick, "checked" | "decision">): Decision {
+  return tick.decision ?? (tick.checked ? { kind: "bought" } : { kind: "open" });
+}
+
+/**
+ * What a line shows as decided, as `shownChecked` says whether it is ticked: the device's
+ * own decision where the page cannot know it yet, otherwise the page's.
+ */
+export function shownDecision(
+  ticks: readonly Tick[],
+  line: Pick<Tick, "note" | "key">,
+  page: { decision: Decision; renderedAt: number },
+): Decision {
+  const wanted = lineOf(line);
+  const own = ticks.find((tick) => lineOf(tick) === wanted);
+  if (!own) return page.decision;
+  if (own.sentAt === null || own.sentAt > page.renderedAt) return decisionOfTick(own);
+  return page.decision;
 }
 
 /** Forgets ticks the server took long ago. Waiting ticks are never forgotten. */
