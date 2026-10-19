@@ -191,9 +191,10 @@ async function earlierDrugstoreEntries(
       .from("shopping_line_state")
       .select("line_key")
       .in("shopping_list_id", ids)
-      .not("checked_at", "is", null),
+      // Removed counts as done: what was not to be bought does not come along.
+      .or("checked_at.not.is.null,status.eq.removed"),
   ]);
-  const ticked = new Set(must(stateRows, "load earlier ticks").map((row) => row.line_key));
+  const ticked = new Set(must(stateRows, "load earlier decisions").map((row) => row.line_key));
   const dateOf = new Map(lists.map((list) => [list.id, list.shopping_date]));
   return must(entryRows, "load earlier drugstore entries").map((row) => ({
     id: row.id,

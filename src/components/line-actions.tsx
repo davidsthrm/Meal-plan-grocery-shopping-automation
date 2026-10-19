@@ -21,8 +21,9 @@ import {
 import type { ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { convert, type Amount, type Unit } from "@/domain/units";
-import { dayName } from "@/lib/list-text";
+import { dayName, PLACE_LOOK } from "@/lib/list-text";
 import { MoveIcon, PenIcon, TickIcon, TrashIcon, UndoIcon } from "./icons";
+import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
 import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLine } from "./ticks";
 
@@ -220,6 +221,19 @@ export function LineActions({
       )}
       <UndoBar toast={toast} onDone={doneToast} />
     </HostContext.Provider>
+  );
+}
+
+/**
+ * The same actions once more, inside a view over the whole screen: a modal dialog makes
+ * everything outside it inert, so the menu and the bar of the note would not answer there.
+ */
+export function LineActionsHere({ children }: { children: ReactNode }) {
+  const { page, note, today, choices } = useHost();
+  return (
+    <LineActions page={page} note={note} today={today} choices={choices}>
+      {children}
+    </LineActions>
   );
 }
 
@@ -616,11 +630,27 @@ function RowMenu({
     const element = menu.current;
     if (!element) return;
     if (!element.matches(":popover-open")) element.showPopover();
-    const closed = (event: Event) => {
-      if ((event as ToggleEvent).newState === "closed") onClose();
+    // Closed by a tap beside it or by Escape. Not by the browser's own light dismiss: the
+    // finger that held the row still lifts after the menu opened, and that closed it again.
+    const outside = (event: PointerEvent) => {
+      if (!element.contains(event.target as Node)) onClose();
     };
-    element.addEventListener("toggle", closed);
-    return () => element.removeEventListener("toggle", closed);
+    // Escape closes the menu only, not the view for the shop it lies over.
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    };
+    const listen = window.setTimeout(() => {
+      document.addEventListener("pointerdown", outside, true);
+    }, 0);
+    document.addEventListener("keydown", key, true);
+    return () => {
+      window.clearTimeout(listen);
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", key, true);
+    };
   }, [onClose]);
 
   // Below the row where it fits, else above it; from the row's side, as it grows out of it.
@@ -628,25 +658,33 @@ function RowMenu({
   const style = {
     top: below ? anchor.bottom - 4 : undefined,
     bottom: below ? undefined : window.innerHeight - anchor.top - 4,
-    left: Math.min(Math.max(12, anchor.left + 12), window.innerWidth - 260),
+    left: Math.min(Math.max(12, anchor.left + 12), window.innerWidth - 290),
     transformOrigin: below ? "top left" : "bottom left",
   };
   const run = (action: () => void) => () => {
-    menu.current?.hidePopover();
+    onClose();
     action();
   };
   const here = host.choices.find((choice) => choice.id === line.about.shop);
 
   return (
-    <div ref={menu} popover="auto" className="row-menu" style={style} aria-label={line.label}>
+    <div
+      ref={menu}
+      popover="manual"
+      role="menu"
+      className="row-menu"
+      style={style}
+      aria-label={line.label}
+    >
       <p className="row-menu-title">{line.text}</p>
-      <button type="button" onClick={run(toggle)}>
+      <button type="button" role="menuitem" onClick={run(toggle)}>
         <TickIcon />
         {bought ? "Wieder offen" : "Gekauft"}
       </button>
       {line.movable && (
         <button
           type="button"
+          role="menuitem"
           onClick={run(() =>
             host.act(
               line,
@@ -667,16 +705,20 @@ function RowMenu({
         </button>
       )}
       {line.movable && (
-        <button type="button" onClick={run(() => host.open({ kind: "move", line }))}>
+        <button
+          type="button"
+          role="menuitem"
+          onClick={run(() => host.open({ kind: "move", line }))}
+        >
           <MoveIcon />
           Verschieben …
         </button>
       )}
-      <button type="button" onClick={run(() => host.open({ kind: "edit", line }))}>
+      <button type="button" role="menuitem" onClick={run(() => host.open({ kind: "edit", line }))}>
         <PenIcon />
         {line.purchase ? "Nicht alles bekommen …" : "Anderes Produkt …"}
       </button>
-      <button type="button" className="text-danger" onClick={run(remove)}>
+      <button type="button" role="menuitem" className="text-danger" onClick={run(remove)}>
         <TrashIcon />
         Entfernen
       </button>
@@ -859,9 +901,9 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
   return (
     <div className="space-y-5 px-4 pt-2 pb-4">
       {line.purchase && (
-        <div className="flex items-center justify-between gap-3">
+        <div>
           <span className="font-semibold">Gekauft</span>
-          <span className="flex items-center gap-2">
+          <span className="mt-2 flex items-center gap-2">
             <span className="stepper">
               <button
                 type="button"
@@ -1034,7 +1076,13 @@ function MoveForm({
         onChange={() => setShop(choice.id)}
         className="sr-only"
       />
-      <ShopLogo shop={{ name: choice.name, logoUrl: choice.logoUrl }} size={28} />
+      {choice.shopId || choice.logoUrl ? (
+        <ShopLogo shop={{ name: choice.name, logoUrl: choice.logoUrl }} size={28} />
+      ) : (
+        <span className={`badge size-7 ${PLACE_LOOK[choice.place].tone}`}>
+          <PictogramIcon name={PLACE_LOOK[choice.place].pictogram} className="h-[70%] w-[70%]" />
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate">{choice.name}</span>
       {choice.id === here?.id && <span className="text-sm text-muted">jetzt</span>}
       <span className="choice-check" aria-hidden>

@@ -1552,6 +1552,14 @@ summary,
   .store-view .swipe-face {
     border-bottom: 1px solid var(--color-rule);
   }
+  /* A row being swiped is not being pressed: no highlight under the finger. */
+  .swipe-row[data-swipe="right"] .store-row:active,
+  .swipe-row[data-swipe="left"] .store-row:active {
+    background: transparent;
+  }
+  .store-view .moved-line {
+    padding-inline: 0.5rem;
+  }
   .row-actions {
     display: flex;
     flex: none;
@@ -1585,7 +1593,9 @@ summary,
     position: fixed;
     inset: auto;
     margin: 0;
-    width: 15.5rem;
+    width: max-content;
+    min-width: 14rem;
+    max-width: calc(100vw - 1.5rem);
     padding: 0.35rem;
     border: 1px solid var(--color-line);
     border-radius: 1rem;
@@ -1617,9 +1627,15 @@ summary,
     text-align: left;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Every sign the same size, so that the words stand in one column. */
   .row-menu button > svg {
+    width: 1.2rem;
+    height: 1.2rem;
     flex: none;
     color: var(--color-muted);
+  }
+  .row-menu button {
+    white-space: nowrap;
   }
   .row-menu button:active {
     background: rgb(35 33 29 / 0.07);
@@ -1714,8 +1730,8 @@ summary,
   /* What was just decided, with "Widerrufen", for a few seconds at the foot of the screen. */
   .undo-bar {
     position: fixed;
-    inset: auto max(0.75rem, env(safe-area-inset-right))
-      calc(5.25rem + env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+    inset: auto max(0.75rem, env(safe-area-inset-right)) calc(5.25rem + env(safe-area-inset-bottom))
+      max(0.75rem, env(safe-area-inset-left));
     width: auto;
     max-width: 30rem;
     margin: 0 auto;

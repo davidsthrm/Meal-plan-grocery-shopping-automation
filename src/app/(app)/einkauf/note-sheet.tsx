@@ -308,13 +308,17 @@ export function NoteSheet({
           {note.completed && (
             <p
               role="status"
-              className="mt-3 flex items-center gap-2 rounded-lg bg-accent-soft px-3 py-2 font-semibold text-accent print:hidden"
+              className="mt-3 flex items-start gap-2 rounded-lg bg-accent-soft px-3 py-2 text-accent print:hidden"
             >
               <TickIcon />
-              Erledigt{note.completed.by ? ` von ${note.completed.by}` : ""}
-              {notBought.length > 0 && (
-                <span className="font-normal text-ink">· {notBoughtText(notBought.length)}</span>
-              )}
+              <span>
+                <span className="block font-semibold">
+                  Erledigt{note.completed.by ? ` von ${note.completed.by}` : ""}
+                </span>
+                {notBought.length > 0 && (
+                  <span className="block text-sm text-ink">{notBoughtText(notBought.length)}</span>
+                )}
+              </span>
             </p>
           )}
           {view.groups.length === 0 && (
