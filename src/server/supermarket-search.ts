@@ -44,13 +44,27 @@ function why(url: string, error: unknown): string {
   return `${host}: ${detail ? `${message} (${detail})` : message}`;
 }
 
-async function getJson(url: string, init: RequestInit = {}, seconds = 20): Promise<unknown> {
+/**
+ * How long a whole search may take, its street lookups included. A function on Vercel is cut
+ * off after 300 seconds; the rest is left for storing what was found.
+ */
+export const SEARCH_BUDGET_MS = 240_000;
+
+async function getJson(
+  url: string,
+  init: RequestInit = {},
+  seconds = 20,
+  until = Number.POSITIVE_INFINITY,
+): Promise<unknown> {
+  // Never wait past the end of the search: what is left is not asked at all.
+  const left = Math.min(seconds * 1000, until - Date.now());
+  if (left < 1000) throw new Error(`${new URL(url).host}: keine Zeit mehr`);
   let response: Response;
   try {
     response = await fetch(url, {
       ...init,
       headers: { "User-Agent": WHO, Accept: "application/json", ...init.headers },
-      signal: AbortSignal.timeout(seconds * 1000),
+      signal: AbortSignal.timeout(left),
       cache: "no-store",
     });
   } catch (error) {
@@ -73,11 +87,13 @@ export interface SupermarketSearch {
 /**
  * The supermarkets in a postal code's area, nearest first, with their logos where Wikidata
  * knows them. Null when the postal code was not found. Throws, with what went wrong, when no
- * service could be reached. `log` hears every step, for the command line.
+ * service could be reached. `log` hears every step, for the command line. Nothing is asked
+ * after `until`.
  */
 export async function searchSupermarkets(
   postalCode: string,
   log: (step: string) => void = () => {},
+  until = Date.now() + SEARCH_BUDGET_MS,
 ): Promise<SupermarketSearch | null> {
   const lookup = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
     postalcode: postalCode,
@@ -87,7 +103,7 @@ export async function searchSupermarkets(
     limit: "1",
   })}`;
   log(`Postleitzahl nachschlagen: ${lookup}`);
-  const area = readPostalArea(await getJson(lookup));
+  const area = readPostalArea(await getJson(lookup, {}, 20, until));
   if (!area) {
     log("Nominatim kennt die Postleitzahl nicht.");
     return null;
@@ -109,6 +125,7 @@ export async function searchSupermarkets(
           body: new URLSearchParams({ data: query }).toString(),
         },
         30,
+        until,
       )) as { elements?: OverpassElement[] };
       elements = answer.elements ?? [];
       break;
@@ -134,6 +151,9 @@ export async function searchSupermarkets(
             props: "claims",
             format: "json",
           })}`,
+          {},
+          20,
+          until,
         ),
       );
     } catch (error) {
@@ -157,6 +177,7 @@ export async function searchSupermarkets(
 export async function findStreet(
   street: string,
   postalCode: string,
+  until = Number.POSITIVE_INFINITY,
 ): Promise<{ lat: number; lon: number } | null> {
   const lookup = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
     street,
@@ -166,7 +187,7 @@ export async function findStreet(
     limit: "1",
   })}`;
   try {
-    const answer = (await getJson(lookup)) as { lat?: string; lon?: string }[];
+    const answer = (await getJson(lookup, {}, 20, until)) as { lat?: string; lon?: string }[];
     const lat = Number(answer[0]?.lat);
     const lon = Number(answer[0]?.lon);
     return Number.isFinite(lat) && Number.isFinite(lon) && answer.length > 0 ? { lat, lon } : null;
@@ -182,16 +203,19 @@ const NOMINATIM_GAP_MS = 1100;
 /**
  * Where each of these markets stands, found by its street, one after the other at the pace
  * Nominatim asks for. For markets found before their place was kept, when Overpass cannot
- * be reached: they stand on the map all the same. A street that is not found is left out.
+ * be reached: they stand on the map all the same. A street that is not found is left out,
+ * and so are the ones still waiting at `until`: the next search places them.
  */
 export async function findStreets(
   shops: readonly { id: string; address: string }[],
   postalCode: string,
+  until = Number.POSITIVE_INFINITY,
 ): Promise<Map<string, { lat: number; lon: number }>> {
   const found = new Map<string, { lat: number; lon: number }>();
   for (const [at, shop] of shops.entries()) {
+    if (Date.now() + NOMINATIM_GAP_MS + 1000 > until) break;
     if (at > 0) await new Promise((done) => setTimeout(done, NOMINATIM_GAP_MS));
-    const position = await findStreet(shop.address, postalCode);
+    const position = await findStreet(shop.address, postalCode, until);
     if (position) found.set(shop.id, position);
   }
   return found;
