@@ -195,6 +195,8 @@ test("screens @look", async ({ page }, info) => {
     await boxes.nth(0).check();
     await boxes.nth(1).check();
     await page.locator(".selection-bar summary").click();
+    // The bar rises and its fold opens: the picture is of where they come to rest.
+    await page.waitForTimeout(400);
     await page.screenshot({ path: `test-results/look/${info.project.name}-2-regal-auswahl.png` });
   }
   const tagLink = page.locator('a[aria-label^="Stichworte ändern: "]').first();
