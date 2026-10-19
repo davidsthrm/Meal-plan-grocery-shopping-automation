@@ -28,6 +28,8 @@ test("the way back from a recipe leads to the list as it was left", async ({ pag
 });
 
 test("a shelf is scrolled sideways as it was after going back", async ({ page }) => {
+  // The made-up cookbook's shelves fit a wide screen whole: narrow enough to scroll them.
+  await page.setViewportSize({ width: 640, height: 900 });
   await page.goto("/rezepte");
   // The made-up cookbook was just written: let the live refresh it causes pass first.
   await page.waitForTimeout(4000);
