@@ -28,7 +28,7 @@ import { loadShoppingNotes, type NoteList } from "@/server/shopping/list";
 import { loadRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 import { buyAfterAll } from "./actions";
-import { NoteHead, NoteSheet } from "./note-sheet";
+import { NoteHead, NoteSheet, notBoughtText } from "./note-sheet";
 
 export const metadata: Metadata = { title: "Einkaufszettel" };
 
@@ -51,7 +51,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const thisWeek = planningWeek(now);
   const week = asked && isIsoDate(asked) ? mondayOf(asked) : thisWeek;
   const db = await createSessionClient();
-  const [{ notes, atHome, index, members, supermarkets, alsoOn, readAt }, noted] =
+  const [{ notes, atHome, index, members, supermarkets, alsoOn, readAt, choices, history }, noted] =
     await Promise.all([loadShoppingNotes(db, household, week), loadRestock(db, household, now)]);
   const picked = notes.find((note) => note.id === one(params.zettel));
   // The notes of the running week are kept on the device for the shop, and the next errand
@@ -96,6 +96,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           supermarkets={supermarkets}
           alsoOn={alsoOn}
           renderedAt={readAt}
+          choices={choices}
+          history={history}
         />
         {keep && <KeepForTheShop pages={keep} readAt={readAt} />}
       </div>
@@ -296,7 +298,7 @@ function NoteTile({
   return (
     <Link
       href={`/einkauf?w=${week}&zettel=${note.id}`}
-      className="sheet lift relative flex h-full flex-col"
+      className={`sheet lift relative flex h-full flex-col ${note.completed ? "done-sheet" : ""}`}
       aria-label={`${PLACE_NAME[note.trip.place]}, ${whenText(note.trip)}: ${
         note.completed ? "erledigt" : `${note.open} offen`
       }`}
@@ -332,7 +334,11 @@ function NoteTile({
           <span className="mt-2 flex items-baseline justify-between gap-3 text-sm text-muted">
             <span>{more > 0 ? `und ${more} weitere` : ""}</span>
             <span className="tabular-nums">
-              {note.open} offen{note.done > 0 ? `, ${note.done} erledigt` : ""}
+              {note.completed
+                ? note.view.notBought.length > 0
+                  ? notBoughtText(note.view.notBought.length)
+                  : `${note.done} gekauft`
+                : `${note.open} offen${note.done > 0 ? `, ${note.done} erledigt` : ""}`}
             </span>
           </span>
         </span>

@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { checkLine, completeListNote } from "@/app/(app)/einkauf/actions";
-import { shownChecked, type Tick } from "@/domain/shopping-list/ticks";
+import { isBought, type Decision, type PlannedLine } from "@/domain/shopping-list/decisions";
+import { shownDecision, type Tick } from "@/domain/shopping-list/ticks";
 import { indexedDbTickStore } from "@/lib/tick-store";
 import { syncText, TickQueue, type Answer, type Snapshot, type TickStore } from "@/lib/tick-sync";
 import { TickIcon } from "./icons";
@@ -27,7 +28,15 @@ async function send(ticks: readonly Tick[]): Promise<Answer> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      ticks: ticks.map(({ id, note, key, checked, at }) => ({ id, note, key, checked, at })),
+      ticks: ticks.map(({ id, note, key, checked, decision, about, at }) => ({
+        id,
+        note,
+        key,
+        checked,
+        decision,
+        about,
+        at,
+      })),
     }),
     cache: "no-store",
     // Without a login the proxy sends to the login page: that is no answer to the ticks.
@@ -93,11 +102,18 @@ function newId(): string {
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** A line as the page knows it: its key, and whether the server had it ticked. */
+/**
+ * A line as the page knows it: its key, whether the server had it ticked, and what else it
+ * had decided about it (removed, bought in part). Without a decision, the tick says it.
+ */
 export interface PageLine {
   key: string;
   checked: boolean;
+  decision?: Decision;
 }
+
+const pageDecision = (line: PageLine): Decision =>
+  line.decision ?? (line.checked ? { kind: "bought" } : { kind: "open" });
 
 /** What a page says about one note: which, in which week, and when the server drew it. */
 export interface NotePage {
@@ -107,15 +123,54 @@ export interface NotePage {
   renderedAt: number;
 }
 
-function useShown(page: NotePage, lines: readonly PageLine[]): boolean[] {
+/** What each line shows as decided: this device's own decision over an older page. */
+export function useDecisions(page: NotePage, lines: readonly PageLine[]): Decision[] {
   const { ticks } = useTicks();
   return lines.map((line) =>
-    shownChecked(
+    shownDecision(
       ticks,
       { note: page.note, key: line.key },
-      { checked: line.checked, renderedAt: page.renderedAt },
+      { decision: pageDecision(line), renderedAt: page.renderedAt },
     ),
   );
+}
+
+/** Whether each line shows as ticked: bought, in full or in part. */
+function useShown(page: NotePage, lines: readonly PageLine[]): boolean[] {
+  return useDecisions(page, lines).map(isBought);
+}
+
+/** Lines still on the note: neither removed nor moved elsewhere on this device. */
+function useOnNote(page: NotePage, lines: readonly PageLine[]): Decision[] {
+  return useDecisions(page, lines).filter(
+    (decision) => decision.kind !== "removed" && decision.kind !== "moved",
+  );
+}
+
+/**
+ * Decides what became of a line on this device, and sends it like a tick. `about` is the
+ * line as the device saw it: the plan kept beside what was bought, and where it was bought.
+ */
+export function decide(
+  page: NotePage,
+  key: string,
+  decision: Decision,
+  about?: { planned: PlannedLine; item: string; shop: string | null },
+): Promise<void> {
+  return tickQueue().add({
+    id: newId(),
+    note: page.note,
+    key,
+    checked: isBought(decision),
+    decision,
+    about,
+    at: Date.now(),
+  });
+}
+
+/** A new id for something made on this device: a tick, or the rest of a line. */
+export function deviceId(): string {
+  return newId();
 }
 
 /**
@@ -149,6 +204,7 @@ export function TickButton({
   label,
   className,
   children,
+  about,
 }: {
   page: NotePage;
   line: PageLine;
@@ -156,6 +212,8 @@ export function TickButton({
   label: string;
   className?: string;
   children?: ReactNode;
+  /** The line as planned, for the history of where it was bought. */
+  about?: Parameters<typeof decide>[3];
 }) {
   const [shown] = useShown(page, [line]);
   return (
@@ -165,13 +223,7 @@ export function TickButton({
       className={className}
       onSubmit={(event) => {
         event.preventDefault();
-        void tickQueue().add({
-          id: newId(),
-          note: page.note,
-          key: line.key,
-          checked: !shown,
-          at: Date.now(),
-        });
+        void decide(page, line.key, shown ? { kind: "open" } : { kind: "bought" }, about);
       }}
     >
       <input type="hidden" name="week" value={page.week} />
@@ -201,28 +253,29 @@ export function TickButton({
 
 /** "3 offen, 2 erledigt", with the ticks of this device that the page does not know yet. */
 export function TickCount({ page, lines }: { page: NotePage; lines: readonly PageLine[] }) {
-  const done = useShown(page, lines).filter(Boolean).length;
+  const onNote = useOnNote(page, lines);
+  const done = onNote.filter(isBought).length;
   return (
     <>
-      {lines.length - done} offen{done > 0 ? `, ${done} erledigt` : ""}
+      {onNote.length - done} offen{done > 0 ? `, ${done} erledigt` : ""}
     </>
   );
 }
 
 /** How many lines are ticked of how many: "5 von 12". */
 export function TickProgress({ page, lines }: { page: NotePage; lines: readonly PageLine[] }) {
-  const done = useShown(page, lines).filter(Boolean).length;
+  const onNote = useOnNote(page, lines);
   return (
     <>
-      {done} von {lines.length}
+      {onNote.filter(isBought).length} von {onNote.length}
     </>
   );
 }
 
 /** Whether every line shows as ticked: the errand is done. */
 export function useAllTicked(page: NotePage, lines: readonly PageLine[]): boolean {
-  const shown = useShown(page, lines);
-  return lines.length > 0 && shown.every(Boolean);
+  const shown = useDecisions(page, lines);
+  return lines.length > 0 && shown.every((decision) => decision.kind !== "open");
 }
 
 /**
@@ -238,7 +291,7 @@ export function CompleteNote({
   lines: readonly PageLine[];
   className?: string;
 }) {
-  const shown = useShown(page, lines);
+  const shown = useDecisions(page, lines).map((decision) => decision.kind !== "open");
   if (lines.length === 0 || shown.every(Boolean)) return null;
   return (
     <form
@@ -250,7 +303,14 @@ export function CompleteNote({
         const at = Date.now();
         lines.forEach((line, index) => {
           if (!shown[index])
-            void queue.add({ id: newId(), note: page.note, key: line.key, checked: true, at });
+            void queue.add({
+              id: newId(),
+              note: page.note,
+              key: line.key,
+              checked: true,
+              decision: { kind: "bought" },
+              at,
+            });
         });
       }}
     >

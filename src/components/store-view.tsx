@@ -3,19 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Shop } from "@/domain/catalog";
 import type { Pictogram } from "@/domain/library/pictogram";
+import type { ShoppingTrip } from "@/domain/shopping-list/trips";
+import { ActionRow, MovedAwayRow, NotBoughtRow, type About, type ActionLine } from "./line-actions";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
 import { leaveSheet } from "./sheet";
 import { useWakeLock } from "./wake-lock";
-import {
-  CompleteNote,
-  SyncStatus,
-  TickButton,
-  TickProgress,
-  useAllTicked,
-  type NotePage,
-  type PageLine,
-} from "./ticks";
+import { CompleteNote, SyncStatus, TickProgress, useAllTicked, type NotePage } from "./ticks";
 
 /** A supermarket as the view shows it: its logo and its name. */
 type Market = Pick<Shop, "id" | "name" | "logoUrl">;
@@ -34,14 +28,19 @@ export interface StoreNote {
     shop: Market | null;
     groups: {
       name: string;
-      lines: (PageLine & { text: string; shop: string | null })[];
+      lines: ActionLine[];
     }[];
   }[];
+  /** "Nicht gekaufte Einträge": removed, or the rest not bought. */
+  notBought: { line: ActionLine; amount: string | null; reason: string | null }[];
+  /** What was on the note and is bought on another one now. */
+  moved: { line: { key: string; label: string; about: About }; to: ShoppingTrip }[];
 }
 
 /**
  * "Jetzt einkaufen": the note alone on the whole screen, for the shop. Large rows, each a
- * button to tick, nothing else to hit by mistake, and the screen stays on. A link to
+ * button that buys it, with its bin, pen and arrow quiet at the end (`ActionRow`), and the
+ * screen stays on. A link to
  * "#laden" opens it too. It needs scripts; without them the note itself is there.
  */
 export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
@@ -140,20 +139,33 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
                       <h4 className="eyebrow mx-2">{group.name}</h4>
                       <ul className="mt-1">
                         {group.lines.map((line) => (
-                          <li key={line.key}>
-                            <TickButton page={page} line={line} label={line.text}>
-                              <span className="store-text">
-                                {line.text}
-                                {line.shop && <span className="text-muted"> · {line.shop}</span>}
-                              </span>
-                            </TickButton>
-                          </li>
+                          <ActionRow key={line.key} line={line} variant="store" />
                         ))}
                       </ul>
                     </section>
                   ))}
                 </section>
               ))}
+              {note.moved.length > 0 && (
+                <section aria-label="Verschoben" className="mx-2 mt-6">
+                  <h4 className="eyebrow">Verschoben</h4>
+                  <ul className="mt-1">
+                    {note.moved.map((entry) => (
+                      <MovedAwayRow key={entry.line.key} {...entry} />
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {note.notBought.length > 0 && (
+                <section aria-label="Nicht gekaufte Einträge" className="mx-2 mt-6">
+                  <h4 className="eyebrow">Nicht gekaufte Einträge</h4>
+                  <ul className="mt-1">
+                    {note.notBought.map((entry) => (
+                      <NotBoughtRow key={entry.line.key} {...entry} />
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
             <footer className="store-foot">
               {allTicked ? (

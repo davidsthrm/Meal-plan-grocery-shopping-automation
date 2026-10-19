@@ -229,3 +229,23 @@ export function SpinnerIcon() {
     </svg>
   );
 }
+
+/** An arrow turning off to the right: bought on another day or in another shop. */
+export function MoveIcon() {
+  return (
+    <svg {...base}>
+      <path d="M15 5l5 5-5 5" />
+      <path d="M20 10H10a6 6 0 0 0-6 6v3" />
+    </svg>
+  );
+}
+
+/** An arrow turning back: taken back, back where it was. */
+export function UndoIcon() {
+  return (
+    <svg {...base} width={18} height={18}>
+      <path d="M9 5 4 10l5 5" />
+      <path d="M4 10h10a6 6 0 0 1 6 6v3" />
+    </svg>
+  );
+}
