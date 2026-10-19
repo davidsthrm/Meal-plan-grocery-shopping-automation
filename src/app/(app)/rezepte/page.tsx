@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { ListMemory } from "@/components/list-return";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PictogramIcon } from "@/components/pictogram";
 import { RecipeCard } from "@/components/recipe-card";
 import { RecipeFilterBar } from "@/components/recipe-filter";
 import { RecipeViews } from "@/components/recipe-views";
-import { directory, discover } from "@/domain/library/discover";
+import { directory, discover, toDiscover } from "@/domain/library/discover";
 import { byFavoriteThenTitle, filterParams, isNoFilter, readFilter } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
 import { filterTone } from "@/lib/plan-text";
@@ -42,11 +43,13 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
 
   const browsing = isNoFilter(filter);
+  // Favourites and wishes are on "Favoriten": only a search by words finds them here.
+  const offered = toDiscover(recipes, filter);
   const shelves = browsing
-    ? discover(recipes, { today: today(), history: await loadHistory(db, today()) })
+    ? discover(offered, { today: today(), history: await loadHistory(db, today()) })
     : [];
-  const sections = browsing ? directory(recipes, { categories, tagGroups, books }) : [];
-  const found = browsing ? null : await searchLibrary(db, library, filter);
+  const sections = browsing ? directory(offered, { categories, tagGroups, books }) : [];
+  const found = browsing ? null : await searchLibrary(db, { ...library, recipes: offered }, filter);
   const results = found?.matches ?? [];
   const related = (found?.related ?? []).slice(0, RELATED);
   const link = (extra: Record<string, string>) =>
@@ -54,6 +57,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <ListMemory />
       <p className="eyebrow">
         {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
       </p>

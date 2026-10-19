@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { byCategory, directory, discover, isMarked, seasonOf } from "./discover";
-import { filterRecipes } from "./filter";
+import { byCategory, directory, discover, isMarked, seasonOf, toDiscover } from "./discover";
+import { filterRecipes, NO_FILTER } from "./filter";
 import { summary } from "./testing";
 
 const categories = [
@@ -95,6 +95,29 @@ describe("discover", () => {
   it("has no shelf of new recipes while most of the library is new", () => {
     const fresh = recipes.map((recipe) => ({ ...recipe, addedOn: "2026-10-11" }));
     expect(shelf("neu", fresh)).toBeUndefined();
+  });
+});
+
+describe("toDiscover", () => {
+  const marked = [
+    summary("lasagne", { isFavorite: true }),
+    summary("lachs", { wanted: true }),
+    summary("steak"),
+  ];
+  const ids = (list: { id: string }[]) => list.map((recipe) => recipe.id);
+
+  it("leaves favourites and wishes to their own page while browsing and filtering", () => {
+    expect(ids(toDiscover(marked, NO_FILTER))).toEqual(["steak"]);
+    expect(ids(toDiscover(marked, { ...NO_FILTER, category: "hauptgericht" }))).toEqual(["steak"]);
+  });
+
+  it("finds a favourite by its name", () => {
+    expect(ids(toDiscover(marked, { ...NO_FILTER, text: "Lasagne" }))).toEqual([
+      "lasagne",
+      "lachs",
+      "steak",
+    ]);
+    expect(ids(toDiscover(marked, { ...NO_FILTER, text: "  " }))).toEqual(["steak"]);
   });
 });
 

@@ -26,7 +26,9 @@ test("the library has a few shelves and a directory to narrow it down", async ({
     .getByRole("region", { name: "Art", exact: true })
     .getByRole("link", { name: /Hauptgericht/ })
     .click();
-  await expect(page.getByRole("status")).toHaveText("15 Rezepte passen dazu");
+  // The favourite Gemüse-Lasagne is on "Favoriten", not here: only words typed find it.
+  await expect(page.getByRole("status")).toHaveText("14 Rezepte passen dazu");
+  await expect(page.getByRole("link", { name: /Gemüse-Lasagne/ })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Fisch", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
