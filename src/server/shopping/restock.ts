@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { IsoDate } from "@/domain/dates";
 import { drugstoreEntryFromText } from "@/domain/shopping-list/drugstore";
 import {
@@ -10,9 +11,10 @@ import {
   type RestockItem,
 } from "@/domain/shopping-list/restock";
 import type { FreshPlace, ShoppingTrip } from "@/domain/shopping-list/trips";
-import type { Household } from "../auth";
+import { requireHousehold, type Household } from "../auth";
 import { loadCatalogIndex, loadSupermarkets, must, type Db } from "../catalog";
 import { addEntry } from "./list";
+import { createSessionClient } from "../supabase/server";
 
 /** The note for what ran out at home: reading it, writing on it, and moving it to a list. */
 
@@ -55,6 +57,14 @@ export async function loadRestock(
     };
   });
 }
+
+/**
+ * The note of the signed-in household, read once per request: the header of every page shows
+ * it, and the shopping notes and the Merkzettel's page show it again.
+ */
+export const loadOwnRestock = cache(async (today: IsoDate): Promise<PlacedRestock[]> =>
+  loadRestock(await createSessionClient(), await requireHousehold(), today),
+);
 
 /**
  * Writes an entry on the note, with where the catalog says it is bought fresh. Written a

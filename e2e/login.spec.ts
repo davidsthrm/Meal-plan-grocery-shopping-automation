@@ -32,6 +32,12 @@ test("signing in opens the week plan, signing out closes it again", async ({ pag
   await signIn(page);
   // The test user has a name: the plan greets them and is called "Euer Wochenplan".
   await expect(page.getByRole("heading", { level: 1, name: /Wochenplan/ })).toBeVisible();
+  // Signing out is in the settings only, not on every page.
+  await expect(page.getByRole("button", { name: "Abmelden" })).toHaveCount(0);
+  await page
+    .getByRole("link", { name: /Einstellungen/ })
+    .first()
+    .click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/rezepte");

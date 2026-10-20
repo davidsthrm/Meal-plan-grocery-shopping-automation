@@ -13,6 +13,7 @@ import {
 } from "@/domain/plan";
 import { findIngredient } from "@/domain/catalog";
 import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/planned";
+import { asSide } from "@/domain/vesper";
 import { today } from "@/lib/today";
 import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
 
@@ -110,47 +111,58 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     "load meals",
   );
   const withRecipes = slots.filter((slot) => slot.kind === "recipes").map((slot) => slot.id);
-  const items: {
-    plan_slot_id: string;
-    recipe_id: string;
-    servings: number;
-    planned_on: string | null;
-    planned_at: string | null;
-  }[] = [];
-  for (let at = 0; at < withRecipes.length; at += SLOTS_PER_REQUEST) {
-    items.push(
-      ...must(
-        await db
-          .from("plan_slot_item")
-          .select("plan_slot_id, recipe_id, servings, position, planned_on, planned_at")
-          .in("plan_slot_id", withRecipes.slice(at, at + SLOTS_PER_REQUEST))
-          .order("position"),
-        "load recipes of meals",
-      ),
+  // Foods go with a meal without a recipe, and with recipes as what they do not cover.
+  const withFoods = slots
+    .filter((slot) => slot.kind === "free_text" || slot.kind === "recipes")
+    .map((slot) => slot.id);
+  const chunks = (ids: string[]) =>
+    Array.from({ length: Math.ceil(ids.length / SLOTS_PER_REQUEST) }, (_, at) =>
+      ids.slice(at * SLOTS_PER_REQUEST, (at + 1) * SLOTS_PER_REQUEST),
     );
-  }
+  // The recipes and the foods of the meals are read side by side, each a request per chunk
+  // of meals: one after the other they made every page with a week wait a round trip longer.
+  const [itemPages, foodPages] = await Promise.all([
+    Promise.all(
+      chunks(withRecipes).map(async (ids) =>
+        must(
+          await db
+            .from("plan_slot_item")
+            .select("plan_slot_id, recipe_id, servings, position, planned_on, planned_at")
+            .in("plan_slot_id", ids)
+            .order("position"),
+          "load recipes of meals",
+        ),
+      ),
+    ),
+    Promise.all(
+      chunks(withFoods).map(async (ids) =>
+        must(
+          await db
+            .from("plan_slot_food")
+            .select(
+              "plan_slot_id, label, quantity, ingredient_id, shop_id, position, planned_on, planned_at",
+            )
+            .in("plan_slot_id", ids)
+            .order("position"),
+          "load foods of meals",
+        ),
+      ),
+    ),
+  ]);
+  const items = itemPages.flat();
+  const foods = foodPages.flat();
 
-  const noRecipe = slots.filter((slot) => slot.kind === "free_text").map((slot) => slot.id);
-  const foods: {
-    plan_slot_id: string;
-    label: string;
-    ingredient_id: string | null;
-    shop_id: string | null;
-    planned_on: string | null;
-    planned_at: string | null;
-  }[] = [];
-  for (let at = 0; at < noRecipe.length; at += SLOTS_PER_REQUEST) {
-    foods.push(
-      ...must(
-        await db
-          .from("plan_slot_food")
-          .select("plan_slot_id, label, ingredient_id, shop_id, position, planned_on, planned_at")
-          .in("plan_slot_id", noRecipe.slice(at, at + SLOTS_PER_REQUEST))
-          .order("position"),
-        "load foods of meals",
-      ),
-    );
-  }
+  const foodsOf = (slotId: string): SlotFood[] =>
+    foods
+      .filter((food) => food.plan_slot_id === slotId)
+      .map((food) => ({
+        label: food.label,
+        quantity: food.quantity,
+        ingredientId: food.ingredient_id,
+        shopId: food.shop_id,
+        plannedOn: food.planned_on,
+        plannedAt: instant(food.planned_at),
+      }));
 
   return slots.map((slot): PlanSlot => {
     const base = { id: slot.id, date: slot.date, meal: slot.meal };
@@ -168,22 +180,11 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
               plannedOn: item.planned_on,
               plannedAt: instant(item.planned_at),
             })),
+          // A side tapped before foods had a number counts as one, as it is meant.
+          foods: foodsOf(slot.id).map(asSide),
         };
       case "free_text":
-        return {
-          ...base,
-          kind: "free_text",
-          label: slot.label ?? "",
-          foods: foods
-            .filter((food) => food.plan_slot_id === slot.id)
-            .map((food) => ({
-              label: food.label,
-              ingredientId: food.ingredient_id,
-              shopId: food.shop_id,
-              plannedOn: food.planned_on,
-              plannedAt: instant(food.planned_at),
-            })),
-        };
+        return { ...base, kind: "free_text", label: slot.label ?? "", foods: foodsOf(slot.id) };
       case "away":
         return { ...base, kind: "away", label: slot.label ?? "" };
       case "leftovers":
@@ -223,6 +224,7 @@ async function storeFoods(
       household_id: householdId,
       plan_slot_id: slotId,
       label: food.label,
+      quantity: food.quantity ?? null,
       ingredient_id: food.ingredientId,
       shop_id: food.shopId,
       position,
@@ -279,7 +281,7 @@ export async function writeSlot(
   const existing = maybe(
     await db
       .from("plan_slot")
-      .select("id")
+      .select("id, kind")
       .eq("week_plan_id", planId)
       .eq("date", date)
       .eq("meal", meal)
@@ -301,10 +303,17 @@ export async function writeSlot(
     leftovers_of_slot_id: content.kind === "leftovers" ? (content.ofSlotId ?? null) : null,
     extra_servings: content.kind === "recipes" ? (content.extra ?? 0) : 0,
   };
+  // Recipes written again without saying what goes with them keep it: a side added or a
+  // person more does not lose the baguette.
+  const keepFoods =
+    content.kind === "recipes" && content.foods === undefined && existing?.kind === "recipes";
   let slotId: string;
   if (existing) {
     // The meal keeps its id, so that leftovers planned from it stay linked to it.
-    for (const table of ["plan_slot_item", "plan_slot_food"] as const) {
+    const tables = keepFoods
+      ? (["plan_slot_item"] as const)
+      : (["plan_slot_item", "plan_slot_food"] as const);
+    for (const table of tables) {
       const cleared = await db.from(table).delete().eq("plan_slot_id", existing.id);
       if (cleared.error) throw new Error(`clear meal: ${cleared.error.message}`);
     }
@@ -321,7 +330,9 @@ export async function writeSlot(
       "plan meal",
     ).id;
   }
-  if (content.kind === "free_text") await storeFoods(db, householdId, slotId, content.foods ?? []);
+  if (content.kind === "free_text" || (content.kind === "recipes" && !keepFoods)) {
+    await storeFoods(db, householdId, slotId, content.foods ?? []);
+  }
   if (content.kind !== "recipes") return slotId;
   const items = await db.from("plan_slot_item").insert(
     content.items.map((item, position) => ({
@@ -378,7 +389,7 @@ export async function planOpenSlots(
   );
   const idOf = new Map(created.map((slot) => [slotKey(slot.date, slot.meal), slot.id]));
   for (const { date, meal, content } of wanted) {
-    if (content.kind !== "free_text") continue;
+    if (content.kind !== "free_text" && content.kind !== "recipes") continue;
     await storeFoods(db, householdId, idOf.get(slotKey(date, meal)) as string, content.foods ?? []);
   }
   const items = wanted.flatMap(({ date, meal, content }) =>
@@ -654,18 +665,22 @@ export async function loadRecipePlaces(db: Db, recipeId: string): Promise<PlanPl
   return places.sort((a, b) => (a.date ?? a.week).localeCompare(b.date ?? b.week));
 }
 
-/** The meal of a week at a day and time, if it is one without a recipe. */
-async function mealWithoutRecipe(db: Db, weekStart: IsoDate, date: IsoDate, meal: Meal) {
+/**
+ * The meal of a week at a day and time, if it is one that can carry foods: one without a
+ * recipe, or one with recipes and something they do not cover.
+ */
+export async function mealWithFoods(db: Db, weekStart: IsoDate, date: IsoDate, meal: Meal) {
   const slot = (await loadWeek(db, weekStart)).find(
     (entry) => entry.date === date && entry.meal === meal,
   );
-  return slot?.kind === "free_text" ? slot : null;
+  return slot?.kind === "free_text" || slot?.kind === "recipes" ? slot : null;
 }
 
 /**
- * Adds something to buy for a meal without a recipe. The name is looked up in the catalog,
- * so "Gurke" ends up on the list as the household's "Gurken". `shopName` says where it is
- * bought for this meal, if not where the catalog says.
+ * Adds something to buy for a meal: bread and cold cuts for a meal without a recipe, a
+ * baguette next to a soup. The name is looked up in the catalog, so "Gurke" ends up on the
+ * list as the household's "Gurken". `shopName` says where it is bought for this meal, if not
+ * where the catalog says, and `quantity` how many, if anyone said.
  */
 export async function addFood(
   db: Db,
@@ -673,8 +688,9 @@ export async function addFood(
   place: { week: IsoDate; date: IsoDate; meal: Meal },
   label: string,
   shopName: string | null,
+  quantity: number | null = null,
 ): Promise<void> {
-  const slot = await mealWithoutRecipe(db, place.week, place.date, place.meal);
+  const slot = await mealWithFoods(db, place.week, place.date, place.meal);
   if (!slot) return;
   const name = label.trim().replace(/\s+/g, " ");
   if (name === "" || slot.foods?.some((food) => food.label.toLowerCase() === name.toLowerCase())) {
@@ -689,6 +705,7 @@ export async function addFood(
     household_id: householdId,
     plan_slot_id: slot.id,
     label: name,
+    quantity,
     ingredient_id: findIngredient(index, name)?.id ?? null,
     shop_id: shop?.id ?? null,
     position: slot.foods?.length ?? 0,
@@ -702,7 +719,7 @@ export async function removeFood(
   place: { week: IsoDate; date: IsoDate; meal: Meal },
   label: string,
 ): Promise<void> {
-  const slot = await mealWithoutRecipe(db, place.week, place.date, place.meal);
+  const slot = await mealWithFoods(db, place.week, place.date, place.meal);
   if (!slot) return;
   const removed = await db
     .from("plan_slot_food")

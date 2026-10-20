@@ -40,7 +40,9 @@ export async function loadTagIds(db: Db): Promise<Map<string, string>> {
 }
 
 export async function loadLibrary(db: Db): Promise<Library> {
-  const [rows, tags] = await Promise.all([
+  // The links of recipes and tags are read alongside the recipes and the tags, not after the
+  // tags: what a link names that is no category and no described tag is passed over below.
+  const [rows, tags, links] = await Promise.all([
     allRows(
       (from, to) =>
         db
@@ -54,6 +56,16 @@ export async function loadLibrary(db: Db): Promise<Library> {
       "load recipes",
     ),
     db.from("tag").select("id, key, name, group_name").order("sort_order").order("name"),
+    allRows(
+      (from, to) =>
+        db
+          .from("recipe_tag")
+          .select("recipe_id, tag_id")
+          .order("recipe_id")
+          .order("tag_id")
+          .range(from, to),
+      "load recipe tags",
+    ),
   ]);
   const allTags = must(tags, "load tags");
   const categoryTags = allTags.filter((tag) => tag.group_name === "Kategorie" && tag.key !== null);
@@ -63,21 +75,6 @@ export async function loadLibrary(db: Db): Promise<Library> {
     .filter((tag) => (TAG_GROUPS as readonly string[]).includes(tag.group_name))
     .map((tag) => ({ id: tag.id, ref: tag.key ?? tag.id, name: tag.name, group: tag.group_name }));
   const refOf = new Map(described.map((tag) => [tag.id, tag.ref]));
-  const linked = [...keyOf.keys(), ...refOf.keys()];
-  const links =
-    linked.length === 0
-      ? []
-      : await allRows(
-          (from, to) =>
-            db
-              .from("recipe_tag")
-              .select("recipe_id, tag_id")
-              .in("tag_id", linked)
-              .order("recipe_id")
-              .order("tag_id")
-              .range(from, to),
-          "load recipe tags",
-        );
   const categoryOf = new Map<string, string>();
   const tagsOf = new Map<string, string[]>();
   for (const link of links) {

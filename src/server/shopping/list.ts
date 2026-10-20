@@ -34,6 +34,7 @@ import {
 } from "@/domain/shopping-list/week-notes";
 import {
   butcherWeekdays,
+  FIRST_ERRAND_FROM,
   noteId,
   tripsBetween,
   type ShoppingTrip,
@@ -70,6 +71,8 @@ export interface NoteList {
   completed: { by: string | null; at: number } | null;
   /** What was on this note and is bought on another one now: "Eier → Di". */
   movedAway: MovedAway[];
+  /** Someone opened it for this place and day by hand ("Neuer Zettel"). */
+  openedByHand: boolean;
 }
 
 export interface WeekNotes {
@@ -269,19 +272,29 @@ export async function loadShoppingNotes(
   const readAt = Date.now();
   const weekEnd = addDays(weekStart, 6);
   const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
+  // Far enough back that the first meal read has a shopping day before it.
+  const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
+  // What is still open on drugstore notes whose day is over comes along to the next one. It
+  // is read with everything else, not after it: one round trip less for every note.
+  const now = today();
+  const target = nextDrugstoreTrip(trips, now);
+  const earlierRead =
+    target && inWeek(target.date) ? earlierDrugstoreEntries(db, now) : Promise.resolve(null);
   // An errand can buy for two weeks, so the weeks around this one are read with it.
-  const [weeks, extrasAround, index, memberRows, listRows, historyRows] = await Promise.all([
-    loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
-    Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
-    loadCatalogIndex(db),
-    db.from("household_member").select("user_id, display_name"),
-    db
-      .from("shopping_list")
-      .select("id, shopping_date, place")
-      .gte("shopping_date", addDays(weekStart, -7))
-      .lte("shopping_date", weekEnd),
-    db.from("shop_item_history").select("item_key, choice, times, last_at"),
-  ]);
+  const [weeks, extrasAround, index, memberRows, listRows, historyRows, earlier] =
+    await Promise.all([
+      loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
+      Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
+      loadCatalogIndex(db),
+      db.from("household_member").select("user_id, display_name"),
+      db
+        .from("shopping_list")
+        .select("id, shopping_date, place, opened_at")
+        .gte("shopping_date", addDays(weekStart, -7))
+        .lte("shopping_date", weekEnd),
+      db.from("shop_item_history").select("item_key, choice, times, last_at"),
+      earlierRead,
+    ]);
   const slots = weeks.flatMap((week) => week.slots);
   const [before, thisWeek, after] = extrasAround;
   const extras = extrasToBuy({ before, week: thisWeek, after });
@@ -398,18 +411,9 @@ export async function loadShoppingNotes(
     states.set(noteId(trip), ofNote);
   }
 
-  // Far enough back that the first meal read has a shopping day before it.
-  const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
-  // What is still open on drugstore notes whose day is over comes along to the next one.
-  const now = today();
-  const target = nextDrugstoreTrip(trips, now);
   const drugstoreNotes =
-    target && inWeek(target.date)
-      ? bringAlong(
-          [...drugstore.values()],
-          target,
-          carriedOver(await earlierDrugstoreEntries(db, now), now),
-        )
+    target && earlier
+      ? bringAlong([...drugstore.values()], target, carriedOver(earlier, now))
       : [...drugstore.values()];
   const build = (doneAt?: ReadonlyMap<string, number>) => [
     ...buildShoppingList({
@@ -419,6 +423,7 @@ export async function loadShoppingNotes(
       extras,
       trips,
       butcherDays: butcherWeekdays(household.shoppingDays),
+      firstErrandFrom: FIRST_ERRAND_FROM,
       doneAt,
       // The week's first trip to the supermarket.
       extrasDate: trips.find((trip) => inWeek(trip.date) && trip.place === "supermarket")?.date,
@@ -461,7 +466,13 @@ export async function loadShoppingNotes(
   );
 
   const atHome: WeekNotes["atHome"] = [];
-  const notes = notesOfWeek(lines, trips, weekStart).map((trip): NoteList => {
+  // Notes opened by hand lie among the others while nothing is written on them. They are
+  // no errands the plan is bought on: what is planned goes where it always goes.
+  const opened = lists
+    .filter((list) => list.opened_at !== null && inWeek(list.shopping_date))
+    .map((list) => ({ date: list.shopping_date, place: list.place as Place }));
+  const openedIds = new Set(opened.map(noteId));
+  const notes = notesOfWeek(lines, [...trips, ...opened], weekStart).map((trip): NoteList => {
     const id = noteId(trip);
     const view = viewOf(trip, lines);
     atHome.push(...view.atHome.map((line) => ({ trip, line })));
@@ -479,6 +490,7 @@ export async function loadShoppingNotes(
         at: finished.at,
       },
       movedAway: trip.place === "drugstore" ? [] : movedAway(trip, lines),
+      openedByHand: openedIds.has(id),
     };
   });
   atHome.sort((a, b) => a.line.line.label.localeCompare(b.line.line.label, "de"));
@@ -508,6 +520,33 @@ export async function loadShoppingNotes(
  */
 export function isNote(trip: ShoppingTrip): boolean {
   return PLACES.includes(trip.place) && isIsoDate(trip.date);
+}
+
+/**
+ * Opens a note for a place on a day someone chose: dm on a Wednesday, the bakery on a
+ * Thursday. From then on it lies among the notes of its week, also while it is empty.
+ */
+export async function openNote(db: Db, householdId: string, trip: ShoppingTrip): Promise<void> {
+  const opened = await db.from("shopping_list").upsert(
+    {
+      household_id: householdId,
+      shopping_date: trip.date,
+      place: trip.place,
+      opened_at: new Date().toISOString(),
+    },
+    { onConflict: "household_id,shopping_date,place" },
+  );
+  if (opened.error) throw new Error(`open note: ${opened.error.message}`);
+}
+
+/** Puts a note opened by hand away again: it lies among the others only for what is on it. */
+export async function putAwayNote(db: Db, trip: ShoppingTrip): Promise<void> {
+  const closed = await db
+    .from("shopping_list")
+    .update({ opened_at: null })
+    .eq("shopping_date", trip.date)
+    .eq("place", trip.place);
+  if (closed.error) throw new Error(`put away note: ${closed.error.message}`);
 }
 
 /** The id of a note's list. It comes into being with the first thing stored on it. */

@@ -1,5 +1,5 @@
 import { PLACES } from "../catalog";
-import { addDays, type IsoDate } from "../dates";
+import { addDays, weekDates, type IsoDate } from "../dates";
 import type { PlanExtra } from "../plan";
 import type { ViewLine } from "./present";
 import { noteId, type ShoppingTrip } from "./trips";
@@ -58,6 +58,36 @@ export function notesOfWeek(
   return [...shown.values()].sort(
     (a, b) => a.date.localeCompare(b.date) || PLACES.indexOf(a.place) - PLACES.indexOf(b.place),
   );
+}
+
+/**
+ * The notes of a week in the order they lie on the page: what is still to do first, from
+ * today on in order of day and place, then an errand whose day is over and that still has
+ * something open; the errands that are done at the foot (`done`). A note whose day is over
+ * and that has nothing on it is left out: Monday's empty dm note says nothing on a Tuesday.
+ */
+export function arrangeNotes<T extends { trip: ShoppingTrip; completed: object | null }>(
+  notes: readonly T[],
+  today: IsoDate,
+  isEmpty: (note: T) => boolean,
+): { toDo: T[]; done: T[] } {
+  const shown = notes.filter((note) => note.trip.date >= today || !isEmpty(note));
+  const toDo = shown.filter((note) => note.completed === null);
+  return {
+    toDo: [
+      ...toDo.filter((note) => note.trip.date >= today),
+      ...toDo.filter((note) => note.trip.date < today),
+    ],
+    done: shown.filter((note) => note.completed !== null),
+  };
+}
+
+/**
+ * The days of a week a note can be opened on by hand ("Neuer Zettel"): from today on. A week
+ * gone by has none.
+ */
+export function daysToOpen(weekStart: IsoDate, today: IsoDate): IsoDate[] {
+  return weekDates(weekStart).filter((day) => day >= today);
 }
 
 /** A tick on a line: when it was made and by whom. */

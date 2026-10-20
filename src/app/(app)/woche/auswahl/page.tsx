@@ -20,12 +20,13 @@ import type { RecipeSummary } from "@/domain/library/summary";
 import { MEALS_WITHOUT_RECIPE, nextOpenMeal, slotKey, weekStrip, type Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
 import { suggest } from "@/domain/recommend/suggest";
+import { foodText, SIDE_FOODS } from "@/domain/vesper";
 import { MEAL_ADD, MEAL_NAME, MEAL_PLAN, slotText, whyText } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
 import { loadLibrary, searchLibrary } from "@/server/library";
 import { loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { markSlot, planExtra, planRecipe } from "../actions";
+import { addSlotFood, markSlot, planExtra, planRecipe } from "../actions";
 import { WeekStrip } from "./week-strip";
 
 export const metadata: Metadata = { title: "Mahlzeit planen" };
@@ -197,9 +198,12 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
                     <span className="text-muted">Geplant: </span>
                     <span className="font-semibold">
                       {current.kind === "recipes"
-                        ? current.items
-                            .map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept")
-                            .join(" und ")
+                        ? [
+                            ...current.items.map(
+                              (item) => recipeOf.get(item.recipeId)?.title ?? "Rezept",
+                            ),
+                            ...(current.foods ?? []).map(foodText),
+                          ].join(" + ")
                         : slotText(current)}
                     </span>
                   </>
@@ -233,6 +237,41 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
                 )}
               </span>
             </div>
+          )}
+
+          {/* Next to the recipes of a meal, what goes with them and has none: bread for the
+              soup. A tap adds it and the page stays. */}
+          {current?.kind === "recipes" && (
+            <section className="mt-5" aria-label="Dazu, ohne Rezept">
+              <h2 className="eyebrow">Dazu, ohne Rezept</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {SIDE_FOODS.filter(
+                  (option) =>
+                    !current.foods?.some(
+                      (food) => food.label.toLowerCase() === option.label.toLowerCase(),
+                    ),
+                ).map((option) => (
+                  <form key={option.label} action={addSlotFood}>
+                    {where}
+                    <input type="hidden" name="zurueck" value="auswahl" />
+                    <input type="hidden" name="label" value={option.label} />
+                    {option.shop && <input type="hidden" name="shop" value={option.shop} />}
+                    {option.quantity && (
+                      <input type="hidden" name="quantity" value={option.quantity} />
+                    )}
+                    <SubmitButton className="chip" label={`${option.label} dazu`}>
+                      + {option.label}
+                    </SubmitButton>
+                  </form>
+                ))}
+                <Link
+                  href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+                  className="link inline-flex min-h-11 items-center text-sm"
+                >
+                  {(current.foods?.length ?? 0) > 0 ? "Ändern oder anderes" : "Etwas anderes"}
+                </Link>
+              </div>
+            </section>
           )}
 
           {!extra && mode === "replace" && (

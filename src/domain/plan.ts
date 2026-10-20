@@ -38,6 +38,8 @@ export type PlanSlot =
        * Added to every recipe of the meal that is cooked for persons. Zero or left out: none.
        */
       extra?: number;
+      /** What is bought to go with the recipes and has none: a spelt baguette with a soup. */
+      foods?: SlotFood[];
     })
   /** A meal without a recipe, e.g. "Vesper". It can still need things from the shops. */
   | (SlotBase & { kind: "free_text"; label: string; foods?: SlotFood[] })
@@ -48,11 +50,13 @@ export type PlanSlot =
   | (SlotBase & { kind: "skipped" });
 
 /**
- * Something to buy for a meal without a recipe: bread and cold cuts for a "Vesper". It is a
- * name as on the handwritten list, not an amount.
+ * Something to buy for a meal that no recipe covers: bread and cold cuts for a "Vesper", or a
+ * baguette next to a soup. It is a name as on the handwritten list, not an amount.
  */
 export interface SlotFood {
   label: string;
+  /** How many, where someone said so: "1 Dinkelbaguette". Null or left out: a name only. */
+  quantity?: number | null;
   /** The catalog ingredient the label names, if it names one. */
   ingredientId: string | null;
   /** Where it is bought for this meal. Null means where the catalog says. */
@@ -164,7 +168,16 @@ export function cookedServings(
 
 /** A slot's content without its place in the calendar, as it is entered or copied. */
 export type SlotContent =
-  | { kind: "recipes"; items: SlotItem[]; extra?: number }
+  | {
+      kind: "recipes";
+      items: SlotItem[];
+      extra?: number;
+      /**
+       * What goes with the recipes without one. Left out, a meal that had recipes keeps the
+       * foods it had: a side added or a person more does not lose the baguette.
+       */
+      foods?: SlotFood[];
+    }
   | { kind: "free_text"; label: string; foods?: SlotFood[] }
   /** Leftovers, of the meal they were cooked with where that is known. */
   | { kind: "leftovers"; ofSlotId?: string | null }

@@ -71,6 +71,7 @@ import {
   moveListLine,
   noteLine,
   kindOfEntry,
+  putAwayListNote,
 } from "./actions";
 
 /** The heading every note has: where, and when. */
@@ -327,6 +328,13 @@ export function NoteSheet({
                 ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
                 : "Nichts zu kaufen."}
             </p>
+          )}
+          {/* Opened by hand and still empty: it can go again. */}
+          {note.openedByHand && view.groups.length === 0 && notBought.length === 0 && (
+            <form action={putAwayListNote} className="mt-2 print:hidden">
+              <Where week={week} note={note.id} />
+              <SubmitButton className="link min-h-11 text-sm">Leeren Zettel wegwerfen</SubmitButton>
+            </form>
           )}
 
           {sections.map((section) => (

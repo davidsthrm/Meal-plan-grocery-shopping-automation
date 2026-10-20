@@ -11,6 +11,7 @@ import { byDayAndMeal, namedMeal, slotKey } from "@/domain/plan";
 import { plannedServings } from "@/domain/recipe";
 import { BALANCE_GROUPS, readTargets } from "@/domain/recommend/balance";
 import { readDaysForm, readWeekday } from "@/domain/shopping-list/trips";
+import { readFood } from "@/domain/vesper";
 import { TARGETS_SEEN } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
 import { must, type Db } from "@/server/catalog";
@@ -390,24 +391,44 @@ export async function describeExtra(form: FormData): Promise<void> {
   backToExtras(input.week);
 }
 
-function backToFoods(input: { week: string; date: string; meal: string }): never {
+/**
+ * Back to where a food was added or removed: the page of a meal's foods, or the recipe chooser
+ * when it was tapped there next to the recipes (the form says `zurueck`).
+ */
+function backToFoods(form: FormData, input: { week: string; date: string; meal: string }): never {
   revalidatePath("/woche");
+  if (form.get("zurueck") === "auswahl") {
+    const mode = form.get("mode") === "add" ? "add" : "replace";
+    redirect(
+      `/woche/auswahl?${new URLSearchParams({ w: input.week, d: input.date, m: input.meal, modus: mode })}`,
+    );
+  }
   redirect(`/woche/lebensmittel?w=${input.week}&d=${input.date}&m=${input.meal}`);
 }
 
-/** Adds something to buy for a meal without a recipe. */
+/** Adds something to buy for a meal: bread for a cold supper, a baguette next to a soup. */
 export async function addSlotFood(form: FormData): Promise<void> {
   const input = read(
     z.intersection(
       place,
-      z.object({ label: z.string().trim().max(60), shop: z.string().trim().max(60).optional() }),
+      z.object({
+        label: z.string().trim().max(60),
+        shop: z.string().trim().max(60).optional(),
+        quantity: z.coerce.number().int().min(1).max(99).optional(),
+      }),
     ),
     form,
   );
   const household = await requireHousehold();
   const db = await createSessionClient();
-  if (input.label !== "") await addFood(db, household.id, input, input.label, input.shop || null);
-  backToFoods(input);
+  // A tap on "Dinkelbaguette" adds one; "8 Brötchen" typed says how many.
+  const food = input.quantity
+    ? { label: input.label, quantity: input.quantity }
+    : readFood(input.label);
+  if (food.label !== "") {
+    await addFood(db, household.id, input, food.label, input.shop || null, food.quantity);
+  }
+  backToFoods(form, input);
 }
 
 export async function removeSlotFood(form: FormData): Promise<void> {
@@ -415,7 +436,7 @@ export async function removeSlotFood(form: FormData): Promise<void> {
   await requireHousehold();
   const db = await createSessionClient();
   await removeFood(db, input, input.label);
-  backToFoods(input);
+  backToFoods(form, input);
 }
 
 /** Remembers on this device that its user has seen the household's goals. */

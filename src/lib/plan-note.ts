@@ -43,7 +43,9 @@ export function planNote(
     if (!slot) return null;
     if (slot.kind === "recipes") {
       const titles = slot.items.flatMap((item) => titleOf(item.recipeId) ?? []);
-      return titles.length > 0 ? titles.join(" + ") : null;
+      // What goes with the recipes without one follows them: "Kürbissuppe + Dinkelbaguette".
+      const foods = (slot.foods ?? []).map((food) => food.label);
+      return titles.length > 0 ? [...titles, ...foods].join(" + ") : null;
     }
     // Leftovers say of which meal, where it is one of this note's days.
     if (slot.kind === "leftovers" && slot.ofSlotId) {

@@ -3,9 +3,7 @@ import Link from "next/link";
 import { RestockNote } from "@/components/restock-note";
 import { planningWeek } from "@/domain/dates";
 import { today } from "@/lib/today";
-import { requireHousehold } from "@/server/auth";
-import { loadRestock } from "@/server/shopping/restock";
-import { createSessionClient } from "@/server/supabase/server";
+import { loadOwnRestock } from "@/server/shopping/restock";
 
 export const metadata: Metadata = { title: "Merkzettel" };
 
@@ -14,9 +12,8 @@ export const metadata: Metadata = { title: "Merkzettel" };
  * whatever page is open; this is where its sign leads before any script has loaded.
  */
 export default async function RestockPage() {
-  const household = await requireHousehold();
   const now = today();
-  const items = await loadRestock(await createSessionClient(), household, now);
+  const items = await loadOwnRestock(now);
 
   return (
     <div className="mx-auto max-w-xl pt-4">

@@ -2,7 +2,7 @@ import { daysBetween, isoWeekday, type IsoDate } from "../dates";
 import { LONG_AGO_DAYS } from "../library/discover";
 import { dishOf, type Pictogram } from "../library/pictogram";
 import { isMeal, suitsMeal, type History, type RecipeSummary } from "../library/summary";
-import { effortOf } from "../library/tags";
+import { effortOf, type Effort } from "../library/tags";
 import { byDayAndMeal, type Meal } from "../plan";
 import { rank } from "../rank";
 import { groupOf, isFull, missing, withMeal, type BalanceGroup, type BalanceLine } from "./balance";
@@ -124,34 +124,68 @@ export function suitsDay(
   recipe: Pick<RecipeSummary, "title" | "category" | "proteinType" | "tags" | "prepMinutes">,
   slot: OpenSlot,
 ): boolean {
-  if (slot.meal === "dinner" && HEAVY.has(dishOf(recipe) ?? "teller")) return false;
+  const { heavy, effort } = traitsOf(recipe);
+  if (slot.meal === "dinner" && heavy) return false;
   if (slot.meal === "coffee" || isoWeekday(slot.date) > 5) return true;
-  const effort = effortOf(recipe);
   if (slot.meal === "lunch") return effort === "schnell" || effort === "alltag";
   if (recipe.category !== null && COLD.has(recipe.category)) return effort !== "aufwendig";
   return effort === "schnell";
 }
 
-/** The best recipes for one meal of one day, best first. */
+/**
+ * What `suitsDay` asks of a recipe, worked out once per recipe: its dish is read from its
+ * title. A week's suggestions ask it of every recipe for every meal, and reading the titles
+ * again each time made the week plan wait (October 2026).
+ */
+const traits = new WeakMap<object, { heavy: boolean; effort: Effort | null }>();
+
+function traitsOf(recipe: Pick<RecipeSummary, "title" | "category" | "tags" | "prepMinutes">): {
+  heavy: boolean;
+  effort: Effort | null;
+} {
+  let known = traits.get(recipe);
+  if (!known) {
+    known = { heavy: HEAVY.has(dishOf(recipe) ?? "teller"), effort: effortOf(recipe) };
+    traits.set(recipe, known);
+  }
+  return known;
+}
+
+/**
+ * The best recipes for one meal of one day, best first: by score, then by the seed's order,
+ * then by id. Each recipe's place in the seed's order is worked out once, and the single best
+ * one, which is what the week asks for, is found without sorting the library.
+ */
 export function suggest(
   recipes: readonly RecipeSummary[],
   slot: OpenSlot,
   context: SuggestContext,
   count: number,
 ): Suggestion[] {
-  return recipes
+  const scored = recipes
     .filter(
       (recipe) =>
         suitsMeal(recipe, slot.meal) && suitsDay(recipe, slot) && !context.planned.has(recipe.id),
     )
-    .map((recipe) => scoreRecipe(recipe, context))
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        rank(context.seed, a.recipe.id) - rank(context.seed, b.recipe.id) ||
-        a.recipe.id.localeCompare(b.recipe.id),
-    )
-    .slice(0, count);
+    .map((recipe) => ({
+      suggestion: scoreRecipe(recipe, context),
+      at: rank(context.seed, recipe.id),
+    }));
+  const before = (a: (typeof scored)[number], b: (typeof scored)[number]) =>
+    b.suggestion.score - a.suggestion.score ||
+    a.at - b.at ||
+    a.suggestion.recipe.id.localeCompare(b.suggestion.recipe.id);
+  if (count === 1) {
+    const best = scored.reduce<(typeof scored)[number] | undefined>(
+      (top, entry) => (top === undefined || before(entry, top) < 0 ? entry : top),
+      undefined,
+    );
+    return best ? [best.suggestion] : [];
+  }
+  return scored
+    .sort(before)
+    .slice(0, count)
+    .map((entry) => entry.suggestion);
 }
 
 /**

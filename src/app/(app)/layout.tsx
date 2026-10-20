@@ -9,28 +9,19 @@ import { Logo } from "@/components/logo";
 import { NoteDrawer } from "@/components/note-drawer";
 import { initialOf } from "@/domain/family";
 import { today } from "@/lib/today";
-import { requireHousehold } from "@/server/auth";
-import { loadRestock } from "@/server/shopping/restock";
-import { createSessionClient } from "@/server/supabase/server";
-import { signOut } from "../login/actions";
+import { loadSelf } from "@/server/auth";
+import { loadOwnRestock } from "@/server/shopping/restock";
 
 /**
- * Frame for every page behind the login: header, main sections, sign out. The note for
- * what ran out at home is one tap away from everywhere, with the number of its entries, and
- * next to it the settings, behind the first letter of whoever is signed in.
+ * Frame for every page behind the login: header and main sections. The note for what ran
+ * out at home is one tap away from everywhere, with the number of its entries, and next to
+ * it the settings, behind the first letter of whoever is signed in. Signing out is in the
+ * settings, under "Dein Konto": the family asked for it off every main section (October
+ * 2026).
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const household = await requireHousehold();
-  const db = await createSessionClient();
-  const [noted, self] = await Promise.all([
-    loadRestock(db, household, today()),
-    db
-      .from("household_member")
-      .select("display_name")
-      .eq("user_id", household.userId)
-      .maybeSingle(),
-  ]);
-  const name = self.data?.display_name ?? null;
+  const [noted, self] = await Promise.all([loadOwnRestock(today()), loadSelf()]);
+  const name = self.name;
   const initial = initialOf(name);
   return (
     // On a phone the sections float above the bottom of the screen: the page leaves room for
@@ -56,24 +47,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             >
               {initial ?? <SettingsIcon />}
             </Link>
-            {/* Below a large screen the header has no room for it, with the sections in it on
-              an iPad: signing out is at the foot of the page. */}
-            <form action={signOut} data-sign-out className="hidden lg:block">
-              <button className="btn min-h-11 px-3 text-sm">Abmelden</button>
-            </form>
           </div>
         </header>
         <InstallHintCard />
         <main>{children}</main>
         <LiveRefresh />
         <ConnectionGuard />
-        <form
-          action={signOut}
-          data-sign-out
-          className="mx-auto mt-12 flex max-w-5xl items-center justify-end gap-3 border-t border-line pt-4 lg:hidden print:hidden"
-        >
-          <button className="btn min-h-11 px-3 text-sm">Abmelden</button>
-        </form>
         <div className="sm:hidden print:hidden">
           <AppNav floating />
         </div>

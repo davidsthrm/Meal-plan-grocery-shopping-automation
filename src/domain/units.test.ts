@@ -59,6 +59,10 @@ describe("parseUnit", () => {
     expect(parseUnit("x")).toBe("Packung");
     expect(parseUnit("Gläser")).toBe("Glas");
     expect(parseUnit("kg")).toBe("kg");
+    // A stalk is a Stängel, however the cookbook prints it.
+    for (const stalk of ["Stiel", "Stiele", "Stielen", "Stängel", "Stengeln"]) {
+      expect(parseUnit(stalk)).toBe("Stängel");
+    }
   });
 
   it("returns null for words that are not units", () => {

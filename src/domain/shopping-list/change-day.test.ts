@@ -205,11 +205,33 @@ describe("moveTargets", () => {
     shop("2026-10-16"),
   ];
 
-  it("offers the other food notes where a line is in time and keeps", () => {
+  it("offers the other food notes where a line is in time, keeps and is sold", () => {
+    // Cream is no bread: the Bäcker's note is not offered for it.
     expect(moveTargets(cream, shop(MONDAY), notes, TODAY, testIndex)).toEqual([
       { date: SATURDAY, place: "market" },
-      { date: SUNDAY, place: "bakery" },
     ]);
+  });
+
+  it("offers the Bäcker for bread, and its own place on another day for any of its lines", () => {
+    const bread = { ...cream, key: "brot@main", ingredientId: "brot", aisleGroupId: "brot" };
+    const bakery = {
+      ...testIndex,
+      aisleGroupById: new Map([
+        ...testIndex.aisleGroupById,
+        ["brot", { ...testIndex.aisleGroupById.get("brot")!, freshPlace: "bakery" as const }],
+      ]),
+    };
+    expect(moveTargets(bread, shop(MONDAY), notes, TODAY, bakery)).toContainEqual({
+      date: SUNDAY,
+      place: "bakery",
+    });
+    // Typed onto the Bäcker's note, it may go to the Bäcker on another day.
+    const typed = { ...cream, aisleGroupId: "sonstiges" };
+    const saturday = { date: SATURDAY, place: "bakery" as const };
+    expect(moveTargets(typed, saturday, notes, TODAY, testIndex)).toContainEqual({
+      date: SUNDAY,
+      place: "bakery",
+    });
   });
 
   it("offers nothing on the drugstore's note", () => {

@@ -123,6 +123,35 @@ test("a cold supper gets the things to buy for it", async ({ page }) => {
   await expect(meal(page, "Montag Abend")).toContainText("Brot, Gurke");
 });
 
+test("a meal with a recipe takes bread to go with it, which the bakery's note buys", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto(`/woche?w=${WEEK}`);
+  // Sunday's lunch: a recipe from the library, then a spelt baguette with it.
+  await page.getByRole("link", { name: "Sonntag Mittag planen" }).click();
+  await page.getByLabel("Eigener Eintrag").fill("pilzrisotto");
+  await page.getByRole("button", { name: "Eintragen" }).click();
+  const sides = page.getByRole("region", { name: "Dazu, ohne Rezept" });
+  await sides.getByRole("button", { name: "Dinkelbaguette dazu" }).click();
+  await expect(page.getByRole("status").first()).toContainText("Pilzrisotto + 1 Dinkelbaguette");
+  await expect(sides.getByRole("button", { name: "Dinkelbaguette dazu" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
+  const sunday = meal(page, "Sonntag Mittag");
+  await expect(sunday).toContainText("Dazu: 1 Dinkelbaguette");
+  // Another person at the table keeps the bread.
+  await sunday.getByRole("button", { name: "Mehr von Pilzrisotto" }).click();
+  await expect(sunday).toContainText("5 Personen");
+  await expect(sunday).toContainText("Dazu: 1 Dinkelbaguette");
+
+  // Bread from the bakery, for a Sunday on the Saturday.
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await expect(
+    page.getByRole("list", { name: /Zettel$/ }).getByRole("link", { name: /^Bäcker, Samstag/ }),
+  ).toContainText("1x Dinkelbaguette");
+});
+
 test("a typed meal becomes its recipe, or a new recipe typed in by hand", async ({ page }) => {
   await signIn(page);
   await page.goto(`/woche?w=${WEEK}`);

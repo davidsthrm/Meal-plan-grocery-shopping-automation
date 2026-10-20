@@ -144,7 +144,13 @@ const UNIT_ALIASES: Record<string, Unit> = {
   bund: "Bund",
   bd: "Bund",
   stängel: "Stängel",
+  stängeln: "Stängel",
   stengel: "Stängel",
+  stengeln: "Stängel",
+  // Cookbooks print "2 Stiele Petersilie": a stalk is a Stängel.
+  stiel: "Stängel",
+  stiele: "Stängel",
+  stielen: "Stängel",
   zweig: "Zweig",
   zweige: "Zweig",
   blatt: "Blatt",

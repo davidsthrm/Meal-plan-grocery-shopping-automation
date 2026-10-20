@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import { dayAndMonth, isIsoDate, mondayOf, weekdayLong } from "@/domain/dates";
-import { VESPER_FOODS } from "@/domain/vesper";
+import { foodText, SIDE_FOODS, VESPER_FOODS } from "@/domain/vesper";
 import { MEAL_NAME } from "@/lib/plan-text";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
@@ -14,7 +14,10 @@ export const metadata: Metadata = { title: "Lebensmittel" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** What to buy for a meal without a recipe: bread, cold cuts and a cucumber for a "Vesper". */
+/**
+ * What to buy for a meal that no recipe covers: bread, cold cuts and a cucumber for a
+ * "Vesper", or a spelt baguette next to the soup of a Sunday lunch.
+ */
 export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">) {
   const params = await props.searchParams;
   const week = one(params.w) ?? "";
@@ -30,7 +33,28 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
     loadIngredientNames(db),
   ]);
   const slot = slots.find((entry) => entry.date === date && entry.meal === meal);
-  if (slot?.kind !== "free_text") notFound();
+  if (slot?.kind !== "free_text" && slot?.kind !== "recipes") notFound();
+  // Next to recipes, the foods are what goes with them.
+  const titles =
+    slot.kind === "recipes"
+      ? must(
+          await db
+            .from("recipe")
+            .select("id, title")
+            .in(
+              "id",
+              slot.items.map((item) => item.recipeId),
+            ),
+          "load recipes of meal",
+        )
+      : [];
+  const dish =
+    slot.kind === "recipes"
+      ? slot.items
+          .map((item) => titles.find((recipe) => recipe.id === item.recipeId)?.title ?? "Rezept")
+          .join(" und ")
+      : slot.label;
+  const options = slot.kind === "recipes" ? SIDE_FOODS : VESPER_FOODS;
   const shops = must(shopRows, "load shops");
   const shopName = new Map(shops.map((shop) => [shop.id, shop.name]));
   const foods = slot.foods ?? [];
@@ -52,7 +76,14 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
       <p className="eyebrow mt-3">
         {weekdayLong(date)}, {dayAndMonth(date)} · {MEAL_NAME[meal]}
       </p>
-      <h1 className="title mt-1">Lebensmittel für {slot.label}</h1>
+      {slot.kind === "recipes" ? (
+        <>
+          <h1 className="title mt-1">Dazu, ohne Rezept</h1>
+          <p className="mt-1 text-muted">Zu {dish}</p>
+        </>
+      ) : (
+        <h1 className="title mt-1">Lebensmittel für {dish}</h1>
+      )}
 
       <section className="mt-5" aria-label="Ausgewählt">
         {foods.length === 0 ? (
@@ -62,7 +93,7 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
             {foods.map((food) => (
               <li key={food.label} className="flex items-center justify-between gap-3 px-4 py-2">
                 <span>
-                  <span className="font-semibold">{food.label}</span>
+                  <span className="font-semibold">{foodText(food)}</span>
                   {food.shopId && (
                     <span className="text-muted"> · {shopName.get(food.shopId)}</span>
                   )}
@@ -86,19 +117,20 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
       <section className="mt-6" aria-label="Lebensmittel hinzufügen">
         <h2 className="eyebrow">Lebensmittel hinzufügen</h2>
         <div className="mt-2 flex flex-wrap gap-2">
-          {VESPER_FOODS.filter((option) => !chosen.has(option.label.toLowerCase())).map(
-            (option) => (
+          {options
+            .filter((option) => !chosen.has(option.label.toLowerCase()))
+            .map((option) => (
               <form key={option.label} action={addSlotFood}>
                 {where}
                 <input type="hidden" name="label" value={option.label} />
                 {option.shop && <input type="hidden" name="shop" value={option.shop} />}
+                {option.quantity && <input type="hidden" name="quantity" value={option.quantity} />}
                 <SubmitButton className="chip" label={`${option.label} hinzufügen`}>
                   {option.label}
                   {option.shop && <span className="font-normal text-muted">{option.shop}</span>}
                 </SubmitButton>
               </form>
-            ),
-          )}
+            ))}
         </div>
 
         <form action={addSlotFood} className="mt-3 grid gap-2 sm:grid-cols-[1fr_12rem_auto]">
@@ -111,7 +143,11 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
               list="lebensmittel"
               autoComplete="off"
               className="field"
-              placeholder="Etwas anderes, z. B. Obatzter"
+              placeholder={
+                slot.kind === "recipes"
+                  ? "Etwas anderes, z. B. Knoblauchbrot"
+                  : "Etwas anderes, z. B. Obatzter"
+              }
             />
           </label>
           <datalist id="lebensmittel">

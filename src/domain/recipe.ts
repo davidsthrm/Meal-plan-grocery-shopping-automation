@@ -76,6 +76,9 @@ export function plannedServings(base: Servings, householdServings: number): numb
  * A range counts with its upper bound. The second printed measure is used only when the main
  * one does not convert and its scope is known, so "4 Steaks à 150 g" can become 600 g but an
  * ambiguous "(etwa 200 g)" is never guessed at.
+ *
+ * Slices of something bought by the piece that the catalog cannot weigh are bought as whole
+ * pieces, a piece for every `SLICES_PER_PIECE` slices: "2 Zitronenscheiben" buy one lemon.
  */
 export function shoppingAmount(
   line: RecipeIngredient,
@@ -95,5 +98,15 @@ export function shoppingAmount(
       return { quantity: total, unit: secondary.unit };
     }
   }
+  if (line.unit === "Scheibe" && target === "Stück") {
+    return { quantity: quantity / SLICES_PER_PIECE, unit: "Stück" };
+  }
   return primary;
 }
+
+/**
+ * How many slices a piece gives, where the catalog does not say by weight: a lemon, an
+ * orange or a tomato is cut into about eight. It only decides how many whole pieces slices
+ * buy, which is one for a garnish.
+ */
+export const SLICES_PER_PIECE = 8;

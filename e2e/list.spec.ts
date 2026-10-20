@@ -24,7 +24,8 @@ async function plan(page: Page, meal: string, recipe: string) {
 
 /** A note among the others, the note picked up, and one kind of grocery on it. */
 const tile = (page: Page, note: string) =>
-  page.getByRole("list", { name: "Zettel" }).getByRole("link", { name: new RegExp(`^${note}`) });
+  // The notes still to do, or those done at the foot.
+  page.getByRole("list", { name: /Zettel$/ }).getByRole("link", { name: new RegExp(`^${note}`) });
 const sheet = (page: Page, note: string) => page.getByRole("region", { name: note, exact: true });
 const group = (page: Page, note: string, name: string) =>
   sheet(page, note).getByRole("region", { name, exact: true });
@@ -94,6 +95,14 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await all(page).click();
   await expect(tile(page, MARKET)).toHaveCount(0);
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
+  // An errand done lies at the foot, apart from what is still to do.
+  const friday = { name: new RegExp(`^${MARKET_ON_FRIDAY}`) };
+  await expect(
+    page.getByRole("list", { name: "Erledigte Zettel" }).getByRole("link", friday),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("list", { name: "Zettel", exact: true }).getByRole("link", friday),
+  ).toHaveCount(0);
   // Finished moments ago, its stamp is pressed on rather than simply there.
   await expect(tile(page, MARKET_ON_FRIDAY).locator(".stamp-pressed")).toHaveCount(1);
 
@@ -144,12 +153,13 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(sheet(page, FRIDAY)).toContainText("verschoben von Mo 1. Supermarkt");
   await all(page).click();
   // The cream is for Tuesday: Friday is too late for it and is not offered, an errand
-  // before Tuesday is.
+  // before Tuesday is. The Metzger's is not: it sells no cream.
   await tile(page, MONDAY).click();
   await sheet(page, MONDAY).getByText("300 ml Sahne").click();
   const moves = sheet(page, MONDAY).getByRole("group", { name: "Sahne verschieben" });
   await expect(moves.getByRole("button", { name: /Fr 5\. Supermarkt/ })).toHaveCount(0);
-  await expect(moves.getByRole("button", { name: /Mo 1\. Metzger/ })).toBeVisible();
+  await expect(moves.getByRole("button", { name: /Fr 26\. Markt/ })).toBeVisible();
+  await expect(moves.getByRole("button", { name: /Mo 1\. Metzger/ })).toHaveCount(0);
   await all(page).click();
 
   // Ticking off, and the tick survives a change of the plan.
@@ -239,6 +249,43 @@ function fromToday(days: (weekday: number) => number): { date: string; monday: s
   const monday = new Date(day.getTime() - ((day.getUTCDay() || 7) - 1) * 86_400_000);
   return { date: day.toISOString().slice(0, 10), monday: monday.toISOString().slice(0, 10) };
 }
+
+test("a note for any place is opened on a day of choice, and put away while empty", async ({
+  page,
+}) => {
+  const WEDNESDAY_DM = "dm, Mittwoch, 3. März";
+  // A choice is a chip: tapped on its visible label, as a finger does.
+  const choose = (name: string) =>
+    page.locator("label", { has: page.getByRole("radio", { name, exact: true }) }).click();
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await expect(tile(page, WEDNESDAY_DM)).toHaveCount(0);
+  await page.getByText("Neuer Zettel").click();
+  await choose("Mittwoch, 3. März");
+  await page.getByRole("button", { name: "Zettel anlegen" }).click();
+  await expect(sheet(page, WEDNESDAY_DM)).toContainText("Noch nichts notiert.");
+
+  // Empty, it can go again.
+  await page.getByRole("button", { name: "Leeren Zettel wegwerfen" }).click();
+  await expect(tile(page, DRUGSTORE)).toBeVisible();
+  await expect(tile(page, WEDNESDAY_DM)).toHaveCount(0);
+
+  // Written on, it stays among the notes of the week.
+  await page.getByText("Neuer Zettel").click();
+  await choose("Mittwoch, 3. März");
+  await page.getByRole("button", { name: "Zettel anlegen" }).click();
+  await page.getByLabel("Was").fill("Zahnpasta");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(sheet(page, WEDNESDAY_DM)).toContainText("Zahnpasta");
+  await expect(page.getByRole("button", { name: "Leeren Zettel wegwerfen" })).toHaveCount(0);
+  await all(page).click();
+  await expect(tile(page, WEDNESDAY_DM)).toContainText("Zahnpasta");
+  // The bakery on a Thursday, too.
+  await page.getByText("Neuer Zettel").click();
+  await choose("Bäcker");
+  await choose("Donnerstag, 4. März");
+  await page.getByRole("button", { name: "Zettel anlegen" }).click();
+  await expect(sheet(page, "Bäcker, Donnerstag, 4. März")).toContainText("Nichts zu kaufen.");
+});
 
 test("what was not bought at the drugstore comes along to its next note", async ({ page }) => {
   // dm is on Saturdays: the last one is over, the next one is today or later.

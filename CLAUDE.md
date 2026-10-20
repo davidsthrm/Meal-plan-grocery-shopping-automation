@@ -41,6 +41,7 @@ is easier than pen and paper.
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                 |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`     |
 | Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`     |
+| Merge "Zitronenscheiben" into lemons, "Stiele" to Stängel (dry run first) | `npm run library:tidy-lines -- "<name>"`        |
 | File drinks and cookies by their titles (dry run, then `--apply`)         | `npm run library:assign-categories -- "<name>"` |
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`       |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                     |
@@ -95,6 +96,11 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   welcome with the household's settings, the hint to put the app on the home screen, the
   first week of a household, and the way back from a recipe to its list. Cost tracking and
   a feedback button come later.
+- Phase 11 (branch `phase-11-family-feedback`): what the family asked for in its first
+  days: bread and other foods next to a recipe, the week and the notes from today on, the
+  notes done at the foot, a note opened by hand for any place and day, signing out only in
+  the settings, the week's first errand buying what keeps, lemon slices as lemons, and
+  "Stiele" as Stängel.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -183,7 +189,11 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `supabase/tests/realtime.test.ts` holds the two to each other. The plan, the notes and the
   Merkzettel are read again half a second after a change; recipes, tags, the catalog, the
   shops and the members, which an import writes by the hundred, after three seconds of
-  quiet and at least every ten seconds while it goes on (`refreshAt`).
+  quiet and at least every ten seconds while it goes on (`refreshAt`). A change within three
+  seconds of the device's own form or tick (`OWN_CHANGE`, sent once the server has the
+  ticks) waits until three seconds after it: in the shop, every tick read the whole notes
+  again half a second later. The Realtime client is a quarter of a page's script and is
+  loaded once the page is idle (October 2026).
 - Passwords are Supabase Auth's. "Passwort ändern" on `/einstellungen` asks for the current
   one first. "Passwort vergessen?" on the login page (`/passwort-vergessen`) has Supabase
   send a link to `/auth/bestaetigen`, which signs in, and `/passwort-neu` takes the new
@@ -243,7 +253,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   login but no household.
 - `LiveRefresh` in the layout listens for changes to the plan, the lists, the note, the goals
   and to recipes, and calls `router.refresh()`: the page is read again from the server, under
-  the same rules as on a reload. It also does so when a page comes back into view. The pages
+  the same rules as on a reload. It also does so when a page comes back into view after a
+  change arrived meanwhile or after half a minute away (`readOnReturn`), not after a moment
+  in another app. The pages
   under `/import` are left out. A message about a deleted row carries only its key and
   reaches every signed-in browser, whichever household: nothing but "something changed" is
   taken from it.
@@ -270,6 +282,12 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   are neither narrowed nor paged.
 - `src/proxy.ts` (the Next.js 16 name for middleware) keeps the session fresh and sends anyone
   without one to `/login`. Pages get the household through `requireHousehold()`.
+- What the layout and a page both need is read once per request (`cache` of React):
+  the household (`requireHousehold`), the signed-in member (`loadSelf`) and the Merkzettel
+  (`loadOwnRestock`). A page starts what does not depend on its week before it finds the
+  week (the library on `/woche`), and reads that do not depend on each other go side by
+  side: a week's recipes and foods, the library's recipes, tags and links, and the earlier
+  dm entries with everything else of the notes.
 - Two Supabase clients on the server: `createSessionClient()` acts as the signed-in user and
   is bound by row level security; use it for all table access. `createAdminClient()` bypasses
   it and exists only for storage. Never use it for a table without checking access first.
@@ -386,9 +404,10 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   floated too high (October 2026). Next to the Merkzettel stands the first letter of
   whoever is signed in on the green (`.account`, `initialOf`), the way to the settings, on
   every screen size. Between a phone and a large screen (`sm` to `lg`, an iPad upright) the
-  header holds the sections too: the logo stands without its name there, and "Abmelden" is
-  at the foot of the page, as on a phone. With both in the header the page was 983 pixels
-  wide on an 810 pixel iPad, which zoomed it out and pushed fixed bars off the screen.
+  header holds the sections too: the logo stands without its name there. With the logo's
+  name and a sign-out button in the header the page was 983 pixels wide on an 810 pixel
+  iPad, which zoomed it out and pushed fixed bars off the screen. "Abmelden" is only in the
+  settings, under "Dein Konto": the family wanted it off every main section (October 2026).
 - The sections in the bar are Woche, Einkauf, Rezepte, Favoriten and Import. "Rezepte" has
   two views at its top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to
   find something to cook and "Regal" to look after the library.
@@ -511,6 +530,13 @@ Units and conversion
 - The exception is a spoonful or a pinch (EL, TL, Prise, Msp) that cannot be converted: it
   counts as "some" on the ingredient's line. Otherwise three tablespoons of butter would be
   the line "55 ml Butter".
+- The other exception: slices of something bought by the piece that the catalog cannot weigh
+  buy whole pieces, one for every eight slices (`SLICES_PER_PIECE`, `shoppingAmount`).
+  "2 Zitronenscheiben" are "1x Zitrone"; the line was "2 Scheiben Zitronenscheiben"
+  (October 2026).
+- "Stiel", "Stiele" and "Stielen" are the unit Stängel (`parseUnit`). A recipe line printed
+  in stalks is counted in Stängel and the word stays out of its note (`stalksAsStaengel`),
+  wherever the reading put it.
 
 Recipes
 
@@ -547,6 +573,11 @@ Week plan
   plans on the weekend. From Thursday on it opens on the coming week already when nothing is
   planned for the rest of the running one (`openingWeek`); earlier an empty week is still the
   one to plan.
+- In the running week the sheet starts with today, then the rest of the week, and the days
+  that are over stand at its foot under "Vorbei", their names grey (`daysFromToday`): on a
+  Tuesday Monday is no longer the first thing to read (October 2026). Any other week keeps
+  its order from Monday. The note for the pinboard and the week beside the recipe chooser
+  keep it too.
 - Above the sheet stands one row: the views "Mahlzeiten" and "Außerdem" as a segmented
   control on the left, what is done with the whole plan on the right ("Plan vervollständigen",
   "Woche leeren", "Plan speichern" last). On a phone the control is as wide as the screen and
@@ -580,9 +611,20 @@ Week plan
   for that day exactly like a meal on it. Without a day it is bought on the week's first
   supermarket day, or on the next one when it was added after that errand was done.
 - A meal without a recipe can carry foods to buy (`plan_slot_food`): bread, cold cuts and a
-  cucumber for a "Vesper". A food is a name, not an amount. It may name where it is bought
+  cucumber for a "Vesper". A food is a name, and an amount only where one was said: a number
+  typed in front ("8 Brötchen", `readFood`) or a tap on a side that is one of something
+  (`plan_slot_food.quantity`; "1 Dinkelbaguette", "1x Dinkelbaguette" on the note). Such a
+  side stored before foods had a number counts as one too (`asSide`, when a week is read). It may name where it is bought
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
   the catalog says for cooking. Foods are copied with the meal to the next week.
+- A meal with recipes can carry foods too, what goes with it and has no recipe: a spelt
+  baguette with Sunday's soup (`PlanSlot.foods` on a "recipes" meal, the same
+  `plan_slot_food`). The recipe chooser offers them under "Dazu, ohne Rezept" once the meal
+  has a recipe (`SIDE_FOODS`, bread from the Bäcker), and "Etwas anderes" opens the meal's
+  page of foods for anything typed. The meal shows "Dazu: 1 Dinkelbaguette", the note for the
+  pinboard "Kürbissuppe + Dinkelbaguette", and on the shopping notes the line names the
+  recipe it goes with. A meal's recipes written again (a side, a person more) keep its foods
+  (`writeSlot`, `foods` left out); a meal planned as something else loses them.
 - A typed meal whose text is the title of a recipe is planned as that recipe. Any other typed
   meal stays text and says "Noch kein Rezept dazu". "Hochladen" opens the upload for that
   meal: the batch remembers it (`import_batch.for_date`, `for_meal`), and once every photo is
@@ -640,7 +682,10 @@ Week plan
   when its group is still below the least the week should have, -4 when its group is used
   up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
   cooked 8 weeks ago or longer. Equal recipes are ordered by a seed (week, meal), so the
-  order is stable between two looks.
+  order is stable between two looks. The best one is found in one pass, not by sorting the
+  library, and a recipe's dish and effort are read once per recipe: a week's suggestions
+  took 190 ms of the server for the family's 1,146 recipes on every look at the plan, and
+  take 60 (October 2026). The suggestions themselves are the same.
 - The plan does not fill itself. An open meal has "Planen" and "Hast du einen Vorschlag?".
   Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Noch
   ein Vorschlag" for the next best; after twelve they come round again. The household found
@@ -958,8 +1003,14 @@ Shopping list
   Gemüse to Sonstiges. A line shows its shop only where one was named on purpose (`shopByChoice`):
   "Brot · Bäcker" for a cold supper.
 - Every errand has a note of its own: a place on a day (`ShoppingTrip`, as an address
-  `<date>.<place>`). A need goes to the supermarket's last shopping day on or before its meal
-  (`assignTrip`): Monday buys for Monday to Thursday, Friday for Friday to Sunday. The
+  `<date>.<place>`). A need goes to the first supermarket errand of its meal's week that is
+  in time and from which it keeps until the meal (`assignTrip`): Monday buys the leeks,
+  lemons and fish stock for Friday's dinner, and Friday only what would not keep from
+  Monday, so that the week needs as few big errands as it can. The family asked for it
+  (October 2026). Where no errand of the week can, it is the last shopping day before the
+  meal, as before; a week's errand never buys for the week after. It holds from the week of
+  26 October 2026 (`FIRST_ERRAND_FROM`, `ErrandRules.firstErrandFrom`): the week before was
+  shopped by the old rule, its Monday is done, and what it left is on Friday's note. The
   household shops in the afternoon from Monday to Friday and in the morning on Saturday
   (`AFTERNOON_WEEKDAYS`), so a lunch on a working day is bought on an errand before its day
   (`Need.lunch`): Friday's lunch on Monday's note, Monday's on the Friday before, and its
@@ -1010,17 +1061,20 @@ Shopping list
   the real errands are held against it (`tests/acceptance/sample-weeks.test.ts`).
 - An errand is done when no line of its note is open: each is bought, in full or in part,
   or removed, by the last decision, or by "Einkauf erledigt", which ticks what is still
-  open. The note then pales among the others
-  and carries a stamp with the name of whoever made the last tick (`NoteList.completed`,
+  open. The note then pales, moves to the foot of the page under "Erledigt"
+  (`arrangeNotes`), and carries a stamp with the name of whoever made the last tick (`NoteList.completed`,
   from `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored
   for it (`completion`): a line the plan adds afterwards opens the errand again, which is
   what it is, and so does a line typed onto the note. What was planned after the last tick
   does not: that errand has not bought it. The notes are worked out a second time with the
   errands that are done (`ErrandRules.doneAt`), and such a need goes to the next errand in
   time or is bought shortly before.
+- The notes still to do lie first, from today on in order of day and place, then one whose
+  day is over with something still open. A note whose day is over and that has nothing on
+  it is not shown: Monday's empty dm note said nothing on a Tuesday (October 2026).
 - A line can be moved to another note: the household decided to buy it on another errand
   ("Lieber woanders kaufen", `moveListLine`). It is offered only the notes of the week where
-  it is in time and keeps (`moveTargets`, `moveProblems`: as for a whole errand, and a line
+  it is in time, keeps, and is sold (`placeSells`: no lemon on the Bäcker's note) (`moveTargets`, `moveProblems`: as for a whole errand, and a line
   bought shortly before its meal not after it either), and the server checks the move
   again. The move is stored with the note the line would be on by itself
   (`shopping_line_state.moved_date`, `moved_place`) and applied before the lines are summed,
@@ -1071,6 +1125,12 @@ Shopping list
   into a section of the shop, Körperpflege to Haushalt (`drugstoreSection`: the longest
   known word in what was written wins, anything else is "Sonstiges"). Its lines are not
   moved to a food note, have no "Haben wir schon", and the note is not moved to another day.
+- Any note can be opened by hand for a place on a day of the week from today on ("Neuer
+  Zettel" under the notes, `daysToOpen`, `openNote`): dm on a Wednesday, the bakery on a
+  Thursday. It is stored as its list with `shopping_list.opened_at` and lies among the notes
+  of its week while it is empty; "Leeren Zettel wegwerfen" puts it away again. It is no
+  errand the plan is bought on: what is planned goes where it always goes, and a line can
+  be moved there.
   What is still open on a dm note whose day is over comes along to the next one from today
   on (`carriedOver`, `nextDrugstoreTrip`, eight weeks back at most), until it is ticked or
   removed, and stands only there (`bringAlong`), also where the note it came from lies in
@@ -1138,8 +1198,12 @@ Shopping list
   before first (`shop_item_history`), then those that sell its kind of grocery; the rest
   behind "Alle Geschäfte". The butcher, bakery and market sell what is bought fresh there
   (`fresh_place`), a supermarket found on the map everything, a shop typed in by hand the
-  kinds ticked for it under "Angaben", or everything while none is. Trauben never offer
-  the Bäcker; Brezeln offer the Bäcker and the supermarkets, not the Metzger.
+  kinds ticked for it under "Angaben", or everything while none is. The Bäcker and the
+  Metzger are not offered at all for what they do not sell, not even behind "Alle
+  Geschäfte" (`placeSells`), unless the thing was bought there before: a lemon is not
+  bought at the Bäcker (October 2026). The market sells anything. Trauben never offer the
+  Bäcker; Brezeln offer the Bäcker and the supermarkets, not the Metzger. Eggs stand under
+  Dilgers Hof because "Eier" is ticked for it.
 - A typed line the catalog does not know gets its kind of grocery guessed once as it is
   written, from the end of its last word (`guessKind`: "Bio-Heumilch" is dairy,
   "Ingwer-Shots" stay unsorted), and "Gehört zu" corrects it.
@@ -1177,6 +1241,11 @@ Import
   entered never overwrites it.
 - Mapping to the catalog: the longest part of the printed line that contains the ingredient's
   name and is a catalog name wins ("1 getrocknete Chilischote" is not the fresh one).
+- A cut of something bought by the piece is that thing (`wholeOfCut`): "Zitronenscheiben"
+  are lemons in slices, "Zitronenachtel" an eighth of a lemon ("Scheibe", "Achtel",
+  "Viertel"). Halves are not: "Pfirsichhälften" come in a tin. A product of its own sold in
+  slices ("Toastscheiben", "Käsescheiben") is found by its own name first. The import had
+  made six such cuts ingredients of their own; `npm run library:tidy-lines` merges them.
 - A line without an amount that names several ingredients the catalog knows one by one is
   split after reading (`splitJoinedLines`): "Salz und Pfeffer" is salt and pepper. The
   household had "Salz & Pfeffer" as an ingredient in 264 recipe lines before. Typed recipes

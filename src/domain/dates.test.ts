@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   hasWeekBefore,
   weekShown,
+  daysFromToday,
   addDays,
   dayAndMonth,
   daysBetween,
@@ -96,6 +97,27 @@ describe("dates", () => {
 
   it("rejects anything that is not an ISO date", () => {
     expect(() => daysBetween("12.10.2026", "2026-10-18")).toThrow(/not an ISO date/);
+  });
+
+  describe("daysFromToday", () => {
+    const monday = "2026-10-19";
+    it("puts today first in the running week and the days that are over at the foot", () => {
+      expect(daysFromToday(monday, "2026-10-20")).toEqual({
+        ahead: ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"],
+        past: ["2026-10-19"],
+      });
+      expect(daysFromToday(monday, "2026-10-19").past).toEqual([]);
+      expect(daysFromToday(monday, "2026-10-25")).toMatchObject({ ahead: ["2026-10-25"] });
+      expect(daysFromToday(monday, "2026-10-25").past).toHaveLength(6);
+    });
+
+    it("keeps a week gone by and one to come in order from Monday", () => {
+      for (const today of ["2026-10-18", "2026-10-26", "2026-12-01"]) {
+        const { ahead, past } = daysFromToday(monday, today);
+        expect(ahead).toEqual(weekDates(monday));
+        expect(past).toEqual([]);
+      }
+    });
   });
 });
 

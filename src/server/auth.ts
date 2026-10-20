@@ -1,5 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { isIsoDate, type IsoDate } from "@/domain/dates";
 import { DEFAULT_TARGETS, readTargets, type BalanceTargets } from "@/domain/recommend/balance";
 import {
@@ -41,8 +42,11 @@ export interface Household {
  * The household of the signed-in user, for pages and actions that need one. Redirects to the
  * login page without a session. A signed-in user without a household sees nothing, by design:
  * accounts are created by invite and added to the household by hand.
+ *
+ * Read once per request: the layout and the page both ask, and each asking cost a check of
+ * the session and a request.
  */
-export async function requireHousehold(): Promise<Household> {
+export const requireHousehold = cache(async function requireHousehold(): Promise<Household> {
   const supabase = await createSessionClient();
   const { data: claims } = await supabase.auth.getClaims();
   const userId = claims?.claims?.sub;
@@ -71,4 +75,22 @@ export async function requireHousehold(): Promise<Household> {
     firstWeek: data.first_week && isIsoDate(data.first_week) ? data.first_week : null,
     userId,
   };
-}
+});
+
+/**
+ * The signed-in member: the name they gave themselves and whether they made the household.
+ * Read once per request: the header and the week plan both show the name.
+ */
+export const loadSelf = cache(async function loadSelf(): Promise<{
+  name: string | null;
+  role: string | null;
+}> {
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const { data } = await db
+    .from("household_member")
+    .select("display_name, role")
+    .eq("user_id", household.userId)
+    .maybeSingle();
+  return { name: data?.display_name ?? null, role: data?.role ?? null };
+});

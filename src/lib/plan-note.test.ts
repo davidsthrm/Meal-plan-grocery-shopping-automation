@@ -60,6 +60,17 @@ describe("planNote", () => {
     expect(empty.extras).toEqual([]);
   });
 
+  it("names what goes with the recipes after them", () => {
+    const soup = recipes("f", "2026-10-25", "lunch", "steak");
+    if (soup.kind !== "recipes") throw new Error("a meal with recipes");
+    const withBread = {
+      ...soup,
+      foods: [{ label: "Dinkelbaguette", ingredientId: null, shopId: null }],
+    };
+    const sunday = planNote(WEEK, [withBread], [], titleOf).days[6];
+    expect(sunday.meals[0].text).toBe("Steak mit Pfefferrahmsoße + Dinkelbaguette");
+  });
+
   it("lists the extras with their day", () => {
     expect(note.extras).toEqual(["Apfelkuchen (Sa)"]);
   });

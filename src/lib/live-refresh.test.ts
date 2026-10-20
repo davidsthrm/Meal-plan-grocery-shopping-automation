@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DAILY_TABLES, LIBRARY_TABLES, quicker, refreshAt } from "./live-refresh";
+import {
+  AWAY_MS,
+  DAILY_TABLES,
+  LIBRARY_TABLES,
+  quicker,
+  readOnReturn,
+  refreshAt,
+} from "./live-refresh";
 
 const never = -Infinity;
 
@@ -36,5 +43,13 @@ describe("tables", () => {
   it("listens to each table at one pace only", () => {
     const daily: readonly string[] = DAILY_TABLES;
     expect(LIBRARY_TABLES.filter((table) => daily.includes(table))).toEqual([]);
+  });
+});
+
+describe("readOnReturn", () => {
+  it("reads the page again only after a change or a long time away", () => {
+    expect(readOnReturn({ awayMs: 2000, missed: false })).toBe(false);
+    expect(readOnReturn({ awayMs: 2000, missed: true })).toBe(true);
+    expect(readOnReturn({ awayMs: AWAY_MS, missed: false })).toBe(true);
   });
 });

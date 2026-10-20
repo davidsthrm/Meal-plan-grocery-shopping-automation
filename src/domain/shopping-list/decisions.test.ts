@@ -185,7 +185,15 @@ describe("moving a line to another day", () => {
 
   it("adds them up with what a day that has a note already buys", () => {
     const toFriday = new Map([[moveKey(monday, "eier@main"), friday]]);
-    const both = build([dinner(MONDAY), dinner(FRIDAY)], { moves: toFriday });
+    // Friday's omelette was planned after Monday's errand: Friday buys its eggs.
+    const later: PlanSlot = {
+      id: `${FRIDAY}-omelett`,
+      date: FRIDAY,
+      meal: "dinner",
+      kind: "recipes",
+      items: [{ recipeId: "omelett", servings: 4, plannedOn: TUESDAY }],
+    };
+    const both = build([dinner(MONDAY), later], { moves: toFriday });
     const eggs = on(both, friday).filter((entry) => entry.ingredientId === "eier");
     expect(eggs).toHaveLength(1);
     expect(eggs[0].amounts).toEqual([{ quantity: 8, unit: "Stück" }]);
@@ -322,13 +330,15 @@ describe("shops to offer", () => {
   it("never offers the Bäcker for grapes", () => {
     const { suggested, others } = suggestShops(item("weintrauben"), choices, [], index);
     expect(names(suggested)).toEqual(["Aldi", "Dilgers Hof", "Markt"]);
-    expect(names(others)).toEqual(["Metzger", "Bäcker"]);
+    // Not even under "Alle Geschäfte": neither sells grapes.
+    expect(names(others)).toEqual([]);
   });
 
   it("offers the Bäcker and the supermarket for pretzels, not the Metzger", () => {
     const { suggested, others } = suggestShops(item("brezeln"), choices, [], index);
     expect(names(suggested)).toEqual(["Aldi", "Bäcker"]);
-    expect(names(others)).toContain("Metzger");
+    expect(names(others)).not.toContain("Metzger");
+    expect(names(others)).toEqual(["Dilgers Hof", "Markt"]);
   });
 
   it("offers first where it was bought before, also a shop that does not sell its kind", () => {

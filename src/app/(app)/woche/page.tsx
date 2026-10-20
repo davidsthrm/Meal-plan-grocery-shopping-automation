@@ -18,6 +18,7 @@ import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
   dayAndMonth,
+  daysFromToday,
   mondayOf,
   weekDates,
   weekdayLong,
@@ -52,6 +53,7 @@ import {
 } from "@/domain/plan";
 import { progress, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
 import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
+import { foodText } from "@/domain/vesper";
 import { rank } from "@/domain/rank";
 import {
   GROUP_NAME,
@@ -65,7 +67,7 @@ import {
 } from "@/lib/plan-text";
 import { fromPlan } from "@/lib/origin";
 import { hourNow, today } from "@/lib/today";
-import { requireHousehold } from "@/server/auth";
+import { loadSelf, requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
@@ -100,17 +102,13 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // for in a week, and can change it: whoever made the household is asked, everyone else
   // is welcomed and shown what was set.
   if (!(await cookies()).has(TARGETS_SEEN)) {
-    const { data: me } = await (
-      await createSessionClient()
-    )
-      .from("household_member")
-      .select("role")
-      .eq("user_id", household.userId)
-      .maybeSingle();
-    redirect(me?.role === "admin" ? "/woche/ziele?start=1" : "/willkommen");
+    const me = await loadSelf();
+    redirect(me.role === "admin" ? "/woche/ziele?start=1" : "/willkommen");
   }
   const now = today();
   const db = await createSessionClient();
+  // The library does not depend on the week: it is read while the week is found.
+  const libraryRead = loadLibrary(db);
   // The running week decides which week the planner opens on, and what there is today.
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
@@ -126,21 +124,18 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const cookingMore = one(params.mehr) ?? "";
 
   const [library, slots, nextSlots, history, extras, saved, self] = await Promise.all([
-    loadLibrary(db),
-    loadWeek(db, week),
+    libraryRead,
+    // The running week was read already.
+    week === running ? runningSlots : loadWeek(db, week),
     // Leftovers of Sunday's dinner can be eaten in the next week.
     loadWeek(db, addDays(week, 7)),
     loadHistory(db, week),
     loadExtras(db, week),
     isSaved(db, week),
-    db
-      .from("household_member")
-      .select("display_name")
-      .eq("user_id", household.userId)
-      .maybeSingle(),
+    loadSelf(),
   ]);
   // Whoever opens the plan is greeted by the name they gave themselves, if they gave one.
-  const greeting = firstName(self.data?.display_name);
+  const greeting = firstName(self.name);
   const recipeOf = new Map(library.recipes.map((recipe) => [recipe.id, recipe]));
   const placing = placingId ? (recipeOf.get(placingId) ?? null) : null;
   // The second view of a week: what it needs outside its meals.
@@ -169,6 +164,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
   const balance = weekBalance(slots, (id) => recipeOf.get(id), household.targets);
   const days = weekDates(week);
+  // In the running week the sheet starts with today; the days that are over go to its foot.
+  const { ahead, past } = daysFromToday(week, now);
   // Nothing is suggested for meals that are over, and coffee on Sunday stays optional.
   const open = days
     .filter((date) => date >= now)
@@ -227,6 +224,53 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     !placing &&
     !showExtras &&
     hasToday(runningSlots, now);
+
+  // A day of the sheet with its meals. One that is over is said so and drawn quieter.
+  const dayRow = (date: IsoDate, over: boolean) => (
+    <li
+      key={date}
+      id={`tag-${date}`}
+      className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[7.5rem_1fr_1fr]"
+    >
+      {/* On an iPad upright the day stands above its meals: beside them, each meal had a
+          third of the width and a long dish ran into its stepper. The gap clears the
+          highlighter, which reaches past the name: "Heute" stood right against it. */}
+      <h2 className="flex items-baseline gap-3 sm:col-span-2 lg:col-span-1 lg:block">
+        <span
+          className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""} ${over ? "text-muted" : ""}`}
+        >
+          {weekdayLong(date)}
+        </span>
+        {date === now ? (
+          <span className="text-sm font-semibold text-accent lg:mt-1 lg:block">Heute</span>
+        ) : (
+          <span className="text-sm text-muted lg:block">{dayAndMonth(date)}</span>
+        )}
+      </h2>
+      {mealsOf(date).map((meal) => (
+        <MealCell
+          key={meal}
+          week={week}
+          date={date}
+          meal={meal}
+          slot={slotAt(date, meal)}
+          proposal={question?.date === date && question.meal === meal ? proposal : undefined}
+          hint={hinted.has(`${date}.${meal}`) ? pickAt(date, meal) : undefined}
+          draw={draw}
+          canAsk={date >= now && meal !== "coffee" && !saved}
+          recipeOf={recipeOf}
+          placing={placing}
+          locked={saved && !placing && pen !== `${date}.${meal}`}
+          withPen={saved && pen === `${date}.${meal}`}
+          later={laterMeals(date, meal)}
+          servings={household.defaultServings}
+          leftoversOf={leftoversOf(slotAt(date, meal))}
+          leftoversOn={leftoversOn(slotAt(date, meal))}
+          cookingMore={cookingMore === `${date}.${meal}`}
+        />
+      ))}
+    </li>
+  );
 
   const title = (
     <div>
@@ -413,56 +457,15 @@ export default async function WeekPage(props: PageProps<"/woche">) {
         <div className="sheet mt-6">
           <SheetHoles />
           <ol id="wochenblatt" className="relative divide-y divide-rule">
-            {days.map((date) => (
-              <li
-                key={date}
-                id={`tag-${date}`}
-                className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[7.5rem_1fr_1fr]"
-              >
-                {/* On an iPad upright the day stands above its meals: beside them, each meal
-                    had a third of the width and a long dish ran into its stepper. The gap
-                    clears the highlighter, which reaches past the name: "Heute" stood right
-                    against it. */}
-                <h2 className="flex items-baseline gap-3 sm:col-span-2 lg:col-span-1 lg:block">
-                  <span
-                    className={`text-lg font-bold tracking-tight ${date === now ? "marked" : ""}`}
-                  >
-                    {weekdayLong(date)}
-                  </span>
-                  {date === now ? (
-                    <span className="text-sm font-semibold text-accent lg:mt-1 lg:block">
-                      Heute
-                    </span>
-                  ) : (
-                    <span className="text-sm text-muted lg:block">{dayAndMonth(date)}</span>
-                  )}
-                </h2>
-                {mealsOf(date).map((meal) => (
-                  <MealCell
-                    key={meal}
-                    week={week}
-                    date={date}
-                    meal={meal}
-                    slot={slotAt(date, meal)}
-                    proposal={
-                      question?.date === date && question.meal === meal ? proposal : undefined
-                    }
-                    hint={hinted.has(`${date}.${meal}`) ? pickAt(date, meal) : undefined}
-                    draw={draw}
-                    canAsk={date >= now && meal !== "coffee" && !saved}
-                    recipeOf={recipeOf}
-                    placing={placing}
-                    locked={saved && !placing && pen !== `${date}.${meal}`}
-                    withPen={saved && pen === `${date}.${meal}`}
-                    later={laterMeals(date, meal)}
-                    servings={household.defaultServings}
-                    leftoversOf={leftoversOf(slotAt(date, meal))}
-                    leftoversOn={leftoversOn(slotAt(date, meal))}
-                    cookingMore={cookingMore === `${date}.${meal}`}
-                  />
-                ))}
+            {ahead.map((date) => dayRow(date, false))}
+            {/* The days that are over lie at the foot, under a word that says so: the
+                household looks at what is coming, not at Monday on a Tuesday. */}
+            {past.length > 0 && (
+              <li className="px-4 pt-5 pb-1 sm:px-5" aria-hidden>
+                <span className="eyebrow">Vorbei</span>
               </li>
-            ))}
+            )}
+            {past.map((date) => dayRow(date, true))}
           </ol>
         </div>
       )}
@@ -642,7 +645,10 @@ function Today({
     !slot
       ? "nichts geplant"
       : slot.kind === "recipes"
-        ? slot.items.map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept").join(" und ")
+        ? [
+            ...slot.items.map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept"),
+            ...(slot.foods ?? []).map(foodText),
+          ].join(" und ")
         : slotText(slot);
 
   return (
@@ -674,6 +680,12 @@ function Today({
                       />
                     </li>
                   ))}
+                  {(slot.foods?.length ?? 0) > 0 && (
+                    <li className="text-sm">
+                      <span className="text-muted">Dazu: </span>
+                      {slot.foods?.map(foodText).join(", ")}
+                    </li>
+                  )}
                 </ul>
               ) : (
                 <p className={slot ? "font-semibold" : "text-muted"}>{said(slot)}</p>
@@ -1011,6 +1023,12 @@ function MealCell({
                 </li>
               );
             })}
+            {(slot.foods?.length ?? 0) > 0 && (
+              <li className="text-sm">
+                <span className="text-muted">Dazu: </span>
+                {slot.foods?.map(foodText).join(", ")}
+              </li>
+            )}
             {(slot.extra ?? 0) > 0 && (
               <li className="text-sm font-semibold text-accent">
                 + {slot.extra === 1 ? "1 Extra-Portion" : `${slot.extra} Extra-Portionen`} für Reste
@@ -1025,7 +1043,7 @@ function MealCell({
           </p>
         )}
         {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
-          <p className="text-sm text-muted">{slot.foods?.map((food) => food.label).join(", ")}</p>
+          <p className="text-sm text-muted">{slot.foods?.map(foodText).join(", ")}</p>
         )}
         {!slot && <p className="text-muted">Nichts geplant</p>}
       </section>
@@ -1070,6 +1088,19 @@ function MealCell({
           })}
         </ul>
       )}
+      {/* What goes with the recipes and has none, a tap away from being changed. */}
+      {slot?.kind === "recipes" && (slot.foods?.length ?? 0) > 0 && (
+        <Link
+          href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+          className="mt-1.5 flex min-h-11 items-center text-sm"
+          aria-label={`${what}: dazu ${slot.foods?.map(foodText).join(", ")}, ändern`}
+        >
+          <span>
+            <span className="text-muted">Dazu: </span>
+            {slot.foods?.map(foodText).join(", ")}
+          </span>
+        </Link>
+      )}
       {slot?.kind === "recipes" && (slot.extra ?? 0) > 0 && (
         <ExtraPortions
           week={week}
@@ -1088,7 +1119,7 @@ function MealCell({
         </p>
       )}
       {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
-        <p className="text-sm text-muted">{slot.foods?.map((food) => food.label).join(", ")}</p>
+        <p className="text-sm text-muted">{slot.foods?.map(foodText).join(", ")}</p>
       )}
       {/*
         A typed meal the cookbook has no recipe for: the page can be photographed right now,

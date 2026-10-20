@@ -5,6 +5,7 @@ import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { checkLine, completeListNote } from "@/app/(app)/einkauf/actions";
 import { isBought, type Decision, type PlannedLine } from "@/domain/shopping-list/decisions";
 import { shownDecision, type Tick } from "@/domain/shopping-list/ticks";
+import { OWN_CHANGE } from "@/lib/live-refresh";
 import { indexedDbTickStore } from "@/lib/tick-store";
 import { syncText, TickQueue, type Answer, type Snapshot, type TickStore } from "@/lib/tick-sync";
 import { TickIcon } from "./icons";
@@ -48,6 +49,8 @@ async function send(ticks: readonly Tick[]): Promise<Answer> {
   if (response.status >= 400 && response.status < 500)
     return { kind: "taken", taken: [], refused: ticks.map((tick) => tick.id) };
   if (!response.ok) return { kind: "offline" };
+  // The server has the ticks: their echo from Realtime is this device's own.
+  window.dispatchEvent(new Event(OWN_CHANGE));
   const body = (await response.json()) as { taken: string[]; refused: string[] };
   for (const listener of sentListeners) listener();
   return { kind: "taken", ...body };
