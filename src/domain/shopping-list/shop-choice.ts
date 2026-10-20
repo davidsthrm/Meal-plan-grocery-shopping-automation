@@ -98,6 +98,31 @@ export function kindsSold(choice: ShopChoice, index: CatalogIndex): ReadonlySet<
   );
 }
 
+/**
+ * The places that sell only their own: the bakery its bread and pastries, the butcher its
+ * meat. A lemon is not bought at the Bäcker, and the app does not offer it there (October
+ * 2026). The market sells more than what is bought fresh there: cheese, antipasti, eggs.
+ */
+const ONLY_THEIR_OWN: ReadonlySet<Place> = new Set(["bakery", "butcher"]);
+
+/**
+ * Whether a place can sell a line's kind of grocery: any place but the bakery and the
+ * butcher, and those for what is bought fresh there or ticked for their shop ("Angaben").
+ */
+export function placeSells(
+  place: Place,
+  aisleGroupId: string | null,
+  index: CatalogIndex,
+): boolean {
+  if (!ONLY_THEIR_OWN.has(place)) return true;
+  if (aisleGroupId === null) return false;
+  const ticked = index.catalog.shops
+    .filter((shop) => shop.kind === place)
+    .flatMap((shop) => shop.aisleGroupIds ?? []);
+  if (ticked.includes(aisleGroupId)) return true;
+  return index.aisleGroupById.get(aisleGroupId)?.freshPlace === place;
+}
+
 /** The thing a line buys, as the history of where it was bought knows it. */
 export function itemKey(line: Pick<ShoppingLine, "ingredientId" | "label">): string {
   return line.ingredientId ?? `text:${normalizeName(line.label)}`.slice(0, 200);
@@ -115,7 +140,8 @@ export interface PastChoice {
  * The shops to offer for a line, and the rest behind "Alle Geschäfte". Offered first are
  * the shops it was bought at before, the most often first; then the others that sell its
  * kind of grocery, in the order of `choices`. The others are only offered behind it, and
- * one chosen there is remembered and offered first the next time.
+ * one chosen there is remembered and offered first the next time. A bakery or a butcher
+ * is not offered for what it does not sell (`placeSells`), unless it was bought there before.
  */
 export function suggestShops(
   line: Pick<ShoppingLine, "aisleGroupId">,
@@ -133,7 +159,10 @@ export function suggestShops(
   const rest = choices.filter((choice) => !known.includes(choice));
   return {
     suggested: [...known, ...rest.filter(sells)],
-    others: rest.filter((choice) => !sells(choice)),
+    // Not even behind "Alle Geschäfte": a bakery or a butcher that does not sell it.
+    others: rest.filter(
+      (choice) => !sells(choice) && placeSells(choice.place, line.aisleGroupId, index),
+    ),
   };
 }
 

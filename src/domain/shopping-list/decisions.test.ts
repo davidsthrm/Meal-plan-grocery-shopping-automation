@@ -330,13 +330,15 @@ describe("shops to offer", () => {
   it("never offers the Bäcker for grapes", () => {
     const { suggested, others } = suggestShops(item("weintrauben"), choices, [], index);
     expect(names(suggested)).toEqual(["Aldi", "Dilgers Hof", "Markt"]);
-    expect(names(others)).toEqual(["Metzger", "Bäcker"]);
+    // Not even under "Alle Geschäfte": neither sells grapes.
+    expect(names(others)).toEqual([]);
   });
 
   it("offers the Bäcker and the supermarket for pretzels, not the Metzger", () => {
     const { suggested, others } = suggestShops(item("brezeln"), choices, [], index);
     expect(names(suggested)).toEqual(["Aldi", "Bäcker"]);
-    expect(names(others)).toContain("Metzger");
+    expect(names(others)).not.toContain("Metzger");
+    expect(names(others)).toEqual(["Dilgers Hof", "Markt"]);
   });
 
   it("offers first where it was bought before, also a shop that does not sell its kind", () => {

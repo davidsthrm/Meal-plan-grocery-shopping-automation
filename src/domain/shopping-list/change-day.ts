@@ -1,5 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { addDays, daysBetween, isoWeekday, type IsoDate } from "../dates";
+import { placeSells } from "./shop-choice";
 import { AFTERNOON_WEEKDAYS, BUTCHER_REACH_DAYS, noteId, type ShoppingTrip } from "./trips";
 import type { Contribution, ShoppingLine } from "./types";
 
@@ -105,7 +106,9 @@ export function moveProblems(
 
 /**
  * The other notes one line can be bought on instead: those of food errands where it is in
- * time and keeps. The drugstore's note is written by hand and takes no food.
+ * time and keeps, and that sell it: a lemon goes on no note for the Bäcker (`placeSells`),
+ * though a line of the bakery's note may go to the bakery on another day. The drugstore's
+ * note is written by hand and takes no food.
  */
 export function moveTargets(
   line: ShoppingLine,
@@ -119,6 +122,7 @@ export function moveTargets(
     (trip) =>
       noteId(trip) !== noteId(here) &&
       trip.place !== "drugstore" &&
+      (trip.place === here.place || placeSells(trip.place, line.aisleGroupId, index)) &&
       moveProblems(line, trip, today, index).length === 0,
   );
 }
