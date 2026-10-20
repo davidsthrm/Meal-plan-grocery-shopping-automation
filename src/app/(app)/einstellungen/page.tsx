@@ -15,6 +15,7 @@ import { loadCatalogIndex } from "@/server/catalog";
 import { loadInvites, loadMembers } from "@/server/family";
 import { requestOrigin } from "@/server/request-origin";
 import { createSessionClient } from "@/server/supabase/server";
+import { signOut } from "../../login/actions";
 import {
   inviteMember,
   leaveFamily,
@@ -379,6 +380,10 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
 
             <h4 className="mt-5 font-semibold">Passwort ändern</h4>
             <PasswordForm />
+
+            <form action={signOut} data-sign-out className="mt-5">
+              <button className="btn min-h-11">Abmelden</button>
+            </form>
 
             {canLeave(role) && !leaving && (
               <Link href="/einstellungen?verlassen=1#konto" className="link mt-5 inline-block">
