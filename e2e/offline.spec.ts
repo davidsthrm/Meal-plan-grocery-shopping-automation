@@ -61,8 +61,11 @@ test("a note works in the shop without a connection, and its ticks arrive later"
   await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
   const shop = page.getByRole("dialog", { name: /^Einkaufen: / });
   await expect(shop).toContainText("0 von 2");
-  await shop.getByRole("button", { name: "Milch" }).click();
-  await expect(shop.getByRole("button", { name: "Milch" })).toHaveAttribute("aria-pressed", "true");
+  await shop.getByRole("button", { name: "Milch", exact: true }).click();
+  await expect(shop.getByRole("button", { name: "Milch", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(shop).toContainText("1 von 2");
   await expect(shop).toContainText("Offline – 1 Häkchen wartet");
   await shop.getByRole("button", { name: "Fertig" }).click();
