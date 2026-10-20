@@ -84,3 +84,24 @@ export function refreshAt({
 export function quicker(a: Pace | null, b: Pace): Pace {
   return a === "daily" || b === "daily" ? "daily" : "library";
 }
+
+/**
+ * Sent on `window` when this device changed something without a form: a tick sent to the
+ * server. Its echo from Realtime is taken for the device's own, as after a tap on a button.
+ */
+export const OWN_CHANGE = "essensplan:own-change";
+
+/**
+ * How long a page may be out of view and still be up to date when it comes back, where no
+ * change arrived meanwhile. Longer, the connection to Realtime may have broken off unnoticed.
+ */
+export const AWAY_MS = 30_000;
+
+/**
+ * Whether a page that comes back into view reads itself again: when a change arrived while
+ * it was out of view, or it was away long enough to have missed one. Switching to another
+ * app and back for a moment does not: on a phone that read the whole page every time.
+ */
+export function readOnReturn({ awayMs, missed }: { awayMs: number; missed: boolean }): boolean {
+  return missed || awayMs >= AWAY_MS;
+}
