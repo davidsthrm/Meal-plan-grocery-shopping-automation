@@ -272,19 +272,29 @@ export async function loadShoppingNotes(
   const readAt = Date.now();
   const weekEnd = addDays(weekStart, 6);
   const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
+  // Far enough back that the first meal read has a shopping day before it.
+  const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
+  // What is still open on drugstore notes whose day is over comes along to the next one. It
+  // is read with everything else, not after it: one round trip less for every note.
+  const now = today();
+  const target = nextDrugstoreTrip(trips, now);
+  const earlierRead =
+    target && inWeek(target.date) ? earlierDrugstoreEntries(db, now) : Promise.resolve(null);
   // An errand can buy for two weeks, so the weeks around this one are read with it.
-  const [weeks, extrasAround, index, memberRows, listRows, historyRows] = await Promise.all([
-    loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
-    Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
-    loadCatalogIndex(db),
-    db.from("household_member").select("user_id, display_name"),
-    db
-      .from("shopping_list")
-      .select("id, shopping_date, place, opened_at")
-      .gte("shopping_date", addDays(weekStart, -7))
-      .lte("shopping_date", weekEnd),
-    db.from("shop_item_history").select("item_key, choice, times, last_at"),
-  ]);
+  const [weeks, extrasAround, index, memberRows, listRows, historyRows, earlier] =
+    await Promise.all([
+      loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
+      Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
+      loadCatalogIndex(db),
+      db.from("household_member").select("user_id, display_name"),
+      db
+        .from("shopping_list")
+        .select("id, shopping_date, place, opened_at")
+        .gte("shopping_date", addDays(weekStart, -7))
+        .lte("shopping_date", weekEnd),
+      db.from("shop_item_history").select("item_key, choice, times, last_at"),
+      earlierRead,
+    ]);
   const slots = weeks.flatMap((week) => week.slots);
   const [before, thisWeek, after] = extrasAround;
   const extras = extrasToBuy({ before, week: thisWeek, after });
@@ -401,18 +411,9 @@ export async function loadShoppingNotes(
     states.set(noteId(trip), ofNote);
   }
 
-  // Far enough back that the first meal read has a shopping day before it.
-  const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
-  // What is still open on drugstore notes whose day is over comes along to the next one.
-  const now = today();
-  const target = nextDrugstoreTrip(trips, now);
   const drugstoreNotes =
-    target && inWeek(target.date)
-      ? bringAlong(
-          [...drugstore.values()],
-          target,
-          carriedOver(await earlierDrugstoreEntries(db, now), now),
-        )
+    target && earlier
+      ? bringAlong([...drugstore.values()], target, carriedOver(earlier, now))
       : [...drugstore.values()];
   const build = (doneAt?: ReadonlyMap<string, number>) => [
     ...buildShoppingList({

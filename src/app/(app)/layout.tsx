@@ -9,9 +9,8 @@ import { Logo } from "@/components/logo";
 import { NoteDrawer } from "@/components/note-drawer";
 import { initialOf } from "@/domain/family";
 import { today } from "@/lib/today";
-import { requireHousehold } from "@/server/auth";
-import { loadRestock } from "@/server/shopping/restock";
-import { createSessionClient } from "@/server/supabase/server";
+import { loadSelf } from "@/server/auth";
+import { loadOwnRestock } from "@/server/shopping/restock";
 
 /**
  * Frame for every page behind the login: header and main sections. The note for what ran
@@ -21,17 +20,8 @@ import { createSessionClient } from "@/server/supabase/server";
  * 2026).
  */
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const household = await requireHousehold();
-  const db = await createSessionClient();
-  const [noted, self] = await Promise.all([
-    loadRestock(db, household, today()),
-    db
-      .from("household_member")
-      .select("display_name")
-      .eq("user_id", household.userId)
-      .maybeSingle(),
-  ]);
-  const name = self.data?.display_name ?? null;
+  const [noted, self] = await Promise.all([loadOwnRestock(today()), loadSelf()]);
+  const name = self.name;
   const initial = initialOf(name);
   return (
     // On a phone the sections float above the bottom of the screen: the page leaves room for

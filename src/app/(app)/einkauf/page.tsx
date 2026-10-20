@@ -25,7 +25,7 @@ import { printRules } from "@/lib/note-paper";
 import { momentNow, today } from "@/lib/today";
 import { requireHousehold } from "@/server/auth";
 import { loadShoppingNotes, type NoteList } from "@/server/shopping/list";
-import { loadRestock } from "@/server/shopping/restock";
+import { loadOwnRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 import { buyAfterAll } from "./actions";
 import { NoteHead, NoteSheet, notBoughtText } from "./note-sheet";
@@ -52,7 +52,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const week = weekShown(one(params.w), thisWeek, household.firstWeek);
   const db = await createSessionClient();
   const [{ notes, atHome, index, members, supermarkets, alsoOn, readAt, choices, history }, noted] =
-    await Promise.all([loadShoppingNotes(db, household, week), loadRestock(db, household, now)]);
+    await Promise.all([loadShoppingNotes(db, household, week), loadOwnRestock(now)]);
   const picked = notes.find((note) => note.id === one(params.zettel));
   // The notes of the running week are kept on the device for the shop, and the next errand
   // with them when it lies in the week after.

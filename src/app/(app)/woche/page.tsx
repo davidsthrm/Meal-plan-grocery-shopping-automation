@@ -67,7 +67,7 @@ import {
 } from "@/lib/plan-text";
 import { fromPlan } from "@/lib/origin";
 import { hourNow, today } from "@/lib/today";
-import { requireHousehold } from "@/server/auth";
+import { loadSelf, requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
@@ -102,17 +102,13 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // for in a week, and can change it: whoever made the household is asked, everyone else
   // is welcomed and shown what was set.
   if (!(await cookies()).has(TARGETS_SEEN)) {
-    const { data: me } = await (
-      await createSessionClient()
-    )
-      .from("household_member")
-      .select("role")
-      .eq("user_id", household.userId)
-      .maybeSingle();
-    redirect(me?.role === "admin" ? "/woche/ziele?start=1" : "/willkommen");
+    const me = await loadSelf();
+    redirect(me.role === "admin" ? "/woche/ziele?start=1" : "/willkommen");
   }
   const now = today();
   const db = await createSessionClient();
+  // The library does not depend on the week: it is read while the week is found.
+  const libraryRead = loadLibrary(db);
   // The running week decides which week the planner opens on, and what there is today.
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
@@ -128,21 +124,18 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const cookingMore = one(params.mehr) ?? "";
 
   const [library, slots, nextSlots, history, extras, saved, self] = await Promise.all([
-    loadLibrary(db),
-    loadWeek(db, week),
+    libraryRead,
+    // The running week was read already.
+    week === running ? runningSlots : loadWeek(db, week),
     // Leftovers of Sunday's dinner can be eaten in the next week.
     loadWeek(db, addDays(week, 7)),
     loadHistory(db, week),
     loadExtras(db, week),
     isSaved(db, week),
-    db
-      .from("household_member")
-      .select("display_name")
-      .eq("user_id", household.userId)
-      .maybeSingle(),
+    loadSelf(),
   ]);
   // Whoever opens the plan is greeted by the name they gave themselves, if they gave one.
-  const greeting = firstName(self.data?.display_name);
+  const greeting = firstName(self.name);
   const recipeOf = new Map(library.recipes.map((recipe) => [recipe.id, recipe]));
   const placing = placingId ? (recipeOf.get(placingId) ?? null) : null;
   // The second view of a week: what it needs outside its meals.

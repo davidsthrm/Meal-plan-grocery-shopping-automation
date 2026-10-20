@@ -111,53 +111,46 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
     "load meals",
   );
   const withRecipes = slots.filter((slot) => slot.kind === "recipes").map((slot) => slot.id);
-  const items: {
-    plan_slot_id: string;
-    recipe_id: string;
-    servings: number;
-    planned_on: string | null;
-    planned_at: string | null;
-  }[] = [];
-  for (let at = 0; at < withRecipes.length; at += SLOTS_PER_REQUEST) {
-    items.push(
-      ...must(
-        await db
-          .from("plan_slot_item")
-          .select("plan_slot_id, recipe_id, servings, position, planned_on, planned_at")
-          .in("plan_slot_id", withRecipes.slice(at, at + SLOTS_PER_REQUEST))
-          .order("position"),
-        "load recipes of meals",
-      ),
-    );
-  }
-
   // Foods go with a meal without a recipe, and with recipes as what they do not cover.
   const withFoods = slots
     .filter((slot) => slot.kind === "free_text" || slot.kind === "recipes")
     .map((slot) => slot.id);
-  const foods: {
-    plan_slot_id: string;
-    label: string;
-    quantity: number | null;
-    ingredient_id: string | null;
-    shop_id: string | null;
-    planned_on: string | null;
-    planned_at: string | null;
-  }[] = [];
-  for (let at = 0; at < withFoods.length; at += SLOTS_PER_REQUEST) {
-    foods.push(
-      ...must(
-        await db
-          .from("plan_slot_food")
-          .select(
-            "plan_slot_id, label, quantity, ingredient_id, shop_id, position, planned_on, planned_at",
-          )
-          .in("plan_slot_id", withFoods.slice(at, at + SLOTS_PER_REQUEST))
-          .order("position"),
-        "load foods of meals",
-      ),
+  const chunks = (ids: string[]) =>
+    Array.from({ length: Math.ceil(ids.length / SLOTS_PER_REQUEST) }, (_, at) =>
+      ids.slice(at * SLOTS_PER_REQUEST, (at + 1) * SLOTS_PER_REQUEST),
     );
-  }
+  // The recipes and the foods of the meals are read side by side, each a request per chunk
+  // of meals: one after the other they made every page with a week wait a round trip longer.
+  const [itemPages, foodPages] = await Promise.all([
+    Promise.all(
+      chunks(withRecipes).map(async (ids) =>
+        must(
+          await db
+            .from("plan_slot_item")
+            .select("plan_slot_id, recipe_id, servings, position, planned_on, planned_at")
+            .in("plan_slot_id", ids)
+            .order("position"),
+          "load recipes of meals",
+        ),
+      ),
+    ),
+    Promise.all(
+      chunks(withFoods).map(async (ids) =>
+        must(
+          await db
+            .from("plan_slot_food")
+            .select(
+              "plan_slot_id, label, quantity, ingredient_id, shop_id, position, planned_on, planned_at",
+            )
+            .in("plan_slot_id", ids)
+            .order("position"),
+          "load foods of meals",
+        ),
+      ),
+    ),
+  ]);
+  const items = itemPages.flat();
+  const foods = foodPages.flat();
 
   const foodsOf = (slotId: string): SlotFood[] =>
     foods
