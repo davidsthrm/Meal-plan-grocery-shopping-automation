@@ -1,5 +1,5 @@
 import type { Place } from "../catalog";
-import { addDays, daysBetween, isoWeekday, type IsoDate } from "../dates";
+import { addDays, daysBetween, isoWeekday, mondayOf, type IsoDate } from "../dates";
 import type { Trip } from "./types";
 
 /**
@@ -262,7 +262,9 @@ export interface Assignment extends ShoppingTrip {
 const last = <T>(items: readonly T[]): T | undefined => items[items.length - 1];
 
 /**
- * The errand that buys a need: the supermarket's last shopping day before it is needed.
+ * The errand that buys a need: the first supermarket errand of the meal's week that is in
+ * time and from which it keeps until the meal, so that the week has as few big errands as
+ * it can (October 2026). Where none of the week does, the last shopping day before it.
  * Something fresh comes from the market when its day reaches the meal and it keeps until
  * then, also when a supermarket day lies in between. What would not keep from the shopping
  * day, and what was planned after it, is bought shortly before the meal and says so.
@@ -291,6 +293,7 @@ export function assignTrip(
     onDemand: rules.onDemand ?? ON_DEMAND_PLACES,
     butcherDays: rules.butcherDays ?? [],
     doneAt: rules.doneAt ?? new Map(),
+    firstErrandFrom: rules.firstErrandFrom ?? null,
   };
   if (beforeTheErrands(need)) {
     const earlier = trips.filter((trip) => trip.date < need.date);
@@ -299,6 +302,13 @@ export function assignTrip(
   }
   return assignOn(need, trips, known, false);
 }
+
+/**
+ * The week from which the first errand buys what keeps (`ErrandRules.firstErrandFrom`): the
+ * week of 19 October 2026 was shopped by the rule before, its Monday is done, and what it
+ * left for Friday is bought on Friday.
+ */
+export const FIRST_ERRAND_FROM: IsoDate = "2026-10-26";
 
 /** How a household goes on the errands beyond its shopping days. */
 export interface ErrandRules {
@@ -314,6 +324,12 @@ export interface ErrandRules {
    * milliseconds. What was planned after that is not bought on them.
    */
   doneAt?: ReadonlyMap<string, number>;
+  /**
+   * The first week whose first errand to the supermarket buys what keeps for the whole week
+   * (`FIRST_ERRAND_FROM`). The weeks before it were shopped on the last errand before each
+   * meal, and stay so: their errands are done. Null or left out: every week.
+   */
+  firstErrandFrom?: IsoDate | null;
 }
 
 /**
@@ -323,7 +339,7 @@ export interface ErrandRules {
 function assignOn(
   need: Need,
   trips: readonly ShoppingTrip[],
-  { onDemand, butcherDays, doneAt }: Required<ErrandRules>,
+  { onDemand, butcherDays, doneAt, firstErrandFrom }: Required<ErrandRules>,
   strict: boolean,
 ): Assignment | null {
   const keeps = (trip: ShoppingTrip) =>
@@ -357,7 +373,15 @@ function assignOn(
     if (errand) return { ...errand, trip: "main" };
   }
   if (named) return strict ? null : { date: need.date, place: named, trip: "main" };
-  const shop = last(inTime(before("supermarket")));
+  const shops = inTime(before("supermarket"));
+  // The week's first errand to the supermarket buys whatever keeps until its meal, so that a
+  // later one is needed only for what would not: Monday buys the leeks and the fish stock for
+  // Friday's dinner, and Friday only the salad.
+  const week = mondayOf(need.date);
+  const bundled = firstErrandFrom === null || week >= firstErrandFrom;
+  const big = bundled ? shops.find((trip) => trip.date >= week && keeps(trip)) : undefined;
+  if (big) return { ...big, trip: "main" };
+  const shop = last(shops);
   if (shop) return { ...shop, trip: keeps(shop) ? "main" : "later" };
   if (strict) return null;
   // Planned after the last shopping day before the meal: it has to be fetched in between.

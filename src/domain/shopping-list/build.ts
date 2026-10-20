@@ -322,7 +322,12 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         shelfLifeDays: ingredient?.shelfLifeDays ?? null,
       },
       trips,
-      { onDemand: input.onDemand, butcherDays: input.butcherDays, doneAt: input.doneAt },
+      {
+        onDemand: input.onDemand,
+        butcherDays: input.butcherDays,
+        doneAt: input.doneAt,
+        firstErrandFrom: input.firstErrandFrom,
+      },
     ) as Assignment;
 
   /**
@@ -501,8 +506,15 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         addRecipe(recipe, servings, source, slot.date, item);
       }
     }
-    // A meal without a recipe can still need things: bread and cold cuts for a "Vesper".
-    if (slot.kind === "free_text") {
+    // A meal without a recipe can still need things: bread and cold cuts for a "Vesper". A
+    // meal with recipes can too: the baguette with the soup.
+    if (slot.kind === "free_text" || slot.kind === "recipes") {
+      const mealLabel =
+        slot.kind === "free_text"
+          ? slot.label
+          : slot.items
+              .map((item) => recipeById.get(item.recipeId)?.title ?? "Rezept")
+              .join(" und ");
       for (const food of slot.foods ?? []) {
         const ingredient = food.ingredientId
           ? index.ingredientById.get(food.ingredientId)
@@ -513,10 +525,12 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
             slotId: slot.id,
             date: slot.date,
             meal: slot.meal,
-            mealLabel: slot.label,
+            mealLabel,
           },
-          amount:
-            ingredient && namesOnePiece(ingredient, food.label)
+          // "1 Dinkelbaguette" buys one; "Gurke" for the catalog's "Gurken" one piece too.
+          amount: food.quantity
+            ? { quantity: food.quantity, unit: "Stück" }
+            : ingredient && namesOnePiece(ingredient, food.label)
               ? { quantity: 1, unit: "Stück" }
               : null,
           originalText: food.label,

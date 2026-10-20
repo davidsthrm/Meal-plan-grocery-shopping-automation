@@ -29,7 +29,72 @@ export function mapToCatalog(
     const found = findIngredient(index, variant);
     if (found) return found;
   }
+  return wholeOfCut(index, line.name)?.ingredient ?? null;
+}
+
+/**
+ * How a recipe names a part of something bought by the piece: "2 Zitronenscheiben",
+ * "Zitronenachtel". A slice is counted in slices (`Scheibe`); an eighth or a quarter is that
+ * part of a piece. Halves are left out: "Pfirsichhälften" and "Paprikahälften" come in a tin
+ * or a jar, a product of their own.
+ */
+export type Cut = "Scheibe" | "Achtel" | "Viertel";
+
+const CUT_ENDINGS: readonly { ending: string; cut: Cut }[] = [
+  { ending: "scheiben", cut: "Scheibe" },
+  { ending: "scheibe", cut: "Scheibe" },
+  { ending: "achtel", cut: "Achtel" },
+  { ending: "viertel", cut: "Viertel" },
+];
+
+/** The part of a piece each cut is, where that is a fixed part. */
+export const PART_OF_PIECE: Partial<Record<Cut, number>> = {
+  Achtel: 1 / 8,
+  Viertel: 1 / 4,
+};
+
+/**
+ * The ingredient a cut of it is named after, when it is bought by the piece:
+ * "Zitronenscheiben" are lemons, "Bio-Orangenscheiben" oranges. Null for any other name, and
+ * for a product of its own that the catalog sells in slices ("Toastscheiben", "Käsescheiben").
+ */
+export function wholeOfCut(
+  index: CatalogIndex,
+  name: string,
+): { ingredient: Ingredient; cut: Cut } | null {
+  const typed = name.trim();
+  const match = CUT_ENDINGS.find(({ ending }) => typed.toLowerCase().endsWith(ending));
+  if (!match) return null;
+  // "Zitronen-Scheiben" and "Zitronen Scheiben" too.
+  const head = typed.slice(0, typed.length - match.ending.length).replace(/[-\s]+$/, "");
+  if (head.length < 4) return null;
+  for (const variant of nameVariants(head)) {
+    const found = findIngredient(index, variant);
+    if (found && found.buyingMode === "count" && found.defaultUnit === "Stück") {
+      return { ingredient: found, cut: match.cut };
+    }
+  }
   return null;
+}
+
+/**
+ * A recipe line that names a cut, as an amount of the whole: two slices stay two slices, two
+ * eighths are a quarter of a piece. A line without a quantity, or in another unit, is left
+ * as it is.
+ */
+export function amountOfCut<
+  T extends { quantity: number | null; quantityMax: number | null; unit: string | null },
+>(line: T, cut: Cut): T {
+  if (line.quantity === null) return line;
+  if (line.unit !== null && line.unit !== "Stück" && line.unit !== "Scheibe") return line;
+  const part = PART_OF_PIECE[cut];
+  if (part === undefined) return { ...line, unit: "Scheibe" };
+  return {
+    ...line,
+    quantity: line.quantity * part,
+    quantityMax: line.quantityMax === null ? null : line.quantityMax * part,
+    unit: "Stück",
+  };
 }
 
 const PLURAL_ENDINGS = ["en", "n", "s", "e"];

@@ -22,8 +22,8 @@ const WEEKDAYS_LONG = [
  * most 3.4rem each. On a phone the row reaches a little into the card's edge, so that each
  * day is still 44px wide: in a row that wrapped, Sunday stood alone on a second line.
  */
-const DAYS_ROW = "-mx-1.5 grid max-w-[24.75rem] grid-cols-7 gap-1 sm:mx-0 sm:max-w-[24rem]";
-const CHIP =
+export const DAYS_ROW = "-mx-1.5 grid max-w-[24.75rem] grid-cols-7 gap-1 sm:mx-0 sm:max-w-[24rem]";
+export const CHIP =
   "chip min-w-0 cursor-pointer justify-center px-0 has-checked:border-accent has-checked:bg-accent-soft has-checked:text-accent has-focus-visible:outline-2 has-focus-visible:outline-accent";
 
 /**
@@ -84,9 +84,9 @@ export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
           </div>
           {place === "butcher" && (
             <p className="mt-1.5 text-sm text-muted">
-              Nur wenn ein Essen Fleisch braucht. Ein Besuch kauft das Fleisch bis{" "}
-              {BUTCHER_REACH_DAYS} Tage im Voraus, Montag also bis Donnerstag. Ohne Haken an den
-              Tagen von Supermarkt und Markt.
+              Zum Metzger geht es nur, wenn eine Mahlzeit Fleisch braucht. Ein Besuch kauft das
+              Fleisch für {BUTCHER_REACH_DAYS} Tage im Voraus: am Montag für Montag bis Donnerstag.
+              Ist hier kein Tag angehakt, geht es an den Tagen von Supermarkt und Markt zum Metzger.
             </p>
           )}
         </fieldset>

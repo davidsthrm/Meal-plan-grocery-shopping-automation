@@ -46,6 +46,23 @@ describe("plannedServings", () => {
 });
 
 describe("shoppingAmount", () => {
+  it("buys slices of something bought by the piece as whole pieces", () => {
+    expect(shoppingAmount(line("x", 2, "Scheibe"), "Stück", {})).toEqual({
+      quantity: 0.25,
+      unit: "Stück",
+    });
+    // Where the catalog weighs a slice and a piece, that decides.
+    expect(shoppingAmount(line("x", 2, "Scheibe"), "Stück", { Scheibe: 10, Stück: 100 })).toEqual({
+      quantity: 2,
+      unit: "Scheibe",
+    });
+    // Slices of what is not bought by the piece stay slices.
+    expect(shoppingAmount(line("x", 4, "Scheibe"), "g", {})).toEqual({
+      quantity: 4,
+      unit: "Scheibe",
+    });
+  });
+
   it("returns null for a line without a quantity", () => {
     expect(shoppingAmount(line("salz", null, null), "g", {})).toBeNull();
   });

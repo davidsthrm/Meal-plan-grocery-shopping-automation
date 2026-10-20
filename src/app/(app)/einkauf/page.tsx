@@ -18,7 +18,7 @@ import { familyName } from "@/domain/family";
 import { groupAtHome, type AtHomeGroup } from "@/domain/shopping-list/at-home";
 import { marketsOfNote } from "@/domain/shopping-list/supermarkets";
 import { noteId } from "@/domain/shopping-list/trips";
-import { justFinished } from "@/domain/shopping-list/week-notes";
+import { arrangeNotes, daysToOpen, justFinished } from "@/domain/shopping-list/week-notes";
 import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
@@ -29,6 +29,7 @@ import { loadRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 import { buyAfterAll } from "./actions";
 import { NoteHead, NoteSheet, notBoughtText } from "./note-sheet";
+import { OpenNote } from "./open-note";
 
 export const metadata: Metadata = { title: "Einkaufszettel" };
 
@@ -109,6 +110,26 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const family = familyName(household.name);
   const done = notes.reduce((sum, note) => sum + note.done, 0);
   const nothing = open + done + atHome.length === 0;
+  // What is still to do first; an errand done goes to the foot, and an empty note whose day
+  // is over is not shown at all.
+  const arranged = arrangeNotes(
+    notes,
+    now,
+    (note) =>
+      note.view.groups.every((group) => group.lines.length === 0) &&
+      note.view.notBought.length === 0,
+  );
+  const tile = (note: NoteList) => (
+    <li key={note.id}>
+      <NoteTile
+        note={note}
+        week={week}
+        today={now}
+        markets={note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : []}
+        justDone={note.completed !== null && justFinished(note.completed.at, moment)}
+      />
+    </li>
+  );
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -160,19 +181,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       )}
 
       <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {notes.map((note) => (
-          <li key={note.id}>
-            <NoteTile
-              note={note}
-              week={week}
-              today={now}
-              markets={
-                note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : []
-              }
-              justDone={note.completed !== null && justFinished(note.completed.at, moment)}
-            />
-          </li>
-        ))}
+        {arranged.toDo.map(tile)}
         {noted.length > 0 && (
           <li>
             <a href="#merkzettel" className="note lift flex h-full flex-col px-4 pt-6 pb-4">
@@ -196,6 +205,22 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           </li>
         )}
       </ul>
+
+      {daysToOpen(week, now).length > 0 && <OpenNote week={week} days={daysToOpen(week, now)} />}
+
+      {arranged.done.length > 0 && (
+        <section aria-labelledby="erledigt" className="mt-10">
+          <h2 id="erledigt" className="eyebrow">
+            Erledigt
+          </h2>
+          <ul
+            aria-label="Erledigte Zettel"
+            className="tiles mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {arranged.done.map(tile)}
+          </ul>
+        </section>
+      )}
 
       {atHomeGroups.length > 0 && <AtHomeList groups={atHomeGroups} week={week} />}
 

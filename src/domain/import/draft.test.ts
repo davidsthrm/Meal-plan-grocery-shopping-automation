@@ -4,9 +4,9 @@ import { seedRecipes } from "../../../supabase/seed/recipes";
 import fixtures from "../../../tests/fixtures/sample-week/recipes.json";
 import { createCatalogIndex } from "../catalog";
 import { checkDraft } from "./checks";
-import { toDraft } from "./draft";
+import { stalksAsStaengel, toDraft } from "./draft";
 import type { ExtractedRecipe } from "./extraction";
-import { mapToCatalog, sameProductName } from "./map-ingredient";
+import { mapToCatalog, sameProductName, wholeOfCut } from "./map-ingredient";
 import type { ExpectedRecipe } from "./score";
 import { flawless } from "./testing";
 
@@ -309,5 +309,92 @@ describe("checkDraft", () => {
       ingredients: [],
     };
     expect(check(extracted).map((i) => i.code)).toEqual(["servings_missing", "no_ingredients"]);
+  });
+});
+
+describe("a part of something bought by the piece", () => {
+  const drafted = (raw: string, name: string, quantity: number | null, unit: string | null) => {
+    const base = reading(expected[0].id);
+    const [first] = base.ingredients;
+    const read = { ...first, raw, name, quantity, quantityMax: null, unit, note: "" };
+    return toDraft({ ...base, ingredients: [read] }, {}, index).ingredients[0];
+  };
+
+  it("is the whole: lemon slices are slices of a lemon, an eighth is part of one", () => {
+    expect(mapToCatalog(index, { raw: "2 Zitronenscheiben", name: "Zitronenscheiben" })?.id).toBe(
+      "zitronen",
+    );
+    expect(drafted("2 Zitronenscheiben", "Zitronenscheiben", 2, "Stück")).toMatchObject({
+      ingredientId: "zitronen",
+      quantity: 2,
+      unit: "Scheibe",
+    });
+    expect(drafted("2 Zitronenachtel", "Zitronenachtel", 2, "Stück")).toMatchObject({
+      ingredientId: "zitronen",
+      quantity: 0.25,
+      unit: "Stück",
+    });
+    expect(
+      drafted("Orangenscheiben zum Garnieren", "Bio-Orangenscheiben", null, null),
+    ).toMatchObject({ ingredientId: "orangen", quantity: null, unit: null });
+  });
+
+  it("leaves a product sold in slices or halves alone", () => {
+    expect(wholeOfCut(index, "Pfirsichhälften")).toBeNull();
+    expect(mapToCatalog(index, { raw: "4 Toastscheiben", name: "Toastscheiben" })?.id).toBe(
+      "toast",
+    );
+    expect(mapToCatalog(index, { raw: "2 Käsescheiben", name: "Käsescheiben" })?.id).toBe(
+      "gouda-scheiben",
+    );
+  });
+});
+
+describe("stalksAsStaengel", () => {
+  const stalks = (raw: string, unit: string | null, note: string | null, quantity = 3) =>
+    stalksAsStaengel({ raw, quantity, unit, note });
+
+  it("counts a line printed in stalks in Stängel and keeps the word out of its note", () => {
+    expect(stalks("3 Stiele Thymian", "Stück", "Stiele")).toMatchObject({
+      unit: "Stängel",
+      note: null,
+    });
+    expect(stalks("4 Stiele glatte Petersilie", "Stängel", "glatte Stiele")).toMatchObject({
+      note: "glatte",
+    });
+    expect(stalks("je 2 Stiele Rosmarin und Thymian", null, "je 2 Stiele")).toMatchObject({
+      unit: "Stängel",
+      note: null,
+    });
+    expect(stalks("Blätter von 8 Stielen Minze", "Stängel", "Blätter")).toMatchObject({
+      note: "Blätter",
+    });
+    expect(stalks("1 Stiel Koriander", null, null, 1)).toMatchObject({ unit: "Stängel" });
+    // What the reading said about the unit goes too.
+    expect(stalks("4 Stiele Thymian", "Stängel", "gedruckt als Stiele")).toMatchObject({
+      note: null,
+    });
+    expect(stalks("2 Stiele Dill", "Stängel", "Stiele (Einheit nicht in der Liste)")).toMatchObject(
+      { note: null },
+    );
+  });
+
+  it("leaves other lines alone", () => {
+    const artichokes = { raw: "8 Stiel-Artischocken", quantity: 8, unit: "Stück", note: null };
+    expect(stalksAsStaengel(artichokes)).toEqual(artichokes);
+    const parsley = {
+      raw: "½ Bund Petersilie, ohne Stiele",
+      quantity: 0.5,
+      unit: "Bund",
+      note: "ohne Stiele",
+    };
+    expect(stalksAsStaengel(parsley)).toEqual(parsley);
+    const herbs = {
+      raw: "5 – 6 Stiele Möhrengrün oder 1 EL Gartenkräuter",
+      quantity: 1,
+      unit: "EL",
+      note: "TK",
+    };
+    expect(stalksAsStaengel(herbs)).toEqual(herbs);
   });
 });

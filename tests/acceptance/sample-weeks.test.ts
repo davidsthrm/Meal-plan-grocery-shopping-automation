@@ -248,8 +248,11 @@ describe("a full week of the sample recipes", () => {
     const labels = items.map((item) => item.label);
     expect(new Set(labels).size).toBe(labels.length);
     expect(labels).toEqual(expect.arrayContaining(["Salz"]));
-    // Salt is on several notes, and at home once.
-    expect(items.find((item) => item.label === "Salz")!.lines.length).toBeGreaterThan(1);
+    // Salt keeps: the week's first errand buys it for every meal, and it is at home once.
+    const salt = items.find((item) => item.label === "Salz")!;
+    expect(salt.lines.map(({ trip }) => noteId(trip))).toEqual([
+      noteId({ date: MONDAY, place: "supermarket" }),
+    ]);
   });
 });
 
@@ -285,19 +288,15 @@ describe("a full week planned after Monday's shopping", () => {
     [noteId({ date: MONDAY, place: "butcher" }), shopped],
   ]);
   // Everything of the week was planned on Monday evening.
+  const afterwards = { plannedOn: MONDAY, plannedAt: shopped + 3_600_000 };
   const late: Week = {
     ...fullWeek,
     slots: fullWeek.slots.map((slot) =>
       slot.kind === "recipes"
-        ? {
-            ...slot,
-            items: slot.items.map((item) => ({
-              ...item,
-              plannedOn: MONDAY,
-              plannedAt: shopped + 3_600_000,
-            })),
-          }
-        : slot,
+        ? { ...slot, items: slot.items.map((item) => ({ ...item, ...afterwards })) }
+        : slot.kind === "free_text"
+          ? { ...slot, foods: slot.foods?.map((food) => ({ ...food, ...afterwards })) }
+          : slot,
     ),
     extras: fullWeek.extras!.map((extra) => ({
       ...extra,

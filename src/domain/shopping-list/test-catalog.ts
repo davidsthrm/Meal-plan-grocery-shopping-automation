@@ -88,6 +88,12 @@ export const testCatalog: Catalog = {
       buyingMode: "pack",
       packSize: 200,
     }),
+    // Keeps three days: what Monday's errand cannot buy for Friday.
+    ingredient("joghurt", "Joghurt", {
+      aisleGroupId: "molkerei",
+      defaultUnit: "g",
+      shelfLifeDays: 3,
+    }),
     ingredient("milch", "Milch", {
       aisleGroupId: "molkerei",
       preferredShopId: "ec",
@@ -126,6 +132,12 @@ export const testCatalog: Catalog = {
       defaultUnit: "Stück",
     }),
     ingredient("schalotten", "Schalotten", { synonyms: ["Schalotte"], defaultUnit: "Stück" }),
+    ingredient("zitronen", "Zitronen", {
+      synonyms: ["Zitrone"],
+      defaultUnit: "Stück",
+      buyingMode: "count",
+      shelfLifeDays: 14,
+    }),
     ingredient("eier", "Eier", {
       aisleGroupId: "molkerei",
       preferredShopId: "ec",

@@ -3,12 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { PLACES } from "@/domain/catalog";
 import { isIsoDate, mondayOf } from "@/domain/dates";
 import { noteToBuyOn } from "@/domain/shopping-list/at-home";
 import { originsOf } from "@/domain/shopping-list/build";
 import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
 import { readDrugstoreEntry } from "@/domain/shopping-list/drugstore";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
+import { daysToOpen } from "@/domain/shopping-list/week-notes";
 import { parseQuantity } from "@/domain/quantity";
 import { isUnit } from "@/domain/units";
 import { today } from "@/lib/today";
@@ -20,6 +22,8 @@ import {
   isNote,
   loadShoppingNotes,
   moveLines,
+  openNote,
+  putAwayNote,
   setEntryKind,
 } from "@/server/shopping/list";
 import { loadSupermarkets } from "@/server/catalog";
@@ -291,4 +295,42 @@ export async function changeNoteDay(form: FormData): Promise<void> {
     target,
   );
   backToList({ ...input, note: noteId(target) });
+}
+
+/**
+ * "Neuer Zettel": opens a note for a place on a day of the week from today on, and shows it
+ * to be written on. A note that is there already is simply shown.
+ */
+export async function openListNote(form: FormData): Promise<void> {
+  const input = read(
+    z.object({
+      week: place.shape.week,
+      place: z.enum(PLACES),
+      day: z.string().refine(isIsoDate),
+    }),
+    form,
+  );
+  const household = await requireHousehold();
+  if (!daysToOpen(input.week, today()).includes(input.day)) {
+    redirect(`/einkauf?w=${input.week}`);
+  }
+  const trip = { date: input.day, place: input.place };
+  await openNote(await createSessionClient(), household.id, trip);
+  revalidatePath("/einkauf");
+  redirect(`/einkauf?w=${input.week}&zettel=${noteId(trip)}`);
+}
+
+/** Puts away a note opened by hand that nothing is written on. */
+export async function putAwayListNote(form: FormData): Promise<void> {
+  const input = read(place, form);
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const { notes } = await loadShoppingNotes(db, household, input.week);
+  const note = notes.find((entry) => entry.id === input.note);
+  const empty =
+    note &&
+    note.view.groups.every((group) => group.lines.length === 0) &&
+    note.view.notBought.length === 0;
+  if (note?.openedByHand && empty) await putAwayNote(db, note.trip);
+  backToList({ ...input, back: "all" });
 }

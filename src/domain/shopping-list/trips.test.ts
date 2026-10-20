@@ -213,19 +213,40 @@ describe("noteId", () => {
 });
 
 describe("assignTrip", () => {
-  it("buys at the supermarket on the last shopping day before the meal", () => {
+  it("buys at the week's first errand to the supermarket what keeps until the meal", () => {
     expect(assignTrip(need(MONDAY), trips)).toEqual(shop(MONDAY));
     expect(assignTrip(need(THURSDAY), trips)).toEqual(shop(MONDAY));
-    expect(assignTrip(need(FRIDAY), trips)).toEqual(shop(FRIDAY));
-    expect(assignTrip(need(SUNDAY), trips)).toEqual(shop(FRIDAY));
+    // The leeks and the fish stock for Friday's dinner: no second big errand for them.
+    expect(assignTrip(need(FRIDAY), trips)).toEqual(shop(MONDAY));
+    expect(assignTrip(need(SUNDAY, { shelfLifeDays: 7 }), trips)).toEqual(shop(MONDAY));
+  });
+
+  it("keeps the rule before for the weeks before the first errand bought what keeps", () => {
+    const from = { firstErrandFrom: "2026-10-19" };
+    // The week of the 12th was shopped on the last errand before each meal.
+    expect(assignTrip(need(FRIDAY), trips, from)).toEqual(shop(FRIDAY));
+    expect(assignTrip(need(THURSDAY), trips, from)).toEqual(shop(MONDAY));
+    // From the week named on, Monday buys for Friday.
+    expect(assignTrip(need("2026-10-23"), trips, from)).toEqual(shop("2026-10-19"));
+  });
+
+  it("leaves to a later errand only what would not keep from the first", () => {
+    const salad = { shelfLifeDays: 3 };
+    expect(assignTrip(need(THURSDAY, salad), trips)).toEqual(shop(MONDAY));
+    expect(assignTrip(need(FRIDAY, salad), trips)).toEqual(shop(FRIDAY));
+    expect(assignTrip(need(SUNDAY, salad), trips)).toEqual(shop(FRIDAY));
+    // Planned after Monday's errand, Friday is the first that can buy it.
+    expect(assignTrip(need(SUNDAY, { plannedOn: TUESDAY }), trips)).toEqual(shop(FRIDAY));
+    // A week's errand does not buy for the week after: Monday's lunch is the Friday before.
+    expect(assignTrip(need(MONDAY, { lunch: true }), trips)).toEqual(shop("2026-10-09"));
   });
 
   it("buys a lunch on a working day on the errand before: the household shops after lunch", () => {
     const lunch = { lunch: true };
     expect(assignTrip(need(FRIDAY, lunch), trips)).toEqual(shop(MONDAY));
     expect(assignTrip(need(MONDAY, lunch), trips)).toEqual(shop("2026-10-09"));
-    // The dinner of that day comes after the errand.
-    expect(assignTrip(need(FRIDAY), trips)).toEqual(shop(FRIDAY));
+    // The dinner of that day comes after the errand: what would not keep is bought then.
+    expect(assignTrip(need(FRIDAY, { shelfLifeDays: 2 }), trips)).toEqual(shop(FRIDAY));
     // Unchanged on a day without an errand.
     expect(assignTrip(need(THURSDAY, lunch), trips)).toEqual(shop(MONDAY));
   });
@@ -314,7 +335,8 @@ describe("assignTrip", () => {
   it("leaves the middle of the week to the supermarket", () => {
     const fresh = { fresh: "market" as const, shelfLifeDays: 5 };
     expect(assignTrip(need(WEDNESDAY, fresh), trips)).toEqual(shop(MONDAY));
-    expect(assignTrip(need(FRIDAY, fresh), trips)).toEqual(shop(FRIDAY));
+    expect(assignTrip(need(FRIDAY, fresh), trips)).toEqual(shop(MONDAY));
+    expect(assignTrip(need(FRIDAY, { ...fresh, shelfLifeDays: 3 }), trips)).toEqual(shop(FRIDAY));
   });
 
   it("buys minced meat on the day it is cooked", () => {

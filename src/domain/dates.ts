@@ -34,6 +34,21 @@ export function weekDates(monday: IsoDate): IsoDate[] {
 }
 
 /**
+ * The days of a week in the order the plan shows them: in the running week today comes
+ * first, then the rest of the week, and the days that are over at the foot (`past`). Any
+ * other week keeps its order from Monday, with nothing over: a week gone by is looked at
+ * whole, one to come is planned whole.
+ */
+export function daysFromToday(
+  monday: IsoDate,
+  today: IsoDate,
+): { ahead: IsoDate[]; past: IsoDate[] } {
+  const days = weekDates(monday);
+  if (today < days[0] || today > days[6]) return { ahead: days, past: [] };
+  return { ahead: days.filter((day) => day >= today), past: days.filter((day) => day < today) };
+}
+
+/**
  * The week someone opening the planner most likely wants. The household plans on the weekend
  * for the week ahead, so from Saturday on that is the coming week.
  */

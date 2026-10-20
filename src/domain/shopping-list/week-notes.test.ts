@@ -4,8 +4,10 @@ import type { Recipe } from "../recipe";
 import { buildShoppingList } from "./build";
 import { resolveLine } from "./present";
 import { line, testIndex } from "./test-catalog";
-import { DEFAULT_SHOPPING_DAYS, noteId, tripsBetween } from "./trips";
+import { DEFAULT_SHOPPING_DAYS, noteId, tripsBetween, type ShoppingTrip } from "./trips";
 import {
+  arrangeNotes,
+  daysToOpen,
   completion,
   extrasToBuy,
   JUST_FINISHED_MS,
@@ -110,7 +112,8 @@ describe("notesOfWeek", () => {
 
 describe("notesOf", () => {
   it("names every note lines are on, once", () => {
-    const soup = recipe("suppe", line("sahne", 200, "ml"), line("milch", 500, "ml"));
+    // The yoghurt for Saturday would not keep from Monday.
+    const soup = recipe("suppe", line("sahne", 200, "ml"), line("joghurt", 150, "g"));
     const lines = build([soup], [dinner(MONDAY, "suppe"), dinner(SATURDAY, "suppe")]);
     expect(notesOf(lines).map(noteId)).toEqual([`${MONDAY}.supermarket`, `${FRIDAY}.supermarket`]);
   });
@@ -174,5 +177,52 @@ describe("justFinished", () => {
 
   it("takes a tick from another device's clock ahead of this one as now", () => {
     expect(justFinished(now + 30_000, now)).toBe(true);
+  });
+});
+
+describe("arrangeNotes", () => {
+  const TUESDAY = "2026-10-13";
+  const note = (date: string, place: ShoppingTrip["place"], lines: number, done = false) => ({
+    trip: { date, place },
+    lines,
+    completed: done ? { at: 1, by: null } : null,
+  });
+  const ids = (notes: { trip: ShoppingTrip }[]) => notes.map((entry) => noteId(entry.trip));
+  const arrange = (notes: ReturnType<typeof note>[]) =>
+    arrangeNotes(notes, TUESDAY, (entry) => entry.lines === 0);
+
+  it("puts what is still to do first, from today on, and the errands done at the foot", () => {
+    const { toDo, done } = arrange([
+      note(MONDAY, "supermarket", 5, true),
+      note(TUESDAY, "bakery", 1),
+      note(FRIDAY, "supermarket", 3),
+      note(SATURDAY, "market", 2),
+    ]);
+    expect(ids(toDo)).toEqual([`${TUESDAY}.bakery`, `${FRIDAY}.supermarket`, `${SATURDAY}.market`]);
+    expect(ids(done)).toEqual([`${MONDAY}.supermarket`]);
+  });
+
+  it("leaves out a note whose day is over and that has nothing on it", () => {
+    const { toDo, done } = arrange([
+      note(MONDAY, "drugstore", 0),
+      note(TUESDAY, "drugstore", 0),
+      note(SATURDAY, "drugstore", 0),
+    ]);
+    // Today's and Saturday's stay, empty, to be written on.
+    expect(ids(toDo)).toEqual([`${TUESDAY}.drugstore`, `${SATURDAY}.drugstore`]);
+    expect(done).toEqual([]);
+  });
+
+  it("keeps an errand whose day is over while something on it is open, after those to come", () => {
+    const { toDo } = arrange([note(MONDAY, "supermarket", 4), note(FRIDAY, "supermarket", 2)]);
+    expect(ids(toDo)).toEqual([`${FRIDAY}.supermarket`, `${MONDAY}.supermarket`]);
+  });
+});
+
+describe("daysToOpen", () => {
+  it("offers the days from today on, all of a week to come and none of one gone by", () => {
+    expect(daysToOpen(MONDAY, FRIDAY)).toEqual([FRIDAY, SATURDAY, SUNDAY]);
+    expect(daysToOpen(MONDAY, SAT_BEFORE)).toHaveLength(7);
+    expect(daysToOpen(MONDAY, "2026-10-19")).toEqual([]);
   });
 });

@@ -733,6 +733,7 @@ export type Database = {
           planned_at: string | null
           planned_on: string | null
           position: number
+          quantity: number | null
           shop_id: string | null
         }
         Insert: {
@@ -744,6 +745,7 @@ export type Database = {
           planned_at?: string | null
           planned_on?: string | null
           position?: number
+          quantity?: number | null
           shop_id?: string | null
         }
         Update: {
@@ -755,6 +757,7 @@ export type Database = {
           planned_at?: string | null
           planned_on?: string | null
           position?: number
+          quantity?: number | null
           shop_id?: string | null
         }
         Relationships: [
@@ -1800,6 +1803,7 @@ export type Database = {
           generated_at: string | null
           household_id: string
           id: string
+          opened_at: string | null
           place: string
           shopping_date: string
           week_plan_id: string | null
@@ -1808,6 +1812,7 @@ export type Database = {
           generated_at?: string | null
           household_id: string
           id?: string
+          opened_at?: string | null
           place?: string
           shopping_date: string
           week_plan_id?: string | null
@@ -1816,6 +1821,7 @@ export type Database = {
           generated_at?: string | null
           household_id?: string
           id?: string
+          opened_at?: string | null
           place?: string
           shopping_date?: string
           week_plan_id?: string | null

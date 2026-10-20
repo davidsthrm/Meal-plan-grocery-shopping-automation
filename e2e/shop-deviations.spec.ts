@@ -13,7 +13,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 const tile = (page: Page, note: string) =>
-  page.getByRole("list", { name: "Zettel" }).getByRole("link", { name: new RegExp(`^${note}`) });
+  // The notes still to do, or those done at the foot.
+  page.getByRole("list", { name: /Zettel$/ }).getByRole("link", { name: new RegExp(`^${note}`) });
 const sheet = (page: Page, note: string) => page.getByRole("region", { name: note, exact: true });
 
 /** Writes lines onto Monday's note, as the household does before it goes. */
