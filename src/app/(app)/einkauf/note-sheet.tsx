@@ -21,15 +21,9 @@ import {
 import type { AisleGroup, CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { quantityText } from "@/domain/quantity";
-import {
-  dayProblems,
-  moveProblems,
-  moveTargets,
-  type DayProblem,
-} from "@/domain/shopping-list/change-day";
+import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
 import { decisionOf, plannedOf } from "@/domain/shopping-list/decisions";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
-import { lineOnNote } from "@/domain/shopping-list/duplicates";
 import { formatAmount, formatPurchase } from "@/domain/shopping-list/format";
 import type { ViewLine } from "@/domain/shopping-list/present";
 import {
@@ -164,13 +158,6 @@ export function actionLineOf(view: ViewLine, context: RowContext): ActionLine {
   };
 }
 
-/** Where a line is also on another note, and whether it can be bought there instead. */
-interface Elsewhere {
-  trip: ShoppingTrip;
-  /** Why buying it there is too late or would not keep: then it is only said. */
-  problem: DayProblem | null;
-}
-
 /** A note picked up: every line, to tick, to annotate, and to move to another note. */
 export function NoteSheet({
   note,
@@ -180,7 +167,6 @@ export function NoteSheet({
   today: now,
   members,
   supermarkets,
-  alsoOn,
   renderedAt,
   choices,
   history,
@@ -198,8 +184,6 @@ export function NoteSheet({
   members: string[];
   /** The household's supermarkets, the main one first. */
   supermarkets: Shop[];
-  /** The other notes of the week each line is on too (`lineOnNote`). */
-  alsoOn: ReadonlyMap<string, ShoppingTrip[]>;
   /** When the server drew the page, by its clock: ticks of this device after it count more. */
   renderedAt: number;
 }) {
@@ -276,11 +260,6 @@ export function NoteSheet({
     notBought,
     moved,
   };
-  const elsewhere = (entry: ViewLine): Elsewhere[] =>
-    (alsoOn.get(lineOnNote(trip, entry.line.key)) ?? []).map((other) => ({
-      trip: other,
-      problem: moveProblems(entry.line, other, now, index)[0] ?? null,
-    }));
 
   return (
     <section
@@ -372,7 +351,6 @@ export function NoteSheet({
                           shop={chosenShop(index, line)}
                           others={moveTargets(line.line, trip, others, now, index)}
                           drugstore={drugstore}
-                          elsewhere={elsewhere(line)}
                           supermarkets={favourites}
                           kinds={kinds}
                         />
@@ -567,7 +545,6 @@ function Line({
   shop,
   others,
   drugstore,
-  elsewhere,
   supermarkets,
   kinds,
 }: {
@@ -581,8 +558,6 @@ function Line({
   others: ShoppingTrip[];
   /** A line of the drugstore's note: written by hand, nothing to add to it but its removal. */
   drugstore: boolean;
-  /** The other notes of the week the same thing is on. */
-  elsewhere: Elsewhere[];
   /** The supermarkets the line can be bought at, the main one first. Empty elsewhere. */
   supermarkets: Shop[];
   /** The kinds of grocery, in the order of a walk through the shop. */
@@ -765,30 +740,6 @@ function Line({
           )}
         </div>
       </details>
-      {/* The same thing on another note of the week: said, and bought there in one go
-            where that is not too late. */}
-      {elsewhere.length > 0 && !view.checked && (
-        <ul className="-mt-1 mb-1 space-y-0.5 text-sm text-muted print:hidden">
-          {elsewhere.map((other) => (
-            <li key={noteId(other.trip)} className="flex flex-wrap items-center gap-x-2">
-              <span>Auch auf: {noteName(other.trip)}</span>
-              {other.problem && <span>· {problemText(other.problem)}</span>}
-              {!other.problem && (
-                <form action={moveListLine}>
-                  {where}
-                  <input type="hidden" name="to" value={noteId(other.trip)} />
-                  <SubmitButton
-                    className="link min-h-11 text-sm"
-                    label={`${line.label} mit ${noteName(other.trip)} kaufen`}
-                  >
-                    Dort mitkaufen
-                  </SubmitButton>
-                </form>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
     </ActionRow>
   );
 }

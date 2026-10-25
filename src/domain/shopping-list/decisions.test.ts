@@ -114,35 +114,30 @@ describe("the Monday errand", () => {
     expect(view.notBought[1].view).toMatchObject({ status: "removed" });
   });
 
-  it("is done once nothing is open, and the last decision says when", () => {
+  it("is done once nothing is open, and the last purchase says when", () => {
     const view = viewOf(lines, monday, states);
-    const removed = view.notBought
-      .filter((entry) => entry.view.status === "removed")
-      .map((entry) => ({ at: states[entry.view.line.key].decidedAt as number, by: "david" }));
-    expect(completion(toBuy(view), ticks, removed)).toEqual({ at: at("10:04"), by: null });
+    expect(completion(toBuy(view), ticks)).toEqual({ at: at("10:04"), by: null });
   });
 
   it("opens again when a removed line is opened again", () => {
     const reopened = { ...states, "manual:shots": {} };
     const view = viewOf(lines, monday, reopened);
     expect(view.notBought).toHaveLength(1);
-    expect(completion(toBuy(view), ticks, [])).toBeNull();
+    expect(completion(toBuy(view), ticks)).toBeNull();
   });
 
-  it("is done when everything on it was removed", () => {
+  it("is not done when everything on it was removed and nothing bought", () => {
+    // Nobody went shopping: the lines were taken off while the week was planned.
     const view = viewOf(build([], { entries: [typed("shots", "Ingwer-Shots")] }), monday, {
       "manual:shots": { removed: true },
     });
     expect(toBuy(view)).toEqual([]);
-    expect(completion(toBuy(view), ticks, [{ at: at("10:03"), by: "david" }])).toEqual({
-      at: at("10:03"),
-      by: "david",
-    });
+    expect(completion(toBuy(view), ticks)).toBeNull();
   });
 
   it("does not count what is still open as done", () => {
     const view = viewOf(lines, monday, { ...states, "eier@main": {} });
-    expect(completion(toBuy(view), ticks, [])).toBeNull();
+    expect(completion(toBuy(view), ticks)).toBeNull();
   });
 });
 

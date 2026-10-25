@@ -12,7 +12,7 @@ import {
   type Dimension,
   type Unit,
 } from "../units";
-import { parseIngredientLine } from "../library/typed-recipe";
+import { productName } from "../import/tidy-proposals";
 import { parseFreeEntry } from "./free-entry";
 import { labelFor } from "./format";
 import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
@@ -462,10 +462,10 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       const lunch = source.type === "recipe" && source.meal === "lunch";
       const on = date ? errandFor(ingredient, date, planned, lunch) : extrasErrand(planned);
       if (!ingredient) {
-        // Not in the catalog yet ("Neue Zutaten"): bought by its name, and as much as the
-        // meal needs. Shown as printed, "0,75 Seele" stood on the list for one person
-        // whatever the meal was planned for.
-        const name = parseIngredientLine(line.originalText)?.name || line.originalText;
+        // Not in the catalog yet ("Neue Zutaten"): bought by the name it is proposed with, or
+        // read from the printed line, and as much as the meal needs. Shown as printed,
+        // "0,75 Seele" stood on the list for one person whatever the meal was planned for.
+        const name = line.proposedName ?? productName(line.originalText);
         const quantity = line.quantityMax ?? line.quantity;
         const contribution = {
           source,

@@ -20,7 +20,6 @@ import {
   type MovedAway,
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
-import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { guessKind } from "@/domain/shopping-list/free-entry";
 import { shopChoices, type PastChoice, type ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
@@ -94,11 +93,6 @@ export interface WeekNotes {
   /** Where the household bought what before, by `itemKey`. */
   history: Map<string, PastChoice[]>;
   /**
-   * For every open line that is on another note of the week too, those notes, by
-   * `lineOnNote`: small tomatoes on Monday's and on Saturday's.
-   */
-  alsoOn: Map<string, ShoppingTrip[]>;
-  /**
    * When the notes were read, in milliseconds, taken before the first read: a tick the
    * server took after it may be missing from them (`shownChecked`).
    */
@@ -118,7 +112,7 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
         db
           .from("recipe_ingredient")
           .select(
-            "recipe_id, position, ingredient_id, quantity, quantity_max, unit, is_approximate, is_optional, secondary_quantity, secondary_unit, secondary_scope, alternative_to, original_text, note",
+            "recipe_id, position, ingredient_id, proposal_id, quantity, quantity_max, unit, is_approximate, is_optional, secondary_quantity, secondary_unit, secondary_scope, alternative_to, original_text, note",
           )
           .in("recipe_id", ids)
           .order("recipe_id")
@@ -127,6 +121,17 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
       "load ingredient lines",
     ),
   ]);
+  // A line the catalog does not know yet is bought by the name it is proposed with, as the
+  // recipe's form and "Neue Zutaten" call it.
+  const proposalIds = [...new Set(lines.flatMap((line) => line.proposal_id ?? []))];
+  const proposed =
+    proposalIds.length === 0
+      ? []
+      : must(
+          await db.from("ingredient_proposal").select("id, name").in("id", proposalIds),
+          "load proposed names",
+        );
+  const proposedName = new Map(proposed.map((proposal) => [proposal.id, proposal.name]));
   return must(recipes, "load planned recipes").map((recipe): Recipe => ({
     id: recipe.id,
     title: recipe.title,
@@ -158,6 +163,7 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
         optional: line.is_optional,
         originalText: line.original_text,
         note: line.note,
+        proposedName: line.proposal_id ? proposedName.get(line.proposal_id) : null,
       })),
   }));
 }
@@ -445,12 +451,6 @@ export async function loadShoppingNotes(
     completion(
       view.groups.flatMap((group) => group.lines),
       (key) => ticks.get(`${noteId(trip)}|${key}`),
-      view.notBought
-        .filter((entry) => entry.view.status === "removed")
-        .map((entry) => {
-          const state = states.get(noteId(trip))?.[entry.view.line.key];
-          return { at: state?.decidedAt ?? 0, by: state?.decidedBy ?? null };
-        }),
     );
   // An errand that is done has not bought what was planned after it: the lines are worked
   // out once more with that known, and such a meal goes to an errand still to come.
@@ -504,12 +504,6 @@ export async function loadShoppingNotes(
     supermarkets: favouriteSupermarkets(index.catalog.shops),
     choices: shopChoices(index, favouriteSupermarkets(index.catalog.shops)),
     history: historyOf(must(historyRows, "load where things were bought")),
-    alsoOn: alsoOn(
-      notes.map((note) => ({
-        trip: note.trip,
-        lines: note.view.groups.flatMap((group) => group.lines),
-      })),
-    ),
   };
 }
 

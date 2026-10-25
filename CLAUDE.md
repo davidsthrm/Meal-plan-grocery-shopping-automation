@@ -116,6 +116,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   allowed exists for EDEKA and REWE, and the family wants no uploads.
 - Phase 15 (branch `phase-15-statistics`): "Statistik" next to "Alle Wochen": how the family
   eats and shops by week, month and year, each figure a link to what it counts.
+- Phase 16 (branch `phase-16-shopping-fixes`): an errand is done only once something on it
+  was bought, and its moment is the last purchase; lines the catalog does not know yet go
+  on the list by their proposed name; no "Auch auf" under the lines.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -1082,10 +1085,9 @@ Shopping list
 - The amount of a line can be changed on its note ("Menge ändern", `LineState.amount`,
   `shopping_line_state.quantity` and `unit`). The line then says what the plan has, and
   "Wie geplant" takes the change back. The change stays when the plan changes.
-- The same thing on another open note of the week (small tomatoes on Monday's supermarket
-  note and Saturday's market note) is said under the line ("Auch auf: Sa 17. Markt",
-  `alsoOn`). "Dort mitkaufen" moves the line there where that is not too late and it keeps
-  (`moveProblems`); otherwise the line says why ("Sahne wird schon am Montag gebraucht.").
+- A line does not say on which other notes of the week the same thing stands. "Auch auf:
+  Di 27. Supermarkt" with "Dort mitkaufen" under the lines was taken out: the household did
+  not need it (October 2026). The arrow of a line moves it.
 - The household's supermarkets are found by its postal code (`household.postal_code`,
   `place_name`; empty for a new household, and until it is entered no market can be
   chosen). The server looks the code up on OpenStreetMap (Nominatim), asks Overpass for the
@@ -1203,14 +1205,19 @@ Shopping list
   of the note to the same place on the new day; what the plan adds later is again put where
   it belongs by itself. Any note can be done on its own day by these rules: whole weeks on
   the real errands are held against it (`tests/acceptance/sample-weeks.test.ts`).
-- An errand is done when no line of its note is open: each is bought, in full or in part,
-  or removed, by the last decision, or by "Einkauf erledigt", which ticks what is still
-  open. The note then pales, moves to the foot of the page under "Erledigt"
-  (`arrangeNotes`), and carries a stamp with the name of whoever made the last tick (`NoteList.completed`,
-  from `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored
-  for it (`completion`): a line the plan adds afterwards opens the errand again, which is
-  what it is, and so does a line typed onto the note. What was planned after the last tick
-  does not: that errand has not bought it. The notes are worked out a second time with the
+- An errand is done when no line of its note is open and something on it was bought: each
+  line is bought, in full or in part, or removed, by the last decision, or by "Einkauf
+  erledigt", which ticks what is still open. Its moment is the last purchase, never a line
+  removed: a removal is a decision about the plan, and two lines taken off Monday's note
+  while the week was planned made the errand done, so everything planned afterwards was
+  bought "shortly before" on a note under "Erledigt", where nobody looked for the olives
+  (October 2026). A note whose lines were only removed was not shopped. A done note pales,
+  moves to the foot of the page under "Erledigt" (`arrangeNotes`), and carries a stamp with
+  the name of whoever made the last tick (`NoteList.completed`, from
+  `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored for
+  it (`completion`): a line the plan adds afterwards opens the errand again, which is what
+  it is, and so does a line typed onto the note. What was planned after the last tick does
+  not: that errand has not bought it. The notes are worked out a second time with the
   errands that are done (`ErrandRules.doneAt`), and such a need goes to the next errand in
   time or is bought shortly before.
 - The notes still to do lie first, from today on in order of day and place, then one whose
@@ -1403,9 +1410,12 @@ Import
 - An ingredient the catalog does not know is never created silently. It becomes one open
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
-  lines keep their ingredient empty, and the shopping list buys them by the name in the
-  printed line (`parseIngredientLine`), scaled with the meal like any other line, what is
-  counted rounded up to whole pieces: "0,75 Seele" for one person stood on the list as
+  lines keep their ingredient empty, and the shopping list buys them by the name they are
+  proposed with (`RecipeIngredient.proposedName`, as the recipe's form shows them), or
+  without a proposal by the name in the printed line (`productName`: brackets are a note,
+  and a comma ends the name only after its noun, so "grüne, paprikagefüllte Oliven" are not
+  "grüne"), scaled with the meal like any other line, what is counted rounded up to whole
+  pieces: "0,75 Seele" for one person stood on the list as
   printed for a meal of four (October 2026). Such a line is under "Sonstiges" at the
   supermarket until the proposal is confirmed. A proposal's "same as" is never taken from a
   similar spelling (`SUGGESTION_PROMPT`): the model offered "Seezungenfilets" for "Seele",

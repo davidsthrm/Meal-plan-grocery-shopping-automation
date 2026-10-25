@@ -112,33 +112,27 @@ export function justFinished(at: number, now: number): boolean {
 }
 
 /**
- * Whether an errand is done: nothing on its note is open any more. Every line is bought, in
- * full or in part, or removed; what was moved to another note is not on this one. The
- * decision made last says who finished it and when. What was planned after that moment
- * cannot have been bought on it and leaves it done (`ErrandRules.doneAt`): a meal planned
- * on a shopping day after the shopping. Null while anything else is open, and for a note
- * with nothing to buy. A line opened again opens the errand again: nothing is stored.
+ * Whether an errand is done: nothing on its note is open any more, and something on it was
+ * bought. Every line is bought, in full or in part, or removed; what was moved to another
+ * note is not on this one. The last purchase says who finished it and when. A line removed
+ * is a decision about the plan, not a moment someone shopped: taken as the errand's moment,
+ * two lines removed while the week was planned made Monday's errand done (October 2026).
+ * What was planned after that moment cannot have been bought on it and leaves it done
+ * (`ErrandRules.doneAt`): a meal planned on a shopping day after the shopping. Null while
+ * anything else is open and while nothing is bought. A line opened again opens the errand
+ * again: nothing is stored.
  */
 export function completion(
   toBuy: readonly ViewLine[],
   tickOf: (lineKey: string) => LineTick | undefined,
-  /**
-   * The decisions that closed a line without buying it: removed ("nicht kaufen"). They
-   * count like a tick, and the last of them may be what finished the errand.
-   */
-  notBought: readonly LineTick[] = [],
 ): LineTick | null {
-  const ticks = [
-    ...toBuy.flatMap((view) => (view.checked ? (tickOf(view.line.key) ?? []) : [])),
-    ...notBought,
-  ];
-  const last = ticks.reduce<LineTick | null>(
-    (latest, tick) => (latest === null || tick.at > latest.at ? tick : latest),
-    null,
-  );
+  const bought = toBuy.filter((view) => view.checked);
+  if (bought.length === 0) return null;
+  const last = bought.reduce<LineTick | null>((latest, view) => {
+    const tick = tickOf(view.line.key);
+    return tick && (latest === null || tick.at > latest.at) ? tick : latest;
+  }, null);
   const open = toBuy.filter((view) => !view.checked);
-  const decided = toBuy.length - open.length + notBought.length;
-  if (decided === 0) return null;
   if (last === null) return open.length === 0 ? { at: 0, by: null } : null;
   const plannedAfter = open.every((view) =>
     view.line.contributions.every((part) => part.plannedAt != null && part.plannedAt > last.at),

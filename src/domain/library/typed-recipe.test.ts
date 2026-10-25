@@ -36,6 +36,25 @@ describe("parseIngredientLine", () => {
     expect(line("2 bis 3 EL Öl")).toMatchObject({ quantity: 2, quantityMax: 3, unit: "EL" });
   });
 
+  it("keeps words that describe the thing in its name, up to its noun", () => {
+    expect(line("6 grüne, paprikagefüllte Oliven (Glas; nach Belieben)")).toMatchObject({
+      quantity: 6,
+      name: "grüne, paprikagefüllte Oliven",
+      note: "Glas; nach Belieben",
+    });
+  });
+
+  it("takes what stands in brackets as a note, commas inside included", () => {
+    expect(
+      line("800 g gemischtes Gemüse (z. B. rote und gelbe Paprikaschoten, Zucchini), gewürfelt"),
+    ).toMatchObject({
+      quantity: 800,
+      unit: "g",
+      name: "gemischtes Gemüse",
+      note: "gewürfelt, z. B. rote und gelbe Paprikaschoten, Zucchini",
+    });
+  });
+
   it("takes what follows a comma as a note", () => {
     expect(line("2 Zwiebeln, fein gewürfelt")).toMatchObject({
       name: "Zwiebeln",

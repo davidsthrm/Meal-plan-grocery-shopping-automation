@@ -27,8 +27,8 @@ const AMOUNT = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|bis)\s*(${NUMBER
 
 /**
  * Reads one typed line: "200 g Spaghetti", "1 Glas Pesto", "2-3 Tomaten", "½ Bund Basilikum",
- * "Zwiebeln, gewürfelt", "Parmesan". A number without a unit counts pieces. What follows a
- * comma is a note. Returns null for an empty line.
+ * "Zwiebeln, gewürfelt", "Parmesan". A number without a unit counts pieces. Where the name
+ * ends and a note begins: `splitNote`. Returns null for an empty line.
  */
 export function parseIngredientLine(text: string): TypedLine | null {
   const typed = text.trim().replace(/\s+/g, " ");
@@ -56,10 +56,32 @@ export function parseIngredientLine(text: string): TypedLine | null {
       unit = "Stück";
     }
   }
-  const comma = rest.indexOf(",");
-  const name = (comma === -1 ? rest : rest.slice(0, comma)).trim();
-  const note = comma === -1 ? "" : rest.slice(comma + 1).trim();
-  return { quantity, quantityMax, unit, name, note: note || null };
+  return { quantity, quantityMax, unit, ...splitNote(rest) };
+}
+
+/**
+ * Where the name ends and a note begins: at a comma, and what stands in brackets is a note
+ * too. A comma between words that describe the thing belongs to the name, which runs to its
+ * noun, written with a capital: "grüne, paprikagefüllte Oliven" are olives, and "gemischtes
+ * Gemüse (z. B. rote und gelbe Paprikaschoten, Zucchini)" is mixed vegetables. Cut at the
+ * first comma, the shopping list bought "grüne" (October 2026).
+ */
+function splitNote(text: string): { name: string; note: string | null } {
+  const brackets: string[] = [];
+  const parts = text
+    .replace(/\(([^)]*)\)?/g, (_, inside: string) => {
+      brackets.push(inside.trim());
+      return " ";
+    })
+    .split(",")
+    .map((part) => part.trim().replace(/\s+/g, " "));
+  const end = Math.max(
+    parts.findIndex((part) => /\p{Lu}/u.test(part)),
+    0,
+  );
+  const name = parts.slice(0, end + 1).join(", ");
+  const note = [...parts.slice(end + 1), ...brackets].filter(Boolean).join(", ");
+  return { name: name || text.trim(), note: note || null };
 }
 
 /** The form as it arrives: every field as typed. */

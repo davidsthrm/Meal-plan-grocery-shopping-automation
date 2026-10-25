@@ -471,6 +471,18 @@ describe("buildShoppingList", () => {
     expect(forOne.amounts).toEqual([{ quantity: 0.75, unit: "Stück" }]);
   });
 
+  it("buys a line the catalog does not know by the name it is proposed with", () => {
+    const olives = line(null, 6, "Stück", {
+      originalText: "6 grüne, paprikagefüllte Oliven (Glas; nach Belieben)",
+      proposedName: "Paprikaoliven",
+    });
+    const lines = build([recipe("salat", [olives])], [slot(MONDAY, "salat")]);
+    expect(lines.get("unmapped:paprikaoliven")).toMatchObject({
+      label: "Paprikaoliven",
+      purchase: { quantity: 6, unit: "Stück" },
+    });
+  });
+
   it("lists a line the catalog does not know without an amount by its name alone", () => {
     const lines = build(
       [recipe("a", [line(null, null, null, { originalText: "Sternfrucht, in Scheiben" })])],
