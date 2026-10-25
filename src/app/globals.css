@@ -68,6 +68,15 @@
 
 html {
   font-size: 17px;
+  /* Under the page, the paper: nothing else shows where the page ends. */
+  background: var(--color-paper);
+  /*
+   * An app's page ends where it ends: pulled further at the top or the foot it does not
+   * bounce away from the header, and no pull reloads it. Pinching does not zoom (`AppFeel`
+   * for Safari); a finger still scrolls either way, shelves sideways too.
+   */
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
   /* No grey flash over what is tapped: every control answers the press itself (`:active`). */
   -webkit-tap-highlight-color: transparent;
   /* The header stays at the top (`.app-header`): an anchor scrolled to lands below it. */
@@ -85,6 +94,7 @@ body {
   line-height: 1.45;
   /* The frosted strip behind the header reaches the screen's edges without widening it. */
   overflow-x: clip;
+  overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
   /* The page reaches the screen's edges (`viewport-fit=cover`); its text stays clear of the
      notch and the status bar. */
@@ -2089,6 +2099,46 @@ details > summary {
 }
 details > summary::-webkit-details-marker {
   display: none;
+}
+
+/*
+ * A phone held across: the app is made for a phone held upright, and an iPhone cannot be
+ * told to stay so. While it is held across, everything else is out of sight, the open
+ * sheets and dialogs too, and comes back as it was once it is upright again. Asked of the
+ * screen: low and touched, which an iPad either way and a desktop window never are.
+ */
+.turn-upright {
+  display: none;
+}
+@media (orientation: landscape) and (height < 30rem) and (pointer: coarse) {
+  body > :not(.turn-upright),
+  dialog,
+  [popover] {
+    display: none !important;
+  }
+  .turn-upright {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    text-align: center;
+  }
+}
+.turn-upright-phone {
+  width: 3.5rem;
+  height: 3.5rem;
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* On paper: black on white, nothing that only makes sense on a screen. */

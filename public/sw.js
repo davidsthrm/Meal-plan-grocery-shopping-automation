@@ -104,6 +104,9 @@ self.addEventListener("activate", (event) => {
             .map((name) => caches.delete(name)),
         ),
       )
+      // The page is asked for while the worker is still waking up, not after: opening the
+      // app waited for both one after the other.
+      .then(() => self.registration.navigationPreload?.enable())
       .then(() => self.clients.claim()),
   );
 });
@@ -127,13 +130,17 @@ self.addEventListener("fetch", (event) => {
 async function navigate(event, url) {
   const notes = isNotesPage(url);
   const askedAt = Date.now();
-  const network = fetch(event.request).then((response) => {
-    // Kept beside the answer, which goes out as it streams in.
-    if (notes && storable(response)) {
-      event.waitUntil(keepPage(pageKey(url), response.clone(), askedAt));
-    }
-    return response;
-  });
+  // The answer the browser asked for while this worker woke up, where it did (navigation
+  // preload), otherwise asked now.
+  const network = Promise.resolve(event.preloadResponse)
+    .then((preloaded) => preloaded || fetch(event.request))
+    .then((response) => {
+      // Kept beside the answer, which goes out as it streams in.
+      if (notes && storable(response)) {
+        event.waitUntil(keepPage(pageKey(url), response.clone(), askedAt));
+      }
+      return response;
+    });
   // The page is kept even when a kept copy was shown first.
   event.waitUntil(network.catch(() => undefined));
   const kept = notes ? await caches.match(pageKey(url), { cacheName: PAGES }) : undefined;

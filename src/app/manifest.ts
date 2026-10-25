@@ -12,9 +12,13 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Essensplan",
     description: "Wochenplan und Einkaufszettel für unseren Haushalt",
     lang: "de",
-    start_url: "/",
+    // Straight to the plan: "/" only redirects there, a request more on every start.
+    start_url: "/woche",
     scope: "/",
     display: "standalone",
+    // Installed on a phone, the app stays upright (Android; an iPhone asks to be turned back,
+    // `TurnUpright`).
+    orientation: "portrait",
     background_color: "#f7f4ee",
     theme_color: "#f7f4ee",
     icons: [
