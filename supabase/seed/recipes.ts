@@ -46,7 +46,6 @@ export const tags: SeedTag[] = [
   { id: "fisch", name: "Fisch", group: "Ernährung" },
   { id: "vegetarisch", name: "vegetarisch", group: "Ernährung" },
   { id: "vegan", name: "vegan", group: "Ernährung" },
-  { id: "huelsenfruechte", name: "Hülsenfrüchte", group: "Ernährung" },
   // What a recipe is like beyond its category. The same list as in the migration that gives
   // these tags to the households that existed before it.
   { id: "schnell", name: "Schnell", group: "Aufwand" },
@@ -66,6 +65,18 @@ export const tags: SeedTag[] = [
   { id: "asiatisch", name: "Asiatisch", group: "Küche" },
   { id: "orientalisch", name: "Orientalisch", group: "Küche" },
   { id: "amerikanisch", name: "Amerikanisch & Tex-Mex", group: "Küche" },
+  // What a dish is made of (`mainIngredients`), as in the migration that added the group.
+  { id: "hackfleisch", name: "Hackfleisch", group: "Hauptzutat" },
+  { id: "haehnchen", name: "Hähnchen & Pute", group: "Hauptzutat" },
+  { id: "rind", name: "Rind & Kalb", group: "Hauptzutat" },
+  { id: "schwein", name: "Schwein", group: "Hauptzutat" },
+  { id: "lachs", name: "Lachs & Forelle", group: "Hauptzutat" },
+  { id: "garnelen", name: "Garnelen & Meeresfrüchte", group: "Hauptzutat" },
+  { id: "huelsenfruechte", name: "Hülsenfrüchte", group: "Hauptzutat" },
+  { id: "tofu", name: "Tofu & Tempeh", group: "Hauptzutat" },
+  { id: "pilze", name: "Pilze", group: "Hauptzutat" },
+  { id: "eier", name: "Eier", group: "Hauptzutat" },
+  { id: "kaese", name: "Käse", group: "Hauptzutat" },
   { id: "fruehling", name: "Frühling", group: "Saison" },
   { id: "sommer", name: "Sommer", group: "Saison" },
   { id: "herbst", name: "Herbst", group: "Saison" },

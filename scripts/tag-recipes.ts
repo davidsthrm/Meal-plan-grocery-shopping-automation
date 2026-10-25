@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { ALL_SUGGESTED } from "@/domain/library/tagging";
-import { EFFORTS } from "@/domain/library/tags";
+import { EFFORTS, TAG_GROUPS } from "@/domain/library/tags";
 import type { Db } from "@/server/catalog";
 import { createAnthropicTagger } from "@/server/import/anthropic-reader";
 import { TAG_BATCH, tagRecipes } from "@/server/tagging";
@@ -15,6 +15,9 @@ import { TAG_BATCH, tagRecipes } from "@/server/tagging";
  *   npm run import:tag-recipes -- "Stührmann" --verbose    print what each recipe got
  *   npm run import:tag-recipes -- "Stührmann" --again      take the suggested tags away first.
  *                                                        This also undoes corrections made by hand.
+ *   npm run import:tag-recipes -- "Stührmann" --more       describe the recipes that have no
+ *                                                        tag but their effort. Their effort stays.
+ *                                                        Run library:main-ingredients first.
  */
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -47,8 +50,12 @@ async function main() {
   const limitAt = flags.indexOf("--limit");
   const limit = limitAt === -1 ? Infinity : Number(flags[limitAt + 1]) || Infinity;
   const verbose = flags.includes("--verbose");
+  const more = flags.includes("--more");
 
-  const tags = await db.from("tag").select("id, key, name").eq("household_id", householdId);
+  const tags = await db
+    .from("tag")
+    .select("id, key, name, group_name")
+    .eq("household_id", householdId);
   if (tags.error) throw new Error(tags.error.message);
   const suggested = tags.data.filter((row) => row.key !== null && ALL_SUGGESTED.includes(row.key));
   const nameOf = new Map(suggested.map((row) => [row.id, row.name]));
@@ -79,13 +86,20 @@ async function main() {
   const efforts = suggested
     .filter((row) => (EFFORTS as readonly string[]).includes(row.key as string))
     .map((row) => row.id);
+  // With --more, a recipe is described once it has any tag but its effort.
+  const others = tags.data
+    .filter(
+      (row) =>
+        (TAG_GROUPS as readonly string[]).includes(row.group_name) && row.group_name !== "Aufwand",
+    )
+    .map((row) => row.id);
   const described = new Set<string>();
   for (let from = 0; ; from += 1000) {
     const page = await db
       .from("recipe_tag")
       .select("recipe_id")
       .eq("household_id", householdId)
-      .in("tag_id", efforts)
+      .in("tag_id", more ? others : efforts)
       .order("recipe_id")
       .order("tag_id")
       .range(from, from + 999);
@@ -107,7 +121,7 @@ async function main() {
   const worker = async () => {
     for (let chunk = chunks.shift(); chunk; chunk = chunks.shift()) {
       try {
-        const done = await tagRecipes(db, householdId, tag, chunk);
+        const done = await tagRecipes(db, householdId, tag, chunk, { alsoDescribed: more });
         tagged += done.tagged;
         // $0.10 and $0.50 per million tokens in and out.
         cost += (done.usage.inputTokens * 0.1 + done.usage.outputTokens * 0.5) / 1e6;

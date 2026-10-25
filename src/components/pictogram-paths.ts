@@ -282,4 +282,34 @@ export const PICTOGRAM_PATHS: Record<Pictogram, string[]> = {
     "M19 29h10",
     "M19 34h6",
   ],
+  /** An apple with its stalk and a leaf: fruit in season. */
+  apfel: [
+    "M24 15c-3-2.500-9-3-12.500 1-4 4.500-3.500 13 .500 19 2.500 4 6 6.500 9 5.500 1.500-.500 4.500-.500 6 0 3 1 6.500-1.500 9-5.500 4-6 4.500-14.500.500-19-3.500-4-9.500-3.500-12.500-1Z",
+    "M24 15c0-4 1-7 3.500-9",
+    "M26.500 10c3-3.500 7.500-3.500 10-1.500-2.500 3.500-7 4.500-10 1.500Z",
+  ],
+  /** An open pod with its beans: lentils, beans and chickpeas. */
+  bohne: [
+    "M5 25c4 9 11 13 19 13s15-4 19-13c-4 3-11 5-19 5S9 28 5 25Z",
+    "M5 25c3-4 3-8 1-11",
+    circle(15, 25.5, 3.5),
+    circle(24, 26.5, 3.5),
+    circle(33, 25.5, 3.5),
+  ],
+  /** A wedge of cheese with its holes. */
+  kaese: [
+    "M6 29 30 12l12 9v8",
+    "M6 29h36v11H6Z",
+    circle(15, 34.5, 2),
+    circle(28, 35, 1.5),
+    circle(26, 22, 1.8),
+  ],
+  /** A curled prawn with its tail and feelers. */
+  garnele: [
+    "M32 10c-11 0-20 7-20 17 0 7 5 12 11 12 5 0 8-3 8-7",
+    "M31 32l5 2.500-2 4.500",
+    "M16 18l5 4.500M13 25.500l6.500 1.500M15 33l6-2",
+    "M32 10c4 0 7-2 9-5M32 10c4 1 7.500 0 10-2.500",
+    dot(29, 14),
+  ],
 };

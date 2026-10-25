@@ -26,7 +26,14 @@ export interface TagLink {
 export const CATEGORY_GROUP = "Kategorie";
 
 /** The groups a tag of the household's own can be moved into. "Aufwand" is the app's three. */
-export const MOVABLE_GROUPS = ["Gericht", "Küche", "Saison", "Anlass", OWN_GROUP] as const;
+export const MOVABLE_GROUPS = [
+  "Gericht",
+  "Hauptzutat",
+  "Küche",
+  "Saison",
+  "Anlass",
+  OWN_GROUP,
+] as const;
 
 /** As long as a tag the household types may be (`readOwnTags`). */
 export const TAG_NAME_MAX = 30;

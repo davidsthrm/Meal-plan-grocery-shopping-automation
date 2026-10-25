@@ -19,7 +19,15 @@ export interface TagGroup {
 }
 
 /** The groups a recipe is described by, in the order they are shown. */
-export const TAG_GROUPS = ["Aufwand", "Gericht", "Küche", "Saison", "Anlass", "Eigene"] as const;
+export const TAG_GROUPS = [
+  "Aufwand",
+  "Gericht",
+  "Hauptzutat",
+  "Küche",
+  "Saison",
+  "Anlass",
+  "Eigene",
+] as const;
 /** The group for tags the household adds itself. */
 export const OWN_GROUP = "Eigene";
 /** Groups in which a recipe has one tag at most: it is quick or it takes time, not both. */
