@@ -118,7 +118,7 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
         db
           .from("recipe_ingredient")
           .select(
-            "recipe_id, position, ingredient_id, quantity, quantity_max, unit, is_approximate, is_optional, secondary_quantity, secondary_unit, secondary_scope, alternative_to, original_text, note",
+            "recipe_id, position, ingredient_id, proposal_id, quantity, quantity_max, unit, is_approximate, is_optional, secondary_quantity, secondary_unit, secondary_scope, alternative_to, original_text, note",
           )
           .in("recipe_id", ids)
           .order("recipe_id")
@@ -127,6 +127,17 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
       "load ingredient lines",
     ),
   ]);
+  // A line the catalog does not know yet is bought by the name it is proposed with, as the
+  // recipe's form and "Neue Zutaten" call it.
+  const proposalIds = [...new Set(lines.flatMap((line) => line.proposal_id ?? []))];
+  const proposed =
+    proposalIds.length === 0
+      ? []
+      : must(
+          await db.from("ingredient_proposal").select("id, name").in("id", proposalIds),
+          "load proposed names",
+        );
+  const proposedName = new Map(proposed.map((proposal) => [proposal.id, proposal.name]));
   return must(recipes, "load planned recipes").map((recipe): Recipe => ({
     id: recipe.id,
     title: recipe.title,
@@ -158,6 +169,7 @@ async function loadRecipes(db: Db, ids: string[]): Promise<Recipe[]> {
         optional: line.is_optional,
         originalText: line.original_text,
         note: line.note,
+        proposedName: line.proposal_id ? proposedName.get(line.proposal_id) : null,
       })),
   }));
 }

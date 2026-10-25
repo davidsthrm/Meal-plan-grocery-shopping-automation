@@ -37,6 +37,11 @@ export interface RecipeIngredient {
   /** The line as printed. Never changed by the household's edits. */
   originalText: string;
   note: string | null;
+  /**
+   * The name the product is proposed with under "Neue Zutaten", while the catalog does not
+   * know it: what the shopping list buys it as.
+   */
+  proposedName?: string | null;
 }
 
 export type RecipeKind = "cookbook" | "quick_meal";

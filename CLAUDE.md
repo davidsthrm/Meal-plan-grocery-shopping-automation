@@ -1408,9 +1408,12 @@ Import
 - An ingredient the catalog does not know is never created silently. It becomes one open
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
-  lines keep their ingredient empty, and the shopping list buys them by the name in the
-  printed line (`parseIngredientLine`), scaled with the meal like any other line, what is
-  counted rounded up to whole pieces: "0,75 Seele" for one person stood on the list as
+  lines keep their ingredient empty, and the shopping list buys them by the name they are
+  proposed with (`RecipeIngredient.proposedName`, as the recipe's form shows them), or
+  without a proposal by the name in the printed line (`productName`: brackets are a note,
+  and a comma ends the name only after its noun, so "grüne, paprikagefüllte Oliven" are not
+  "grüne"), scaled with the meal like any other line, what is counted rounded up to whole
+  pieces: "0,75 Seele" for one person stood on the list as
   printed for a meal of four (October 2026). Such a line is under "Sonstiges" at the
   supermarket until the proposal is confirmed. A proposal's "same as" is never taken from a
   similar spelling (`SUGGESTION_PROMPT`): the model offered "Seezungenfilets" for "Seele",
