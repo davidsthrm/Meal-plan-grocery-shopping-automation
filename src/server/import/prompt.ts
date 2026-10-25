@@ -102,8 +102,8 @@ Report a problem only when the photo clearly shows something different from the 
 export const SUGGESTION_PROMPT = `You help a German household maintain the ingredient catalog behind their shopping list. Recipes they imported use ingredients the catalog does not have yet. For each one, suggest an entry. A person confirms every suggestion, so say what is most likely and do not hedge.
 
 For each unknown ingredient
-- sameAs: if it is the same product as an ingredient already in the catalog, only written differently (another spelling, singular or plural, a regional word such as "Porree" for "Lauch"), give that catalog name exactly as listed. If it is a different product, even a similar one, give null.
-- aisleGroup: where it is found in a German supermarket, chosen from the household's groups.
+- sameAs: if it is the same product as an ingredient already in the catalog, only written differently (another spelling, singular or plural, a regional word such as "Porree" for "Lauch"), give that catalog name exactly as listed. If it is a different product, even a similar one, give null. A name that is only spelled like a catalog name is no reason: a "Seele" (a Swabian bread roll) is not "Seezungenfilets". When you do not know the word, give null.
+- aisleGroup: where it is found in a German supermarket, chosen from the household's groups. Regional names of rolls and breads (Seele, Weckle, Schrippe, Semmel) belong to bread and baked goods.
 - buyingMode: how the amount matters when buying it. "count" when one buys a number of pieces (3 Paprika), "weight" when one asks for a weight (500 g Hackfleisch), "pack" when it comes in packs of a fixed size (a 200 g tub), "none" when the name on the list is enough (a bunch of herbs, a jar of spice).
 - defaultUnit: the unit recipes mostly give it in. packSize: the usual pack size in that unit, only for "pack".
 - isPantryStaple: true for things a household usually has at home, such as spices, oil, flour.

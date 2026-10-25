@@ -110,7 +110,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - Phase 14 (branch `phase-14-suggestion-variety`): suggestions that mix favourites with the
   rest of the library and weigh the season, "Noch nie gekocht" and the week's main
   ingredients and dishes; the way back from a recipe to the place on the week plan; the
-  shelf ("Haben wir schon") in place of the bin on a shopping note. Offers of the
+  shelf ("Haben wir schon") in place of the bin on a shopping note; recipe lines the catalog
+  does not know yet scaled on the list; "1 Portion" in the singular. Offers of the
   supermarkets were looked into and left out (October 2026): no source that is reliable and
   allowed exists for EDEKA and REWE, and the family wants no uploads.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
@@ -1364,7 +1365,13 @@ Import
 - An ingredient the catalog does not know is never created silently. It becomes one open
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
-  lines stay as printed text.
+  lines keep their ingredient empty, and the shopping list buys them by the name in the
+  printed line (`parseIngredientLine`), scaled with the meal like any other line, what is
+  counted rounded up to whole pieces: "0,75 Seele" for one person stood on the list as
+  printed for a meal of four (October 2026). Such a line is under "Sonstiges" at the
+  supermarket until the proposal is confirmed. A proposal's "same as" is never taken from a
+  similar spelling (`SUGGESTION_PROMPT`): the model offered "Seezungenfilets" for "Seele",
+  the Swabian roll, and confirming all at once would have put sole on the list.
 - Before "Neue Zutaten" is shown, the open proposals are put in order (`tidyProposals`):
   a name loses an amount in front and a note after a comma ("200 g Belugalinsen" is
   "Belugalinsen"), two proposals for one product become one with all their recipe lines,
