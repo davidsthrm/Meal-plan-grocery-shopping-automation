@@ -317,6 +317,8 @@ const LIBRARY: {
     minutes: 30,
     book: "E2E Kochbuch",
     tags: ["herbst", "pasta"],
+    // A food of the season calendar: the season page lists the recipe under it.
+    lines: [["Hokkaido-Kürbis", 1, "Stück"]],
   },
   {
     title: "Ofengemüse mit Feta",
@@ -732,4 +734,20 @@ export async function otherHouseholds(): Promise<Record<string, unknown>> {
     counts[table] = count;
   }
   return { households, counts };
+}
+
+/**
+ * Opens the filters of a list where they are a sheet (a phone, the chooser of a meal); beside
+ * the list they are open already. Returns what closes the sheet again, for what lies under it.
+ */
+export async function openFilters(page: Page): Promise<() => Promise<void>> {
+  const open = page.getByRole("button", { name: /^Filter/ });
+  if (!(await open.isVisible())) return async () => {};
+  await open.click();
+  const panel = page.locator(".filter-panel:popover-open");
+  await panel.waitFor();
+  return async () => {
+    await panel.getByRole("button", { name: /anzeigen$/ }).click();
+    await panel.waitFor({ state: "hidden" });
+  };
 }

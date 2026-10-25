@@ -77,11 +77,14 @@ export function RecipeCard({
   category,
   className = "",
   from = "",
+  note,
 }: {
   recipe: RecipeSummary;
   /** The category as the household named it. */
   category: string | null;
   className?: string;
+  /** What puts it where it stands: "Mit Kürbis, Lauch" on the season's shelf. */
+  note?: string;
   /** What says where the card stands, for the way back: see `lib/origin.ts`. */
   from?: string;
 }) {
@@ -103,6 +106,7 @@ export function RecipeCard({
           <span className="line-clamp-3 text-[1.1rem] leading-snug font-semibold">
             {recipe.title}
           </span>
+          {note && <span className="line-clamp-1 text-sm font-semibold text-accent">{note}</span>}
           <span className="mt-auto space-y-1.5 pt-2">
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               {tone?.label && <span className="tag">{tone.label}</span>}

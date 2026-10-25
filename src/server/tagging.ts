@@ -31,6 +31,13 @@ export async function tagRecipes(
   householdId: string,
   tag: RecipeTagger,
   recipeIds: readonly string[],
+  options: {
+    /**
+     * Describe these recipes although they say how much work they are already: those that
+     * have no other tag (`npm run import:tag-recipes -- --more`). Their effort stays.
+     */
+    alsoDescribed?: boolean;
+  } = {},
 ): Promise<TaggingResult> {
   const none = { tagged: 0, usage: { inputTokens: 0, outputTokens: 0 } };
   if (recipeIds.length === 0) return none;
@@ -48,6 +55,7 @@ export async function tagRecipes(
 
   // Find the first recipes that are not described yet.
   const waiting: string[] = [];
+  const withEffort = new Set<string>();
   const categoryOf = new Map<string, string>();
   for (let at = 0; at < recipeIds.length && waiting.length < TAG_BATCH; at += IDS_PER_REQUEST) {
     const part = recipeIds.slice(at, at + IDS_PER_REQUEST);
@@ -57,11 +65,14 @@ export async function tagRecipes(
     );
     const described = new Set<string>();
     for (const link of links) {
-      if (effortIds.has(link.tag_id)) described.add(link.recipe_id);
+      if (effortIds.has(link.tag_id)) {
+        described.add(link.recipe_id);
+        withEffort.add(link.recipe_id);
+      }
       const category = categoryName.get(link.tag_id);
       if (category) categoryOf.set(link.recipe_id, category);
     }
-    waiting.push(...part.filter((id) => !described.has(id)));
+    waiting.push(...part.filter((id) => options.alsoDescribed || !described.has(id)));
   }
   const batch = waiting.slice(0, TAG_BATCH);
   if (batch.length === 0) return none;
@@ -93,7 +104,11 @@ export async function tagRecipes(
   const links = rows.flatMap((row, i) => {
     const suggestion = suggestions[i];
     if (!suggestion) return [];
-    return tagsFromSuggestion(suggestion, row.prep_minutes).flatMap((key) => {
+    const keys = tagsFromSuggestion(suggestion, row.prep_minutes).filter(
+      // An effort the recipe has, set by hand or suggested before, is not suggested over.
+      (key) => !withEffort.has(row.id) || !(EFFORTS as readonly string[]).includes(key),
+    );
+    return keys.flatMap((key) => {
       const tag_id = idOf.get(key);
       return tag_id ? [{ household_id: householdId, recipe_id: row.id, tag_id }] : [];
     });

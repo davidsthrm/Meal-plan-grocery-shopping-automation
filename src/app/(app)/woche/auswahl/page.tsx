@@ -4,7 +4,14 @@ import { notFound } from "next/navigation";
 import { ViewTransition, type ReactNode } from "react";
 import { ArrowIcon } from "@/components/icons";
 import { RecipeRow } from "@/components/recipe-card";
-import { RecipeFilterBar } from "@/components/recipe-filter";
+import {
+  activeChips,
+  FilterBar,
+  FilterPanel,
+  filterHref,
+  panelGroups,
+  WaysOut,
+} from "@/components/recipe-filters";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
@@ -15,7 +22,14 @@ import {
   weekdayShort,
   weekRange,
 } from "@/domain/dates";
-import { filterRecipes, isNoFilter, NO_FILTER, readFilter } from "@/domain/library/filter";
+import {
+  filterParams,
+  filterRecipes,
+  isNoFilter,
+  NO_FILTER,
+  readFilter,
+  type RecipeFilter,
+} from "@/domain/library/filter";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { MEALS_WITHOUT_RECIPE, nextOpenMeal, slotKey, weekStrip, type Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
@@ -23,7 +37,8 @@ import { suggest } from "@/domain/recommend/suggest";
 import { foodText, SIDE_FOODS } from "@/domain/vesper";
 import { MEAL_ADD, MEAL_NAME, MEAL_PLAN, slotText, whyText } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
-import { loadLibrary, searchLibrary } from "@/server/library";
+import { today } from "@/lib/today";
+import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { addSlotFood, markSlot, planExtra, planRecipe } from "../actions";
@@ -67,13 +82,13 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
   const household = await requireHousehold();
   const db = await createSessionClient();
   const [library, slots, history, extras, nextWeek] = await Promise.all([
-    loadLibrary(db),
+    loadLibraryForLists(db, today()),
     loadWeek(db, week),
     loadHistory(db, week),
     loadExtras(db, week),
     extra ? [] : loadWeek(db, addDays(week, 7)),
   ]);
-  const { recipes, categories, books, tagGroups } = library;
+  const { recipes, categories } = library;
   const recipeOf = new Map(recipes.map((recipe) => [recipe.id, recipe]));
   const categoryName = new Map(categories.map((category) => [category.key, category.name]));
   const nameOf = (recipe: RecipeSummary) =>
@@ -120,9 +135,21 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
         (recipe) => !planned.has(recipe.id),
       )
     : [];
-  const found = browsing ? null : await searchLibrary(db, library, filter);
-  const results = found?.matches ?? [];
-  const related = (found?.related ?? []).slice(0, 8);
+  const listed = await listRecipes(db, library, recipes, filter, {
+    favorites: true,
+    season: true,
+    longAgo: true,
+  });
+  const results = browsing ? [] : listed.results;
+  const related = listed.related.slice(0, 8);
+  // What the page is choosing for rides along with every filter.
+  const keep: Record<string, string> = extra
+    ? { w: week, ziel: "extra" }
+    : { w: week, d: date, m: meal, modus: mode };
+  const href = (next: RecipeFilter) => filterHref("/woche/auswahl", next, keep);
+  const reset = isNoFilter({ ...filter, text: "" })
+    ? null
+    : href({ ...NO_FILTER, text: filter.text });
 
   const where = extra ? (
     <input type="hidden" name="week" value={week} />
@@ -320,18 +347,23 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
 
           <section className="mt-6" aria-label="Rezept suchen">
             <h2 className="eyebrow mb-2">Aus dem Kochbuch</h2>
-            <RecipeFilterBar
+            <FilterBar
               path="/woche/auswahl"
               filter={filter}
-              categories={categories}
-              books={books}
-              sources={library.sources}
-              tagGroups={tagGroups}
-              keep={extra ? { w: week, ziel: "extra" } : { w: week, d: date, m: meal, modus: mode }}
+              hidden={{ ...keep, ...filterParams({ ...filter, text: "" }) }}
+              layout="sheet"
+              chips={activeChips(listed.groups, href)}
+              reset={reset}
               plan={{
                 action: extra ? planExtra : planRecipe,
                 fields: extra ? { week } : { week, date, meal, mode, bleiben: "1" },
               }}
+            />
+            <FilterPanel
+              layout="sheet"
+              groups={panelGroups(listed.groups, href)}
+              total={listed.results.length}
+              reset={reset}
             />
           </section>
 
@@ -353,6 +385,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
                     : `${results.length} Rezepte passen dazu`}
                 {results.length > RESULTS && `. Die ersten ${RESULTS} davon:`}
               </p>
+              {results.length === 0 && <WaysOut relax={listed.relax} href={href} />}
               {results.length > 0 && (
                 <ul className="card mt-2 divide-y divide-line">
                   {results.slice(0, RESULTS).map((recipe) => row(recipe))}

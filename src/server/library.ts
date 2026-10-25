@@ -10,7 +10,12 @@ import { ingredientKeys, type SearchIndex } from "@/domain/library/search-index"
 import { knownSources, type KnownSource } from "@/domain/library/source";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
 import { groupTags, TAG_GROUPS, type Tag, type TagGroup } from "@/domain/library/tags";
+import { withHistory } from "@/domain/library/discover";
+import { foodsByRecipe, foodsOfCatalog, monthOf } from "@/domain/season/calendar";
+import { today } from "@/lib/today";
 import { allRows, loadIngredientNames, must, type Db } from "./catalog";
+import { loadHistory } from "./planning/week";
+import { CALENDAR, withSeason } from "./season";
 
 /**
  * The recipe library as the pages need it. Which household is decided by row level
@@ -121,7 +126,8 @@ export async function loadLibrary(db: Db): Promise<Library> {
  * which ingredients it uses.
  */
 export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
-  const [library, catalog, lines] = await Promise.all([
+  const now = today();
+  const [library, catalog, lines, history] = await Promise.all([
     loadLibrary(db),
     loadIngredientNames(db),
     allRows(
@@ -133,7 +139,11 @@ export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
           .range(from, to),
       "load ingredient lines",
     ),
+    loadHistory(db, now),
   ]);
+  // The filters "Passt zur Saison" and "Lange nicht gekocht" work while typing too.
+  const foods = foodsByRecipe(foodsOfCatalog(CALENDAR, catalog), lines);
+  const recipes = withHistory(withSeason(library.recipes, foods, monthOf(now)), history, now);
   const at = new Map(catalog.map((ingredient, position) => [ingredient.id, position]));
   const uses = new Map<string, Set<number>>();
   const loose = new Map<string, string[]>();
@@ -149,7 +159,7 @@ export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
     }
   }
   return {
-    recipes: library.recipes,
+    recipes,
     categories: library.categories,
     tags: library.tagGroups.flatMap((group) =>
       group.tags.map((tag) => ({ ref: tag.ref, name: tag.name })),

@@ -23,7 +23,7 @@ export async function signIn(_previous: LoginState, formData: FormData): Promise
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   // One message for every failure: it must not reveal whether an address has an account.
   if (error) return { error: "E-Mail oder Passwort stimmt nicht.", email };
-  redirect("/");
+  redirect("/woche");
 }
 
 export async function signOut() {
@@ -80,5 +80,5 @@ export async function setNewPassword(
   if (wrong) return { error: wrong };
   const failed = await storeNewPassword(next);
   if (failed) return { error: failed };
-  redirect("/");
+  redirect("/woche");
 }

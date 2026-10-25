@@ -60,10 +60,15 @@ export async function proxy(request: NextRequest) {
     url.search = "";
     return NextResponse.redirect(url);
   }
-  if (signedIn && onLoginPage) {
+  // Signed in, the start is the week plan: sent there from here, without rendering the
+  // page "/" that would only redirect too.
+  if (signedIn && (onLoginPage || path === "/")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    url.pathname = "/woche";
+    url.search = "";
+    const there = NextResponse.redirect(url);
+    for (const cookie of response.cookies.getAll()) there.cookies.set(cookie);
+    return there;
   }
   return response;
 }

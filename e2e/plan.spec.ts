@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resetLibrary, signIn } from "./fixtures";
+import { openFilters, resetLibrary, signIn } from "./fixtures";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -156,7 +156,10 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
 
   await page.getByRole("link", { name: "Dienstag Mittag: etwas dazu" }).click();
   await expect(page.getByRole("heading", { name: "Zum Mittagessen dazu" })).toBeVisible();
-  await page.getByRole("link", { name: "Vegan", exact: true }).click();
+  // The filters of the chooser are a sheet, whatever the screen.
+  const close = await openFilters(page);
+  await page.getByLabel("Filter", { exact: true }).getByRole("link", { name: /^Vegan/ }).click();
+  await close();
   await page.getByRole("button", { name: "Tomatensalat einplanen" }).click();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(tuesday).toContainText("Zitronen-Mohn-Kuchen");
@@ -167,8 +170,9 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
 test("a recipe found while browsing is put on the plan from its own page", async ({ page }) => {
   await page.goto("/rezepte");
   // "Rindersteak" is in no title: the search also looks at the ingredients.
+  // Sent with the keyboard's search key: on a phone that is the only way.
   await page.getByPlaceholder("Titel oder Zutat").fill("Rindersteak");
-  await page.getByRole("button", { name: "Suchen" }).click();
+  await page.getByPlaceholder("Titel oder Zutat").press("Enter");
   await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
   await page.getByRole("link", { name: /Pfeffersteak/ }).click();
   await page.getByRole("link", { name: "Einplanen" }).click();

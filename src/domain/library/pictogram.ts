@@ -56,6 +56,10 @@ export const PICTOGRAMS = [
   "etikett",
   "wagen",
   "flasche",
+  "apfel",
+  "bohne",
+  "kaese",
+  "garnele",
 ] as const;
 export type Pictogram = (typeof PICTOGRAMS)[number];
 
@@ -201,6 +205,17 @@ const TAG_PICTURE: Record<string, Pictogram> = {
   grillen: "grill",
   mitnehmen: "korb",
   weihnachten: "tanne",
+  hackfleisch: "fleisch",
+  haehnchen: "gefluegel",
+  rind: "fleisch",
+  schwein: "fleisch",
+  lachs: "fisch",
+  garnelen: "garnele",
+  huelsenfruechte: "bohne",
+  tofu: "spross",
+  pilze: "pilz",
+  eier: "ei",
+  kaese: "kaese",
 };
 
 const DIET_PICTURE: Record<NonNullable<RecipeFilter["diet"]>, Pictogram> = {

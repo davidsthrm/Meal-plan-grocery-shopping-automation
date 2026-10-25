@@ -13,17 +13,21 @@ import type { TagGroup } from "./tags";
 export interface Shelf {
   key: string;
   title: string;
-  /** The filter that lists the whole shelf. Null for a shelf no filter can express. */
+  /** The filter that lists the whole shelf ("Alle anzeigen"). Null where none can say it. */
   filter: RecipeFilter | null;
   /** How many recipes the shelf stands for: as many as its filter lists, where it has one. */
   total: number;
   /** The first few that nobody has marked yet. */
   recipes: RecipeSummary[];
+  /** Per recipe, what puts it on this shelf, where that says more than the shelf's title. */
+  why?: Record<string, string>;
 }
 
 export interface DiscoverOptions {
   today: IsoDate;
   history: History;
+  /** The groups of tags, for the shelves of the tags used most. */
+  tagGroups?: readonly TagGroup[];
   /** How many recipes a shelf shows. */
   size?: number;
 }
@@ -33,6 +37,13 @@ export const LONG_AGO_DAYS = 56;
 /** For this long a recipe counts as new. */
 const NEW_DAYS = 14;
 const QUICK_MINUTES = 20;
+/** How many shelves of tags there are, and from how many of the most used they are taken. */
+const TAG_SHELVES = 3;
+const TAG_CANDIDATES = 8;
+/** A tag with fewer recipes makes no shelf. */
+const TAG_SHELF_AT_LEAST = 4;
+/** Groups whose tags make shelves: the effort and the season have shelves of their own. */
+const SHELF_GROUPS = new Set(["Gericht", "Hauptzutat", "Küche", "Anlass", "Eigene"]);
 
 export const SEASONS = ["fruehling", "sommer", "herbst", "winter"] as const;
 export type Season = (typeof SEASONS)[number];
@@ -44,13 +55,6 @@ export function seasonOf(date: IsoDate): Season {
   if (month >= 6 && month <= 8) return "sommer";
   return month >= 9 && month <= 11 ? "herbst" : "winter";
 }
-
-const SEASON_SHELF: Record<Season, string> = {
-  fruehling: "Jetzt im Frühling",
-  sommer: "Jetzt im Sommer",
-  herbst: "Jetzt im Herbst",
-  winter: "Jetzt im Winter",
-};
 
 /**
  * Whether the household has marked a recipe: a favourite, or one someone wants to cook. Those
@@ -74,7 +78,23 @@ export function toDiscover(
   return recipes.filter((recipe) => !isMarked(recipe));
 }
 
-/** The shelves on top of the library, without the empty ones. */
+/** The recipes with what the plans say of them: whether they were cooked long ago. */
+export function withHistory(
+  recipes: readonly RecipeSummary[],
+  history: History,
+  today: IsoDate,
+): RecipeSummary[] {
+  return recipes.map((recipe) => {
+    const last = history.get(recipe.id);
+    return { ...recipe, longAgo: last !== undefined && daysBetween(last, today) >= LONG_AGO_DAYS };
+  });
+}
+
+/**
+ * The shelves on top of the library, without the empty ones: what fits the season, what is
+ * quick, what was cooked long ago, what is new, and a few of the tags used most. Each lists
+ * a few recipes in an order that changes from day to day, and its filter lists all of it.
+ */
 export function discover(recipes: readonly RecipeSummary[], options: DiscoverOptions): Shelf[] {
   const { today, history } = options;
   const size = options.size ?? 10;
@@ -98,44 +118,86 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
       recipes: unmarked.sort(sort).slice(0, size),
     };
   };
-  const filtered = (key: string, title: string, filter: RecipeFilter) =>
+  const filtered = (key: string, title: string, filter: RecipeFilter, sort = order) =>
     shelf(
       key,
       title,
       recipes.filter((recipe) => matchesFilter(recipe, filter)),
       filter,
+      sort,
     );
 
   const lastCooked = (recipe: RecipeSummary) => history.get(recipe.id) ?? null;
-  const longAgo = recipes.filter((recipe) => {
-    const last = lastCooked(recipe);
-    return last !== null && daysBetween(last, today) >= LONG_AGO_DAYS;
-  });
   const fresh = recipes.filter((recipe) => daysBetween(recipe.addedOn, today) <= NEW_DAYS);
-  const season = seasonOf(today);
 
-  const shelves: Shelf[] = [
-    shelf(
-      "schnell",
-      `Bis ${QUICK_MINUTES} Minuten`,
-      recipes.filter(
-        (recipe) =>
-          isMeal(recipe) && recipe.prepMinutes !== null && recipe.prepMinutes <= QUICK_MINUTES,
-      ),
-      null,
+  // In season: what needs most of what is harvested now first.
+  const season = filtered(
+    "saison",
+    "Passt zur Saison",
+    { ...NO_FILTER, season: true },
+    (a, b) => (b.season?.points ?? 0) - (a.season?.points ?? 0) || order(a, b),
+  );
+  season.why = Object.fromEntries(
+    season.recipes.flatMap((recipe) =>
+      recipe.season && recipe.season.foods.length > 0
+        ? [[recipe.id, `Mit ${recipe.season.foods.slice(0, 3).join(", ")}`]]
+        : [],
     ),
-    filtered("saison", SEASON_SHELF[season], { ...NO_FILTER, tags: [season] }),
-    // Longest ago first.
-    shelf("lange-nicht", "Lange nicht gekocht", longAgo, null, (a, b) =>
-      (lastCooked(a) as IsoDate).localeCompare(lastCooked(b) as IsoDate),
-    ),
-  ];
+  );
+  // Quick meals before a quick dip or drink.
+  const quick = filtered(
+    "schnell",
+    `Schnell (bis ${QUICK_MINUTES} Min.)`,
+    { ...NO_FILTER, maxMinutes: QUICK_MINUTES },
+    (a, b) => Number(isMeal(b)) - Number(isMeal(a)) || order(a, b),
+  );
+  // Longest ago first.
+  const longAgo = filtered(
+    "lange-nicht",
+    "Lange nicht gekocht",
+    { ...NO_FILTER, longAgo: true },
+    (a, b) => (lastCooked(a) ?? "").localeCompare(lastCooked(b) ?? ""),
+  );
+
+  const shelves: Shelf[] = [season, quick, longAgo];
   // Right after a cookbook was photographed, everything is new, and a shelf saying so says
   // nothing. It appears once new recipes are the exception.
   if (fresh.length * 3 < recipes.length) {
-    shelves.push(shelf("neu", "Neu", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)));
+    shelves.push(
+      shelf("neu", "Neu im Kochbuch", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)),
+    );
   }
+  shelves.push(...tagShelves(recipes, options, filtered));
   return shelves.filter((entry) => entry.recipes.length > 0);
+}
+
+/**
+ * Shelves for a few of the tags used most: the most used ones, a different few each day,
+ * shown most used first.
+ */
+function tagShelves(
+  recipes: readonly RecipeSummary[],
+  options: DiscoverOptions,
+  filtered: (key: string, title: string, filter: RecipeFilter) => Shelf,
+): Shelf[] {
+  const used = (options.tagGroups ?? [])
+    .filter((group) => SHELF_GROUPS.has(group.name))
+    .flatMap((group) => group.tags)
+    .map((tag) => ({
+      tag,
+      count: recipes.filter((recipe) => !isMarked(recipe) && recipe.tags.includes(tag.ref)).length,
+    }))
+    .filter((entry) => entry.count >= TAG_SHELF_AT_LEAST)
+    .sort((a, b) => b.count - a.count || a.tag.name.localeCompare(b.tag.name, "de"))
+    .slice(0, TAG_CANDIDATES);
+  const today = [...used]
+    .sort((a, b) => rank(options.today, a.tag.ref) - rank(options.today, b.tag.ref))
+    .slice(0, TAG_SHELVES);
+  return used
+    .filter((entry) => today.includes(entry))
+    .map((entry) =>
+      filtered(`tag-${entry.tag.ref}`, entry.tag.name, { ...NO_FILTER, tags: [entry.tag.ref] }),
+    );
 }
 
 /** One way to narrow the library down, and how many recipes it leaves. */
@@ -158,7 +220,7 @@ export interface DirectoryOptions {
   books: readonly string[];
 }
 
-const DIET_LABEL: Record<Diet, string> = {
+export const DIET_LABEL: Record<Diet, string> = {
   vegetarisch: "Vegetarisch",
   vegan: "Vegan",
   fisch: "Fisch",

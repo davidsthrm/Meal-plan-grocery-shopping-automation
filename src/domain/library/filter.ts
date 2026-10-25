@@ -25,6 +25,10 @@ export interface RecipeFilter {
   favorites: boolean;
   /** Tags the recipe must all have, as the app refers to them. */
   tags: string[];
+  /** Only what fits the season now (`RecipeSummary.season`). */
+  season: boolean;
+  /** Only what was cooked before and not for a long time (`RecipeSummary.longAgo`). */
+  longAgo: boolean;
 }
 
 /** More tags than this do not narrow a library down any further. */
@@ -39,6 +43,8 @@ export const NO_FILTER: RecipeFilter = {
   edition: null,
   favorites: false,
   tags: [],
+  season: false,
+  longAgo: false,
 };
 
 const DIET_TYPES: Record<Diet, ProteinType[]> = {
@@ -83,6 +89,8 @@ export function readFilter(params: Params): RecipeFilter {
           .filter((tag) => /^[a-z0-9-]{1,40}$/.test(tag)),
       ),
     ].slice(0, MAX_TAGS),
+    season: one(params.saison) === "1",
+    longAgo: one(params.lange) === "1",
   };
 }
 
@@ -97,6 +105,8 @@ export function filterParams(filter: RecipeFilter): Record<string, string> {
   if (filter.book && filter.edition) params.ausgabe = filter.edition;
   if (filter.favorites) params.favoriten = "1";
   if (filter.tags.length > 0) params.tag = filter.tags.join(",");
+  if (filter.season) params.saison = "1";
+  if (filter.longAgo) params.lange = "1";
   return params;
 }
 
@@ -114,6 +124,8 @@ export function matchesFilter(recipe: RecipeSummary, filter: RecipeFilter): bool
   if (filter.book && recipe.sourceBook !== filter.book) return false;
   if (filter.edition && recipe.sourceEdition !== filter.edition) return false;
   if (!filter.tags.every((tag) => recipe.tags.includes(tag))) return false;
+  if (filter.season && !recipe.season?.fits) return false;
+  if (filter.longAgo && !recipe.longAgo) return false;
   if (filter.diet) {
     if (!recipe.proteinType || !DIET_TYPES[filter.diet].includes(recipe.proteinType)) return false;
   }

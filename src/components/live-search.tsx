@@ -2,7 +2,7 @@
 
 import Form from "next/form";
 import Link from "next/link";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import type { RecipeFilter } from "@/domain/library/filter";
 import { searchIndex, type SearchIndex } from "@/domain/library/search-index";
 import { SearchIcon } from "./icons";
@@ -49,6 +49,8 @@ interface Props {
    * where. A result then has a button; otherwise it opens the recipe.
    */
   plan?: { action: (form: FormData) => Promise<void>; fields: Record<string, string> };
+  /** What stands beside the field: the button that opens the filters. Never a submit button. */
+  extra?: ReactNode;
 }
 
 /**
@@ -62,6 +64,7 @@ export function LiveSearch({
   filter,
   placeholder = "Titel oder Zutat",
   plan,
+  extra,
 }: Props) {
   const [text, setText] = useState(filter.text);
   const [index, setIndex] = useState<SearchIndex | null>(null);
@@ -133,7 +136,9 @@ export function LiveSearch({
             aria-controls={list}
           />
         </label>
-        <button className="btn">Suchen</button>
+        {/* On a phone the keyboard's search key sends it, and the row keeps room. */}
+        <button className="btn max-sm:sr-only">Suchen</button>
+        {extra}
       </Form>
 
       {open && (

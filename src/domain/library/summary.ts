@@ -1,6 +1,7 @@
 import type { IsoDate } from "../dates";
 import type { Meal } from "../plan";
 import type { RecipeKind, Servings } from "../recipe";
+import type { SeasonFit } from "../season/calendar";
 
 export type ProteinType = "red_meat" | "poultry" | "fish" | "vegetarian" | "vegan" | "none";
 
@@ -26,6 +27,16 @@ export interface RecipeSummary {
   tags: readonly string[];
   /** Someone marked it as "want to cook this". */
   wanted: boolean;
+  /**
+   * How it fits the season of the month the page was read in (`seasonFit`). Absent where the
+   * page did not work it out; the filter "Passt zur Saison" then finds nothing.
+   */
+  season?: SeasonFit;
+  /**
+   * It was cooked before and not for a long time (`LONG_AGO_DAYS`). Absent where the page
+   * did not read the plans.
+   */
+  longAgo?: boolean;
 }
 
 /** A category as the household named it. The key is what the app goes by. */

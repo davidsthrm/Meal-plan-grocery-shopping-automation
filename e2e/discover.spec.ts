@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { resetLibrary, signIn } from "./fixtures";
+import { openFilters, resetLibrary, signIn } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await resetLibrary();
@@ -30,19 +30,38 @@ test("the library has a few shelves and a directory to narrow it down", async ({
   await expect(page.getByRole("status")).toHaveText("14 Rezepte passen dazu");
   await expect(page.getByRole("link", { name: /Gemüse-Lasagne/ })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Fisch", exact: true }).click();
+  // The filters say how many recipes each choice leaves, and stay open while choosing.
+  const close = await openFilters(page);
+  const panel = page.getByLabel("Filter", { exact: true });
+  await panel.getByRole("link", { name: /^Fisch 2$/ }).click();
   await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
-  await page.getByRole("link", { name: "bis 20 Min." }).click();
+  await panel.getByRole("link", { name: /^bis 20 Min\. 1$/ }).click();
   await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+  await close();
   await expect(page.getByRole("link", { name: /Lachs mit Currysahne/ })).toBeVisible();
 
-  await page.getByRole("link", { name: "Alle Filter zurücksetzen" }).click();
+  // What is on stands above the list, each to take away with a tap.
+  const active = page.getByRole("group", { name: "Aktive Filter" });
+  await active.getByRole("link", { name: "bis 20 Min. entfernen" }).click();
+  await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
+  await active.getByRole("link", { name: "Alle entfernen" }).click();
   await expect(page.getByRole("region", { name: "Stöbern" })).toBeVisible();
+
+  // Nothing left: each filter that is on, left out, shows how many recipes come back.
+  await page.goto("/rezepte?kost=fisch&kategorie=salat");
+  await expect(page.getByRole("status")).toHaveText("Kein Rezept passt dazu.");
+  await page.getByRole("link", { name: /^Ohne „Salat“: 2 Rezepte$/ }).click();
+  await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
 
   // A tag narrows the library down like everything else, and two tags mean both.
   await page.goto("/rezepte?tag=herbst");
   await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
-  await page.getByRole("link", { name: "Reis & Getreide" }).click();
+  const closeAgain = await openFilters(page);
+  // Groups beyond the first few open with a tap on their name.
+  const filters = page.getByLabel("Filter", { exact: true });
+  await filters.getByText("Gericht", { exact: true }).click();
+  await filters.getByRole("link", { name: /^Reis & Getreide/ }).click();
+  await closeAgain();
   await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
   await expect(page.getByRole("link", { name: /Pilzrisotto/ })).toBeVisible();
 });
@@ -234,4 +253,32 @@ test("steps that are not on the photo are put away with one tap", async ({ page 
   await page.goto("/rezepte?q=linsen");
   await page.getByRole("link", { name: /Linsen-Eintopf/ }).click();
   await expect(page.getByText("Keine Arbeitsschritte vorhanden.")).toBeVisible();
+});
+
+test("the season page shows what is harvested and the recipes made with it", async ({ page }) => {
+  await page.goto("/rezepte");
+  await page.getByRole("link", { name: /Was hat im .* Saison\?/ }).click();
+  await expect(page.getByRole("heading", { name: "Was hat gerade Saison?" })).toBeVisible();
+  // A month ahead is one tap away, and the way back too.
+  const months = page.getByRole("navigation", { name: "Monat" });
+  await months.getByRole("link").last().click();
+  await expect(page.getByRole("heading", { name: /^Saison im / })).toBeVisible();
+  await page.getByRole("link", { name: /^Zurück zum / }).click();
+  await expect(page.getByRole("heading", { name: "Was hat gerade Saison?" })).toBeVisible();
+
+  // In a month with pumpkins, the made-up Kürbisgnocchi are made with them.
+  await page.goto("/rezepte/saison?monat=10&zutat=kuerbis");
+  const pumpkin = page.getByRole("region", { name: "Rezepte mit Kürbis" });
+  await expect(pumpkin.getByRole("link", { name: /Kürbisgnocchi/ })).toBeVisible();
+});
+
+test("a phone held across asks to be turned upright", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "only a phone");
+  await page.goto("/rezepte");
+  await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(page.getByText("Bitte das Handy hochkant halten.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Entdecken" })).toBeHidden();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
 });

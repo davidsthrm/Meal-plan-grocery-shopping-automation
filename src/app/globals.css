@@ -68,6 +68,15 @@
 
 html {
   font-size: 17px;
+  /* Under the page, the paper: nothing else shows where the page ends. */
+  background: var(--color-paper);
+  /*
+   * An app's page ends where it ends: pulled further at the top or the foot it does not
+   * bounce away from the header, and no pull reloads it. Pinching does not zoom (`AppFeel`
+   * for Safari); a finger still scrolls either way, shelves sideways too.
+   */
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;
   /* No grey flash over what is tapped: every control answers the press itself (`:active`). */
   -webkit-tap-highlight-color: transparent;
   /* The header stays at the top (`.app-header`): an anchor scrolled to lands below it. */
@@ -85,6 +94,7 @@ body {
   line-height: 1.45;
   /* The frosted strip behind the header reaches the screen's edges without widening it. */
   overflow-x: clip;
+  overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
   /* The page reaches the screen's edges (`viewport-fit=cover`); its text stays clear of the
      notch and the status bar. */
@@ -1359,6 +1369,262 @@ summary,
   }
 
   /* A row of cards to swipe through. It reaches to the edge of the screen on a phone. */
+  /*
+   * The filters of a list of recipes (`FilterPanel`). On a phone a sheet from the foot of
+   * the screen, the browser's own popover, over the dimmed page; it rises as the other
+   * sheets do. From an iPad's width on, where the page asks for it (`.filter-aside`), the
+   * same panel stands beside the list and stays in view while the list scrolls.
+   */
+  .filter-panel {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 36rem;
+    max-height: 86dvh;
+    margin: 0 auto;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    box-shadow: 0 -12px 30px -14px rgb(35 33 29 / 0.35);
+    transition:
+      transform 300ms var(--ease-drawer),
+      overlay 300ms allow-discrete,
+      display 300ms allow-discrete;
+  }
+  .filter-panel:popover-open {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(0);
+  }
+  @starting-style {
+    .filter-panel:popover-open {
+      transform: translateY(100%);
+    }
+  }
+  .filter-panel:not(:popover-open) {
+    transform: translateY(100%);
+    transition-duration: 200ms;
+  }
+  .filter-panel::backdrop {
+    background: rgb(35 33 29 / 0.38);
+    transition:
+      opacity 300ms ease-out,
+      overlay 300ms allow-discrete,
+      display 300ms allow-discrete;
+  }
+  .filter-panel:popover-open::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .filter-panel:popover-open::backdrop {
+      opacity: 0;
+    }
+  }
+  .filter-panel:not(:popover-open)::backdrop {
+    opacity: 0;
+  }
+  /* Wider than a phone, the sheet comes from the right edge, as tall as the screen. */
+  @media (width >= 40rem) {
+    .filter-panel {
+      inset: 0 0 0 auto;
+      width: 24rem;
+      max-height: none;
+      height: 100dvh;
+      border-radius: 1.25rem 0 0 1.25rem;
+      box-shadow: -12px 0 30px -14px rgb(35 33 29 / 0.35);
+    }
+    .filter-panel:not(:popover-open),
+    .filter-panel:popover-open {
+      transform: translateX(0);
+    }
+    @starting-style {
+      .filter-panel:popover-open {
+        transform: translateX(100%);
+      }
+    }
+    .filter-panel:not(:popover-open) {
+      transform: translateX(100%);
+    }
+  }
+  .filter-head {
+    flex: none;
+    padding: 0.5rem 1rem 0.25rem 1.1rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .filter-body {
+    flex: 1;
+    min-height: 0;
+    /* Up and down only: a list that scrolls one way scrolls the other too unless told. */
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem 1.1rem 0.5rem;
+  }
+  .filter-foot {
+    flex: none;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-line);
+  }
+  .filter-group + .filter-group {
+    border-top: 1px solid var(--color-rule);
+  }
+  .filter-group-head {
+    display: flex;
+    min-height: 2.9rem;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+  .filter-chevron {
+    width: 0.55rem;
+    height: 0.55rem;
+    margin-left: auto;
+    margin-right: 0.25rem;
+    border-right: 2px solid var(--color-muted);
+    border-bottom: 2px solid var(--color-muted);
+    transform: rotate(45deg);
+    transition: transform 160ms var(--ease-out);
+  }
+  .filter-group[open] > summary .filter-chevron {
+    transform: rotate(225deg);
+  }
+  /* How many are on: a small green number. */
+  .filter-on-count {
+    display: inline-grid;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    place-items: center;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  /* A choice is never wider than the panel: a long name ends in "…", its count stays. */
+  .filter-panel .chip {
+    max-width: 100%;
+  }
+  .filter-panel .chip > .truncate {
+    min-width: 0;
+  }
+  .filter-panel .chip > .chip-count {
+    flex: none;
+  }
+  /* How many recipes a choice leaves, quietly after its name. */
+  .chip-count {
+    margin-left: 0.1rem;
+    color: var(--color-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip-on .chip-count {
+    color: inherit;
+    opacity: 0.75;
+  }
+  /* A choice nothing is behind: there, but not to tap. */
+  .chip-empty {
+    opacity: 0.42;
+  }
+  .chip-empty:active {
+    transform: none;
+  }
+  .chip > svg {
+    flex: none;
+  }
+  .filter-open-on {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+
+  /* Beside the list from an iPad's width on: the panel is part of the page, not a popover. */
+  @media (width >= 46rem) and (height >= 30rem) {
+    .filter-aside,
+    .filter-aside:popover-open,
+    .filter-aside:not(:popover-open) {
+      position: sticky;
+      top: 4.6rem;
+      inset: auto;
+      display: flex;
+      flex-direction: column;
+      width: auto;
+      max-width: none;
+      height: auto;
+      max-height: calc(100dvh - 5.6rem);
+      margin: 0;
+      overflow: hidden;
+      border: 1px solid var(--color-line);
+      border-radius: 0.9rem;
+      background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+      box-shadow: none;
+      transform: none;
+      transition: none;
+    }
+    .filter-aside .filter-only-sheet {
+      display: none;
+    }
+    .filter-aside .filter-head {
+      padding-top: 0.6rem;
+    }
+    .filter-aside .filter-body {
+      padding-inline: 0.9rem;
+    }
+    .filter-aside .chip {
+      min-height: 2.6rem;
+      padding-inline: 0.75rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .filter-panel,
+    .filter-panel::backdrop {
+      transition-duration: 0ms;
+    }
+  }
+
+  /*
+   * A food's year on the season page: twelve small months, filled in its kind's colour where
+   * it is harvested, hatched where it comes from storage, the month shown ringed.
+   */
+  .season-bar {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 2px;
+  }
+  .season-cell {
+    display: grid;
+    height: 1.05rem;
+    place-items: center;
+    border-radius: 0.2rem;
+    background: rgb(35 33 29 / 0.05);
+    color: rgb(35 33 29 / 0.35);
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .season-cell[data-state="fresh"] {
+    background: color-mix(in srgb, var(--kind-ink, var(--color-accent)) 72%, var(--color-surface));
+    color: var(--color-surface);
+  }
+  .season-cell[data-state="stored"] {
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--kind-ink, var(--color-accent)) 28%, transparent) 0 2px,
+      transparent 2px 4px
+    );
+    color: var(--kind-ink, var(--color-accent));
+  }
+  .season-cell[data-now="true"] {
+    outline: 1.5px solid var(--color-ink);
+    outline-offset: 1px;
+  }
+
   .shelf {
     display: flex;
     gap: 0.75rem;
@@ -2089,6 +2355,46 @@ details > summary {
 }
 details > summary::-webkit-details-marker {
   display: none;
+}
+
+/*
+ * A phone held across: the app is made for a phone held upright, and an iPhone cannot be
+ * told to stay so. While it is held across, everything else is out of sight, the open
+ * sheets and dialogs too, and comes back as it was once it is upright again. Asked of the
+ * screen: low and touched, which an iPad either way and a desktop window never are.
+ */
+.turn-upright {
+  display: none;
+}
+@media (orientation: landscape) and (height < 30rem) and (pointer: coarse) {
+  body > :not(.turn-upright),
+  dialog,
+  [popover] {
+    display: none !important;
+  }
+  .turn-upright {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    text-align: center;
+  }
+}
+.turn-upright-phone {
+  width: 3.5rem;
+  height: 3.5rem;
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* On paper: black on white, nothing that only makes sense on a screen. */

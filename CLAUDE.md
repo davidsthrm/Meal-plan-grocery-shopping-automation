@@ -42,6 +42,8 @@ is easier than pen and paper.
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`     |
 | Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`     |
 | Merge "Zitronenscheiben" into lemons, "Stiele" to Stängel (dry run first) | `npm run library:tidy-lines -- "<name>"`        |
+| Tags of "Hauptzutat" from the ingredients (dry run, then `--apply`)       | `npm run library:main-ingredients -- "<name>"`  |
+| Describe recipes that have no tag but their effort (calls the API)        | `npm run import:tag-recipes -- "<name>" --more` |
 | File drinks and cookies by their titles (dry run, then `--apply`)         | `npm run library:assign-categories -- "<name>"` |
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`       |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                     |
@@ -101,6 +103,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   notes done at the foot, a note opened by hand for any place and day, signing out only in
   the settings, the week's first errand buying what keeps, lemon slices as lemons, and
   "Stiele" as Stängel.
+- Phase 12 (branch `phase-12-discover-season`): the app held upright and without zoom, one
+  panel of filters for every list of recipes, Entdecken as rows, the season calendar with
+  "Passt zur Saison" and "Was hat gerade Saison?", the tags of "Hauptzutat", and a faster
+  start (the plan as start address, navigation preload).
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -142,6 +148,16 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   HSTS, and a policy without frames, plugins or foreign form targets. Scripts are not
   limited by it: the pages need Next.js's inline scripts.
 - The shopping list must work offline in the shop: cached list, queued check-offs.
+- It behaves like an installed app (`AppFeel`, root layout): no zoom (the viewport says so,
+  and Safari's pinch is stopped by its gesture events; the map of the supermarkets still
+  zooms), no bounce past the header or the foot (`overscroll-behavior: none` on `html` and
+  `body`), and upright on a phone: the manifest and `screen.orientation.lock` hold Android
+  upright; an iPhone cannot be held, so a phone held across (low, touched: `TurnUpright`)
+  sees only "Bitte das Handy hochkant halten." until it is upright again. An iPad turns.
+- The app starts at `/woche` (`start_url`); the proxy sends a signed-in "/" there before any
+  page is rendered. The redirect through the page "/" cost 250 to 850 ms on every start
+  (October 2026). The service worker enables navigation preload: the page is asked for
+  while the worker is still waking up.
 - Installable: `app/manifest.ts`, icons drawn from the logo (`scripts/build-icons.ts`: the
   logo as it is, green to the edges for Android's mask and the iPhone), `appleWebApp` in
   the root layout. `src/proxy.ts` lets the manifest, `sw.js` and `offline.html` through
@@ -237,7 +253,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
   month by month), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/regal`
   (every recipe as a table to look after; `?stichworte=<id>` opens a row's tags,
-  `?loeschen=<id>` asks before deleting), `/rezepte/stichworte` (the tags themselves;
+  `?loeschen=<id>` asks before deleting), `/rezepte/saison` ("Was hat gerade Saison?";
+  `?monat=1..12` another month, `?zutat=<key>` the recipes with one food), `/rezepte/stichworte` (the tags themselves;
   `?stichwort=<id>` opens one), `/favoriten`,
   `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
   `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/import/pruefen/angaben` (assigned
@@ -753,7 +770,41 @@ Library
 
 - The filter is part of the address (`q`, `kategorie`, `kost`, `zeit`, `buch`, `ausgabe`,
   `favoriten`, `tag` with one or more tags separated by commas; several tags mean all of
-  them). `ausgabe` counts only with its `buch`.
+  them; `saison=1`, `lange=1`). `ausgabe` counts only with its `buch`.
+- Every list of recipes has the same filters (`FilterPanel` and `FilterBar` in
+  `src/components/recipe-filters.tsx`, the groups from `facets`, the search and narrowing
+  from `listRecipes` in `src/server/recipe-list.ts`): Entdecken, Favoriten, the Regal (with
+  "Was fehlt" as a group of its own) and the chooser of a meal. From an iPad's width on the
+  panel stands beside the list (`.filter-aside`), on a phone it is a sheet from the foot
+  opened by "Filter" next to the search field, and in the chooser, whose side holds the week,
+  a sheet at every size (from the right edge from `sm` on). The sheet is the browser's own
+  popover: it opens without a script and stays open while choices are tapped, "N Rezepte
+  anzeigen" closes it. Every choice says how many recipes it would leave with the rest of
+  the filter; one with none is pale and not a link. In a group of one (Zeit, Ernährung, Art,
+  Aufwand, Küche, Kochbuch) another choice replaces the one that is on. What is on stands
+  above the list as chips to take away, and an empty list offers each filter left out with
+  its count ("Ohne „Salat“: 2 Rezepte"). The words searched narrow first, the choices count
+  within what they found.
+- "Passt zur Saison" and "Lange nicht gekocht" need what is not in a recipe's row: the pages
+  that list recipes read the library with `loadLibraryForLists` (season and plan history
+  side by side), and so does the index of the live search.
+- The season calendar is data, `supabase/seed/seasons.ts` (`SeasonalFood`: the months a food
+  is harvested in Germany, `fresh`, and those it comes from storage, `stored`, with the
+  names it goes by), read through `src/domain/season/calendar.ts` and passed in, so that it
+  can be changed and read again later (planning by offers). A catalog ingredient is a food
+  by its names (`foodFor`: the name, a longer one ending in it, a compound word ending in it;
+  the longest wins); one of whose names says tin, frozen or dried is none. Lemons, bananas
+  and champignons are in no season. A recipe fits the season (`seasonFit`) by the foods it
+  is made with that are harvested this month, weighted by how short their season is (up to
+  four months 3, six 2, longer 1; herbs and what is stored all year 0.5; wild garlic 3),
+  plus 2 for the tag of the season; 2 points fit. Anything of a short season (five months
+  at most) outside it, strawberries in November, keeps a recipe off. The card says why
+  ("Mit Kürbis, Lauch"). Only lines of ingredients the calendar knows are read
+  (`loadSeasonalFoods`).
+- "Was hat gerade Saison?" (`/rezepte/saison`, linked from the top of Entdecken) lists what
+  arrives this month, what is ripe, what leaves and what comes from storage, each food with
+  its year as twelve small months (`.season-bar`) and its recipes, those the library uses
+  most first; a tap shows them. Any month is a tap away.
 - A magazine is one source with its editions in it, a stack: `recipe.source_book`
   "Einfach Hausgemacht", `recipe.source_edition` "06/2020" or "Jahresheft 2021" (null for a
   cookbook; the same two on `import_batch`). The household types a source as one name, as
@@ -771,7 +822,9 @@ Library
   `npm run library:split-sources`, by the shape of the name alone.
 - Beyond its category a recipe is described by tags in groups (`src/domain/library/tags.ts`):
   "Aufwand" (Schnell, Alltagsküche, Braucht Zeit), "Gericht" (pasta, rice, potatoes,
-  casserole, pizza, pan, oven, burger), "Küche", "Saison", "Anlass", and "Eigene" for tags
+  casserole, pizza, pan, oven, burger), "Hauptzutat" (Hackfleisch, Hähnchen & Pute, Rind &
+  Kalb, Schwein, Lachs & Forelle, Garnelen & Meeresfrüchte, Hülsenfrüchte, Tofu & Tempeh,
+  Pilze, Eier, Käse; "Hülsenfrüchte" was a tag of "Ernährung" before), "Küche", "Saison", "Anlass", and "Eigene" for tags
   the household makes itself. The app refers to a tag by its key, or by its id when it has
   none. "Aufwand" and "Küche" hold one tag per recipe.
 - The tags are suggestions and the household's to change: "Stichworte ändern" on a recipe's
@@ -882,8 +935,19 @@ Library
   refused change goes back with what was asked in the address, and the page asks the rule
   again to say why.
 - A recipe without a printed time is never "quick".
-- Without a filter the page shows a few shelves that change with the day (`discover`):
-  quick meals, what is tagged for the season, long not cooked, new. They bring up what nobody
+- The tags of "Hauptzutat" are read from a recipe's ingredients and title without a model
+  (`mainIngredients`, `src/domain/library/main-ingredient.ts`): mince, chicken, salmon or
+  lentils wherever they are in it, not a broth, a fat or a lookalike ("Hühnerbrühe",
+  "Seelachs", "Ochsenherztomaten", "Pilzgulasch" is no beef); eggs and cheese only from the
+  title; sweet things never. Stored with `npm run library:main-ingredients`. A recipe that
+  then has no tag but its effort is described by the model with `import:tag-recipes --more`,
+  which keeps its effort. On the household's 1,148 recipes (25 October 2026, dry run): 472
+  had no tag but their effort, 200 still none after the main ingredients.
+- Without a filter the page shows rows of recipes that change with the day (`discover`):
+  "Passt zur Saison", "Schnell (bis 20 Min.)", "Lange nicht gekocht", "Neu im Kochbuch", and
+  three of the eight tags used most (Gericht, Hauptzutat, Küche, Anlass, Eigene), a different
+  three each day. Each row says how many recipes it stands for, and "Alle anzeigen" turns on
+  its filter (the new ones open the Regal by what is new). They bring up what nobody
   has marked yet (`isMarked`): favourites and what someone wants to cook are on "Favoriten"
   and on no shelf. A shelf shows ten recipes in an order that changes by the day; its "Alle"
   link lists everything behind it that is not marked. Marked recipes are on no list of
@@ -1433,6 +1497,11 @@ Import
   address suggestions go through the server to Photon, a free service of Komoot without a
   key and with fair use; without it the field is a plain field.
 - Markets close together lie on top of each other on the map until it is zoomed in.
+- Turning off zoom takes it from whoever needs larger writing; the household asked for it
+  (October 2026). An iPhone home screen app made before October 2026 starts at "/": the
+  proxy sends it on quickly, adding it to the home screen again starts at the plan directly.
+- The season calendar's months come from general German calendars, not from the region
+  around Laupheim, and were not checked against the household's market.
 - Inviting someone needs no e-mail to be sent: the link is passed on by hand. Supabase's own
   mail server only writes to the project's team, so mail from the app would need another one.
 - Other families: a household of its own cannot be opened from the app yet. Before that,
