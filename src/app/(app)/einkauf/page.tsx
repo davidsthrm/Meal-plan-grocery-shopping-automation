@@ -109,10 +109,13 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const family = familyName(household.name);
   const done = notes.reduce((sum, note) => sum + note.done, 0);
   const nothing = open + done + atHome.length === 0;
-  // What is still to do first; an errand done goes to the foot, and a note whose day is over
-  // with nothing on it to buy is not shown at all, also when lines were taken off it.
-  const arranged = arrangeNotes(notes, now, (note) =>
-    note.view.groups.every((group) => group.lines.length === 0),
+  // What is still to do first; an errand done goes to the foot. A note with nothing on it to
+  // buy is not shown while others have something, unless it is there to be written on.
+  const arranged = arrangeNotes(
+    notes,
+    now,
+    (note) => note.view.groups.every((group) => group.lines.length === 0),
+    (note) => note.trip.place === "drugstore" || note.openedByHand,
   );
   const tile = (note: NoteList) => (
     <li key={note.id}>
