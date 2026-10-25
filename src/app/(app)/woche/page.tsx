@@ -20,6 +20,7 @@ import {
   dayAndMonth,
   daysFromToday,
   mondayOf,
+  monthOfWeek,
   weekDates,
   weekdayLong,
   weekdayShort,
@@ -52,9 +53,16 @@ import {
   type PlanSlot,
 } from "@/domain/plan";
 import { progress, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
-import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
+import {
+  hintedMeals,
+  suggest,
+  suggestWeek,
+  tagsOfWeek,
+  varietyTags,
+  type Suggestion,
+} from "@/domain/recommend/suggest";
+import { monthOf } from "@/domain/season/calendar";
 import { foodText } from "@/domain/vesper";
-import { rank } from "@/domain/rank";
 import {
   GROUP_NAME,
   kindGroupName,
@@ -69,6 +77,7 @@ import { fromPlan } from "@/lib/origin";
 import { hourNow, today } from "@/lib/today";
 import { loadSelf, requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
+import { loadSeasonalFoods, withSeason } from "@/server/season";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { CookMore, ExtraPortions } from "./cook-more";
@@ -89,9 +98,6 @@ export const metadata: Metadata = { title: "Wochenplan" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** How many meals offer a suggestion unasked, and what an idea needs to be one of them. */
-const HINTS = 5;
-const HINT_SCORE = 2;
 /** How many different suggestions a meal can be asked for before they come round again. */
 const PROPOSALS = 12;
 
@@ -109,6 +115,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const db = await createSessionClient();
   // The library does not depend on the week: it is read while the week is found.
   const libraryRead = loadLibrary(db);
+  // What each recipe is made with that has a season: suggestions weigh the week's month.
+  const seasonalRead = loadSeasonalFoods(db);
   // The running week decides which week the planner opens on, and what there is today.
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
@@ -123,8 +131,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // The meal someone is cooking more of: "Mehr kochen" is open under it.
   const cookingMore = one(params.mehr) ?? "";
 
-  const [library, slots, nextSlots, history, extras, saved, self] = await Promise.all([
+  const [library, seasonal, slots, nextSlots, history, extras, saved, self] = await Promise.all([
     libraryRead,
+    seasonalRead,
     // The running week was read already.
     week === running ? runningSlots : loadWeek(db, week),
     // Leftovers of Sunday's dinner can be eaten in the next week.
@@ -170,32 +179,34 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const open = days
     .filter((date) => date >= now)
     .flatMap((date) => MEALS.filter((meal) => !slotAt(date, meal)).map((meal) => ({ date, meal })));
+  const planned = new Set(
+    slots.flatMap((slot) =>
+      slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
+    ),
+  );
+  // The main ingredients and kinds of dish the week has: a second of them counts against.
+  const variety = varietyTags(library.tagGroups);
   const context = {
     balance,
-    planned: new Set(
-      slots.flatMap((slot) =>
-        slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
-      ),
-    ),
+    planned,
     history,
     weekStart: week,
     seed: week,
+    variety,
+    usedTags: tagsOfWeek(
+      [...planned].flatMap((id) => recipeOf.get(id) ?? []),
+      variety,
+    ),
   };
+  // Suggestions weigh what is in season in the month the week counts for.
+  const suggestable = withSeason(library.recipes, seasonal, monthOf(monthOfWeek(week)));
   // What would complete the week. Nothing of it is put on the plan unasked, and a plan the
   // household saved is done with suggestions.
-  const picks = placing || showExtras || saved ? [] : suggestWeek(library.recipes, open, context);
+  const picks = placing || showExtras || saved ? [] : suggestWeek(suggestable, open, context);
   const pickAt = (date: IsoDate, meal: Meal) =>
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
-  // A few of them are offered in their meal: the ones with the most to say for them, and
-  // among equals not simply the first days of the week.
-  const hinted = new Set(
-    picks
-      .filter((pick) => pick.suggestion.score >= HINT_SCORE)
-      .map((pick) => ({ key: `${pick.date}.${pick.meal}`, score: pick.suggestion.score }))
-      .sort((a, b) => b.score - a.score || rank(week, a.key) - rank(week, b.key))
-      .slice(0, HINTS)
-      .map((pick) => pick.key),
-  );
+  // A few of them are offered in their meal: the ones with the most to say for them.
+  const hinted = hintedMeals(picks, week);
   // The answer to "Hast du einen Vorschlag?": the pick for that meal first, then the next best
   // one each time another is asked for, and round again when the list is through.
   const question = open.find((slot) => `${slot.date}.${slot.meal}` === askedFor);
@@ -203,7 +214,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   if (question && !placing && !showExtras) {
     const first = pickAt(question.date, question.meal);
     const ranked = suggest(
-      library.recipes,
+      suggestable,
       question,
       { ...context, seed: `${week}:${question.date}:${question.meal}` },
       PROPOSALS,

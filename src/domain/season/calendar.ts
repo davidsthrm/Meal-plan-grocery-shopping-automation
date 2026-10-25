@@ -176,6 +176,11 @@ export interface SeasonFit {
   fits: boolean;
   /** The foods in season now it is made with, the strongest first: what the card says. */
   foods: string[];
+  /**
+   * The foods of a short season it needs that are not in season now: strawberries in
+   * November. Absent when there are none.
+   */
+  outside?: string[];
 }
 
 /** The tag of the season a month belongs to: spring starts in March. */
@@ -206,11 +211,14 @@ export function seasonFit(
   const points =
     ripe.reduce((sum, food) => sum + seasonWeight(food), 0) +
     (tags.includes(seasonTagOf(month)) ? TAG_POINTS : 0);
-  const outside = foods.some((food) => isOutOfSeason(food, month));
+  const outside = [...new Map(foods.map((food) => [food.key, food])).values()]
+    .filter((food) => isOutOfSeason(food, month))
+    .map((food) => food.name);
   return {
     points,
-    fits: !outside && points >= FITS_AT,
+    fits: outside.length === 0 && points >= FITS_AT,
     foods: ripe.filter((food) => seasonWeight(food) >= 1).map((food) => food.name),
+    ...(outside.length > 0 && { outside }),
   };
 }
 

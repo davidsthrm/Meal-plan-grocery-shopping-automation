@@ -145,8 +145,15 @@ describe("seasonFit", () => {
     expect(seasonFit([food("erdbeeren")], [], 11).fits).toBe(false);
   });
 
+  it("names what is out of its season, once", () => {
+    expect(seasonFit([food("erdbeeren"), food("erdbeeren")], [], 11).outside).toEqual([
+      "Erdbeeren",
+    ]);
+  });
+
   it("names a food once", () => {
     expect(seasonFit([food("kuerbis"), food("kuerbis")], [], 10).foods).toEqual(["Kürbis"]);
+    expect(seasonFit([food("kuerbis")], [], 10).outside).toBeUndefined();
   });
 });
 

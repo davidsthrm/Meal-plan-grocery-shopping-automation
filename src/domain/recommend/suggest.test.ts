@@ -3,13 +3,34 @@ import { summary } from "../library/testing";
 import type { RecipeSummary } from "../library/summary";
 import { groupOf, weekBalance, withMeal, type BalanceLine } from "./balance";
 import type { Meal } from "../plan";
-import { scoreRecipe, suggest, suggestWeek, suitsDay, type SuggestContext } from "./suggest";
+import {
+  hintedMeals,
+  mixFavorites,
+  scoreRecipe,
+  suggest,
+  suggestWeek,
+  suitsDay,
+  tagsOfWeek,
+  varietyTags,
+  type SuggestContext,
+} from "./suggest";
 
 const emptyWeek = weekBalance([], () => undefined);
+
+/**
+ * A history in which every recipe was last planned five weeks before the test week: neither
+ * just had nor long ago, so the history says nothing unless a test sets it.
+ */
+class CookedAWhileAgo extends Map<string, string> {
+  override get(id: string): string {
+    return super.get(id) ?? "2026-09-07";
+  }
+}
+
 const context = (patch: Partial<SuggestContext> = {}): SuggestContext => ({
   balance: emptyWeek,
   planned: new Set(),
-  history: new Map(),
+  history: new CookedAWhileAgo(),
   weekStart: "2026-10-12",
   seed: "test",
   ...patch,
@@ -96,6 +117,127 @@ describe("scoreRecipe", () => {
       "favorite",
       "long_ago",
     ]);
+  });
+});
+
+describe("scoreRecipe: season, never cooked and variety", () => {
+  const pumpkin = summary("kuerbissuppe", {
+    proteinType: "poultry",
+    season: { points: 4, fits: true, foods: ["Kürbis", "Lauch", "Karotten"] },
+  });
+  const strawberries = summary("erdbeertorte", {
+    proteinType: "poultry",
+    season: { points: 0, fits: false, foods: [], outside: ["Erdbeeren"] },
+  });
+
+  it("prefers what is in season and names two of its foods", () => {
+    expect(scoreRecipe(pumpkin, context())).toMatchObject({
+      score: 2,
+      reasons: [{ kind: "in_season", foods: ["Kürbis", "Lauch"] }],
+    });
+  });
+
+  it("holds back what needs something of a short season outside it", () => {
+    expect(scoreRecipe(strawberries, context())).toMatchObject({
+      score: -3,
+      reasons: [{ kind: "out_of_season", foods: ["Erdbeeren"] }],
+    });
+  });
+
+  it("says nothing of the season where the page did not work it out", () => {
+    expect(scoreRecipe(summary("ohne", { proteinType: "poultry" }), context()).reasons).toEqual([]);
+  });
+
+  it("gives a nudge to what was never on a plan", () => {
+    expect(
+      scoreRecipe(summary("neu", { proteinType: "poultry" }), context({ history: new Map() })),
+    ).toMatchObject({
+      score: 1,
+      reasons: [{ kind: "never_cooked" }],
+    });
+  });
+
+  const variety = varietyTags([
+    {
+      name: "Hauptzutat",
+      tags: [{ ref: "hackfleisch", name: "Hackfleisch", group: "Hauptzutat" }],
+    },
+    { name: "Gericht", tags: [{ ref: "pasta", name: "Nudeln", group: "Gericht" }] },
+    { name: "Küche", tags: [{ ref: "italienisch", name: "Italienisch", group: "Küche" }] },
+  ]);
+
+  it("takes the main ingredient and the kind of dish as what a week should not repeat", () => {
+    expect([...variety]).toEqual([
+      ["hackfleisch", "Hackfleisch"],
+      ["pasta", "Nudeln"],
+    ]);
+    const week = [
+      summary("bolognese", { tags: ["pasta", "hackfleisch", "italienisch", "schnell"] }),
+    ];
+    expect([...tagsOfWeek(week, variety)]).toEqual(["pasta", "hackfleisch"]);
+  });
+
+  it("holds back a second dish with what the week has already", () => {
+    const lasagna = summary("lasagne", {
+      proteinType: "poultry",
+      tags: ["hackfleisch", "italienisch"],
+    });
+    const usedTags = new Set(["hackfleisch", "pasta"]);
+    expect(scoreRecipe(lasagna, context({ variety, usedTags }))).toMatchObject({
+      score: -2,
+      reasons: [{ kind: "repeats", tag: "Hackfleisch" }],
+    });
+    // A cuisine may come twice.
+    expect(
+      scoreRecipe(lasagna, context({ variety, usedTags: new Set(["italienisch"]) })).reasons,
+    ).toEqual([]);
+  });
+
+  it("names what speaks for a recipe before what speaks against it", () => {
+    const usedTags = new Set(["pasta"]);
+    const dish = summary("kuerbisnudeln", {
+      tags: ["pasta"],
+      isFavorite: true,
+      season: { points: 3, fits: true, foods: ["Kürbis"] },
+    });
+    expect(
+      scoreRecipe(dish, context({ variety, usedTags })).reasons.map((reason) => reason.kind),
+    ).toEqual(["fills_gap", "in_season", "favorite", "repeats"]);
+  });
+});
+
+describe("mixFavorites", () => {
+  const entry = (id: string, isFavorite: boolean, wanted = false) => ({
+    recipe: summary(id, { isFavorite, wanted }),
+  });
+
+  it("lets favourites take no more than a third of any length of the list", () => {
+    const list = [
+      entry("f1", true),
+      entry("f2", true),
+      entry("f3", true),
+      entry("o1", false),
+      entry("o2", false),
+      entry("o3", false),
+    ];
+    expect(mixFavorites(list).map((e) => e.recipe.id)).toEqual([
+      "f1",
+      "o1",
+      "o2",
+      "f2",
+      "o3",
+      "f3",
+    ]);
+  });
+
+  it("keeps the order where favourites are no more than their share", () => {
+    const list = [entry("o1", false), entry("f1", true), entry("o2", false), entry("o3", false)];
+    expect(mixFavorites(list).map((e) => e.recipe.id)).toEqual(["o1", "f1", "o2", "o3"]);
+  });
+
+  it("counts a favourite someone wants to cook as a wish", () => {
+    const list = [entry("w1", true, true), entry("w2", true, true), entry("o1", false)];
+    expect(mixFavorites(list).map((e) => e.recipe.id)).toEqual(["w1", "w2", "o1"]);
   });
 });
 
@@ -217,6 +359,18 @@ describe("suggest", () => {
     ]);
   });
 
+  it("lists other recipes between favourites", () => {
+    const favourites = Array.from({ length: 6 }, (_, i) =>
+      summary(`fav${i}`, { proteinType: "poultry", isFavorite: true }),
+    );
+    const others = Array.from({ length: 6 }, (_, i) =>
+      summary(`neu${i}`, { proteinType: "poultry" }),
+    );
+    const list = suggest([...favourites, ...others], at("lunch"), context(), 6);
+    expect(list.filter((entry) => entry.recipe.isFavorite)).toHaveLength(2);
+    expect(list[0].recipe.isFavorite).toBe(true);
+  });
+
   it("never suggests what is on this week's plan already", () => {
     const planned = new Set(["lachs", "lasagne"]);
     expect(ids(suggest(all, at("lunch"), context({ planned }), 10)).sort()).toEqual([
@@ -334,7 +488,88 @@ describe("suggestWeek", () => {
     }
   });
 
+  it("fills no more than a third of the week with favourites", () => {
+    const favourites = library.map((recipe) => ({
+      ...recipe,
+      id: `fav-${recipe.id}`,
+      isFavorite: true,
+    }));
+    for (const seed of ["a", "b", "c"]) {
+      const picks = suggestWeek([...favourites, ...library], week, context({ seed }));
+      expect(picks).toHaveLength(14);
+      const taken = picks.filter((pick) => pick.suggestion.recipe.isFavorite);
+      expect(taken.length, seed).toBe(5);
+    }
+  });
+
+  it("counts the favourites on the plan already", () => {
+    const favourites = library.map((recipe) => ({
+      ...recipe,
+      id: `fav-${recipe.id}`,
+      isFavorite: true,
+    }));
+    // Two of four meals planned with favourites: a third of the week is two meals.
+    const planned = new Set(["fav-veggie0", "fav-veggie1"]);
+    const picks = suggestWeek([...favourites, ...library], week.slice(0, 2), context({ planned }));
+    expect(picks.filter((pick) => pick.suggestion.recipe.isFavorite)).toEqual([]);
+  });
+
+  it("takes a favourite where nothing else suits the meal", () => {
+    const only = [summary("lieblingssalat", { category: "salat", isFavorite: true })];
+    const picks = suggestWeek([...only, ...library], [at("dinner"), at("lunch")], context());
+    expect(picks.map((pick) => pick.suggestion.recipe.id)).toContain("lieblingssalat");
+  });
+
+  it("does not give the week the same main ingredient twice when there is a choice", () => {
+    const variety = new Map([["hackfleisch", "Hackfleisch"]]);
+    const mince = Array.from({ length: 6 }, (_, i) =>
+      summary(`hack${i}`, { tags: ["hackfleisch"], proteinType: "red_meat" }),
+    );
+    const beef = Array.from({ length: 6 }, (_, i) =>
+      summary(`rind${i}`, { proteinType: "red_meat" }),
+    );
+    // A week that wants two red meat dishes and nothing else.
+    const balance = after("vegetarian", "vegetarian", "vegetarian", "fish");
+    for (const seed of ["a", "b", "c", "d", "e"]) {
+      const picks = suggestWeek([...mince, ...beef], week.slice(0, 2), {
+        ...context({ seed, balance, variety, usedTags: new Set() }),
+      });
+      const withMince = picks.filter((pick) => pick.suggestion.recipe.tags.includes("hackfleisch"));
+      expect(withMince.length, seed).toBeLessThanOrEqual(1);
+    }
+  });
+
   it("leaves a meal open when the library has nothing left for it", () => {
     expect(suggestWeek([lasagne], week.slice(0, 3), context())).toHaveLength(1);
+  });
+});
+
+describe("hintedMeals", () => {
+  const pick = (day: string, score: number, isFavorite = false) => ({
+    date: `2026-10-${day}`,
+    meal: "lunch" as const,
+    suggestion: { recipe: summary(`r${day}`, { isFavorite }), score, reasons: [] },
+  });
+
+  it("offers the five with the most to say for them, never one with little", () => {
+    const picks = ["12", "13", "14", "15", "16", "17", "18"].map((day, i) => pick(day, 9 - i));
+    const hinted = hintedMeals([...picks, pick("19", 1)], "w");
+    expect([...hinted].sort()).toEqual([
+      "2026-10-12.lunch",
+      "2026-10-13.lunch",
+      "2026-10-14.lunch",
+      "2026-10-15.lunch",
+      "2026-10-16.lunch",
+    ]);
+  });
+
+  it("offers no more than two favourites", () => {
+    const favourites = ["12", "13", "14", "15"].map((day) => pick(day, 5, true));
+    const others = ["16", "17", "18"].map((day) => pick(day, 3));
+    const hinted = hintedMeals([...favourites, ...others], "w");
+    expect(hinted.size).toBe(5);
+    expect(
+      ["12", "13", "14", "15"].filter((day) => hinted.has(`2026-10-${day}.lunch`)),
+    ).toHaveLength(2);
   });
 });

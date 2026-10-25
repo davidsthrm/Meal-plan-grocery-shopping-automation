@@ -713,8 +713,17 @@ Week plan
   recorded.
 - A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
   when its group is still below the least the week should have, -4 when its group is used
-  up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
-  cooked 8 weeks ago or longer. Equal recipes are ordered by a seed (week, meal), so the
+  up, +2 when it fits the season of the month the week counts for ("Passt zur Saison:
+  Kürbis, Lauch", `seasonFit` with `monthOfWeek`), -3 when it needs something of a short
+  season outside it ("Außerhalb der Saison: Erdbeeren"), +2 for a favourite, -3 when it was
+  on a plan in the last 4 weeks, +1 when it was last cooked 8 weeks ago or longer or never
+  ("Noch nie gekocht"), and -2 for each main ingredient or kind of dish the week has already
+  ("Schon Hackfleisch diese Woche": the tags of "Hauptzutat" and "Gericht", `varietyTags`,
+  `tagsOfWeek`; a cuisine may come twice). A suggestion names its two strongest reasons,
+  what speaks for it first (`whyText`); more made a box of small print. Favourites are no
+  more than a third of any list of suggestions (`mixFavorites`, `FAVORITE_SHARE`): with +2
+  they won every tie, and the household was offered its favourites over and over. A
+  favourite someone wants to cook counts as a wish. Equal recipes are ordered by a seed (week, meal), so the
   order is stable between two looks. The best one is found in one pass, not by sorting the
   library, and a recipe's dish and effort are read once per recipe: a week's suggestions
   took 190 ms of the server for the family's 1,146 recipes on every look at the plan, and
@@ -724,7 +733,9 @@ Week plan
   ein Vorschlag" for the next best; after twelve they come round again. The household found
   a plan that arrives full of suggestions too pushy.
 - Up to five open meals offer a suggestion without being asked: those with the most to say
-  for them (a wish, a favourite, a gap in the week; `HINT_SCORE`), spread over the week. It
+  for them (a wish, a favourite, a gap in the week, the season; `HINT_SCORE`; "never
+  cooked" alone is not enough), at most two of them favourites (`hintedMeals`), spread
+  over the week. It
   is the same box as an answer to "Hast du einen Vorschlag?", with a dashed edge and
   "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Noch ein
   Vorschlag" shows the next best. More wishes and favourites mean more such meals, up to
@@ -736,8 +747,11 @@ Week plan
   suitable recipes left than meals still open, is chosen for before the others: filled from
   Monday on, the lunches took the salad and the fish of a small cookbook, and Thursday
   evening, which takes only what is light and quick, got a third meat dish. With the
-  household's library no meal is that tight, and the week is filled in its order. What a
-  pick says for itself is said of the week as planned, not of the order it was chosen in.
+  household's library no meal is that tight, and the week is filled in its order.
+  Favourites fill no more than a third of the week, those on the plan already counted, and
+  a favourite only where nothing else suits a meal past that; each pick's main ingredient
+  and kind of dish count as the week's for the next. What a pick says for itself is said of
+  the week as planned, not of the order it was chosen in.
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
 - The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is

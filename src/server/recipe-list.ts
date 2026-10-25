@@ -9,7 +9,7 @@ import {
   type RecipeFilter,
 } from "@/domain/library/filter";
 import type { RecipeSummary } from "@/domain/library/summary";
-import { monthOf } from "@/domain/season/calendar";
+import { monthOf, type Month } from "@/domain/season/calendar";
 import type { Db } from "./catalog";
 import { loadLibrary, searchLibrary, type Library } from "./library";
 import { loadHistory } from "./planning/week";
@@ -27,17 +27,15 @@ import { loadSeasonalFoods, withSeason } from "./season";
 export async function loadLibraryForLists(
   db: Db,
   today: IsoDate,
+  /** The month "Passt zur Saison" asks about: today's, or that of a week being planned. */
+  month: Month = monthOf(today),
 ): Promise<Library & { history: Map<string, IsoDate> }> {
   const [library, history, seasonal] = await Promise.all([
     loadLibrary(db),
     loadHistory(db, today),
     loadSeasonalFoods(db),
   ]);
-  const recipes = withHistory(
-    withSeason(library.recipes, seasonal, monthOf(today)),
-    history,
-    today,
-  );
+  const recipes = withHistory(withSeason(library.recipes, seasonal, month), history, today);
   return { ...library, recipes, history };
 }
 

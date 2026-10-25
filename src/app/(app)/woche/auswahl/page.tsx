@@ -18,6 +18,7 @@ import {
   dayAndMonth,
   isIsoDate,
   mondayOf,
+  monthOfWeek,
   weekdayLong,
   weekdayShort,
   weekRange,
@@ -33,7 +34,8 @@ import {
 import type { RecipeSummary } from "@/domain/library/summary";
 import { MEALS_WITHOUT_RECIPE, nextOpenMeal, slotKey, weekStrip, type Meal } from "@/domain/plan";
 import { weekBalance } from "@/domain/recommend/balance";
-import { suggest } from "@/domain/recommend/suggest";
+import { suggest, tagsOfWeek, varietyTags } from "@/domain/recommend/suggest";
+import { monthOf } from "@/domain/season/calendar";
 import { foodText, SIDE_FOODS } from "@/domain/vesper";
 import { MEAL_ADD, MEAL_NAME, MEAL_PLAN, slotText, whyText } from "@/lib/plan-text";
 import { requireHousehold } from "@/server/auth";
@@ -82,7 +84,8 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
   const household = await requireHousehold();
   const db = await createSessionClient();
   const [library, slots, history, extras, nextWeek] = await Promise.all([
-    loadLibraryForLists(db, today()),
+    // Suggestions and "Passt zur Saison" weigh the month the week counts for.
+    loadLibraryForLists(db, today(), monthOf(monthOfWeek(week))),
     loadWeek(db, week),
     loadHistory(db, week),
     loadExtras(db, week),
@@ -115,6 +118,8 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
       );
   // The week without this meal: what is chosen here takes its place.
   const others = slots.filter((slot) => slot.date !== date || slot.meal !== meal);
+  // The main ingredients and kinds of dish the rest of the week has.
+  const variety = varietyTags(library.tagGroups);
   const suggestions =
     browsing && !extra && mode === "replace"
       ? suggest(
@@ -126,6 +131,15 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
             history,
             weekStart: week,
             seed: `${week}:${date}:${meal}`,
+            variety,
+            usedTags: tagsOfWeek(
+              others.flatMap((slot) =>
+                slot.kind === "recipes"
+                  ? slot.items.flatMap((item) => recipeOf.get(item.recipeId) ?? [])
+                  : [],
+              ),
+              variety,
+            ),
           },
           SUGGESTIONS,
         )
