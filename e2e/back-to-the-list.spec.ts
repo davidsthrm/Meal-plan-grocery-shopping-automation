@@ -33,7 +33,7 @@ test("a shelf is scrolled sideways as it was after going back", async ({ page })
   await page.goto("/rezepte");
   // The made-up cookbook was just written: let the live refresh it causes pass first.
   await page.waitForTimeout(4000);
-  const shelf = page.locator(".shelf").first();
+  const shelf = page.getByRole("region", { name: /^Schnell/ }).locator(".shelf");
   const sideways = () => shelf.evaluate((element) => Math.round(element.scrollLeft));
   await shelf.evaluate((element) => element.scrollBy({ left: 400 }));
   // The shelf snaps to a card; that is where it was left.

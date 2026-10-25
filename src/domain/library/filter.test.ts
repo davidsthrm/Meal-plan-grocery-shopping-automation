@@ -93,6 +93,8 @@ describe("the filter in the address", () => {
       edition: "06/2020",
       favorites: true,
       tags: ["schnell", "italienisch"],
+      season: true,
+      longAgo: true,
     };
     expect(filterParams(filter)).toEqual({
       q: "Lachs",
@@ -103,6 +105,8 @@ describe("the filter in the address", () => {
       ausgabe: "06/2020",
       favoriten: "1",
       tag: "schnell,italienisch",
+      saison: "1",
+      lange: "1",
     });
     expect(readFilter(filterParams(filter))).toEqual(filter);
   });
@@ -128,5 +132,23 @@ describe("the filter in the address", () => {
       ...NO_FILTER,
       text: "a",
     });
+  });
+});
+
+describe("the season and the plans", () => {
+  const fits = { points: 3, fits: true, foods: ["Kürbis"] };
+  it("finds what fits the season, where the page worked it out", () => {
+    const filter = { ...NO_FILTER, season: true };
+    expect(matchesFilter(summary("suppe", { season: fits }), filter)).toBe(true);
+    expect(matchesFilter(summary("salat", { season: { ...fits, fits: false } }), filter)).toBe(
+      false,
+    );
+    expect(matchesFilter(summary("unbekannt"), filter)).toBe(false);
+  });
+
+  it("finds what was cooked long ago", () => {
+    const filter = { ...NO_FILTER, longAgo: true };
+    expect(matchesFilter(summary("alt", { longAgo: true }), filter)).toBe(true);
+    expect(matchesFilter(summary("neu", { longAgo: false }), filter)).toBe(false);
   });
 });

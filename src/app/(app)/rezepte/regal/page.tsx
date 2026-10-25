@@ -5,13 +5,28 @@ import type { ReactNode } from "react";
 import { FavoriteHeart } from "@/components/favorite-heart";
 import { PenIcon, TagIcon, TrashIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
-import { RecipeFilterBar } from "@/components/recipe-filter";
+import {
+  activeChips,
+  FilterBar,
+  FilterLayout,
+  FilterPanel,
+  filterHref,
+  panelGroups,
+  WaysOut,
+  type PanelGroup,
+} from "@/components/recipe-filters";
 import { RecipeViews } from "@/components/recipe-views";
 import { SubmitButton } from "@/components/submit-button";
 import { TagEditor } from "@/components/tag-editor";
 import { TagNameField } from "@/components/tag-name-field";
 import { dayAndMonth, weekdayLong, type IsoDate } from "@/domain/dates";
-import { filterParams, matchesFilter, readFilter } from "@/domain/library/filter";
+import {
+  filterParams,
+  isNoFilter,
+  NO_FILTER,
+  readFilter,
+  type RecipeFilter,
+} from "@/domain/library/filter";
 import {
   LACK_NAME,
   LACKS,
@@ -33,7 +48,8 @@ import { FROM_SHELF } from "@/lib/origin";
 import { MEAL_NAME, recipeTone } from "@/lib/plan-text";
 import { servingsText } from "@/lib/recipe-text";
 import { today } from "@/lib/today";
-import { loadLibrary, searchLibrary, type Library } from "@/server/library";
+import type { Library } from "@/server/library";
+import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { loadLastCookedAll, loadRecipePlaces, type PlanPlace } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { setFavorite, setWanted } from "../actions";
@@ -59,17 +75,23 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
   const view = readTableView(params);
   const now = today();
   const db = await createSessionClient();
-  const [library, cooked] = await Promise.all([loadLibrary(db), loadLastCookedAll(db, now)]);
-  const { recipes, categories, books, tagGroups } = library;
+  const [library, cooked] = await Promise.all([
+    loadLibraryForLists(db, now),
+    loadLastCookedAll(db, now),
+  ]);
+  const { recipes, categories, tagGroups } = library;
   const tags = tagGroups.flatMap((group) => group.tags);
 
   // With words to search for, the best fit comes first unless a column is chosen.
+  const list = await listRecipes(db, library, recipes, filter, {
+    season: true,
+    longAgo: true,
+    favorites: true,
+  });
   const found =
     filter.text.trim() === ""
-      ? recipes
-          .filter((recipe) => matchesFilter(recipe, filter))
-          .sort((a, b) => a.title.localeCompare(b.title, "de"))
-      : (await searchLibrary(db, library, filter)).matches;
+      ? [...list.results].sort((a, b) => a.title.localeCompare(b.title, "de"))
+      : list.results;
   const rows = sortRows(
     found
       .filter((recipe) => !view.lacks || lacks(recipe, view.lacks))
@@ -85,6 +107,46 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
     `/rezepte/regal?${new URLSearchParams({ ...shelf, ...extra })}${anchor}`;
   const withView = (next: TableView) =>
     `/rezepte/regal?${new URLSearchParams({ ...filterParams(filter), ...tableParams(next) })}`;
+
+  // The filter's links keep the table's order and what is lacking, from the first page.
+  const keep = tableParams({ ...view, page: 1 });
+  const filterLink = (next: RecipeFilter) => filterHref("/rezepte/regal", next, keep);
+  const lacking: PanelGroup = {
+    key: "ohne",
+    title: "Was fehlt",
+    options: LACKS.map((lack) => {
+      const on = view.lacks === lack;
+      return {
+        key: `ohne-${lack}`,
+        label: LACK_NAME[lack],
+        count: found.filter((recipe) => lacks(recipe, lack)).length,
+        on,
+        href: withView({ ...view, lacks: on ? null : lack, page: 1 }),
+        picture: { kind: "none" },
+      };
+    }),
+  };
+  const groups = [lacking, ...panelGroups(list.groups, filterLink)];
+  const chips = [
+    ...(view.lacks
+      ? [
+          {
+            key: "ohne",
+            label: LACK_NAME[view.lacks],
+            href: withView({ ...view, lacks: null, page: 1 }),
+          },
+        ]
+      : []),
+    ...activeChips(list.groups, filterLink),
+  ];
+  const reset =
+    isNoFilter({ ...filter, text: "" }) && !view.lacks
+      ? null
+      : filterHref(
+          "/rezepte/regal",
+          { ...NO_FILTER, text: filter.text },
+          tableParams({ ...view, lacks: null, page: 1 }),
+        );
 
   const recipeOf = new Map(recipes.map((recipe) => [recipe.id, recipe]));
   const deleting = recipeOf.get(one(params.loeschen) ?? "");
@@ -117,162 +179,157 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
       )}
 
       <div className="mt-5">
-        <RecipeFilterBar
-          path="/rezepte/regal"
-          filter={filter}
-          categories={categories}
-          books={books}
-          sources={library.sources}
-          tagGroups={tagGroups}
-          keep={tableParams({ ...view, page: 1 })}
-        />
-      </div>
+        <FilterLayout
+          layout="aside"
+          panel={<FilterPanel layout="aside" groups={groups} total={shown.total} reset={reset} />}
+        >
+          <FilterBar
+            path="/rezepte/regal"
+            filter={filter}
+            hidden={{ ...keep, ...filterParams({ ...filter, text: "" }) }}
+            layout="aside"
+            chips={chips}
+            reset={reset}
+          />
 
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Was fehlt">
-        {LACKS.map((lack) => {
-          const on = view.lacks === lack;
-          return (
-            <Link
-              key={lack}
-              href={withView({ ...view, lacks: on ? null : lack, page: 1 })}
-              className={`chip ${on ? "chip-on" : ""}`}
-              aria-pressed={on}
-            >
-              {LACK_NAME[lack]}
-            </Link>
-          );
-        })}
-      </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted" role="status">
+              {shown.total === 1 ? "1 Rezept" : `${shown.total} Rezepte`}
+              {shown.pages > 1 && ` · Seite ${shown.page} von ${shown.pages}`}
+            </p>
+            {shown.rows.length > 0 && (
+              <label className="chip cursor-pointer">
+                <input type="checkbox" form={SELECTION} name="alle" value="1" className="sr-only" />
+                Alle auf dieser Seite
+              </label>
+            )}
+          </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted" role="status">
-          {shown.total === 1 ? "1 Rezept" : `${shown.total} Rezepte`}
-          {shown.pages > 1 && ` · Seite ${shown.page} von ${shown.pages}`}
-        </p>
-        {shown.rows.length > 0 && (
-          <label className="chip cursor-pointer">
-            <input type="checkbox" form={SELECTION} name="alle" value="1" className="sr-only" />
-            Alle auf dieser Seite
-          </label>
-        )}
-      </div>
+          {/* On a phone the columns' headings are not shown: it is sorted here instead. */}
+          <nav
+            aria-label="Sortieren"
+            className="mt-3 flex flex-wrap items-center gap-1.5 sm:hidden"
+          >
+            <span className="text-sm text-muted">Sortiert nach</span>
+            {(["titel", "aufwand", "gekocht", "neu"] as const).map((sort) => (
+              <SortLink key={sort} sort={sort} view={view} href={withView} chip>
+                {SORT_NAME[sort]}
+              </SortLink>
+            ))}
+          </nav>
 
-      {/* On a phone the columns' headings are not shown: it is sorted here instead. */}
-      <nav aria-label="Sortieren" className="mt-3 flex flex-wrap items-center gap-1.5 sm:hidden">
-        <span className="text-sm text-muted">Sortiert nach</span>
-        {(["titel", "aufwand", "gekocht", "neu"] as const).map((sort) => (
-          <SortLink key={sort} sort={sort} view={view} href={withView} chip>
-            {SORT_NAME[sort]}
-          </SortLink>
-        ))}
-      </nav>
-
-      {shown.rows.length === 0 ? (
-        <p className="mt-6 text-muted">
-          {recipes.length === 0 ? "Noch keine Rezepte." : "Kein Rezept passt dazu."}
-        </p>
-      ) : (
-        <div className="card mt-3 overflow-hidden">
-          <table className="w-full border-collapse text-left">
-            <thead className="hidden border-b border-line bg-paper sm:table-header-group">
-              <tr className="text-sm text-muted">
-                <th className="w-11">
-                  <span className="sr-only">Auswählen</span>
-                </th>
-                <Th>
-                  <SortLink sort="titel" view={view} href={withView}>
-                    Rezept
-                  </SortLink>
-                </Th>
-                <Th className="hidden xl:table-cell">
-                  <SortLink sort="buch" view={view} href={withView}>
-                    Kochbuch
-                  </SortLink>
-                </Th>
-                <Th className="hidden xl:table-cell">S.</Th>
-                <Th className="hidden lg:table-cell">
-                  <SortLink sort="kategorie" view={view} href={withView}>
-                    Kategorie
-                  </SortLink>
-                </Th>
-                <Th className="hidden md:table-cell">
-                  <SortLink sort="art" view={view} href={withView}>
-                    Art
-                  </SortLink>
-                </Th>
-                <Th>
-                  <SortLink sort="aufwand" view={view} href={withView}>
-                    Aufwand
-                  </SortLink>
-                </Th>
-                <Th className="hidden xl:table-cell">
-                  <SortLink sort="portionen" view={view} href={withView}>
-                    Portionen
-                  </SortLink>
-                </Th>
-                <Th className="hidden xl:table-cell">Stichworte</Th>
-                <Th className="hidden lg:table-cell">
-                  <SortLink sort="gekocht" view={view} href={withView}>
-                    Gekocht
-                  </SortLink>
-                </Th>
-                <Th>
-                  <span className="sr-only">Aktionen</span>
-                </Th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.rows.map((row) => (
-                <ShelfRow
-                  key={row.recipe.id}
-                  row={row}
-                  now={now}
-                  tags={tags}
-                  category={
-                    categories.find((category) => category.key === row.recipe.category)?.name ??
-                    null
-                  }
-                  href={href}
-                  editor={
-                    tagging?.id === row.recipe.id ? (
-                      <TagEditor
-                        recipeId={row.recipe.id}
-                        chosen={row.recipe.tags}
-                        tagGroups={tagGroups}
-                        target="regal"
-                        back={query}
-                        cancel={href({}, `#r-${row.recipe.id}`)}
-                      />
-                    ) : null
-                  }
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {shown.pages > 1 && (
-        <nav aria-label="Seiten" className="mt-4 flex items-center justify-between gap-3">
-          {shown.page > 1 ? (
-            <Link href={withView({ ...view, page: shown.page - 1 })} className="btn btn-small">
-              ← Zurück
-            </Link>
-          ) : (
-            <span />
+          {shown.rows.length === 0 ? (
+            <p className="mt-6 text-muted">
+              {recipes.length === 0 ? "Noch keine Rezepte." : "Kein Rezept passt dazu."}
+            </p>
+          ) : null}
+          {shown.rows.length === 0 && !view.lacks ? (
+            <WaysOut relax={list.relax} href={filterLink} />
+          ) : null}
+          {shown.rows.length > 0 && (
+            <div className="card mt-3 overflow-hidden">
+              <table className="w-full border-collapse text-left">
+                <thead className="hidden border-b border-line bg-paper sm:table-header-group">
+                  <tr className="text-sm text-muted">
+                    <th className="w-11">
+                      <span className="sr-only">Auswählen</span>
+                    </th>
+                    <Th>
+                      <SortLink sort="titel" view={view} href={withView}>
+                        Rezept
+                      </SortLink>
+                    </Th>
+                    <Th className="hidden xl:table-cell">
+                      <SortLink sort="buch" view={view} href={withView}>
+                        Kochbuch
+                      </SortLink>
+                    </Th>
+                    <Th className="hidden xl:table-cell">S.</Th>
+                    <Th className="hidden lg:table-cell">
+                      <SortLink sort="kategorie" view={view} href={withView}>
+                        Kategorie
+                      </SortLink>
+                    </Th>
+                    <Th className="hidden md:table-cell">
+                      <SortLink sort="art" view={view} href={withView}>
+                        Art
+                      </SortLink>
+                    </Th>
+                    <Th>
+                      <SortLink sort="aufwand" view={view} href={withView}>
+                        Aufwand
+                      </SortLink>
+                    </Th>
+                    <Th className="hidden xl:table-cell">
+                      <SortLink sort="portionen" view={view} href={withView}>
+                        Portionen
+                      </SortLink>
+                    </Th>
+                    <Th className="hidden xl:table-cell">Stichworte</Th>
+                    <Th className="hidden lg:table-cell">
+                      <SortLink sort="gekocht" view={view} href={withView}>
+                        Gekocht
+                      </SortLink>
+                    </Th>
+                    <Th>
+                      <span className="sr-only">Aktionen</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.rows.map((row) => (
+                    <ShelfRow
+                      key={row.recipe.id}
+                      row={row}
+                      now={now}
+                      tags={tags}
+                      category={
+                        categories.find((category) => category.key === row.recipe.category)?.name ??
+                        null
+                      }
+                      href={href}
+                      editor={
+                        tagging?.id === row.recipe.id ? (
+                          <TagEditor
+                            recipeId={row.recipe.id}
+                            chosen={row.recipe.tags}
+                            tagGroups={tagGroups}
+                            target="regal"
+                            back={query}
+                            cancel={href({}, `#r-${row.recipe.id}`)}
+                          />
+                        ) : null
+                      }
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-          <span className="text-sm text-muted">
-            Seite {shown.page} von {shown.pages}
-          </span>
-          {shown.page < shown.pages ? (
-            <Link href={withView({ ...view, page: shown.page + 1 })} className="btn btn-small">
-              Weiter →
-            </Link>
-          ) : (
-            <span />
+
+          {shown.pages > 1 && (
+            <nav aria-label="Seiten" className="mt-4 flex items-center justify-between gap-3">
+              {shown.page > 1 ? (
+                <Link href={withView({ ...view, page: shown.page - 1 })} className="btn btn-small">
+                  ← Zurück
+                </Link>
+              ) : (
+                <span />
+              )}
+              <span className="text-sm text-muted">
+                Seite {shown.page} von {shown.pages}
+              </span>
+              {shown.page < shown.pages ? (
+                <Link href={withView({ ...view, page: shown.page + 1 })} className="btn btn-small">
+                  Weiter →
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
           )}
-        </nav>
-      )}
+        </FilterLayout>
+      </div>
 
       {shown.rows.length > 0 && (
         <SelectionBar form={SELECTION} page={`${query}`}>

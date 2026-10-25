@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addBatches, planAsExtra, resetLibrary, signIn } from "./fixtures";
+import { addBatches, openFilters, planAsExtra, resetLibrary, signIn } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await resetLibrary();
@@ -169,7 +169,13 @@ test("the editions of a magazine are one stack", async ({ page }) => {
   // One entry in the library, its editions a further choice.
   await page.goto("/rezepte?buch=Testheft");
   await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
-  await page.getByRole("group", { name: "Ausgabe" }).getByRole("link", { name: "05/2026" }).click();
+  const close = await openFilters(page);
+  await page
+    .getByRole("group", { name: "Ausgabe" })
+    .getByRole("link", { name: /^05\/2026/ })
+    .click();
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+  await close();
   await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
   await expect(page.getByRole("link", { name: /Rhabarberkuchen/ })).toBeVisible();
 

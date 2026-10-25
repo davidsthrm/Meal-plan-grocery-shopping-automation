@@ -4,12 +4,27 @@ import Link from "next/link";
 import { WishIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { RecipeCard } from "@/components/recipe-card";
-import { RecipeFilterBar } from "@/components/recipe-filter";
+import {
+  activeChips,
+  FilterBar,
+  FilterLayout,
+  FilterPanel,
+  filterHref,
+  panelGroups,
+  WaysOut,
+} from "@/components/recipe-filters";
 import { byCategory } from "@/domain/library/discover";
-import { filterRecipes, isNoFilter, readFilter } from "@/domain/library/filter";
+import {
+  filterParams,
+  isNoFilter,
+  NO_FILTER,
+  readFilter,
+  type RecipeFilter,
+} from "@/domain/library/filter";
 import { pictogramFor } from "@/domain/library/pictogram";
 import { FROM_FAVORITES } from "@/lib/origin";
-import { loadLibrary, searchLibrary } from "@/server/library";
+import { today } from "@/lib/today";
+import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { createSessionClient } from "@/server/supabase/server";
 
 export const metadata: Metadata = { title: "Favoriten" };
@@ -22,17 +37,22 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
   const params = await props.searchParams;
   const filter = { ...readFilter(params), favorites: true };
   const db = await createSessionClient();
-  const library = await loadLibrary(db);
-  const { recipes, categories, books, tagGroups } = library;
+  const library = await loadLibraryForLists(db, today());
+  const { recipes, categories } = library;
   const categoryName = new Map(categories.map((category) => [category.key, category.name]));
   const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
 
   const favorites = recipes.filter((recipe) => recipe.isFavorite);
   const wishes = recipes.filter((recipe) => recipe.wanted);
   const browsing = isNoFilter({ ...filter, favorites: false });
-  const found = filter.text.trim() === "" ? null : await searchLibrary(db, library, filter);
-  const listed = found ? found.matches : filterRecipes(recipes, filter);
+  const list = await listRecipes(db, library, favorites, filter, { season: true, longAgo: true });
+  const listed = list.results;
   const groups = byCategory(listed, categories);
+  // The page is the favourites: that is never part of its address.
+  const href = (next: RecipeFilter) => filterHref("/favoriten", { ...next, favorites: false });
+  const reset = isNoFilter({ ...filter, favorites: false, text: "" })
+    ? null
+    : href({ ...NO_FILTER, text: filter.text });
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -77,52 +97,72 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
         </p>
       ) : (
         <div className="mt-6">
-          <RecipeFilterBar
-            path="/favoriten"
-            filter={filter}
-            categories={categories}
-            books={books}
-            sources={library.sources}
-            tagGroups={tagGroups}
-            favorites="only"
-          />
+          <FilterLayout
+            layout="aside"
+            panel={
+              <FilterPanel
+                layout="aside"
+                groups={panelGroups(list.groups, href)}
+                total={listed.length}
+                noun={["Favorit", "Favoriten"]}
+                reset={reset}
+              />
+            }
+          >
+            <FilterBar
+              path="/favoriten"
+              filter={filter}
+              hidden={filterParams({ ...filter, text: "", favorites: false })}
+              layout="aside"
+              chips={activeChips(list.groups, href)}
+              reset={reset}
+            />
+
+            {!browsing && (
+              <p className="mt-5 text-muted" role="status">
+                {listed.length === 0
+                  ? "Kein Favorit passt dazu."
+                  : listed.length === 1
+                    ? "1 Favorit passt dazu"
+                    : `${listed.length} Favoriten passen dazu`}
+              </p>
+            )}
+            {!browsing && listed.length === 0 && (
+              <WaysOut relax={list.relax} href={href} noun={["Favorit", "Favoriten"]} />
+            )}
+
+            {groups.map((group) => (
+              <section key={group.key ?? "ohne"} className="mt-7" aria-label={group.name}>
+                <h2 className="flex items-center gap-2.5 border-b border-line pb-2 text-xl font-bold tracking-tight">
+                  <span className="badge h-8 w-8">
+                    <PictogramIcon
+                      name={pictogramFor({
+                        title: "",
+                        category: group.key,
+                        proteinType: null,
+                        tags: [],
+                      })}
+                      className="h-[68%] w-[68%]"
+                    />
+                  </span>
+                  {group.name}
+                  <span className="text-base font-normal text-muted">{group.recipes.length}</span>
+                </h2>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {group.recipes.map((recipe) => (
+                    <RecipeCard
+                      key={recipe.id}
+                      recipe={recipe}
+                      category={nameOf(recipe.category)}
+                      from={FROM_FAVORITES}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </FilterLayout>
         </div>
       )}
-
-      {!browsing && (
-        <p className="mt-5 text-muted" role="status">
-          {listed.length === 0
-            ? "Kein Favorit passt dazu."
-            : listed.length === 1
-              ? "1 Favorit passt dazu"
-              : `${listed.length} Favoriten passen dazu`}
-        </p>
-      )}
-
-      {groups.map((group) => (
-        <section key={group.key ?? "ohne"} className="mt-7" aria-label={group.name}>
-          <h2 className="flex items-center gap-2.5 border-b border-line pb-2 text-xl font-bold tracking-tight">
-            <span className="badge h-8 w-8">
-              <PictogramIcon
-                name={pictogramFor({ title: "", category: group.key, proteinType: null, tags: [] })}
-                className="h-[68%] w-[68%]"
-              />
-            </span>
-            {group.name}
-            <span className="text-base font-normal text-muted">{group.recipes.length}</span>
-          </h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {group.recipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                category={nameOf(recipe.category)}
-                from={FROM_FAVORITES}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
     </div>
   );
 }
