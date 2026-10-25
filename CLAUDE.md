@@ -114,6 +114,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   does not know yet scaled on the list; "1 Portion" in the singular. Offers of the
   supermarkets were looked into and left out (October 2026): no source that is reliable and
   allowed exists for EDEKA and REWE, and the family wants no uploads.
+- Phase 15 (branch `phase-15-statistics`): "Statistik" next to "Alle Wochen": how the family
+  eats and shops by week, month and year, each figure a link to what it counts.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -273,7 +275,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   the meal "Mehr kochen" is open under), `/woche/auswahl`
   (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
-  month by month), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/regal`
+  month by month), `/woche/statistik` (how the family eats and shops: `?zeit=woche|monat|jahr`
+  with `&am=<monday|yyyy-mm|yyyy>`, `&bereich=einkauf` for the shopping), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/regal`
   (every recipe as a table to look after; `?stichworte=<id>` opens a row's tags,
   `?loeschen=<id>` asks before deleting), `/rezepte/saison` ("Was hat gerade Saison?";
   `?monat=1..12` another month, `?zutat=<key>` the recipes with one food), `/rezepte/stichworte` (the tags themselves;
@@ -805,6 +808,41 @@ Week plan
   for the month most of its days are in. The week being planned is always listed.
 - A recipe for persons is planned for the household's servings, a recipe with a servings
   unit as written.
+
+Statistics
+
+- "Statistik" (`/woche/statistik`) stands next to "Alle Wochen" on the week plan and on that
+  page, not in the bar of the sections: the phone's bar holds five, and looking back is part
+  of the week. Two views as a segmented control, "Essen" and "Einkauf", and a week, a month
+  (the default) or a year with the capsule to go back and forward.
+- A month and a year are whole weeks, each counted for the month most of its days are in, as
+  "Alle Wochen" counts them (`src/domain/stats/period.ts`): the weekly goals stay whole weeks.
+  Nothing before the household's first week, or without one before its first plan or note
+  (`countingFrom`), and nothing after today.
+- A meal planned for a day that has come counts as cooked: nothing records whether it was.
+  The counting is pure (`mealStats`, `shoppingStats` in `src/domain/stats/`); the server
+  reads every plan from the first week on and the period's notes (`src/server/stats.ts`).
+- Essen: meals cooked and entered, different dishes, days without meat and their longest run,
+  meals without a recipe; the weekly goals per kind, with a dot per week to open it (a week
+  still running counts once it is decided); the kinds over time as stacked columns, each a
+  link to its week or month; most cooked, first cooked, "Mal wieder kochen?" (eight weeks
+  without, favourites first), cookbooks with how much of each was ever cooked, main
+  ingredients, cuisines, effort on working days and at the weekend, the season, leftovers,
+  coffee and cake, recipes added.
+- Einkauf counts what was done in the app (`shopping_line_state`, `shopping_manual_entry`):
+  an errand is a note with something bought on it, and whoever made its last tick finished
+  it. A calendar of the days shopped, errands over time and per weekday, per place and per
+  supermarket (the kind of grocery decides, as on the note), what was bought on most errands,
+  what was left out or bought otherwise, who shops, lines written by hand, dm. An errand done
+  from the paper note leaves nothing to count, and the page says so.
+- A statistic with too little behind it says what it needs (`Stat`: have and need) instead
+  of drawing an empty chart: a trend two weeks or months, a ranking a dish cooked twice,
+  "Zum ersten Mal" four weeks of plans before the period, "Mal wieder" eight weeks of plans.
+- Charts are HTML drawn on the server in the kinds' pastels (`stats-charts.tsx`), the
+  supermarket a warm grey beside the market's green. Nothing grows or counts up: the
+  figures are read. A new period or view fades in where the old one stood (`.stats-in`).
+  Not counted yet: wishes fulfilled (the mark goes when a recipe is planned), amounts bought,
+  spending, and what ran out at home.
 
 Library
 

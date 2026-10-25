@@ -4,6 +4,7 @@ import {
   FROM_STEP_CHECKS,
   FROM_FAVORITES,
   FROM_SHELF,
+  FROM_STATISTICS,
   fromFieldChecks,
   fromPlan,
   readOrigin,
@@ -35,6 +36,10 @@ describe("where a recipe was opened from", () => {
     // A day outside the week, or no day at all, leads to the week alone.
     expect(read(fromPlan("2026-10-12", "2026-10-19")).href).toBe("/woche?w=2026-10-12");
     expect(read("?von=woche&w=2026-10-12&tag=x#y").href).toBe("/woche?w=2026-10-12");
+  });
+
+  it("leads back to the statistics", () => {
+    expect(read(FROM_STATISTICS)).toEqual({ href: "/woche/statistik", label: "Statistik" });
   });
 
   it("leads back to the favourites", () => {
