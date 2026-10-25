@@ -563,6 +563,182 @@ export async function resetLibrary(): Promise<void> {
   if (photos.error) throw new Error(`create photos: ${photos.error.message}`);
 }
 
+/** A day as the app writes it, counted from today. */
+function dayFrom(today: Date, days: number): string {
+  const day = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() + days));
+  return day.toISOString().slice(0, 10);
+}
+
+/**
+ * Weeks of plans and shopping before today, for the statistics: lunches and dinners from
+ * the test library in turn, a cold supper, leftovers and a meal away now and then, and
+ * per week a supermarket and a market note with ticks, a line left out and lines written by
+ * hand. Call after `resetLibrary`, which removes it again.
+ */
+export async function planHistory(weeks = 6): Promise<void> {
+  const household = await testHousehold();
+  const now = new Date();
+  const monday = dayFrom(now, -((now.getDay() + 6) % 7));
+  const recipes = check(
+    await db.from("recipe").select("id, title").eq("household_id", household).order("title"),
+    "load library",
+  );
+  const mains = recipes.filter(
+    (recipe) => !["Zitronen-Mohn-Kuchen", "Tomatensalat"].includes(recipe.title),
+  );
+  const cake = recipes.find((recipe) => recipe.title === "Zitronen-Mohn-Kuchen")!;
+  const member = check(
+    await db.from("household_member").select("user_id").eq("household_id", household).limit(1),
+    "load member",
+  )[0];
+  const catalog = check(
+    await db
+      .from("ingredient")
+      .select("id, name")
+      .eq("household_id", household)
+      .in("name", ["Milch", "Eier", "Butter", "Zwiebeln", "Karotten", "Äpfel"]),
+    "load catalog",
+  );
+  const ingredient = (name: string) => catalog.find((entry) => entry.name === name)?.id;
+
+  let turn = 0;
+  for (let back = weeks - 1; back >= 0; back--) {
+    const start = dayFrom(new Date(`${monday}T12:00:00Z`), -7 * back);
+    const plan = check(
+      await db
+        .from("week_plan")
+        .upsert(
+          { household_id: household, week_start: start },
+          { onConflict: "household_id,week_start" },
+        )
+        .select("id")
+        .single(),
+      "create week",
+    );
+    const base = new Date(`${start}T12:00:00Z`);
+    const slots: Database["public"]["Tables"]["plan_slot"]["Insert"][] = [];
+    const items: { slot: number; recipe: string }[] = [];
+    for (let day = 0; day < 7; day++) {
+      const date = dayFrom(base, day);
+      for (const meal of ["lunch", "dinner"] as const) {
+        const at = slots.length;
+        if (meal === "dinner" && day === 2) {
+          slots.push({
+            household_id: household,
+            week_plan_id: plan.id,
+            date,
+            meal,
+            kind: "free_text",
+            label: "Vesper",
+          });
+        } else if (meal === "dinner" && day === 4) {
+          slots.push({
+            household_id: household,
+            week_plan_id: plan.id,
+            date,
+            meal,
+            kind: "leftovers",
+          });
+        } else if (meal === "lunch" && day === 5 && back % 2 === 0) {
+          slots.push({
+            household_id: household,
+            week_plan_id: plan.id,
+            date,
+            meal,
+            kind: "away",
+            label: "Oma Heidrun",
+          });
+        } else {
+          slots.push({
+            household_id: household,
+            week_plan_id: plan.id,
+            date,
+            meal,
+            kind: "recipes",
+          });
+          // Seven steps on through the library: every dish comes round, and some come back.
+          items.push({ slot: at, recipe: mains[(turn++ * 7) % mains.length].id });
+        }
+      }
+      if (day === 6 && back % 2 === 1) {
+        items.push({ slot: slots.length, recipe: cake.id });
+        slots.push({
+          household_id: household,
+          week_plan_id: plan.id,
+          date,
+          meal: "coffee",
+          kind: "recipes",
+        });
+      }
+    }
+    const stored = check(await db.from("plan_slot").insert(slots).select("id"), "create meals");
+    const linked = await db.from("plan_slot_item").insert(
+      items.map((item) => ({
+        household_id: household,
+        plan_slot_id: stored[item.slot].id,
+        recipe_id: item.recipe,
+        servings: 4,
+        position: 0,
+      })),
+    );
+    if (linked.error) throw new Error(`plan recipes: ${linked.error.message}`);
+
+    // The errands of the week: Monday's supermarket and Saturday's market.
+    const notes = check(
+      await db
+        .from("shopping_list")
+        .insert([
+          { household_id: household, shopping_date: start, place: "supermarket" },
+          { household_id: household, shopping_date: dayFrom(base, 5), place: "market" },
+          { household_id: household, shopping_date: dayFrom(base, 5), place: "drugstore" },
+        ])
+        .select("id, place"),
+      "create notes",
+    );
+    const noteOf = (place: string) => notes.find((entry) => entry.place === place)!.id;
+    const ticked = (date: string, hour: number) =>
+      `${date}T${String(hour).padStart(2, "0")}:00:00Z`;
+    const lines = [
+      ["supermarket", "Milch", "bought"],
+      ["supermarket", "Eier", "bought"],
+      ["supermarket", "Butter", back % 3 === 0 ? "removed" : "bought"],
+      ["supermarket", "Zwiebeln", "bought"],
+      ["market", "Karotten", "bought"],
+      ["market", "Äpfel", "bought"],
+    ] as const;
+    const states = await db.from("shopping_line_state").insert(
+      lines.flatMap(([place, name, status], at) => {
+        const id = ingredient(name);
+        if (!id) return [];
+        const date = place === "market" ? dayFrom(base, 5) : start;
+        return [
+          {
+            household_id: household,
+            shopping_list_id: noteOf(place),
+            line_key: `${id}@main`,
+            status,
+            checked_at: status === "bought" ? ticked(date, 9 + at) : null,
+            checked_by: status === "bought" ? member.user_id : null,
+            decided_by: member.user_id,
+            substituted: name === "Butter" && back === 1,
+          },
+        ];
+      }),
+    );
+    if (states.error) throw new Error(`tick lines: ${states.error.message}`);
+    const entries = await db.from("shopping_manual_entry").insert([
+      { household_id: household, shopping_list_id: noteOf("supermarket"), text: "Grüne Trauben" },
+      {
+        household_id: household,
+        shopping_list_id: noteOf("drugstore"),
+        text: "Zahnpasta",
+        for_whom: "Lena",
+      },
+    ]);
+    if (entries.error) throw new Error(`write entries: ${entries.error.message}`);
+  }
+}
+
 /** Batches as the import page lists them, without photos: only their sources matter. */
 export async function addBatches(
   batches: { book: string | null; edition?: string | null }[],
