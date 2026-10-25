@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowIcon,
+  ChartIcon,
   PenIcon,
   PersonIcon,
   PinIcon,
@@ -315,7 +316,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
     </div>
   );
-  // Back, the running week and forward as one control; all weeks a word next to it.
+  // Back, the running week and forward as one control; all weeks and the statistics words next to it.
   const weekNav = (
     <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <span className="capsule">
@@ -336,6 +337,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       </span>
       <Link href={`/woche/verlauf?w=${week}`} className="link inline-flex min-h-11 items-center">
         Alle Wochen
+      </Link>
+      <Link href="/woche/statistik" className="link inline-flex min-h-11 items-center gap-1.5">
+        <ChartIcon />
+        Statistik
       </Link>
     </nav>
   );

@@ -66,7 +66,12 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
       <Link href={`/woche?w=${cameFrom}`} className="link text-sm">
         ← Wochenplan
       </Link>
-      <h1 className="title mt-3">Alle Wochen</h1>
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4">
+        <h1 className="title">Alle Wochen</h1>
+        <Link href="/woche/statistik" className="link inline-flex min-h-11 items-center">
+          Statistik
+        </Link>
+      </div>
 
       {months.map(({ month, weeks: entries }) => (
         <section key={month} className="mt-8" aria-label={monthAndYear(month)}>
