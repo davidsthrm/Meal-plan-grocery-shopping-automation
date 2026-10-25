@@ -701,11 +701,14 @@ Week plan
   element with opacity 0 visible, so the test asks for the opacity.
 - A recipe opened from the week plan or from the favourites leads back there
   (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`); from
-  anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
-  Opened from a list, the link back is a step back in the history (`BackToList`,
-  `canStepBack`), so the filter and the place on the page are kept, and each shelf is
-  scrolled sideways as it was (`ListMemory`, `cameBack`). The link opened the list afresh
-  before, unfiltered and at the top.
+  anywhere else it leads to "Entdecken". Nothing but a week and its day is taken from the
+  address. Opened from a list or the week plan, the link back is a step back in the history
+  (`BackToList`, `canStepBack`), so the filter and the place on the page are kept, and each
+  shelf is scrolled sideways as it was (`ListMemory`, `cameBack`). The link opened the list
+  afresh before, unfiltered and at the top, and the week at Monday while the household was
+  planning Sunday. Where it cannot step back, the link from the week carries the day
+  (`&tag=<date>`) and lands on it (`#tag-<date>`); `ListMemory` goes to the anchor itself,
+  as the router looked for it while `loading.tsx` was shown.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
   `SlotItem.plannedOn`) and the moment (`planned_at`, `plannedAt`; an extra its
   `created_at`). A meal written again with other servings or another side keeps the day and

@@ -11,6 +11,7 @@ import {
   TrashIcon,
   WishIcon,
 } from "@/components/icons";
+import { ListMemory } from "@/components/list-return";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -341,6 +342,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
   return (
     <div className="mx-auto max-w-5xl">
+      {/* Back from a recipe, the plan stands where it was left: at the meal being planned. */}
+      <ListMemory />
       {showToday ? (
         /*
          * Once something is planned for today or the weekend, it stands next to the greeting
@@ -688,6 +691,7 @@ function Today({
                         recipe={recipeOf.get(item.recipeId)}
                         id={item.recipeId}
                         week={week}
+                        day={now}
                       />
                     </li>
                   ))}
@@ -734,17 +738,20 @@ function KindTitle({
   recipe,
   id,
   week,
+  day,
 }: {
   recipe: RecipeSummary | undefined;
   id: string;
   /** The week of the plan the title stands on: the recipe's page leads back to it. */
   week: IsoDate;
+  /** The day it stands on, where the way back lands when it cannot step back. */
+  day?: IsoDate;
 }) {
   return (
     <span className="flex items-center gap-2.5">
       {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
       <Link
-        href={`/rezepte/${id}${fromPlan(week)}`}
+        href={`/rezepte/${id}${fromPlan(week, day)}`}
         className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
@@ -1027,7 +1034,7 @@ function MealCell({
               const recipe = recipeOf.get(item.recipeId);
               return (
                 <li key={item.recipeId}>
-                  <KindTitle recipe={recipe} id={item.recipeId} week={week} />
+                  <KindTitle recipe={recipe} id={item.recipeId} week={week} day={date} />
                   <p className="mt-0.5 text-sm text-muted">
                     {plannedText(item.servings, recipe?.servings?.unit ?? null)}
                   </p>
@@ -1086,7 +1093,7 @@ function MealCell({
                     : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2"
                 }
               >
-                <KindTitle recipe={recipe} id={item.recipeId} week={week} />
+                <KindTitle recipe={recipe} id={item.recipeId} week={week} day={date} />
                 <Amount
                   action={changeServings}
                   fields={{ week, date, meal, recipe: item.recipeId }}
@@ -1170,7 +1177,7 @@ function MealCell({
         <div className="mt-1 rounded-lg border border-dashed border-accent/50 bg-accent-soft/40 px-3 py-2.5">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
           <div className="mt-1">
-            <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} />
+            <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} day={date} />
           </div>
           {shown.reasons.length > 0 && (
             <p className="mt-1 text-sm text-muted">{whyText(shown.reasons)}</p>
