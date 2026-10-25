@@ -21,6 +21,7 @@ import {
   completeNote,
   isNote,
   loadShoppingNotes,
+  moveErrand,
   moveLines,
   openNote,
   putAwayNote,
@@ -288,12 +289,15 @@ export async function changeNoteDay(form: FormData): Promise<void> {
   const lines = note.view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
   const target = { date: input.day, place: note.trip.place };
   if (dayProblems(lines, target, today(), index).length > 0) backToList(input);
+  // The lines go, and so does the errand: what the plan needs later is bought on the new day
+  // by itself, and what keeps from there, such as milk for Sunday, needs no errand of its own.
   await moveLines(
     db,
     household,
     lines.map((entry) => ({ key: entry.key, origins: originsOf(entry, note.trip) })),
     target,
   );
+  await moveErrand(db, household, note.trip, input.day);
   backToList({ ...input, note: noteId(target) });
 }
 

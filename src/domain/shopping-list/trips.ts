@@ -1,4 +1,4 @@
-import type { Place } from "../catalog";
+import { PLACES, type Place } from "../catalog";
 import { addDays, daysBetween, isoWeekday, mondayOf, type IsoDate } from "../dates";
 import type { Trip } from "./types";
 
@@ -23,6 +23,12 @@ export interface ShoppingDay {
 export interface ShoppingTrip {
   date: IsoDate;
   place: Place;
+  /**
+   * For an errand done on another day (`withMovedErrands`): its own day, from which it reaches
+   * the meals it buys fresh for. The market moved from Saturday to Friday still buys Tuesday's
+   * carrots; what keeps is counted from the day it happens.
+   */
+  reachFrom?: IsoDate;
 }
 
 /** Supermarket on Monday and Friday, market on Saturday. */
@@ -230,6 +236,39 @@ export function tripsBetween(
   return trips;
 }
 
+/**
+ * The errands as they happen: one done on another day ("An einem anderen Tag einkaufen")
+ * stands on that day instead of its own, `movedTo` by the note of its own day, followed on
+ * where that day's errand moved too. Moving only the lines of Monday's note to Tuesday left
+ * the errand on Monday for everything else: milk for Sunday would not keep from Monday and
+ * got an errand of its own on Friday (October 2026). Two errands that meet on one day are one.
+ */
+export function withMovedErrands(
+  trips: readonly ShoppingTrip[],
+  movedTo: ReadonlyMap<string, IsoDate>,
+): ShoppingTrip[] {
+  const moved = new Map<string, ShoppingTrip>();
+  for (const trip of trips) {
+    let date = trip.date;
+    const passed = new Set<IsoDate>();
+    for (let to = movedTo.get(noteId(trip)); to && !passed.has(to);) {
+      passed.add(date);
+      date = to;
+      to = movedTo.get(noteId({ date, place: trip.place }));
+    }
+    const reachFrom = trip.reachFrom ?? trip.date;
+    const errand = date === trip.date ? trip : { date, place: trip.place, reachFrom };
+    // Two errands that meet on one day reach as far as the one that reaches further.
+    const other = moved.get(noteId(errand));
+    if (!other || (other.reachFrom ?? other.date) < (errand.reachFrom ?? errand.date)) {
+      moved.set(noteId(errand), errand);
+    }
+  }
+  return [...moved.values()].sort(
+    (a, b) => a.date.localeCompare(b.date) || PLACES.indexOf(a.place) - PLACES.indexOf(b.place),
+  );
+}
+
 /** Something a meal needs, as far as it matters for when and where it is bought. */
 export interface Need {
   /** The day it is cooked or eaten. */
@@ -367,10 +406,11 @@ function assignOn(
   if (elsewhere) {
     const errand = last(
       inTime(before(elsewhere)).filter(
-        (trip) => daysBetween(trip.date, need.date) <= FRESH_REACH_DAYS && keeps(trip),
+        (trip) =>
+          daysBetween(trip.reachFrom ?? trip.date, need.date) <= FRESH_REACH_DAYS && keeps(trip),
       ),
     );
-    if (errand) return { ...errand, trip: "main" };
+    if (errand) return { date: errand.date, place: errand.place, trip: "main" };
   }
   if (named) return strict ? null : { date: need.date, place: named, trip: "main" };
   const shops = inTime(before("supermarket"));
@@ -380,14 +420,14 @@ function assignOn(
   const week = mondayOf(need.date);
   const bundled = firstErrandFrom === null || week >= firstErrandFrom;
   const big = bundled ? shops.find((trip) => trip.date >= week && keeps(trip)) : undefined;
-  if (big) return { ...big, trip: "main" };
+  if (big) return { date: big.date, place: big.place, trip: "main" };
   const shop = last(shops);
-  if (shop) return { ...shop, trip: keeps(shop) ? "main" : "later" };
+  if (shop) return { date: shop.date, place: shop.place, trip: keeps(shop) ? "main" : "later" };
   if (strict) return null;
   // Planned after the last shopping day before the meal: it has to be fetched in between.
   const missed =
     last(before("supermarket")) ?? trips.find((trip) => trip.place === "supermarket") ?? trips[0];
-  return missed ? { ...missed, trip: "later" } : null;
+  return missed ? { date: missed.date, place: missed.place, trip: "later" } : null;
 }
 
 /**

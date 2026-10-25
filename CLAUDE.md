@@ -118,7 +118,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   eats and shops by week, month and year, each figure a link to what it counts.
 - Phase 16 (branch `phase-16-shopping-fixes`): an errand is done only once something on it
   was bought, and its moment is the last purchase; lines the catalog does not know yet go
-  on the list by their proposed name; no "Auch auf" under the lines.
+  on the list by their proposed name; no "Auch auf" under the lines. Then, as a hotfix: an
+  errand done on another day moves as an errand, and empty notes are left out.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -1201,9 +1202,16 @@ Shopping list
   worked out. On a butcher note a visit's reach (`BUTCHER_REACH_DAYS`) stands for the
   shelf life: the meat is kept cold for those days on purpose. A line that belongs to no
   meal, and one that is bought shortly before its meal anyway, is no obstacle. The
-  household asked to be told why, not just to be stopped. Changing the day moves every line
-  of the note to the same place on the new day; what the plan adds later is again put where
-  it belongs by itself. Any note can be done on its own day by these rules: whole weeks on
+  household asked to be told why, not just to be stopped. Changing the day moves the
+  errand itself (`shopping_list.moved_to`, `moveErrand`): the week is worked out with it on
+  the new day (`withMovedErrands`), so what the plan adds later goes there, what keeps from
+  there is bought there, and the note of its own day is gone. A moved errand reaches the
+  meals it buys fresh for from its own day (`ShoppingTrip.reachFrom`): the market moved from
+  Saturday to Friday still buys Tuesday's carrots. The decisions on its lines
+  and what was typed onto it go along. Moving only the lines left the errand on Monday for
+  the rules: milk for Sunday would not keep from Monday and got an errand of its own on
+  Friday, though the family shopped on Tuesday (October 2026). Its lines are moved as well,
+  for a note that is no standing errand (the bakery on a meal's day). Any note can be done on its own day by these rules: whole weeks on
   the real errands are held against it (`tests/acceptance/sample-weeks.test.ts`).
 - An errand is done when no line of its note is open and something on it was bought: each
   line is bought, in full or in part, or removed, by the last decision, or by "Einkauf
