@@ -116,6 +116,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   allowed exists for EDEKA and REWE, and the family wants no uploads.
 - Phase 15 (branch `phase-15-statistics`): "Statistik" next to "Alle Wochen": how the family
   eats and shops by week, month and year, each figure a link to what it counts.
+- Phase 16 (branch `phase-16-shopping-fixes`): an errand is done only once something on it
+  was bought, and its moment is the last purchase; lines the catalog does not know yet go
+  on the list by their proposed name; no "Auch auf" under the lines.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -1082,10 +1085,9 @@ Shopping list
 - The amount of a line can be changed on its note ("Menge ändern", `LineState.amount`,
   `shopping_line_state.quantity` and `unit`). The line then says what the plan has, and
   "Wie geplant" takes the change back. The change stays when the plan changes.
-- The same thing on another open note of the week (small tomatoes on Monday's supermarket
-  note and Saturday's market note) is said under the line ("Auch auf: Sa 17. Markt",
-  `alsoOn`). "Dort mitkaufen" moves the line there where that is not too late and it keeps
-  (`moveProblems`); otherwise the line says why ("Sahne wird schon am Montag gebraucht.").
+- A line does not say on which other notes of the week the same thing stands. "Auch auf:
+  Di 27. Supermarkt" with "Dort mitkaufen" under the lines was taken out: the household did
+  not need it (October 2026). The arrow of a line moves it.
 - The household's supermarkets are found by its postal code (`household.postal_code`,
   `place_name`; empty for a new household, and until it is entered no market can be
   chosen). The server looks the code up on OpenStreetMap (Nominatim), asks Overpass for the

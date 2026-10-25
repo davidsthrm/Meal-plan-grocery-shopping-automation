@@ -51,7 +51,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const thisWeek = planningWeek(now);
   const week = weekShown(one(params.w), thisWeek, household.firstWeek);
   const db = await createSessionClient();
-  const [{ notes, atHome, index, members, supermarkets, alsoOn, readAt, choices, history }, noted] =
+  const [{ notes, atHome, index, members, supermarkets, readAt, choices, history }, noted] =
     await Promise.all([loadShoppingNotes(db, household, week), loadOwnRestock(now)]);
   const picked = notes.find((note) => note.id === one(params.zettel));
   // The notes of the running week are kept on the device for the shop, and the next errand
@@ -94,7 +94,6 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           today={now}
           members={members}
           supermarkets={supermarkets}
-          alsoOn={alsoOn}
           renderedAt={readAt}
           choices={choices}
           history={history}

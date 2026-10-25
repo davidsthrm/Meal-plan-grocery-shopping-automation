@@ -20,7 +20,6 @@ import {
   type MovedAway,
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
-import { alsoOn } from "@/domain/shopping-list/duplicates";
 import { guessKind } from "@/domain/shopping-list/free-entry";
 import { shopChoices, type PastChoice, type ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
@@ -93,11 +92,6 @@ export interface WeekNotes {
   choices: ShopChoice[];
   /** Where the household bought what before, by `itemKey`. */
   history: Map<string, PastChoice[]>;
-  /**
-   * For every open line that is on another note of the week too, those notes, by
-   * `lineOnNote`: small tomatoes on Monday's and on Saturday's.
-   */
-  alsoOn: Map<string, ShoppingTrip[]>;
   /**
    * When the notes were read, in milliseconds, taken before the first read: a tick the
    * server took after it may be missing from them (`shownChecked`).
@@ -510,12 +504,6 @@ export async function loadShoppingNotes(
     supermarkets: favouriteSupermarkets(index.catalog.shops),
     choices: shopChoices(index, favouriteSupermarkets(index.catalog.shops)),
     history: historyOf(must(historyRows, "load where things were bought")),
-    alsoOn: alsoOn(
-      notes.map((note) => ({
-        trip: note.trip,
-        lines: note.view.groups.flatMap((group) => group.lines),
-      })),
-    ),
   };
 }
 
