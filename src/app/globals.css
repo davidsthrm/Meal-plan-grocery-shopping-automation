@@ -1379,6 +1379,12 @@ summary,
     inset: auto 0 0;
     width: 100%;
     max-width: 36rem;
+    /*
+     * A height of its own, not only a most: Safari on the iPhone gave the list between head
+     * and foot no height at all in a sheet only limited by a maximum, and the sheet showed
+     * "Filter" and its button with nothing between them.
+     */
+    height: 86dvh;
     max-height: 86dvh;
     margin: 0 auto;
     padding: 0;
@@ -1454,7 +1460,8 @@ summary,
     border-bottom: 1px solid var(--color-line);
   }
   .filter-body {
-    flex: 1;
+    /* As tall as what is in it, shrunk to the room there is: never to nothing. */
+    flex: 1 1 auto;
     min-height: 0;
     /* Up and down only: a list that scrolls one way scrolls the other too unless told. */
     overflow-x: hidden;

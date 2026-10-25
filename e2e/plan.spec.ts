@@ -158,7 +158,10 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
   await expect(page.getByRole("heading", { name: "Zum Mittagessen dazu" })).toBeVisible();
   // The filters of the chooser are a sheet, whatever the screen.
   const close = await openFilters(page);
-  await page.getByLabel("Filter", { exact: true }).getByRole("link", { name: /^Vegan/ }).click();
+  await page
+    .getByLabel("Filter", { exact: true })
+    .getByRole("link", { name: /^Vegan/ })
+    .click();
   await close();
   await page.getByRole("button", { name: "Tomatensalat einplanen" }).click();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
