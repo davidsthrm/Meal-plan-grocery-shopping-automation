@@ -107,6 +107,12 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   panel of filters for every list of recipes, Entdecken as rows, the season calendar with
   "Passt zur Saison" and "Was hat gerade Saison?", the tags of "Hauptzutat", and a faster
   start (the plan as start address, navigation preload).
+- Phase 14 (branch `phase-14-suggestion-variety`): suggestions that mix favourites with the
+  rest of the library and weigh the season, "Noch nie gekocht" and the week's main
+  ingredients and dishes; the way back from a recipe to the place on the week plan; the
+  shelf ("Haben wir schon") in place of the bin on a shopping note. Offers of the
+  supermarkets were looked into and left out (October 2026): no source that is reliable and
+  allowed exists for EDEKA and REWE, and the family wants no uploads.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -1271,7 +1277,13 @@ Shopping list
   without words (`ActionRow`, `src/components/line-actions.tsx`): the arrow moves it, the
   pen says what was bought (a stepper "3 von 6", another product), the bin removes it
   without asking. A swipe to the right buys, to the left removes; a finger held still
-  opens the same as a menu. Each decision can be taken back for five seconds from the bar
+  opens the same as a menu. On a note, planned and looked over before the shop, the shelf
+  takes the bin's place ("Haben wir schon", `ShelfIcon`, the `markAtHome` form, so it works
+  before any script): a swipe to the left and the menu say the same, on a calm grey instead
+  of the warning red. Only a line written by hand can still be removed there, from the
+  menu, for a slip of the pen; the drugstore's note, which has no "Haben wir schon", keeps
+  the bin. The household found the bin there meant "not bought", which is decided in the
+  shop (October 2026). Each decision can be taken back for five seconds from the bar
   at the foot ("Widerrufen"). The view for the shop has its own menu, sheets and bar
   (`LineActionsHere`): a modal dialog makes everything outside it inert. On a note the
   actions stand at the end of the line's first row, and an opened line runs the width of

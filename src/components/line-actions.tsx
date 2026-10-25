@@ -22,7 +22,8 @@ import type { ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { convert, type Amount, type Unit } from "@/domain/units";
 import { dayName, PLACE_LOOK } from "@/lib/list-text";
-import { MoveIcon, PenIcon, TickIcon, TrashIcon, UndoIcon } from "./icons";
+import { MoveIcon, PenIcon, ShelfIcon, TickIcon, TrashIcon, UndoIcon } from "./icons";
+import { SubmitButton } from "./submit-button";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
 import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLine } from "./ticks";
@@ -34,7 +35,10 @@ import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLin
  * to the right buys it, one to the left removes it, and holding a row opens the same as a
  * menu. Every one of them is decided on the device first, like a tick, so it works without
  * a connection and two people shopping at once never undo each other (`decide`); each can
- * be taken back for a few seconds from the bar at the foot.
+ * be taken back for a few seconds from the bar at the foot. On a note that is planned and
+ * looked over at home, the shelf takes the bin's place: what is at home is not bought
+ * ("Haben wir schon", a form like any other), and nothing else is taken off a note there
+ * but a line someone wrote by hand.
  */
 
 /** The line as the plan has it, for the history of where it is bought. */
@@ -80,7 +84,7 @@ interface Host {
   today: IsoDate;
   choices: ShopChoice[];
   open(sheet: Sheet): void;
-  menu(line: ActionLine, anchor: DOMRect): void;
+  menu(line: ActionLine, anchor: DOMRect, choices: MenuChoices): void;
   /** Decides, and offers to take it back: to `before`, what the line showed until now. */
   act(
     line: Pick<ActionLine, "key" | "about">,
@@ -88,6 +92,14 @@ interface Host {
     before: Decision,
     text: string | null,
   ): void;
+}
+
+/** What a row's menu offers besides buying, moving and changing it. */
+interface MenuChoices {
+  /** "Haben wir schon", on a food note. */
+  atHome: (() => void) | null;
+  /** "Entfernen": in the shop, and on a note for a line written by hand. */
+  remove: boolean;
 }
 
 const HostContext = createContext<Host | null>(null);
@@ -175,7 +187,11 @@ export function LineActions({
   children: ReactNode;
 }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [menu, setMenu] = useState<{ line: ActionLine; anchor: DOMRect } | null>(null);
+  const [menu, setMenu] = useState<{
+    line: ActionLine;
+    anchor: DOMRect;
+    choices: MenuChoices;
+  } | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
 
   const act = useCallback<Host["act"]>(
@@ -202,7 +218,7 @@ export function LineActions({
       today,
       choices,
       open: setSheet,
-      menu: (line, anchor) => setMenu({ line, anchor }),
+      menu: (line, anchor, choices) => setMenu({ line, anchor, choices }),
       act,
     }),
     [page, note, today, choices, act],
@@ -249,14 +265,16 @@ function useLine(line: ActionLine) {
 }
 
 /**
- * Follows a finger on a row: a swipe to the right buys, one to the left removes, a finger
- * held still opens the menu. The row moves with the finger the whole way; let go, it goes
- * where the finger was heading, judged by how fast it was moving, not only where it is.
+ * Follows a finger on a row: a swipe to the right buys, one to the left removes (on a note:
+ * says it is at home), a finger held still opens the menu. The row moves with the finger the
+ * whole way; let go, it goes where the finger was heading, judged by how fast it was moving,
+ * not only where it is.
  */
 function useRowGesture(
   row: React.RefObject<HTMLElement | null>,
   face: React.RefObject<HTMLElement | null>,
-  handlers: { right: () => void; left: () => void; press: () => void },
+  /** `left` returns false when nothing happened: the row then comes back. */
+  handlers: { right: () => void; left: () => boolean | void; press: () => void },
 ) {
   const latest = useRef(handlers);
   useEffect(() => {
@@ -348,7 +366,12 @@ function useRowGesture(
         latest.current.right();
       } else if (goes && offset < 0) {
         place(-width, true);
-        window.setTimeout(() => latest.current.left(), lessMotion() ? 0 : 180);
+        window.setTimeout(
+          () => {
+            if (latest.current.left() === false) place(0, true);
+          },
+          lessMotion() ? 0 : 180,
+        );
       } else {
         place(0, true);
       }
@@ -399,24 +422,45 @@ function useRowGesture(
 export function ActionRow({
   line,
   variant,
+  atHome,
+  removable = true,
   className = "",
   children,
 }: {
   line: ActionLine;
   variant: "store" | "note";
+  /**
+   * On a food note: the form that says the line is at home, with the fields that name it.
+   * Its shelf stands where the bin stands in the shop, and a swipe to the left does it.
+   */
+  atHome?: { action: (form: FormData) => void | Promise<void>; fields: ReactNode };
+  /** Whether the line can be removed. On a note only one written by hand needs to be. */
+  removable?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
   const { host, decision, bought, toggle, remove } = useLine(line);
   const row = useRef<HTMLLIElement>(null);
   const face = useRef<HTMLDivElement>(null);
+  const homeForm = useRef<HTMLFormElement>(null);
+  const home = variant === "note" && atHome !== undefined;
+  // Sent like a tap on the shelf. Without a connection the form is stopped before it goes
+  // (the bar at the foot says so), and the row comes back.
+  const toHome = () => {
+    homeForm.current?.requestSubmit();
+    return navigator.onLine;
+  };
   useRowGesture(row, face, {
     right: () => {
       if (!bought) toggle();
     },
-    left: remove,
+    left: home ? toHome : remove,
     press: () => {
-      if (row.current) host.menu(line, row.current.getBoundingClientRect());
+      if (!row.current) return;
+      host.menu(line, row.current.getBoundingClientRect(), {
+        atHome: home ? toHome : null,
+        remove: !home || removable,
+      });
     },
   });
 
@@ -453,28 +497,46 @@ export function ActionRow({
       >
         <PenIcon />
       </button>
-      <button
-        type="button"
-        className="icon-button"
-        aria-label={`${line.label} entfernen`}
-        title="Entfernen"
-        onClick={remove}
-      >
-        <TrashIcon />
-      </button>
+      {home ? (
+        <form ref={homeForm} action={atHome.action} className="contents">
+          {atHome.fields}
+          <input type="hidden" name="atHome" value="1" />
+          <SubmitButton
+            className="icon-button"
+            label={`${line.label}: haben wir schon`}
+            title="Haben wir schon"
+          >
+            <ShelfIcon />
+          </SubmitButton>
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={`${line.label} entfernen`}
+          title="Entfernen"
+          onClick={remove}
+        >
+          <TrashIcon />
+        </button>
+      )}
     </span>
   );
 
   return (
-    <li ref={row} className={`swipe-row ${variant === "note" ? "tick-line" : ""} ${className}`}>
+    <li
+      ref={row}
+      className={`swipe-row ${variant === "note" ? "tick-line" : ""} ${className}`}
+      data-at-home={home || undefined}
+    >
       <span className="swipe-under" aria-hidden>
         <span className="swipe-buy">
           <TickIcon />
           Gekauft
         </span>
         <span className="swipe-remove">
-          Entfernen
-          <TrashIcon />
+          {home ? "Haben wir schon" : "Entfernen"}
+          {home ? <ShelfIcon /> : <TrashIcon />}
         </span>
       </span>
       <div ref={face} className="swipe-face">
@@ -614,10 +676,12 @@ export function NotBoughtRow({
 function RowMenu({
   line,
   anchor,
+  choices,
   onClose,
 }: {
   line: ActionLine;
   anchor: DOMRect;
+  choices: MenuChoices;
   onClose: () => void;
 }) {
   const { host, decision, bought, toggle, remove } = useLine(line);
@@ -718,10 +782,18 @@ function RowMenu({
         <PenIcon />
         {line.purchase ? "Nicht alles bekommen …" : "Anderes Produkt …"}
       </button>
-      <button type="button" role="menuitem" className="text-danger" onClick={run(remove)}>
-        <TrashIcon />
-        Entfernen
-      </button>
+      {choices.atHome && (
+        <button type="button" role="menuitem" onClick={run(choices.atHome)}>
+          <ShelfIcon />
+          Haben wir schon
+        </button>
+      )}
+      {choices.remove && (
+        <button type="button" role="menuitem" className="text-danger" onClick={run(remove)}>
+          <TrashIcon />
+          Entfernen
+        </button>
+      )}
     </div>
   );
 }

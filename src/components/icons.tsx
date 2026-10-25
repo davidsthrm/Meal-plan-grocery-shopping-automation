@@ -186,6 +186,17 @@ export function PlusIcon() {
   );
 }
 
+/** A shelf with jars and boxes on it: what is at home already ("Haben wir schon"). */
+export function ShelfIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4.5 3.5v17M19.5 3.5v17M4.5 11.5h15M4.5 20h15" />
+      <path d="M7.5 11.5V8.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3M13.5 11.5V6h3.5v5.5" />
+      <path d="M7.5 20v-4.5h4V20M14 20v-3l1.25-1.5h.5L17 17v3" />
+    </svg>
+  );
+}
+
 export function TrashIcon() {
   return (
     <svg {...base}>

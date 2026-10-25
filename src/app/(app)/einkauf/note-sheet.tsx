@@ -610,7 +610,15 @@ function Line({
   const boughtAt = supermarketOf(view, supermarkets);
 
   return (
-    <ActionRow line={action} variant="note" className="print:py-0.5">
+    <ActionRow
+      line={action}
+      variant="note"
+      // At home, a line is not bought: the shelf in place of the shop's bin. What the
+      // drugstore's note holds is written by hand and has no "Haben wir schon".
+      atHome={drugstore ? undefined : { action: markAtHome, fields: where }}
+      removable={drugstore || written}
+      className="print:py-0.5"
+    >
       <details>
         <summary className="tick-text flex min-h-11 items-center py-1 print:min-h-0 print:py-0">
           <span>
@@ -713,20 +721,11 @@ function Line({
               )}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            {!drugstore && (
-              <form action={markAtHome}>
-                {where}
-                <input type="hidden" name="atHome" value="1" />
-                <SubmitButton className="btn btn-small" label={`${line.label} haben wir schon`}>
-                  Haben wir schon
-                </SubmitButton>
-              </form>
-            )}
-            {/* Another of the household's supermarkets for this week: a button like the
-                  others, with the market's logo. */}
-            {supermarkets.length > 1 &&
-              supermarkets
+          {/* Another of the household's supermarkets for this week: a button with the
+                market's logo. "Haben wir schon" is the shelf at the end of the line. */}
+          {supermarkets.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+              {supermarkets
                 .filter((market) => market.id !== boughtAt?.id)
                 .map((market) => (
                   <form key={market.id} action={buyAtSupermarket}>
@@ -741,7 +740,8 @@ function Line({
                     </SubmitButton>
                   </form>
                 ))}
-          </div>
+            </div>
+          )}
           {others.length > 0 && (
             <div
               role="group"
