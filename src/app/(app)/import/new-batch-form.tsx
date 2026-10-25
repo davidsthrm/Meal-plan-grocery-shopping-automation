@@ -2,13 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import {
-  editionFromFolder,
-  placement,
-  sourceLabel,
-  splitSource,
-  type KnownSource,
-} from "@/domain/library/source";
+import { SourcePlacement } from "@/components/source-placement";
+import { editionFromFolder, sourceLabel, type KnownSource } from "@/domain/library/source";
 import { createBrowserSupabase } from "@/lib/supabase-browser";
 import { startBatch } from "./actions";
 
@@ -112,7 +107,7 @@ export function NewBatchForm({
             ),
           )}
         </datalist>
-        <Placed text={book} sources={sources} />
+        <SourcePlacement text={book} sources={sources} />
       </div>
 
       <div>
@@ -129,9 +124,10 @@ export function NewBatchForm({
               onChange={(event) => choose(event.target.files)}
             />
           </label>
+          {/* A phone cannot pick a folder: its picker opened and led nowhere. */}
           <button
             type="button"
-            className="btn"
+            className="btn pointer-coarse:hidden"
             disabled={busy}
             onClick={() => folderInput.current?.click()}
           >
@@ -172,25 +168,5 @@ export function NewBatchForm({
         {busy ? `Lade hoch … ${uploaded} von ${files.length}` : "Hochladen und einlesen"}
       </button>
     </div>
-  );
-}
-
-/**
- * Where the photos of this batch will go, said before they are sent: the magazine and the
- * edition the typed name was found in, and which of them are new.
- */
-function Placed({ text, sources }: { text: string; sources: KnownSource[] }) {
-  const where = placement(splitSource(text, sources), sources);
-  if (where.kind === "none" || (where.kind === "book" && where.known)) {
-    return <p className="mt-1 text-sm text-muted">Gilt für alle Fotos dieses Stapels.</p>;
-  }
-  if (where.kind === "book") {
-    return <p className="mt-1 text-sm text-muted">Neues Kochbuch „{where.book}“.</p>;
-  }
-  return (
-    <p className="mt-1 text-sm text-muted" aria-live="polite">
-      {where.bookKnown ? "Kommt zu" : "Neuer Stapel"} „{where.book}“, Ausgabe „{where.edition}“
-      {where.editionKnown ? "." : " (neu)."}
-    </p>
   );
 }

@@ -1123,25 +1123,20 @@ function MealCell({
       )}
       {/*
         A typed meal the cookbook has no recipe for: the page can be photographed right now,
-        while the week is planned, and the recipe takes the place of the text.
+        while the week is planned, or the recipe pasted or typed, and it takes the place of
+        the text.
       */}
       {slot?.kind === "free_text" && !namedMeal(slot.label) && !placing && (
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-note px-3 py-1.5 text-sm">
           <span className="text-note-ink">Noch kein Rezept dazu</span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {/* Photo, pasted text or typed: chosen on the next page, the camera one tap on. */}
             <Link
-              href={`/import?${new URLSearchParams({ d: date, m: meal })}`}
+              href={`/rezepte/hinzufuegen?${new URLSearchParams({ d: date, m: meal })}`}
               className="btn btn-small min-h-11 border-note-line bg-white/60"
-              aria-label={`${what}: Rezept hochladen`}
+              aria-label={`${what}: Rezept hinzufügen`}
             >
-              Hochladen
-            </Link>
-            <Link
-              href={`/rezepte/neu?${new URLSearchParams({ titel: slot.label, w: week, d: date, m: meal })}`}
-              className="font-semibold text-note-ink underline underline-offset-4"
-              aria-label={`${what}: Rezept anlegen`}
-            >
-              Eintippen
+              Rezept hinzufügen
             </Link>
             <form action={needsNoRecipe}>
               {where}

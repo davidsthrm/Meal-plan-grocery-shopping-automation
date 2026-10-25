@@ -1632,6 +1632,23 @@ summary,
     outline-offset: 1px;
   }
 
+  /*
+   * "Fertig" of a recipe photographed: at the foot of the screen while the photos and the
+   * field are above it, on a phone above the sections, where a thumb finds it.
+   */
+  .add-recipe-done {
+    position: sticky;
+    bottom: calc(5.4rem + env(safe-area-inset-bottom));
+    z-index: 5;
+    padding-top: 0.75rem;
+    background: linear-gradient(transparent, var(--color-paper) 0.75rem);
+  }
+  @media (width >= 40rem) {
+    .add-recipe-done {
+      bottom: 1rem;
+    }
+  }
+
   .shelf {
     display: flex;
     gap: 0.75rem;

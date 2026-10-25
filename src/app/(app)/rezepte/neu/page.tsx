@@ -54,7 +54,10 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
             Text einfügen
           </Link>
         </span>
-        <Link href="/import" className="link inline-flex min-h-11 items-center">
+        <Link
+          href={`/rezepte/hinzufuegen?${new URLSearchParams(forMeal ? { d: meal.d, m: meal.m } : {})}`}
+          className="link inline-flex min-h-11 items-center"
+        >
           Seite fotografieren
         </Link>
       </nav>

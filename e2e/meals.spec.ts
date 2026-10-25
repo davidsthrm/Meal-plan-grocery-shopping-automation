@@ -172,7 +172,9 @@ test("a typed meal becomes its recipe, or a new recipe typed in by hand", async 
   await page.getByRole("button", { name: "Eintragen" }).click();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Mittwoch Abend")).toContainText("Pestonudeln");
-  await page.getByRole("link", { name: "Mittwoch Abend: Rezept anlegen" }).click();
+  await page.getByRole("link", { name: "Mittwoch Abend: Rezept hinzufügen" }).click();
+  // Photo, pasted text or typed: chosen here.
+  await page.getByRole("link", { name: /^Eintippen/ }).click();
 
   await expect(page.getByRole("heading", { name: "Neues Rezept" })).toBeVisible();
   await expect(page.getByLabel("Titel")).toHaveValue("Pestonudeln");
@@ -256,8 +258,7 @@ test("a recipe can come in as pasted text, which is asked for before anything is
 }) => {
   await signIn(page);
   await page.goto("/import");
-  await page.getByRole("link", { name: "Ohne Foto: Rezept eintippen" }).click();
-  await page.getByRole("link", { name: "Text einfügen" }).click();
+  await page.getByRole("link", { name: /^Text einfügen/ }).click();
   await expect(page.getByLabel("Text des Rezepts")).toBeVisible();
   // Nothing pasted: nothing is sent to be read.
   await page.getByRole("button", { name: "Einlesen" }).click();
