@@ -37,6 +37,9 @@ export const FROM_STEP_CHECKS = "?von=schritte";
 /** What a link to a recipe adds to its address when it stands in the Regal. */
 export const FROM_SHELF = "?von=regal";
 
+/** What a link to a recipe adds to its address when it stands in the statistics. */
+export const FROM_STATISTICS = "?von=statistik";
+
 /** What a link to a recipe adds to its address when it stands among the duplicates. */
 export const FROM_DUPLICATES = "?von=doppelt";
 
@@ -63,6 +66,7 @@ export function readOrigin(
     const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";
     return { href: `/rezepte/regal${anchor}`, label: "Regal" };
   }
+  if (von === "statistik") return { href: "/woche/statistik", label: "Statistik" };
   if (von === "doppelt") return { href: "/import/pruefen/doppelt", label: "Doppelte Rezepte" };
   if (von === "schritte") {
     const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";

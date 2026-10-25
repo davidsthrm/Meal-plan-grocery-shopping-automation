@@ -83,6 +83,15 @@ export function WeekIcon() {
   );
 }
 
+/** Three bars of a chart: the statistics. */
+export function ChartIcon() {
+  return (
+    <svg {...base}>
+      <path d="M4 20h16M7 16.500v-5M12 16.500V7M17 16.500v-8" />
+    </svg>
+  );
+}
+
 export function ListIcon() {
   return (
     <svg {...base} width={22} height={22}>

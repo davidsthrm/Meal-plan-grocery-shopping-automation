@@ -1326,6 +1326,368 @@ summary,
   }
 
   /*
+   * The statistics. Charts in the pastels of the kinds: a part of a chart is the pastel
+   * deepened with its ink, so that it stands on the paper; what has no kind is grey.
+   * Nothing grows or counts up: the figures are there to be read.
+   */
+  .stat-card {
+    padding: 1rem;
+    break-inside: avoid;
+  }
+  @media (width >= 40rem) {
+    .stat-card {
+      padding: 1.15rem 1.25rem 1.25rem;
+    }
+  }
+  /* The cards after the large ones, in two columns from an iPad on, packed without gaps. */
+  .stat-columns {
+    columns: 1;
+    column-gap: 1rem;
+  }
+  .stat-columns > * {
+    margin-bottom: 1rem;
+  }
+  @media (width >= 46rem) {
+    .stat-columns {
+      columns: 2;
+    }
+  }
+  .stat-figures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+  @media (width >= 40rem) {
+    .stat-figures {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.8rem;
+    }
+  }
+  .stat-figure {
+    display: block;
+    min-width: 0;
+    padding: 0.85rem 0.9rem 0.95rem;
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--kind, var(--color-accent-soft)) 75%, var(--color-surface));
+    color: var(--kind-ink, var(--color-accent));
+  }
+  .stat-number {
+    display: block;
+    font-size: 2.1rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (width >= 40rem) {
+    .stat-number {
+      font-size: 2.5rem;
+    }
+  }
+  .not-yet {
+    border: 1px dashed var(--color-line);
+    border-radius: 0.8rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.92rem;
+    color: var(--color-muted);
+  }
+  .chart-dot {
+    background: color-mix(
+      in srgb,
+      var(--kind-ink, var(--color-muted)) 55%,
+      var(--kind, var(--color-line))
+    );
+  }
+  .kind-other {
+    --kind: #ebe6dc;
+    --kind-ink: #8a847a;
+  }
+  .kind-place {
+    --kind: var(--color-accent-soft);
+    --kind-ink: var(--color-accent);
+  }
+  /* The supermarket in a chart: a warm grey, apart from the market's green. */
+  .kind-supermarket {
+    --kind: #e9e4da;
+    --kind-ink: #6b6253;
+  }
+  /* How much work a meal is: three shades of the green, the longest the deepest. */
+  .effort-schnell {
+    --kind: #e9f1ed;
+    --kind-ink: #6f9a8b;
+  }
+  .effort-alltag {
+    --kind: #d7e6df;
+    --kind-ink: #44786a;
+  }
+  .effort-aufwendig {
+    --kind: #c4d9d0;
+    --kind-ink: #2f5d50;
+  }
+
+  /* A ranking: a row per thing, its bar under its name. */
+  .bar-row {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    margin-inline: -0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.7rem;
+    transition: transform 120ms var(--ease-out);
+  }
+  a.bar-row:active {
+    transform: scale(0.98);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    a.bar-row:hover {
+      background: rgb(35 33 29 / 0.04);
+    }
+  }
+  a.bar-row:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .bar-track {
+    display: block;
+    height: 0.4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(35 33 29 / 0.06);
+  }
+  .bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: color-mix(
+      in srgb,
+      var(--kind-ink, var(--color-accent)) 55%,
+      var(--kind, var(--color-accent-soft))
+    );
+  }
+
+  /* A whole in its parts, as one bar across. */
+  .share-bar {
+    display: flex;
+    height: 1.1rem;
+    gap: 2px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(35 33 29 / 0.06);
+  }
+  .share-part {
+    min-width: 4px;
+    background: color-mix(in srgb, var(--kind-ink) 45%, var(--kind));
+  }
+
+  /* Columns over time; each column is a link to its week or month. */
+  .columns {
+    display: grid;
+    gap: 0.35rem;
+  }
+  @media (width >= 40rem) {
+    .columns {
+      gap: 0.6rem;
+    }
+  }
+  .column {
+    display: flex;
+    min-height: 2.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 0.6rem;
+    padding: 0.2rem 0.1rem 0.25rem;
+    transition: transform 120ms var(--ease-out);
+  }
+  .column:active {
+    transform: scale(0.96);
+  }
+  .column:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .column:hover {
+      background: rgb(35 33 29 / 0.04);
+    }
+  }
+  .column-value {
+    height: 1.3rem;
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+  .column-plot {
+    display: flex;
+    height: 9rem;
+    align-items: flex-end;
+    justify-content: center;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .weekday-plot {
+    height: 6rem;
+  }
+  .column-stack {
+    display: flex;
+    width: min(100%, 2.6rem);
+    flex-direction: column-reverse;
+    gap: 2px;
+    overflow: hidden;
+    border-radius: 0.45rem 0.45rem 0.15rem 0.15rem;
+  }
+  .column-part {
+    flex: none;
+    background: color-mix(in srgb, var(--kind-ink) 45%, var(--kind));
+  }
+  .column-label {
+    margin-top: 0.35rem;
+    overflow: hidden;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--color-muted);
+  }
+  .column[aria-current="true"] .column-label {
+    color: var(--color-accent);
+  }
+
+  /* A share as a ring. Not "ring": that is a utility of Tailwind's that draws a frame. */
+  .donut {
+    width: 6.5rem;
+    height: 6.5rem;
+    flex: none;
+  }
+  .donut-track,
+  .donut-fill {
+    fill: none;
+    stroke-width: 4.2;
+  }
+  .donut-track {
+    stroke: rgb(35 33 29 / 0.07);
+  }
+  .donut-fill {
+    stroke: color-mix(in srgb, var(--color-veg-ink) 55%, var(--color-veg));
+    stroke-linecap: round;
+  }
+  .donut-text {
+    font-size: 7.5px;
+    font-weight: 700;
+    fill: var(--color-ink);
+  }
+
+  /* The goals of a week, per kind: a tile with its weeks as dots, each a link to its week. */
+  .goal-dot {
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    transition: transform 120ms var(--ease-out);
+  }
+  .goal-dot:active {
+    transform: scale(0.92);
+  }
+  .goal-dot:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -4px;
+  }
+  .goal-dot > span {
+    width: 0.85rem;
+    height: 0.85rem;
+    border: 2px solid var(--kind-ink);
+    border-radius: 999px;
+  }
+  .goal-dot[data-ok="true"] > span {
+    background: var(--kind-ink);
+  }
+  .goal-dot[data-running="true"] > span {
+    border-style: dashed;
+  }
+
+  /* A year of weeks against a goal: a thin mark per week. */
+  .goal-strip {
+    display: flex;
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding-bottom: 0.3rem;
+  }
+  .goal-strip > span {
+    width: 0.3rem;
+    height: 1rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--kind-ink) 22%, transparent);
+  }
+  .goal-strip > span[data-ok="true"] {
+    background: var(--kind-ink);
+  }
+
+  /* The shopping calendar: a day per cell, the places shopped at as small signs. */
+  .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+  .calendar-day {
+    display: flex;
+    min-height: 3.6rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    border-radius: 0.6rem;
+    padding: 0.3rem 0.1rem;
+    background: rgb(35 33 29 / 0.035);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition: transform 120ms var(--ease-out);
+  }
+  a.calendar-day:active {
+    transform: scale(0.95);
+  }
+  a.calendar-day:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  .calendar-day[data-outside="true"] {
+    background: transparent;
+    color: color-mix(in srgb, var(--color-muted) 55%, transparent);
+  }
+  .calendar-day[data-today="true"] {
+    box-shadow: inset 0 0 0 1.5px var(--color-accent);
+    color: var(--color-accent);
+  }
+  .calendar-signs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+  }
+  .calendar-signs > span {
+    display: inline-flex;
+    width: 1.15rem;
+    height: 1.15rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.35rem;
+    background: var(--kind, var(--color-accent-soft));
+    color: var(--kind-ink, var(--color-accent));
+  }
+  .calendar-signs svg {
+    width: 0.85rem;
+    height: 0.85rem;
+    stroke-width: 2.6;
+  }
+
+  /* Another period or the other area: the figures fade in place, so the change is seen. */
+  .stats-in {
+    animation: fade-in 160ms ease both;
+  }
+
+  /*
    * A meal in the week beside the recipe chooser: a row to tap, the one being chosen for on
    * the green's pastel; an open one has an empty dashed circle where a dish would show.
    */
