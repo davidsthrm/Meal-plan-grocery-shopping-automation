@@ -1784,7 +1784,7 @@ summary,
  * A line's actions in the shop (`ActionRow`): the bin, the pen and the arrow quiet at the end
  * of the row, in the ink's grey, so that the name is what is read. A swipe moves the row
  * with the finger and shows underneath what letting go will do: green "Gekauft" to the
- * right, the bin to the left.
+ * right, the bin to the left, or on a note the shelf ("Haben wir schon").
  */
 @layer components {
   .swipe-row {
@@ -1816,6 +1816,11 @@ summary,
     justify-content: flex-end;
     background: var(--color-danger-soft);
     color: var(--color-danger);
+  }
+  /* On a note the left is "Haben wir schon": nothing is lost, so no warning colour. */
+  .swipe-row[data-at-home][data-swipe="left"] .swipe-under {
+    background: color-mix(in oklab, var(--color-ink) 7%, var(--color-surface));
+    color: var(--color-ink);
   }
   .swipe-row[data-swipe="right"] .swipe-remove,
   .swipe-row[data-swipe="left"] .swipe-buy {

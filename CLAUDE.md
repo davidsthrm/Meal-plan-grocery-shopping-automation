@@ -107,6 +107,13 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   panel of filters for every list of recipes, Entdecken as rows, the season calendar with
   "Passt zur Saison" and "Was hat gerade Saison?", the tags of "Hauptzutat", and a faster
   start (the plan as start address, navigation preload).
+- Phase 14 (branch `phase-14-suggestion-variety`): suggestions that mix favourites with the
+  rest of the library and weigh the season, "Noch nie gekocht" and the week's main
+  ingredients and dishes; the way back from a recipe to the place on the week plan; the
+  shelf ("Haben wir schon") in place of the bin on a shopping note; recipe lines the catalog
+  does not know yet scaled on the list; "1 Portion" in the singular. Offers of the
+  supermarkets were looked into and left out (October 2026): no source that is reliable and
+  allowed exists for EDEKA and REWE, and the family wants no uploads.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -701,11 +708,14 @@ Week plan
   element with opacity 0 visible, so the test asks for the opacity.
 - A recipe opened from the week plan or from the favourites leads back there
   (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`); from
-  anywhere else it leads to "Entdecken". Nothing but a week is taken from the address.
-  Opened from a list, the link back is a step back in the history (`BackToList`,
-  `canStepBack`), so the filter and the place on the page are kept, and each shelf is
-  scrolled sideways as it was (`ListMemory`, `cameBack`). The link opened the list afresh
-  before, unfiltered and at the top.
+  anywhere else it leads to "Entdecken". Nothing but a week and its day is taken from the
+  address. Opened from a list or the week plan, the link back is a step back in the history
+  (`BackToList`, `canStepBack`), so the filter and the place on the page are kept, and each
+  shelf is scrolled sideways as it was (`ListMemory`, `cameBack`). The link opened the list
+  afresh before, unfiltered and at the top, and the week at Monday while the household was
+  planning Sunday. Where it cannot step back, the link from the week carries the day
+  (`&tag=<date>`) and lands on it (`#tag-<date>`); `ListMemory` goes to the anchor itself,
+  as the router looked for it while `loading.tsx` was shown.
 - Every recipe and food on a meal remembers the day it was planned (`planned_on`,
   `SlotItem.plannedOn`) and the moment (`planned_at`, `plannedAt`; an extra its
   `created_at`). A meal written again with other servings or another side keeps the day and
@@ -713,8 +723,17 @@ Week plan
   recorded.
 - A suggestion has points and reasons (`scoreRecipe`): +8 when someone wants to cook it, +3
   when its group is still below the least the week should have, -4 when its group is used
-  up, +2 for a favourite, -3 when it was on a plan in the last 4 weeks, +1 when it was last
-  cooked 8 weeks ago or longer. Equal recipes are ordered by a seed (week, meal), so the
+  up, +2 when it fits the season of the month the week counts for ("Passt zur Saison:
+  Kürbis, Lauch", `seasonFit` with `monthOfWeek`), -3 when it needs something of a short
+  season outside it ("Außerhalb der Saison: Erdbeeren"), +2 for a favourite, -3 when it was
+  on a plan in the last 4 weeks, +1 when it was last cooked 8 weeks ago or longer or never
+  ("Noch nie gekocht"), and -2 for each main ingredient or kind of dish the week has already
+  ("Schon Hackfleisch diese Woche": the tags of "Hauptzutat" and "Gericht", `varietyTags`,
+  `tagsOfWeek`; a cuisine may come twice). A suggestion names its two strongest reasons,
+  what speaks for it first (`whyText`); more made a box of small print. Favourites are no
+  more than a third of any list of suggestions (`mixFavorites`, `FAVORITE_SHARE`): with +2
+  they won every tie, and the household was offered its favourites over and over. A
+  favourite someone wants to cook counts as a wish. Equal recipes are ordered by a seed (week, meal), so the
   order is stable between two looks. The best one is found in one pass, not by sorting the
   library, and a recipe's dish and effort are read once per recipe: a week's suggestions
   took 190 ms of the server for the family's 1,146 recipes on every look at the plan, and
@@ -724,7 +743,9 @@ Week plan
   ein Vorschlag" for the next best; after twelve they come round again. The household found
   a plan that arrives full of suggestions too pushy.
 - Up to five open meals offer a suggestion without being asked: those with the most to say
-  for them (a wish, a favourite, a gap in the week; `HINT_SCORE`), spread over the week. It
+  for them (a wish, a favourite, a gap in the week, the season; `HINT_SCORE`; "never
+  cooked" alone is not enough), at most two of them favourites (`hintedMeals`), spread
+  over the week. It
   is the same box as an answer to "Hast du einen Vorschlag?", with a dashed edge and
   "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Noch ein
   Vorschlag" shows the next best. More wishes and favourites mean more such meals, up to
@@ -736,8 +757,11 @@ Week plan
   suitable recipes left than meals still open, is chosen for before the others: filled from
   Monday on, the lunches took the salad and the fish of a small cookbook, and Thursday
   evening, which takes only what is light and quick, got a third meat dish. With the
-  household's library no meal is that tight, and the week is filled in its order. What a
-  pick says for itself is said of the week as planned, not of the order it was chosen in.
+  household's library no meal is that tight, and the week is filled in its order.
+  Favourites fill no more than a third of the week, those on the plan already counted, and
+  a favourite only where nothing else suits a meal past that; each pick's main ingredient
+  and kind of dish count as the week's for the next. What a pick says for itself is said of
+  the week as planned, not of the order it was chosen in.
 - Suggested are main dishes and soups, in the evening also salads and cold suppers: lunch is
   the cooked meal in this household. Anything can still be planned by hand for any meal.
 - The evening is light, on any day (`suitsDay`): nothing heavy is suggested for it, that is
@@ -1254,7 +1278,13 @@ Shopping list
   without words (`ActionRow`, `src/components/line-actions.tsx`): the arrow moves it, the
   pen says what was bought (a stepper "3 von 6", another product), the bin removes it
   without asking. A swipe to the right buys, to the left removes; a finger held still
-  opens the same as a menu. Each decision can be taken back for five seconds from the bar
+  opens the same as a menu. On a note, planned and looked over before the shop, the shelf
+  takes the bin's place ("Haben wir schon", `ShelfIcon`, the `markAtHome` form, so it works
+  before any script): a swipe to the left and the menu say the same, on a calm grey instead
+  of the warning red. Only a line written by hand can still be removed there, from the
+  menu, for a slip of the pen; the drugstore's note, which has no "Haben wir schon", keeps
+  the bin. The household found the bin there meant "not bought", which is decided in the
+  shop (October 2026). Each decision can be taken back for five seconds from the bar
   at the foot ("Widerrufen"). The view for the shop has its own menu, sheets and bar
   (`LineActionsHere`): a modal dialog makes everything outside it inert. On a note the
   actions stand at the end of the line's first row, and an opened line runs the width of
@@ -1335,7 +1365,13 @@ Import
 - An ingredient the catalog does not know is never created silently. It becomes one open
   proposal per product: either another name for an existing ingredient, or a new one with a
   suggested aisle group, shop, buying mode and shelf life. Until it is decided, its recipe
-  lines stay as printed text.
+  lines keep their ingredient empty, and the shopping list buys them by the name in the
+  printed line (`parseIngredientLine`), scaled with the meal like any other line, what is
+  counted rounded up to whole pieces: "0,75 Seele" for one person stood on the list as
+  printed for a meal of four (October 2026). Such a line is under "Sonstiges" at the
+  supermarket until the proposal is confirmed. A proposal's "same as" is never taken from a
+  similar spelling (`SUGGESTION_PROMPT`): the model offered "Seezungenfilets" for "Seele",
+  the Swabian roll, and confirming all at once would have put sole on the list.
 - Before "Neue Zutaten" is shown, the open proposals are put in order (`tidyProposals`):
   a name loses an amount in front and a note after a comma ("200 g Belugalinsen" is
   "Belugalinsen"), two proposals for one product become one with all their recipe lines,

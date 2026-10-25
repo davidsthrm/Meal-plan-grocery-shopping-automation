@@ -17,12 +17,13 @@ export function timeText(recipe: Pick<RecipeSummary, "tags" | "prepMinutes">): s
 }
 
 /**
- * What a recipe's amounts are for: "4 Portionen", "4–6 Portionen", or what it makes when that
- * is not persons, "1 Springform (Ø 26 cm)".
+ * What a recipe's amounts are for: "1 Portion", "4 Portionen", "4–6 Portionen", or what it
+ * makes when that is not persons, "1 Springform (Ø 26 cm)".
  */
 export function servingsText(min: number | null, max: number | null, unit: string | null): string {
   if (min === null || max === null) return "? Portionen";
   if (unit === VOLUME_UNIT) return volumeText(min, max);
+  if (unit === null && min === 1 && max === 1) return "1 Portion";
   return `${min === max ? min : `${min}–${max}`} ${unit ?? "Portionen"}`;
 }
 

@@ -36,7 +36,11 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const { id } = await props.params;
   const query = await props.searchParams;
-  const back = readOrigin(one(query.von), one(query.w), { recipeId: id, field: one(query.feld) });
+  const back = readOrigin(one(query.von), one(query.w), {
+    recipeId: id,
+    field: one(query.feld),
+    day: one(query.tag),
+  });
   const db = await createSessionClient();
   // Row level security decides whether this recipe exists for the person asking.
   const { data: recipe } = await db
@@ -111,7 +115,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   // The address this page was opened with, so that changing the steps keeps the way back.
   const pageQuery = (extra: Record<string, string> = {}) => {
     const kept = Object.fromEntries(
-      (["von", "w", "feld"] as const).flatMap((key) => {
+      (["von", "w", "tag", "feld"] as const).flatMap((key) => {
         const value = one(query[key]);
         return value ? [[key, value]] : [];
       }),

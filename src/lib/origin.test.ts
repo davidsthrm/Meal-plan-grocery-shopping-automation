@@ -16,6 +16,7 @@ const read = (query: string, recipeId?: string) => {
   return readOrigin(params.get("von") ?? undefined, params.get("w") ?? undefined, {
     recipeId,
     field: params.get("feld") ?? undefined,
+    day: params.get("tag") ?? undefined,
   });
 };
 
@@ -25,6 +26,15 @@ describe("where a recipe was opened from", () => {
       href: "/woche?w=2026-10-12",
       label: "Wochenplan",
     });
+  });
+
+  it("lands on the day the recipe stands on when it cannot step back", () => {
+    expect(read(fromPlan("2026-10-12", "2026-10-15")).href).toBe(
+      "/woche?w=2026-10-12#tag-2026-10-15",
+    );
+    // A day outside the week, or no day at all, leads to the week alone.
+    expect(read(fromPlan("2026-10-12", "2026-10-19")).href).toBe("/woche?w=2026-10-12");
+    expect(read("?von=woche&w=2026-10-12&tag=x#y").href).toBe("/woche?w=2026-10-12");
   });
 
   it("leads back to the favourites", () => {

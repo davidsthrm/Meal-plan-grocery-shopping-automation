@@ -412,6 +412,41 @@ test("a note written next to a line stays with it", async ({ page }) => {
   await expect(sheet(page, MONDAY)).toContainText("Angebot 1,29");
 });
 
+test("on a note the shelf says what is at home; only a typed line can be removed", async ({
+  page,
+}) => {
+  await page.goto(`/woche?w=${WEEK}`);
+  await plan(page, "Dienstag Abend", "Pfeffersteak");
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  const row = (text: string) =>
+    sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: text });
+  await page.getByLabel("Auf den Zettel schreiben").fill("Lakritzschnecken");
+  await page.getByLabel("Auf den Zettel schreiben").press("Enter");
+  await expect(row("Lakritzschnecken")).toHaveCount(1);
+
+  // No bin on the note: what is not bought there is at home. Held, the row says the same.
+  await expect(row("200 ml Sahne").getByRole("button", { name: "Sahne entfernen" })).toHaveCount(0);
+  await row("200 ml Sahne").click({ button: "right" });
+  const menu = page.getByRole("menu", { name: "Sahne" });
+  await expect(menu.getByRole("menuitem", { name: "Haben wir schon" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Entfernen" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  // A line written by hand can still go, for a slip of the pen.
+  await row("Lakritzschnecken").click({ button: "right" });
+  await expect(
+    page
+      .getByRole("menu", { name: "Lakritzschnecken" })
+      .getByRole("menuitem", { name: "Entfernen" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await row("200 ml Sahne").getByRole("button", { name: "Sahne: haben wir schon" }).click();
+  await expect(row("200 ml Sahne")).toHaveCount(0);
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await page.getByText("Haben wir schon").click();
+  await expect(page.getByRole("button", { name: "Sahne doch kaufen" })).toBeVisible();
+});
+
 test("a typed line goes under its kind of grocery", async ({ page }) => {
   await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
   const write = page.getByLabel("Auf den Zettel schreiben");

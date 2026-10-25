@@ -440,18 +440,46 @@ describe("buildShoppingList", () => {
     });
   });
 
-  it("lists a recipe line that is not mapped to the catalog under its printed text", () => {
+  it("lists a recipe line that is not mapped to the catalog by its name, as much as needed", () => {
     const lines = build(
       [recipe("a", [line(null, 1, "Stück", { originalText: "1 Sternfrucht" })])],
       [slot(MONDAY, "a"), slot(TUESDAY, "a")],
     );
-    const loose = lines.get("unmapped:1sternfrucht")!;
+    const loose = lines.get("unmapped:sternfrucht")!;
     expect(loose).toMatchObject({
-      label: "1 Sternfrucht",
+      label: "Sternfrucht",
       ingredientId: null,
       aisleGroupId: "sonstiges",
+      purchase: { quantity: 2, unit: "Stück" },
     });
     expect(loose.contributions).toHaveLength(2);
+  });
+
+  it("scales a line the catalog does not know yet with the meal", () => {
+    // Typed for one person and planned for four: "0,75 Seele" stood on the list for one.
+    const seelen = recipe("seelen", [line(null, 0.75, "Stück", { originalText: "0,75 Seele" })], {
+      min: 1,
+      max: 1,
+      unit: null,
+    });
+    const forFour = build([seelen], [slot(MONDAY, "seelen", 4)]).get("unmapped:seele")!;
+    expect(forFour.label).toBe("Seele");
+    expect(forFour.purchase).toEqual({ quantity: 3, unit: "Stück" });
+    // What is counted is bought whole.
+    const forOne = build([seelen], [slot(MONDAY, "seelen", 1)]).get("unmapped:seele")!;
+    expect(forOne.purchase).toEqual({ quantity: 1, unit: "Stück" });
+    expect(forOne.amounts).toEqual([{ quantity: 0.75, unit: "Stück" }]);
+  });
+
+  it("lists a line the catalog does not know without an amount by its name alone", () => {
+    const lines = build(
+      [recipe("a", [line(null, null, null, { originalText: "Sternfrucht, in Scheiben" })])],
+      [slot(MONDAY, "a")],
+    );
+    expect(lines.get("unmapped:sternfrucht")).toMatchObject({
+      label: "Sternfrucht",
+      purchase: null,
+    });
   });
 
   it("marks a line optional only when every use of it is optional", () => {

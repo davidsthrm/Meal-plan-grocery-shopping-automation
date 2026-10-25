@@ -132,15 +132,29 @@ export function reasonText(reason: Reason): string {
       return `Erst vor ${weeksText(reason.weeks)} gekocht`;
     case "group_full":
       return `Schon genug ${GROUP_NAME[reason.group]} diese Woche`;
+    case "in_season":
+      return reason.foods.length > 0
+        ? `Passt zur Saison: ${reason.foods.join(", ")}`
+        : "Passt zur Saison";
+    case "never_cooked":
+      return "Noch nie gekocht";
+    case "repeats":
+      return `Schon ${reason.tag} diese Woche`;
+    case "out_of_season":
+      return `Außerhalb der Saison: ${reason.foods.join(", ")}`;
   }
 }
 
+/** How many reasons a suggestion names: more made a box of small print. */
+export const SHOWN_REASONS = 2;
+
 /**
- * Why a recipe is suggested, in one line. A recipe that is there only because the week needs
- * one more meal has no reason, and then nothing is said.
+ * Why a recipe is suggested, in one line: the strongest two of its reasons, what speaks for
+ * it before what speaks against it. A recipe that is there only because the week needs one
+ * more meal has no reason, and then nothing is said.
  */
 export function whyText(reasons: readonly Reason[]): string {
-  return reasons.map(reasonText).join(" · ");
+  return reasons.slice(0, SHOWN_REASONS).map(reasonText).join(" · ");
 }
 
 /** A planned amount: "4 Personen", "1 Springform (Ø 26 cm)". */

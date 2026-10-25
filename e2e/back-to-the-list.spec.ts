@@ -27,6 +27,38 @@ test("the way back from a recipe leads to the list as it was left", async ({ pag
   expect(Math.abs((await scrollY(page)) - before)).toBeLessThan(60);
 });
 
+test("back from a recipe, the week plan stands at the meal it was left at", async ({ page }) => {
+  // A week far enough ahead that every meal of it is still to come.
+  const week = "2027-03-08";
+  await page.goto(`/woche?w=${week}`);
+  await page.getByRole("button", { name: "Plan vervollständigen" }).click();
+  // Fourteen meals are written at once.
+  await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  const sunday = page.getByRole("region", { name: "Sonntag Abend", exact: true });
+  const link = sunday.locator("a[href^='/rezepte/']").first();
+  await link.scrollIntoViewIfNeeded();
+  const before = await scrollY(page);
+  expect(before).toBeGreaterThan(400);
+  const href = await link.getAttribute("href");
+  await link.click();
+  await expect(page).toHaveURL(RECIPE_PAGE);
+
+  // "← Wochenplan" steps back, to the place on the plan.
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
+  await expect(page).toHaveURL(new RegExp(`/woche\\?w=${week}$`));
+  await expect.poll(() => scrollY(page)).toBeGreaterThan(before - 60);
+  expect(Math.abs((await scrollY(page)) - before)).toBeLessThan(60);
+
+  // Where it cannot step back, opened from elsewhere, it lands on the recipe's day.
+  await page.goto(href!);
+  await page.evaluate(() => sessionStorage.clear());
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
+  await expect(page).toHaveURL(new RegExp(`/woche\\?w=${week}#tag-2027-03-14$`));
+  await expect(page.locator("#tag-2027-03-14")).toBeInViewport();
+});
+
 test("a shelf is scrolled sideways as it was after going back", async ({ page }) => {
   // The made-up cookbook's shelves fit a wide screen whole: narrow enough to scroll them.
   await page.setViewportSize({ width: 640, height: 900 });

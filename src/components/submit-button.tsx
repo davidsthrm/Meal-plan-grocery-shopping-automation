@@ -8,6 +8,7 @@ export function SubmitButton({
   children,
   className = "btn",
   label,
+  title,
   on,
   name,
   value,
@@ -16,6 +17,8 @@ export function SubmitButton({
   className?: string;
   /** For a button that shows a sign instead of words. */
   label?: string;
+  /** What a mouse pointer shows over a sign. */
+  title?: string;
   /** For a button that shows a state, such as a ticked box: styles go by `data-on`. */
   on?: boolean;
   /** Sent with the form when this button is the one pressed, to tell two buttons apart. */
@@ -28,6 +31,7 @@ export function SubmitButton({
       className={className}
       disabled={pending}
       aria-label={label}
+      title={title}
       aria-busy={pending}
       data-on={on}
       name={name}

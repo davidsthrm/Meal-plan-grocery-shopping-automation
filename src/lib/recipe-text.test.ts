@@ -55,5 +55,7 @@ describe("servingsText", () => {
     expect(servingsText(750, 750, "ml")).toBe("750 ml");
     expect(servingsText(1000, 1500, "ml")).toBe("1–1,5 l");
     expect(servingsText(4, 6, null)).toBe("4–6 Portionen");
+    expect(servingsText(1, 1, null)).toBe("1 Portion");
+    expect(servingsText(1, 2, null)).toBe("1–2 Portionen");
   });
 });

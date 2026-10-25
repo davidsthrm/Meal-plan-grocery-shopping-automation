@@ -11,6 +11,7 @@ import {
   TrashIcon,
   WishIcon,
 } from "@/components/icons";
+import { ListMemory } from "@/components/list-return";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -20,6 +21,7 @@ import {
   dayAndMonth,
   daysFromToday,
   mondayOf,
+  monthOfWeek,
   weekDates,
   weekdayLong,
   weekdayShort,
@@ -52,9 +54,16 @@ import {
   type PlanSlot,
 } from "@/domain/plan";
 import { progress, weekBalance, type BalanceLine } from "@/domain/recommend/balance";
-import { suggest, suggestWeek, type Suggestion } from "@/domain/recommend/suggest";
+import {
+  hintedMeals,
+  suggest,
+  suggestWeek,
+  tagsOfWeek,
+  varietyTags,
+  type Suggestion,
+} from "@/domain/recommend/suggest";
+import { monthOf } from "@/domain/season/calendar";
 import { foodText } from "@/domain/vesper";
-import { rank } from "@/domain/rank";
 import {
   GROUP_NAME,
   kindGroupName,
@@ -69,6 +78,7 @@ import { fromPlan } from "@/lib/origin";
 import { hourNow, today } from "@/lib/today";
 import { loadSelf, requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
+import { loadSeasonalFoods, withSeason } from "@/server/season";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { CookMore, ExtraPortions } from "./cook-more";
@@ -89,9 +99,6 @@ export const metadata: Metadata = { title: "Wochenplan" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** How many meals offer a suggestion unasked, and what an idea needs to be one of them. */
-const HINTS = 5;
-const HINT_SCORE = 2;
 /** How many different suggestions a meal can be asked for before they come round again. */
 const PROPOSALS = 12;
 
@@ -109,6 +116,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const db = await createSessionClient();
   // The library does not depend on the week: it is read while the week is found.
   const libraryRead = loadLibrary(db);
+  // What each recipe is made with that has a season: suggestions weigh the week's month.
+  const seasonalRead = loadSeasonalFoods(db);
   // The running week decides which week the planner opens on, and what there is today.
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
@@ -123,8 +132,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   // The meal someone is cooking more of: "Mehr kochen" is open under it.
   const cookingMore = one(params.mehr) ?? "";
 
-  const [library, slots, nextSlots, history, extras, saved, self] = await Promise.all([
+  const [library, seasonal, slots, nextSlots, history, extras, saved, self] = await Promise.all([
     libraryRead,
+    seasonalRead,
     // The running week was read already.
     week === running ? runningSlots : loadWeek(db, week),
     // Leftovers of Sunday's dinner can be eaten in the next week.
@@ -170,32 +180,34 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const open = days
     .filter((date) => date >= now)
     .flatMap((date) => MEALS.filter((meal) => !slotAt(date, meal)).map((meal) => ({ date, meal })));
+  const planned = new Set(
+    slots.flatMap((slot) =>
+      slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
+    ),
+  );
+  // The main ingredients and kinds of dish the week has: a second of them counts against.
+  const variety = varietyTags(library.tagGroups);
   const context = {
     balance,
-    planned: new Set(
-      slots.flatMap((slot) =>
-        slot.kind === "recipes" ? slot.items.map((item) => item.recipeId) : [],
-      ),
-    ),
+    planned,
     history,
     weekStart: week,
     seed: week,
+    variety,
+    usedTags: tagsOfWeek(
+      [...planned].flatMap((id) => recipeOf.get(id) ?? []),
+      variety,
+    ),
   };
+  // Suggestions weigh what is in season in the month the week counts for.
+  const suggestable = withSeason(library.recipes, seasonal, monthOf(monthOfWeek(week)));
   // What would complete the week. Nothing of it is put on the plan unasked, and a plan the
   // household saved is done with suggestions.
-  const picks = placing || showExtras || saved ? [] : suggestWeek(library.recipes, open, context);
+  const picks = placing || showExtras || saved ? [] : suggestWeek(suggestable, open, context);
   const pickAt = (date: IsoDate, meal: Meal) =>
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
-  // A few of them are offered in their meal: the ones with the most to say for them, and
-  // among equals not simply the first days of the week.
-  const hinted = new Set(
-    picks
-      .filter((pick) => pick.suggestion.score >= HINT_SCORE)
-      .map((pick) => ({ key: `${pick.date}.${pick.meal}`, score: pick.suggestion.score }))
-      .sort((a, b) => b.score - a.score || rank(week, a.key) - rank(week, b.key))
-      .slice(0, HINTS)
-      .map((pick) => pick.key),
-  );
+  // A few of them are offered in their meal: the ones with the most to say for them.
+  const hinted = hintedMeals(picks, week);
   // The answer to "Hast du einen Vorschlag?": the pick for that meal first, then the next best
   // one each time another is asked for, and round again when the list is through.
   const question = open.find((slot) => `${slot.date}.${slot.meal}` === askedFor);
@@ -203,7 +215,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   if (question && !placing && !showExtras) {
     const first = pickAt(question.date, question.meal);
     const ranked = suggest(
-      library.recipes,
+      suggestable,
       question,
       { ...context, seed: `${week}:${question.date}:${question.meal}` },
       PROPOSALS,
@@ -330,6 +342,8 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
   return (
     <div className="mx-auto max-w-5xl">
+      {/* Back from a recipe, the plan stands where it was left: at the meal being planned. */}
+      <ListMemory />
       {showToday ? (
         /*
          * Once something is planned for today or the weekend, it stands next to the greeting
@@ -677,6 +691,7 @@ function Today({
                         recipe={recipeOf.get(item.recipeId)}
                         id={item.recipeId}
                         week={week}
+                        day={now}
                       />
                     </li>
                   ))}
@@ -723,17 +738,20 @@ function KindTitle({
   recipe,
   id,
   week,
+  day,
 }: {
   recipe: RecipeSummary | undefined;
   id: string;
   /** The week of the plan the title stands on: the recipe's page leads back to it. */
   week: IsoDate;
+  /** The day it stands on, where the way back lands when it cannot step back. */
+  day?: IsoDate;
 }) {
   return (
     <span className="flex items-center gap-2.5">
       {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
       <Link
-        href={`/rezepte/${id}${fromPlan(week)}`}
+        href={`/rezepte/${id}${fromPlan(week, day)}`}
         className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
@@ -1016,7 +1034,7 @@ function MealCell({
               const recipe = recipeOf.get(item.recipeId);
               return (
                 <li key={item.recipeId}>
-                  <KindTitle recipe={recipe} id={item.recipeId} week={week} />
+                  <KindTitle recipe={recipe} id={item.recipeId} week={week} day={date} />
                   <p className="mt-0.5 text-sm text-muted">
                     {plannedText(item.servings, recipe?.servings?.unit ?? null)}
                   </p>
@@ -1075,7 +1093,7 @@ function MealCell({
                     : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2"
                 }
               >
-                <KindTitle recipe={recipe} id={item.recipeId} week={week} />
+                <KindTitle recipe={recipe} id={item.recipeId} week={week} day={date} />
                 <Amount
                   action={changeServings}
                   fields={{ week, date, meal, recipe: item.recipeId }}
@@ -1159,7 +1177,7 @@ function MealCell({
         <div className="mt-1 rounded-lg border border-dashed border-accent/50 bg-accent-soft/40 px-3 py-2.5">
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
           <div className="mt-1">
-            <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} />
+            <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} day={date} />
           </div>
           {shown.reasons.length > 0 && (
             <p className="mt-1 text-sm text-muted">{whyText(shown.reasons)}</p>

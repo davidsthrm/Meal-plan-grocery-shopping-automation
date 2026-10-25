@@ -23,9 +23,10 @@ const here = () => `${location.pathname}${location.search}`;
 const shelvesOf = () => [...document.querySelectorAll<HTMLElement>("main .shelf")];
 
 /**
- * On a list of recipes: remembers, as a recipe is opened, where the list stood, and puts it
- * back there when the history steps back to it. The browser keeps the place on the page
- * itself, but not how far a shelf was scrolled sideways.
+ * On a list of recipes or the week plan: remembers, as a recipe is opened, where the page
+ * stood, and puts it back there when the history steps back to it. The browser keeps the
+ * place on the page itself, but not how far a shelf was scrolled sideways. Opened afresh
+ * with an anchor, the page goes to it.
  */
 export function ListMemory() {
   useEffect(() => {
@@ -37,6 +38,11 @@ export function ListMemory() {
         });
         if (Math.abs(window.scrollY - saved.scrollY) > 40) window.scrollTo(0, saved.scrollY);
       });
+    } else if (location.hash.length > 1) {
+      // Opened afresh with an anchor ("#tag-2026-10-15"): the router looked for it while the
+      // page's placeholder was shown, found nothing and stayed at the top.
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (target) requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
     }
 
     const remember = (event: MouseEvent) => {

@@ -12,6 +12,7 @@ import {
   type Dimension,
   type Unit,
 } from "../units";
+import { parseIngredientLine } from "../library/typed-recipe";
 import { parseFreeEntry } from "./free-entry";
 import { labelFor } from "./format";
 import { naturalStep, packsFor, purchaseFor, roundUpTo } from "./rounding";
@@ -423,15 +424,14 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     });
     // A typed line with a number in front buys that many: "4 Ingwer-Shots" is "4x
     // Ingwer-Shots". Written twice in one unit, the amounts add up; otherwise none is shown.
+    // What is counted is bought whole: three quarters of a Seele for one person is one.
     const amounts = line.contributions.map((part) => part.amount);
     const unit = amounts[0]?.unit;
     if (unit && amounts.every((amount) => amount?.unit === unit)) {
-      const sum = {
-        quantity: tidy(amounts.reduce((total, a) => total + (a?.quantity ?? 0), 0)),
-        unit,
-      };
-      line.amounts = [sum];
-      line.purchase = sum;
+      const exact = tidy(amounts.reduce((total, a) => total + (a?.quantity ?? 0), 0));
+      const counted = dimensionOf(unit) !== "mass" && dimensionOf(unit) !== "volume";
+      line.amounts = [{ quantity: exact, unit }];
+      line.purchase = { quantity: counted ? Math.ceil(exact - 1e-9) : exact, unit };
       line.hasUnquantified = false;
     } else {
       line.amounts = [];
@@ -462,19 +462,22 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       const lunch = source.type === "recipe" && source.meal === "lunch";
       const on = date ? errandFor(ingredient, date, planned, lunch) : extrasErrand(planned);
       if (!ingredient) {
+        // Not in the catalog yet ("Neue Zutaten"): bought by its name, and as much as the
+        // meal needs. Shown as printed, "0,75 Seele" stood on the list for one person
+        // whatever the meal was planned for.
+        const name = parseIngredientLine(line.originalText)?.name || line.originalText;
+        const quantity = line.quantityMax ?? line.quantity;
         const contribution = {
           source,
-          amount: null,
+          amount:
+            quantity !== null && line.unit !== null
+              ? { quantity: tidy(quantity * factor), unit: line.unit }
+              : null,
           originalText: line.originalText,
           optional: line.optional,
           plannedAt,
         };
-        addLoose(
-          `unmapped:${normalizeName(line.originalText)}`,
-          line.originalText,
-          on,
-          contribution,
-        );
+        addLoose(`unmapped:${normalizeName(name)}`, name, on, contribution);
         continue;
       }
       const base = shoppingAmount(line, ingredient.defaultUnit, ingredient.gramsPer);
