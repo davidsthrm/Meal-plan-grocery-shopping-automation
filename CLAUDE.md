@@ -1203,14 +1203,19 @@ Shopping list
   of the note to the same place on the new day; what the plan adds later is again put where
   it belongs by itself. Any note can be done on its own day by these rules: whole weeks on
   the real errands are held against it (`tests/acceptance/sample-weeks.test.ts`).
-- An errand is done when no line of its note is open: each is bought, in full or in part,
-  or removed, by the last decision, or by "Einkauf erledigt", which ticks what is still
-  open. The note then pales, moves to the foot of the page under "Erledigt"
-  (`arrangeNotes`), and carries a stamp with the name of whoever made the last tick (`NoteList.completed`,
-  from `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored
-  for it (`completion`): a line the plan adds afterwards opens the errand again, which is
-  what it is, and so does a line typed onto the note. What was planned after the last tick
-  does not: that errand has not bought it. The notes are worked out a second time with the
+- An errand is done when no line of its note is open and something on it was bought: each
+  line is bought, in full or in part, or removed, by the last decision, or by "Einkauf
+  erledigt", which ticks what is still open. Its moment is the last purchase, never a line
+  removed: a removal is a decision about the plan, and two lines taken off Monday's note
+  while the week was planned made the errand done, so everything planned afterwards was
+  bought "shortly before" on a note under "Erledigt", where nobody looked for the olives
+  (October 2026). A note whose lines were only removed was not shopped. A done note pales,
+  moves to the foot of the page under "Erledigt" (`arrangeNotes`), and carries a stamp with
+  the name of whoever made the last tick (`NoteList.completed`, from
+  `shopping_line_state.checked_by` and the member's `display_name`). Nothing is stored for
+  it (`completion`): a line the plan adds afterwards opens the errand again, which is what
+  it is, and so does a line typed onto the note. What was planned after the last tick does
+  not: that errand has not bought it. The notes are worked out a second time with the
   errands that are done (`ErrandRules.doneAt`), and such a need goes to the next errand in
   time or is bought shortly before.
 - The notes still to do lie first, from today on in order of day and place, then one whose

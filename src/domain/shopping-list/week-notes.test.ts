@@ -159,6 +159,23 @@ describe("completion", () => {
     expect(completion(one, (key) => ticks.get(key))).toBeNull();
     expect(completion([], (key) => ticks.get(key))).toBeNull();
   });
+
+  it("takes its moment from what was bought, not from a line taken off", () => {
+    // Bought at 2000; a line removed at 2500 while the plan changed. Planned at 2200, the
+    // cream was planned after the shopping and does not open the errand again.
+    const at = (moment: number) =>
+      lines.map((entry) => ({
+        ...entry,
+        contributions: entry.contributions.map((part) => ({ ...part, plannedAt: moment })),
+      }));
+    const view = [resolveLine(at(500)[1], { checked: true }), resolveLine(at(2200)[0])];
+    expect(completion(view, (key) => ticks.get(key))).toEqual({ at: 2000, by: "david" });
+  });
+
+  it("is not done while nothing on it is bought", () => {
+    // Lines taken off while the week was planned are no shopping, whatever is left open.
+    expect(completion([resolveLine(lines[0])], (key) => ticks.get(key))).toBeNull();
+  });
 });
 
 describe("justFinished", () => {

@@ -445,12 +445,6 @@ export async function loadShoppingNotes(
     completion(
       view.groups.flatMap((group) => group.lines),
       (key) => ticks.get(`${noteId(trip)}|${key}`),
-      view.notBought
-        .filter((entry) => entry.view.status === "removed")
-        .map((entry) => {
-          const state = states.get(noteId(trip))?.[entry.view.line.key];
-          return { at: state?.decidedAt ?? 0, by: state?.decidedBy ?? null };
-        }),
     );
   // An errand that is done has not bought what was planned after it: the lines are worked
   // out once more with that known, and such a meal goes to an errand still to come.
