@@ -206,7 +206,12 @@ describe("arrangeNotes", () => {
   });
   const ids = (notes: { trip: ShoppingTrip }[]) => notes.map((entry) => noteId(entry.trip));
   const arrange = (notes: ReturnType<typeof note>[]) =>
-    arrangeNotes(notes, TUESDAY, (entry) => entry.lines === 0);
+    arrangeNotes(
+      notes,
+      TUESDAY,
+      (entry) => entry.lines === 0,
+      (entry) => entry.trip.place === "drugstore",
+    );
 
   it("puts what is still to do first, from today on, and the errands done at the foot", () => {
     const { toDo, done } = arrange([
@@ -228,6 +233,23 @@ describe("arrangeNotes", () => {
     // Today's and Saturday's stay, empty, to be written on.
     expect(ids(toDo)).toEqual([`${TUESDAY}.drugstore`, `${SATURDAY}.drugstore`]);
     expect(done).toEqual([]);
+  });
+
+  it("leaves out an empty note while another one has something on it", () => {
+    // The week's shopping was done on Wednesday instead of Tuesday: Tuesday's note is empty.
+    const { toDo } = arrange([
+      note(TUESDAY, "supermarket", 0),
+      note("2026-10-14", "supermarket", 12),
+      note(FRIDAY, "supermarket", 0),
+      note(SATURDAY, "drugstore", 0),
+    ]);
+    // The drugstore's note stays, to be written on.
+    expect(ids(toDo)).toEqual(["2026-10-14.supermarket", `${SATURDAY}.drugstore`]);
+  });
+
+  it("shows every note of a week with nothing on any of them", () => {
+    const { toDo } = arrange([note(TUESDAY, "supermarket", 0), note(FRIDAY, "supermarket", 0)]);
+    expect(ids(toDo)).toEqual([`${TUESDAY}.supermarket`, `${FRIDAY}.supermarket`]);
   });
 
   it("keeps an errand whose day is over while something on it is open, after those to come", () => {

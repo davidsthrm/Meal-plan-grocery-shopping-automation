@@ -15,6 +15,8 @@ import {
   readShoppingDays,
   singleTrip,
   tripsBetween,
+  withMovedErrands,
+  type ShoppingTrip,
   readWeekday,
   withDrugstore,
   type Need,
@@ -496,5 +498,53 @@ describe("the drugstore", () => {
     expect(readWeekday("8")).toBeNull();
     expect(readWeekday(null)).toBeNull();
     expect(readNoteId(`${SATURDAY}.drugstore`)).toEqual({ date: SATURDAY, place: "drugstore" });
+  });
+});
+
+describe("withMovedErrands", () => {
+  const week = tripsBetween(DEFAULT_SHOPPING_DAYS, "2026-10-26", "2026-11-01");
+  const ids = (list: ShoppingTrip[]) => list.map(noteId);
+
+  it("puts an errand done on another day on that day", () => {
+    const moved = withMovedErrands(week, new Map([["2026-10-26.supermarket", "2026-10-27"]]));
+    expect(ids(moved)).toContain("2026-10-27.supermarket");
+    expect(ids(moved)).not.toContain("2026-10-26.supermarket");
+    // In the order of the days.
+    expect(ids(moved)[0]).toBe("2026-10-27.supermarket");
+  });
+
+  it("follows an errand moved twice, and stops where moves go round", () => {
+    const twice = new Map([
+      ["2026-10-26.supermarket", "2026-10-27"],
+      ["2026-10-27.supermarket", "2026-10-28"],
+    ]);
+    expect(ids(withMovedErrands(week, twice))).toContain("2026-10-28.supermarket");
+    const round = new Map([
+      ["2026-10-26.supermarket", "2026-10-27"],
+      ["2026-10-27.supermarket", "2026-10-26"],
+    ]);
+    expect(ids(withMovedErrands(week, round))).toHaveLength(week.length);
+  });
+
+  it("lets a market moved to an earlier day reach as far as from its own day", () => {
+    const moved = withMovedErrands(week, new Map([["2026-10-31.market", "2026-10-30"]]));
+    const carrots: Need = {
+      date: "2026-11-03",
+      plannedOn: "2026-10-25",
+      shelfLifeDays: 7,
+      fresh: "market",
+    };
+    // From Saturday the market reaches Tuesday; done on Friday, it still buys the carrots.
+    expect(assignTrip(carrots, moved)).toEqual({
+      date: "2026-10-30",
+      place: "market",
+      trip: "main",
+    });
+  });
+
+  it("makes two errands of a place that meet on one day one", () => {
+    const moved = withMovedErrands(week, new Map([["2026-10-26.supermarket", "2026-10-30"]]));
+    expect(ids(moved).filter((id) => id === "2026-10-30.supermarket")).toHaveLength(1);
+    expect(moved).toHaveLength(week.length - 1);
   });
 });

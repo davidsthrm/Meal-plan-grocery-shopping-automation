@@ -61,11 +61,12 @@ test("the week becomes a note for every errand, to pick up and work through", as
 
   await page.goto(`/einkauf?w=${WEEK}`);
   await expect(page.getByRole("heading", { name: "1.–7. März" })).toBeVisible();
-  // Every errand is a note: the market before the week, because it buys for Monday and
-  // Tuesday, the supermarket twice, the market again, and the butcher and the bakery on the
-  // day of the meal that needs something from them. Neither has a day of its own. And dm on
-  // Saturday, which the plan never fills.
-  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(7);
+  // Every errand with something on it is a note: the market before the week, because it
+  // buys for Monday and Tuesday, the supermarket on Monday, and the butcher and the bakery on
+  // the day of the meal that needs something from them. Neither has a day of its own. And dm
+  // on Saturday, which the plan never fills, to be written on. Friday's supermarket and
+  // Saturday's market have nothing on them and are left out.
+  await expect(page.getByRole("list", { name: "Zettel" }).getByRole("link")).toHaveCount(5);
   await expect(tile(page, DRUGSTORE)).toContainText("Noch nichts notiert");
   // What is fresh comes from the market, the meat from the butcher on its day before.
   // A note shows its first lines while it lies among the others.
@@ -73,7 +74,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(tile(page, MARKET)).toContainText("1x Gurke");
   await expect(tile(page, BUTCHER)).toContainText("4x Rindersteaks");
   await expect(tile(page, BUTCHER)).not.toContainText("Erledigt");
-  await expect(tile(page, FRIDAY)).toContainText("Nichts zu kaufen");
+  await expect(tile(page, FRIDAY)).toHaveCount(0);
   // The supper's bread has a note of its own, for the bakery on that day.
   await tile(page, BAKERY).click();
   await expect(sheet(page, BAKERY)).toContainText("Brot");

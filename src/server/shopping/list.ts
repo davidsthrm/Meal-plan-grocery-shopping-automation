@@ -36,6 +36,7 @@ import {
   FIRST_ERRAND_FROM,
   noteId,
   tripsBetween,
+  withMovedErrands,
   type ShoppingTrip,
 } from "@/domain/shopping-list/trips";
 import type { LineState, ManualEntry, ShoppingLine } from "@/domain/shopping-list/types";
@@ -279,15 +280,18 @@ export async function loadShoppingNotes(
   const weekEnd = addDays(weekStart, 6);
   const inWeek = (date: IsoDate) => date >= weekStart && date <= weekEnd;
   // Far enough back that the first meal read has a shopping day before it.
-  const trips = tripsBetween(household.shoppingDays, addDays(weekStart, -14), addDays(weekEnd, 7));
+  const from = addDays(weekStart, -14);
+  const until = addDays(weekEnd, 7);
+  const standing = tripsBetween(household.shoppingDays, from, until);
   // What is still open on drugstore notes whose day is over comes along to the next one. It
-  // is read with everything else, not after it: one round trip less for every note.
+  // is read with everything else, not after it: one round trip less for every note. The
+  // drugstore's note keeps its day.
   const now = today();
-  const target = nextDrugstoreTrip(trips, now);
+  const target = nextDrugstoreTrip(standing, now);
   const earlierRead =
     target && inWeek(target.date) ? earlierDrugstoreEntries(db, now) : Promise.resolve(null);
   // An errand can buy for two weeks, so the weeks around this one are read with it.
-  const [weeks, extrasAround, index, memberRows, listRows, historyRows, earlier] =
+  const [weeks, extrasAround, index, memberRows, listRows, movedRows, historyRows, earlier] =
     await Promise.all([
       loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
       Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
@@ -298,6 +302,13 @@ export async function loadShoppingNotes(
         .select("id, shopping_date, place, opened_at")
         .gte("shopping_date", addDays(weekStart, -7))
         .lte("shopping_date", weekEnd),
+      // Errands done on another day, wherever the plans read may meet them.
+      db
+        .from("shopping_list")
+        .select("shopping_date, place, moved_to")
+        .not("moved_to", "is", null)
+        .gte("shopping_date", from)
+        .lte("shopping_date", until),
       db.from("shop_item_history").select("item_key, choice, times, last_at"),
       earlierRead,
     ]);
@@ -305,6 +316,15 @@ export async function loadShoppingNotes(
   const [before, thisWeek, after] = extrasAround;
   const extras = extrasToBuy({ before, week: thisWeek, after });
   const lists = must(listRows, "load shopping lists");
+  const trips = withMovedErrands(
+    standing,
+    new Map(
+      must(movedRows, "load errands moved").map((row) => [
+        noteId({ date: row.shopping_date, place: row.place as Place }),
+        row.moved_to as IsoDate,
+      ]),
+    ),
+  );
   const listIds = lists.map((list) => list.id);
   const tripOf = new Map(
     lists.map((list) => [list.id, { date: list.shopping_date, place: list.place as Place }]),
@@ -753,6 +773,56 @@ export async function moveLines(
     .from("shopping_line_state")
     .upsert(once, { onConflict: "shopping_list_id,line_key" });
   if (stored.error) throw new Error(`move lines: ${stored.error.message}`);
+}
+
+/**
+ * Does an errand on another day ("An einem anderen Tag einkaufen"): the list of its own day
+ * says on which (`moved_to`), and the week is worked out with the errand there
+ * (`withMovedErrands`). What was decided on its lines and what was typed onto it goes along
+ * to the list of the new day; what was decided there already stays. Moved back, the errand
+ * of that day is no longer moved away.
+ */
+export async function moveErrand(
+  db: Db,
+  household: Pick<Household, "id">,
+  from: ShoppingTrip,
+  to: IsoDate,
+): Promise<void> {
+  const [fromId, toId] = await Promise.all([
+    ensureList(db, household.id, from),
+    ensureList(db, household.id, { date: to, place: from.place }),
+  ]);
+  const states = must(
+    await db.from("shopping_line_state").select("*").eq("shopping_list_id", fromId),
+    "load decisions to take along",
+  );
+  if (states.length > 0) {
+    // A move to the new day itself is no move there.
+    const here = (state: (typeof states)[number]) =>
+      state.moved_date === to && state.moved_place === from.place;
+    const carried = await db.from("shopping_line_state").upsert(
+      states.map((state) => ({
+        ...state,
+        shopping_list_id: toId,
+        moved_date: here(state) ? null : state.moved_date,
+        moved_place: here(state) ? null : state.moved_place,
+        moved_with: here(state) ? null : state.moved_with,
+      })),
+      { onConflict: "shopping_list_id,line_key", ignoreDuplicates: true },
+    );
+    if (carried.error) throw new Error(`take decisions along: ${carried.error.message}`);
+  }
+  const results = await Promise.all([
+    db
+      .from("shopping_manual_entry")
+      .update({ shopping_list_id: toId })
+      .eq("shopping_list_id", fromId),
+    db.from("shopping_list").update({ moved_to: null }).eq("id", toId),
+    db.from("shopping_list").update({ moved_to: to }).eq("id", fromId),
+  ]);
+  for (const result of results) {
+    if (result.error) throw new Error(`move errand: ${result.error.message}`);
+  }
 }
 
 /** Ticks every line named: the errand is done, and whoever says so has done it. */

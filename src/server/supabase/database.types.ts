@@ -1803,6 +1803,7 @@ export type Database = {
           generated_at: string | null
           household_id: string
           id: string
+          moved_to: string | null
           opened_at: string | null
           place: string
           shopping_date: string
@@ -1812,6 +1813,7 @@ export type Database = {
           generated_at?: string | null
           household_id: string
           id?: string
+          moved_to?: string | null
           opened_at?: string | null
           place?: string
           shopping_date: string
@@ -1821,6 +1823,7 @@ export type Database = {
           generated_at?: string | null
           household_id?: string
           id?: string
+          moved_to?: string | null
           opened_at?: string | null
           place?: string
           shopping_date?: string
