@@ -387,7 +387,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   background: either way round, the holes lay askew to the note and jumped when it was lifted.
   A note is as tall as what is on it, and one with nothing on it is a slim strip with its
   place, its day and "Nichts zu kaufen": a full sheet for every note, empty or with one line,
-  made the shopping page twice as long as it needed to be (October 2026).
+  made the shopping page twice as long as it needed to be (October 2026). Such a strip is
+  shown only where it is to be written on (dm, a note opened by hand) or in a week with
+  nothing on any note (`arrangeNotes`).
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up. A link to `#merkzettel` pulls it down
   too. Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`). Going
@@ -1230,7 +1232,9 @@ Shopping list
   time or is bought shortly before.
 - The notes still to do lie first, from today on in order of day and place, then one whose
   day is over with something still open. A note whose day is over and that has nothing on
-  it is not shown: Monday's empty dm note said nothing on a Tuesday (October 2026).
+  it is not shown: Monday's empty dm note said nothing on a Tuesday (October 2026). Nor is
+  an empty note while another one of the week has something on it, unless it is there to be
+  written on: the drugstore's, or one opened by hand.
 - A line can be moved to another note: the household decided to buy it on another errand
   ("Lieber woanders kaufen", `moveListLine`). It is offered only the notes of the week where
   it is in time, keeps, and is sold (`placeSells`: no lemon on the Bäcker's note) (`moveTargets`, `moveProblems`: as for a whole errand, and a line

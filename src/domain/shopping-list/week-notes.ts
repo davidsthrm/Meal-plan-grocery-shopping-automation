@@ -65,13 +65,21 @@ export function notesOfWeek(
  * today on in order of day and place, then an errand whose day is over and that still has
  * something open; the errands that are done at the foot (`done`). A note whose day is over
  * and that has nothing on it is left out: Monday's empty dm note says nothing on a Tuesday.
+ * So is an empty note while another one has something on it, unless it is there to be
+ * written on (`writtenOn`: the drugstore's, one opened by hand): the household found empty
+ * notes beside the ones to shop with needless (October 2026). A week with nothing on any
+ * note shows them all, saying where they come from.
  */
 export function arrangeNotes<T extends { trip: ShoppingTrip; completed: object | null }>(
   notes: readonly T[],
   today: IsoDate,
   isEmpty: (note: T) => boolean,
+  writtenOn: (note: T) => boolean = () => false,
 ): { toDo: T[]; done: T[] } {
-  const shown = notes.filter((note) => note.trip.date >= today || !isEmpty(note));
+  const anything = notes.some((note) => !isEmpty(note));
+  const shown = notes.filter(
+    (note) => !isEmpty(note) || (note.trip.date >= today && (!anything || writtenOn(note))),
+  );
   const toDo = shown.filter((note) => note.completed === null);
   return {
     toDo: [
