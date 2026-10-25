@@ -12,6 +12,7 @@ import { sourceLabel } from "@/domain/library/source";
 import { loadSources } from "@/server/sources";
 import { CheckTiles, CheckTilesWithLibrary } from "./library-checks";
 import { NewBatchForm } from "./new-batch-form";
+import { AddRecipe } from "@/components/add-recipe";
 
 export const metadata: Metadata = { title: "Import" };
 
@@ -85,16 +86,19 @@ export default async function ImportPage(props: PageProps<"/import">) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-semibold">Rezepte einlesen</h1>
+      <h1 className="title">Rezept hinzufügen</h1>
       <p className="mt-1 text-muted">
-        Fotografiere ein Kochbuch Seite für Seite und lade die Fotos hier hoch. Was sicher gelesen
-        wurde, landet direkt bei den Rezepten. Alles andere bekommst du zum Prüfen.
+        Was sicher gelesen wurde, landet direkt bei den Rezepten. Alles andere bekommst du unten zum
+        Prüfen.
       </p>
-      <p className="mt-2">
-        <Link href="/rezepte/neu" className="link">
-          Ohne Foto: Rezept eintippen
-        </Link>
-      </p>
+      {!forMeal && (
+        <AddRecipe
+          sources={sources}
+          forMeal={null}
+          textHref="/rezepte/neu?art=text"
+          typeHref="/rezepte/neu"
+        />
+      )}
 
       <Suspense fallback={<CheckTiles waiting={waiting} proposals={open} />}>
         <CheckTilesWithLibrary waiting={waiting} proposals={open} />
@@ -114,7 +118,13 @@ export default async function ImportPage(props: PageProps<"/import">) {
           </p>
         </div>
       ) : (
-        <h2 className="mt-6 mb-2 text-lg font-semibold">Neuer Stapel</h2>
+        <>
+          <h2 className="mt-8 text-lg font-semibold">Viele Seiten auf einmal</h2>
+          <p className="mb-2 text-sm text-muted">
+            Ein ganzes Kochbuch oder Heft, Seite für Seite fotografiert, oder ein Ordner voller
+            Fotos.
+          </p>
+        </>
       )}
       <NewBatchForm
         sources={sources}

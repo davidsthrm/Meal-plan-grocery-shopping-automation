@@ -225,6 +225,21 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   Another model or provider gets its own reader; nothing else in the import changes.
 - Which model is good enough is decided by `npm run import:eval`, on the household's own
   sample recipes, not by assumption.
+- Recipes are added on `/rezepte/hinzufuegen` (`AddRecipe`), from the top of the Import tab
+  or from "Rezept hinzufügen" on a meal planned as text: "Foto aufnehmen" is the camera
+  itself (`capture="environment"`), "Fotos wählen" the gallery, many at once, "Text
+  einfügen" and "Eintippen" open `/rezepte/neu`. The photos, more taken or picked, and the
+  cookbook or magazine with its edition (one field, required), then "Fertig": the photos go
+  to Storage three at a time, and `/api/import/[batchId]/run` answers at once and reads the
+  batch on the server after the answer (`after`, `runBatch`, about four minutes:
+  `afterStep`). A run that runs out of time hands the batch on to a new one with the same
+  login while it is good for more than six minutes, thirty runs at most (`handOn`); it never
+  renews the login, which would compete with the phone's. The phone can be put away. What
+  is read without doubts is in the library, and on its meal where it was added from one
+  (`placeForMeal`); what has doubts waits under Import → Prüfen, and approving it plans it.
+  Anything left is read when the batch page is open. Measured (October 2026): one photo on
+  its meal 42 s after "Fertig"; two photos through five runs of a minute
+  (`IMPORT_RUN_BUDGET_MS=62000`, only to try the handing on), one taken over, one to check.
 - Recipes are added on an upload tab in the app. The model detects title and kind. The
   household enters what a photo cannot show: cookbook and, if not printed, the page. The
   cookbook is asked once per batch and pre-filled from the folder name when a folder is chosen.
@@ -257,7 +272,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `?monat=1..12` another month, `?zutat=<key>` the recipes with one food), `/rezepte/stichworte` (the tags themselves;
   `?stichwort=<id>` opens one), `/favoriten`,
   `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
-  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/import/pruefen/angaben` (assigned
+  `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/rezepte/hinzufuegen` (a recipe
+  added: photo, pasted text or typed; `?d=<date>&m=<meal>` for a meal planned as text), `/import/pruefen/angaben` (assigned
   fields that do not fit; `?feld=` one of them) and `/import/pruefen/doppelt` (duplicates;
   `?behalten=<id>&weg=<id>` asks before a merge), `/import/pruefen/schritte` (steps read with
   doubts), `/einkauf` (the shopping notes of
@@ -777,7 +793,9 @@ Library
   "Was fehlt" as a group of its own) and the chooser of a meal. From an iPad's width on the
   panel stands beside the list (`.filter-aside`), on a phone it is a sheet from the foot
   opened by "Filter" next to the search field, and in the chooser, whose side holds the week,
-  a sheet at every size (from the right edge from `sm` on). The sheet is the browser's own
+  a sheet at every size (from the right edge from `sm` on). The sheet has a height of its own
+  (`86dvh`) and its list `flex: 1 1 auto`: on the iPhone, a sheet limited by a maximum alone
+  showed its head and button with no filters between them. The sheet is the browser's own
   popover: it opens without a script and stays open while choices are tapped, "N Rezepte
   anzeigen" closes it. Every choice says how many recipes it would leave with the rest of
   the filter; one with none is pale and not a link. In a group of one (Zeit, Ernährung, Art,
@@ -1472,6 +1490,10 @@ Import
   Asked in the instructions to copy the letters, it did no better and split a step instead.
 - A recipe whose steps run on to a page that was not photographed has the steps up to there
   and a doubt; the rest can be typed on `/rezepte/[id]/bearbeiten`.
+- Picking photos on an iPhone from the batch form did not get as far as the upload for the
+  household (October 2026), which could not be reproduced in WebKit. The folder button is
+  off on touch screens now (`pointer-coarse`), and one recipe is added through
+  `/rezepte/hinzufuegen`. Check a batch from an iPhone once more.
 - The live search loads the whole library into the browser, about 880 recipes today. Watch
   how long that takes as the library grows.
 - A recipe's own view of its page can miss the end of its steps where the text runs on in

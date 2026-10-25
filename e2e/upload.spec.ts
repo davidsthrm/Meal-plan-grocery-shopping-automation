@@ -15,7 +15,8 @@ test("a batch of iPhone photos is uploaded, read and sorted @api", async ({ page
 
   await page.goto("/import");
   await page.getByLabel("Kochbuch").fill("Upload-Test");
-  await page.locator('input[type="file"][accept]').setInputFiles(PHOTOS);
+  // The batch's own field: above it, one recipe has a camera of its own.
+  await page.locator('label:has-text("Fotos auswählen") input').setInputFiles(PHOTOS);
   await expect(page.getByText("2 Fotos: IMG_5683.heic bis IMG_5684.heic")).toBeVisible();
   await page.getByRole("button", { name: "Hochladen und einlesen" }).click();
 

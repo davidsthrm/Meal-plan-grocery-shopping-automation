@@ -269,3 +269,15 @@ export function FilterIcon() {
     </svg>
   );
 }
+
+/** Two photos on top of each other: pictures picked from the phone's gallery. */
+export function PhotosIcon() {
+  return (
+    <svg {...base}>
+      <rect x="7" y="7" width="13" height="13" rx="2" />
+      <path d="M4 16V6a2 2 0 0 1 2-2h10" />
+      <path d="m7 17 4-4 3 3 2-2 4 4" />
+      <circle cx="16" cy="11" r="1.2" />
+    </svg>
+  );
+}
