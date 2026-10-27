@@ -1082,8 +1082,10 @@ Shopping list
   everything else to whole pieces or just enough to read well (`naturalStep`: 137,5 g is
   140 g). The household found "Champignons" one week and "4x Champignons" the next, and had
   to open "Crème fraîche" to learn it was 200 g. What comes in packs says how many packs
-  with the exact amount, on tap (`packsFor`). Only a line without any amount ("Petersilie")
-  and one asked for by the spoonful only ("Salz") show the name alone.
+  with the exact amount, on tap (`packsFor`). A tin is "1x Dose Mais": a name that says its
+  unit ("Mais (Dose)") does not say it again. Only a line without any amount ("Petersilie")
+  and a pantry staple asked for by the spoonful only ("Salz", "Öl") show the name alone;
+  six tablespoons of Schmand are "90 g Schmand" (October 2026).
 - Line text: quantity, name, note ("600 g Leberkäse", "Milch WS 1.29"). The exact sum and
   the meals it comes from stay available per line. A note picked up is one column on screen,
   the width of the page, so that an opened line has room: what it is for on the left, amount

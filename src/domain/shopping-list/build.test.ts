@@ -164,18 +164,35 @@ describe("buildShoppingList", () => {
     expect(lines.get("ingwer@main")!.purchase).toEqual({ quantity: 25, unit: "g" });
   });
 
-  it("names an ingredient by the spoonful without an amount", () => {
+  it("names a staple by the spoonful without an amount, and buys anything else", () => {
     const lines = build(
       [recipe("a", [line("sahne", 2, "EL")]), recipe("b", [line("sahne", 100, "ml")])],
       [slot(MONDAY, "a"), slot(TUESDAY, "b")],
     );
     // A spoonful next to a real amount is added to it.
     expect(lines.get("sahne@main")!.purchase).toEqual({ quantity: 130, unit: "ml" });
-    const spoons = build([recipe("a", [line("sahne", 2, "EL")])], [slot(MONDAY, "a")]);
+    // Six tablespoons of Schmand are bought: the amount stands in front.
+    const spoons = build([recipe("a", [line("sahne", 6, "EL")])], [slot(MONDAY, "a")]);
     expect(spoons.get("sahne@main")).toMatchObject({
-      purchase: null,
-      amounts: [{ quantity: 30, unit: "ml" }],
+      purchase: { quantity: 90, unit: "ml" },
+      amounts: [{ quantity: 90, unit: "ml" }],
     });
+    // Three tablespoons of oil, which is at home anyway, are "Öl".
+    const staple = createCatalogIndex({
+      ...testCatalog,
+      ingredients: testCatalog.ingredients.map((each) =>
+        each.id === "sahne" ? { ...each, isPantryStaple: true } : each,
+      ),
+    });
+    const oil = buildShoppingList({
+      index: staple,
+      recipes: [recipe("a", [line("sahne", 3, "EL")])],
+      slots: [slot(MONDAY, "a")],
+      trips: singleTrip(MONDAY),
+      onDemand: [],
+      manualEntries: [],
+    }).find((each) => each.key === "sahne@main");
+    expect(oil).toMatchObject({ purchase: null, amounts: [{ quantity: 45, unit: "ml" }] });
   });
 
   it("keeps amounts apart that cannot be converted instead of guessing", () => {

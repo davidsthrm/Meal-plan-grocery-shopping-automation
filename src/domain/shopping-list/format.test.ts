@@ -47,6 +47,17 @@ describe("formatLine", () => {
     expect(formatLine("Milch", null, "WS 1.29")).toBe("Milch WS 1.29");
     expect(formatLine("Feldsalat", null, null)).toBe("Feldsalat");
   });
+
+  it("writes a tin as so many tins, and a name that says its unit without it", () => {
+    expect(formatPurchase({ quantity: 2, unit: "Dose" })).toBe("2x Dose");
+    expect(formatLine("Mais (Dose)", { quantity: 1, unit: "Dose" }, null)).toBe("1x Dose Mais");
+    expect(formatLine("Kichererbsen", { quantity: 2, unit: "Dose" }, null)).toBe(
+      "2x Dose Kichererbsen",
+    );
+    // Bought by weight, the name keeps what it says.
+    expect(formatLine("Mais (Dose)", { quantity: 140, unit: "g" }, null)).toBe("140 g Mais (Dose)");
+    expect(formatLine("Spinat (TK)", { quantity: 600, unit: "g" }, null)).toBe("600 g Spinat (TK)");
+  });
 });
 
 describe("labelFor", () => {
