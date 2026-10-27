@@ -194,6 +194,50 @@ summary,
     color: var(--color-danger);
   }
 
+  /*
+   * A button whose form is on its way to the server (`SubmitButton`) stays pressed, and
+   * after a moment its words give way to a small ring: the household tapped again and
+   * again when nothing showed that the first tap was taken (October 2026). Half see-through,
+   * as before, it read as "not now".
+   */
+  :is(.btn, .chip, .icon-button)[data-pending] {
+    --busy-ink: var(--color-ink);
+    position: relative;
+    opacity: 1;
+    cursor: progress;
+    transform: scale(0.96);
+    animation: busy-hide 1ms linear 150ms forwards;
+  }
+  .btn-primary[data-pending] {
+    --busy-ink: var(--color-accent-ink);
+  }
+  .icon-button[data-pending] {
+    --busy-ink: var(--color-accent);
+  }
+  :is(.btn, .chip, .icon-button)[data-pending] > img {
+    animation: busy-hide-img 1ms linear 150ms forwards;
+  }
+  :is(.btn, .chip, .icon-button)[data-pending]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 999px;
+    border: 2px solid var(--busy-ink);
+    border-right-color: transparent;
+    opacity: 0;
+    animation:
+      busy-show 120ms ease 150ms forwards,
+      busy-turn 700ms linear infinite;
+  }
+  /* The line whose form it is pales with it: the tap was taken, the line is going. */
+  .swipe-row:has([data-pending]) .swipe-face > :not(.row-actions) {
+    opacity: 0.45;
+    transition: opacity 150ms ease;
+  }
+
   .field {
     min-height: 2.75rem;
     width: 100%;
@@ -2496,6 +2540,32 @@ summary,
 @keyframes fade-in {
   from {
     opacity: 0;
+  }
+}
+@keyframes busy-show {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes busy-turn {
+  to {
+    rotate: 1turn;
+  }
+}
+@keyframes busy-hide {
+  to {
+    color: transparent;
+  }
+}
+@keyframes busy-hide-img {
+  to {
+    opacity: 0;
+  }
+}
+/* Asked for less motion, the ring stands still: it still says the tap was taken. */
+@media (prefers-reduced-motion: reduce) {
+  :is(.btn, .chip, .icon-button)[data-pending]::after {
+    animation: busy-show 120ms ease 150ms forwards;
   }
 }
 @keyframes note-down {
