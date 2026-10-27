@@ -4,7 +4,15 @@ import { createCatalogIndex, type Shop } from "../catalog";
 import type { PlanSlot } from "../plan";
 import type { Recipe } from "../recipe";
 import { buildShoppingList, moveKey } from "./build";
-import { canMoveTo, decisionOf, movedAway, moveDays, plannedOf } from "./decisions";
+import {
+  canMoveTo,
+  decisionOf,
+  leavesNote,
+  movedAway,
+  moveDays,
+  moveStartDay,
+  plannedOf,
+} from "./decisions";
 import { guessKind } from "./free-entry";
 import { presentByAisle } from "./present";
 import { itemKey, shopChoices, suggestShops } from "./shop-choice";
@@ -233,6 +241,18 @@ describe("moving a line to another day", () => {
     // Long over, it still offers two days.
     expect(moveDays("2026-10-01", MONDAY)).toEqual([TUESDAY, "2026-10-21"]);
   });
+
+  it("starts on a day the move is taken for", () => {
+    // Another shop on the note's own day.
+    expect(moveStartDay(MONDAY, MONDAY)).toBe(MONDAY);
+    expect(moveStartDay(FRIDAY, MONDAY)).toBe(FRIDAY);
+    // Friday's butcher note looked at on Monday: today, not Friday, which is over.
+    const butcher = { date: "2026-10-16", place: "butcher" } as const;
+    const start = moveStartDay(butcher.date, MONDAY);
+    expect(start).toBe(MONDAY);
+    expect(canMoveTo(`${start}.supermarket`, butcher, MONDAY)).toEqual(monday);
+    expect(canMoveTo("2026-10-16.supermarket", butcher, MONDAY)).toBeNull();
+  });
 });
 
 describe("the rest of a line bought in part", () => {
@@ -389,5 +409,18 @@ describe("undo", () => {
     expect(shownDecision(ticks, line, page)).toEqual({ kind: "open" });
     // One word per line waits: the removal is not sent after its undo.
     expect(ticks.map((tick) => tick.id)).toEqual(["t2"]);
+  });
+});
+
+describe("leavesNote", () => {
+  it("keeps a line moved to another shop of the same note on it", () => {
+    const here = "2026-10-28.supermarket";
+    expect(leavesNote({ kind: "moved", to: here, shopId: "aldi" }, here)).toBe(false);
+    expect(leavesNote({ kind: "moved", to: "2026-10-30.supermarket", shopId: null }, here)).toBe(
+      true,
+    );
+    expect(leavesNote({ kind: "moved", to: "2026-10-28.market", shopId: null }, here)).toBe(true);
+    expect(leavesNote({ kind: "removed" }, here)).toBe(true);
+    expect(leavesNote({ kind: "bought" }, here)).toBe(false);
   });
 });
