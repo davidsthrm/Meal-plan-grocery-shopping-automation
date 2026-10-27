@@ -42,18 +42,30 @@ export function formatAmount(amount: Amount): string {
 
 /**
  * The quantity as it stands in front of the name on the list: pieces and packs as a
- * multiplier ("1x Schalotte", "2x Garnelen"), as on the drugstore's note, everything else
- * with its unit ("200 g Crème fraîche", "1 Bund Petersilie").
+ * multiplier ("1x Schalotte", "2x Garnelen"), as on the drugstore's note, a tin as so many
+ * tins ("1x Dose Mais"), everything else with its unit ("200 g Crème fraîche", "1 Bund
+ * Petersilie").
  */
 export function formatPurchase(amount: Amount): string {
   if (amount.unit === "Stück") return `${formatNumber(amount.quantity)}x`;
   if (amount.unit === "Packung") return `${formatNumber(amount.quantity)}x`;
+  if (amount.unit === "Dose") return `${formatNumber(amount.quantity)}x Dose`;
   return formatAmount(amount);
 }
 
-/** One list line: quantity where needed, name, then the note. */
+/**
+ * One list line: quantity where needed, name, then the note. A name that says its unit
+ * ("Mais (Dose)") does not say it twice: "1x Dose Mais", not "1 Dose Mais (Dose)".
+ */
 export function formatLine(label: string, purchase: Amount | null, note: string | null): string {
-  return [purchase ? formatPurchase(purchase) : null, label, note].filter(Boolean).join(" ");
+  const name = purchase ? withoutUnit(label, purchase.unit) : label;
+  return [purchase ? formatPurchase(purchase) : null, name, note].filter(Boolean).join(" ");
+}
+
+/** "Mais (Dose)" bought by the tin is "Mais". */
+function withoutUnit(label: string, unit: Unit): string {
+  const tag = ` (${unit})`;
+  return label.endsWith(tag) ? label.slice(0, -tag.length) : label;
 }
 
 /**
