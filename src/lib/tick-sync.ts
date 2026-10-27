@@ -37,6 +37,8 @@ export class TickQueue {
   private running: Promise<void> | null = null;
   private saving: Promise<void> = Promise.resolve();
   private readonly loaded: Promise<void>;
+  /** Ticks the server will never take: a move to a note it does not allow. */
+  private readonly refused = new Set<string>();
 
   constructor(
     private readonly store: TickStore,
@@ -63,11 +65,16 @@ export class TickQueue {
     return () => this.listeners.delete(listener);
   };
 
-  /** Keeps a tick and sends it right away, or as soon as that works. */
-  add(tick: Omit<Tick, "sentAt">): Promise<void> {
+  /**
+   * Keeps a tick and sends it right away, or as soon as that works. Answers whether the
+   * server refused it, so that the page can say so: a refused move snapped back without a
+   * word, and the household took the app for not having heard the tap (October 2026).
+   */
+  async add(tick: Omit<Tick, "sentAt">): Promise<{ refused: boolean }> {
     this.set({ ticks: enqueue(this.snapshot.ticks, { ...tick, sentAt: null }) });
     this.save();
-    return this.flush();
+    await this.flush();
+    return { refused: this.refused.has(tick.id) };
   }
 
   /**
@@ -107,6 +114,7 @@ export class TickQueue {
         this.set({ state: answer.kind });
         return;
       }
+      for (const id of answer.refused) this.refused.add(id);
       this.set({ ticks: settle(this.snapshot.ticks, answer, this.now()) });
       this.save();
       // An answer that names none of them would send the same request forever.

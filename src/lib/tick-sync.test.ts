@@ -163,8 +163,11 @@ describe("TickQueue", () => {
       }),
       now,
     );
-    await queue.add({ ...tick("bad", "x@main"), note: "kein Zettel" });
-    await queue.add(tick("a", "milch@main"));
+    // The page is told, so that it can say the change was not kept.
+    expect(await queue.add({ ...tick("bad", "x@main"), note: "kein Zettel" })).toEqual({
+      refused: true,
+    });
+    expect(await queue.add(tick("a", "milch@main"))).toEqual({ refused: false });
     expect(queue.get().ticks.map((each) => each.id)).toEqual(["a"]);
     expect(waitingIds(queue)).toEqual([]);
   });

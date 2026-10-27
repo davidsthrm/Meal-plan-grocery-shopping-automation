@@ -90,6 +90,23 @@ describe("restockTrip", () => {
     expect(at("Toast", TUESDAY)).toEqual({ date: FRIDAY, place: "supermarket" });
   });
 
+  it("goes to an errand done on another day, where it happens", () => {
+    const MONDAY = "2026-10-12";
+    const WEDNESDAY = "2026-10-14";
+    // Monday's errand done on Tuesday: written on Tuesday, it is today's.
+    const moved = new Map([[`${MONDAY}.supermarket`, TUESDAY]]);
+    const trip = (text: string, today: string, movedTo: Map<string, string>) =>
+      restockTrip({ text, freshPlace: null }, DEFAULT_SHOPPING_DAYS, today, movedTo);
+    expect(trip("Putzessig", TUESDAY, moved)).toEqual({ date: TUESDAY, place: "supermarket" });
+    expect(trip("Putzessig", MONDAY, moved)).toEqual({ date: TUESDAY, place: "supermarket" });
+    // Moved on to Wednesday, it waits for Wednesday.
+    moved.set(`${TUESDAY}.supermarket`, WEDNESDAY);
+    expect(trip("Putzessig", TUESDAY, moved)).toEqual({ date: WEDNESDAY, place: "supermarket" });
+    // Friday's errand moved to Saturday leaves Friday without one.
+    const friday = new Map([[`${FRIDAY}.supermarket`, SATURDAY]]);
+    expect(trip("Milch", "2026-10-15", friday)).toEqual({ date: SATURDAY, place: "supermarket" });
+  });
+
   it("has no errand for a household that never shops", () => {
     expect(restockTrip({ text: "Milch", freshPlace: null }, [], TUESDAY)).toBeNull();
   });

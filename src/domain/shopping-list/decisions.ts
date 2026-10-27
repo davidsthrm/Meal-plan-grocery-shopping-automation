@@ -42,6 +42,16 @@ export function isBought(decision: Decision): boolean {
 }
 
 /**
+ * Whether a decision takes a line off the note `note` ("2026-10-28.supermarket"): removed,
+ * or bought on another note. Another shop on the same note keeps the line there, in that
+ * shop's section; shown as moved away ("Avocado → Di") while it was being stored, it read
+ * as moved to another day (October 2026).
+ */
+export function leavesNote(decision: Decision, note: string): boolean {
+  return decision.kind === "removed" || (decision.kind === "moved" && decision.to !== note);
+}
+
+/**
  * The line as the plan has it, kept next to what was bought at the first decision that
  * departs from it.
  */
@@ -143,6 +153,16 @@ export function moveDays(noteDate: IsoDate, today: IsoDate): IsoDate[] {
     days.push(day);
   }
   return days;
+}
+
+/**
+ * The day "Verschieben" starts on: the note's own day, so that only the shop changes, or
+ * today where that day is over. Started on a day that is over, the move was refused
+ * (`canMoveTo`) and the line stayed where it was: 300 g Wiener on Monday's butcher note,
+ * moved on Tuesday to Aldi (October 2026).
+ */
+export function moveStartDay(noteDate: IsoDate, today: IsoDate): IsoDate {
+  return noteDate >= today ? noteDate : today;
 }
 
 /**

@@ -14,7 +14,9 @@ import { addDays, type IsoDate } from "@/domain/dates";
 import { formatAmount, formatNumber } from "@/domain/shopping-list/format";
 import {
   isBought,
+  leavesNote,
   moveDays,
+  moveStartDay,
   type Decision,
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
@@ -196,7 +198,14 @@ export function LineActions({
 
   const act = useCallback<Host["act"]>(
     (line, decision, before, text) => {
-      void decide(page, line.key, decision, line.about);
+      void decide(page, line.key, decision, line.about).then(({ refused }) => {
+        if (!refused) return;
+        setToast({
+          id: Date.now(),
+          text: `${line.about.planned.name}: nicht gespeichert, bitte noch einmal`,
+          undo: null,
+        });
+      });
       if (text === null) return;
       setToast({
         id: Date.now(),
@@ -465,7 +474,7 @@ export function ActionRow({
   });
 
   if (decision.kind === "removed") return null;
-  if (decision.kind === "moved") {
+  if (decision.kind === "moved" && leavesNote(decision, host.page.note)) {
     const to = readNoteId(decision.to);
     return (
       <li className={`moved-line ${className}`}>
@@ -474,7 +483,12 @@ export function ActionRow({
       </li>
     );
   }
-  const outcome = outcomeText(line, decision);
+  // Another shop on this note: the line stays and says where, until the page has it there.
+  const shopNow =
+    decision.kind === "moved"
+      ? host.choices.find((choice) => choice.shopId && choice.shopId === decision.shopId)
+      : undefined;
+  const outcome = shopNow ? `bei ${shopNow.name}` : outcomeText(line, decision);
   const actions = (
     <span className="row-actions print:hidden" data-no-swipe>
       {line.movable && (
@@ -1088,14 +1102,14 @@ function MoveForm({
   const here =
     choices.find((choice) => choice.id === line.about.shop) ??
     choices.find((choice) => choice.place === note.place);
-  const next = moveDays(note.date, today)[0];
-  const [day, setDay] = useState<IsoDate>(rest ? next : note.date);
+  const following = moveDays(note.date, today);
+  const start = moveStartDay(note.date, today);
+  const [day, setDay] = useState<IsoDate>(rest ? following[0] : start);
   const [shop, setShop] = useState<string | undefined>(here?.id);
   const [all, setAll] = useState(false);
   const picked = choices.find((choice) => choice.id === shop);
-  const following = moveDays(note.date, today);
-  const quick = [...new Set([note.date >= today ? note.date : today, ...following.slice(0, 2)])];
-  const later = moveDays(note.date, today).filter((each) => !quick.includes(each));
+  const quick = [...new Set([start, ...following.slice(0, 2)])];
+  const later = following.filter((each) => !quick.includes(each));
   const offered = line.suggested.flatMap((id) => choices.find((choice) => choice.id === id) ?? []);
   const others = line.others.flatMap((id) => choices.find((choice) => choice.id === id) ?? []);
   const same = day === note.date && shop === here?.id;

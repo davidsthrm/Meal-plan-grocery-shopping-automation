@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import type { IsoDate } from "@/domain/dates";
+import type { Place } from "@/domain/catalog";
+import { addDays, type IsoDate } from "@/domain/dates";
 import { drugstoreEntryFromText } from "@/domain/shopping-list/drugstore";
 import {
   aisleGroupOf,
@@ -10,7 +11,7 @@ import {
   restockTrip,
   type RestockItem,
 } from "@/domain/shopping-list/restock";
-import type { FreshPlace, ShoppingTrip } from "@/domain/shopping-list/trips";
+import { noteId, type FreshPlace, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { requireHousehold, type Household } from "../auth";
 import { loadCatalogIndex, loadSupermarkets, must, type Db } from "../catalog";
 import { addEntry } from "./list";
@@ -33,15 +34,27 @@ export async function loadRestock(
   household: Pick<Household, "shoppingDays">,
   today: IsoDate,
 ): Promise<PlacedRestock[]> {
-  const [read, supermarkets] = await Promise.all([
+  const [read, supermarkets, movedRows] = await Promise.all([
     db
       .from("restock_item")
       .select("id, text, fresh_place, aisle_group_id")
       .order("created_at")
       .limit(200),
     loadSupermarkets(db),
+    // Errands done on another day: the next errand may be one of the days before, moved on.
+    db
+      .from("shopping_list")
+      .select("shopping_date, place, moved_to")
+      .not("moved_to", "is", null)
+      .gte("shopping_date", addDays(today, -7)),
   ]);
   const rows = must(read, "load the note");
+  const movedTo = new Map(
+    must(movedRows, "load errands moved").map((row) => [
+      noteId({ date: row.shopping_date, place: row.place as Place }),
+      row.moved_to as IsoDate,
+    ]),
+  );
   return rows.map((row) => {
     const item = {
       id: row.id,
@@ -49,7 +62,7 @@ export async function loadRestock(
       freshPlace: row.fresh_place as FreshPlace | null,
       aisleGroupId: row.aisle_group_id,
     };
-    const trip = restockTrip(item, household.shoppingDays, today);
+    const trip = restockTrip(item, household.shoppingDays, today, movedTo);
     return {
       ...item,
       trip,

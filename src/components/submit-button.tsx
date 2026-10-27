@@ -33,6 +33,7 @@ export function SubmitButton({
       aria-label={label}
       title={title}
       aria-busy={pending}
+      data-pending={pending || undefined}
       data-on={on}
       name={name}
       value={value}

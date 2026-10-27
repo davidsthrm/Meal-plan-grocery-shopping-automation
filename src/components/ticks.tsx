@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { checkLine, completeListNote } from "@/app/(app)/einkauf/actions";
-import { isBought, type Decision, type PlannedLine } from "@/domain/shopping-list/decisions";
+import {
+  isBought,
+  leavesNote,
+  type Decision,
+  type PlannedLine,
+} from "@/domain/shopping-list/decisions";
 import { shownDecision, type Tick } from "@/domain/shopping-list/ticks";
 import { OWN_CHANGE } from "@/lib/live-refresh";
 import { indexedDbTickStore } from "@/lib/tick-store";
@@ -145,9 +150,7 @@ function useShown(page: NotePage, lines: readonly PageLine[]): boolean[] {
 
 /** Lines still on the note: neither removed nor moved elsewhere on this device. */
 function useOnNote(page: NotePage, lines: readonly PageLine[]): Decision[] {
-  return useDecisions(page, lines).filter(
-    (decision) => decision.kind !== "removed" && decision.kind !== "moved",
-  );
+  return useDecisions(page, lines).filter((decision) => !leavesNote(decision, page.note));
 }
 
 /**
@@ -159,7 +162,7 @@ export function decide(
   key: string,
   decision: Decision,
   about?: { planned: PlannedLine; item: string; shop: string | null },
-): Promise<void> {
+): Promise<{ refused: boolean }> {
   return tickQueue().add({
     id: newId(),
     note: page.note,
