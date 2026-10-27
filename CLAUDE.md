@@ -404,6 +404,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   an edge; only `.btn-primary` is solid, so the one green button on a screen is what stands
   out. Every control gives a little the moment a finger lands on it (`:active`, a scale of
   0.96), not only when it lifts, also for whoever asked for less motion: nothing travels.
+  While its form is on its way to the server (`SubmitButton`, `data-pending`), a button stays
+  pressed and after 150ms shows a small ring instead of its words, and the line of a note it
+  belongs to pales: the household tapped again when nothing showed (October 2026).
   The household took over these from previews based on Apple's guidance (October 2026),
   with the parts below: `.capsule` (back, the current one and forward as one control: the
   week on the plan and on the shopping notes, with the next step a word beside it),
@@ -1301,7 +1304,8 @@ Shopping list
   any earlier note stays behind.
 - The Merkzettel (`restock_item`, in the header of every page with the number of its
   entries) holds what ran out at home. It is not a shopping note: "Auf den Einkaufszettel"
-  moves an entry to the note of the next errand from today on that sells it (`restockTrip`),
+  moves an entry to the note of the next errand from today on that sells it (`restockTrip`,
+  with the errands done on another day where they happen),
   where it is a typed line, and takes it off. Flour noted on a Saturday waits for Monday;
   carrots are bought at the market that day; bread goes on the bakery's note that day, on
   a Sunday Monday's (the bakery has no day to wait for), packed bread to the supermarket. What the drugstore sells (`isDrugstoreItem`,
@@ -1362,7 +1366,11 @@ Shopping list
 - A line can be moved to any day from the day after its note (or from tomorrow where that
   day is over) up to a week after it (`moveDays`, `canMoveTo`), also where the plan needs
   it earlier: the decision is made in the shop. "An einem anderen Tag einkaufen" for a
-  whole errand and "Lieber woanders kaufen" keep their checks.
+  whole errand and "Lieber woanders kaufen" keep their checks. The form starts on the note's
+  own day, or on today where that is over (`moveStartDay`): started on a day that was over,
+  the server refused the move and the Wiener stayed at the butcher. A decision the server
+  refuses says so at the foot ("nicht gespeichert"), and another shop on the same note keeps
+  the line on it while it is stored (`leavesNote`), not "→ Di".
 - The shops offered for a line (`suggestShops`, `shop-choice.ts`): where it was bought
   before first (`shop_item_history`), then those that sell its kind of grocery; the rest
   behind "Alle Geschäfte". The butcher, bakery and market sell what is bought fresh there
