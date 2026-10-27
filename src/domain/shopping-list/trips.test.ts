@@ -7,7 +7,6 @@ import {
   DEFAULT_DRUGSTORE_WEEKDAY,
   DEFAULT_SHOPPING_DAYS,
   drugstoreWeekday,
-  nextTrip,
   noteId,
   onDemandDay,
   readDaysForm,
@@ -435,36 +434,6 @@ describe("assignTrip", () => {
   });
 });
 
-describe("nextTrip", () => {
-  it("is today when today is a shopping day", () => {
-    expect(nextTrip(DEFAULT_SHOPPING_DAYS, MONDAY, null)).toEqual({
-      date: MONDAY,
-      place: "supermarket",
-    });
-  });
-
-  it("is the next supermarket day for what is not sold fresh elsewhere", () => {
-    expect(nextTrip(DEFAULT_SHOPPING_DAYS, TUESDAY, null)?.date).toBe(FRIDAY);
-    expect(nextTrip(DEFAULT_SHOPPING_DAYS, SATURDAY, null)?.date).toBe(NEXT_MONDAY);
-  });
-
-  it("is the market for what is sold fresh there, and the supermarket for the rest", () => {
-    expect(nextTrip(DEFAULT_SHOPPING_DAYS, SATURDAY, "market")).toEqual({
-      date: SATURDAY,
-      place: "market",
-    });
-    // The butcher has no day to wait for.
-    expect(nextTrip(DEFAULT_SHOPPING_DAYS, SATURDAY, "butcher")).toEqual({
-      date: NEXT_MONDAY,
-      place: "supermarket",
-    });
-    expect(nextTrip(DEFAULT_SHOPPING_DAYS, TUESDAY, "market")).toEqual({
-      date: FRIDAY,
-      place: "supermarket",
-    });
-  });
-});
-
 describe("the drugstore", () => {
   const days = withDrugstore(DEFAULT_SHOPPING_DAYS, DEFAULT_DRUGSTORE_WEEKDAY);
   const withDm = tripsBetween(days, "2026-10-05", "2026-10-25");
@@ -488,7 +457,6 @@ describe("the drugstore", () => {
         expect(assignTrip(need(date, { fresh }), withDm)?.place).not.toBe("drugstore");
       }
     }
-    expect(nextTrip(days, SATURDAY, null)).toEqual({ date: NEXT_MONDAY, place: "supermarket" });
   });
 
   it("reads a weekday as stored or sent, and nothing else", () => {

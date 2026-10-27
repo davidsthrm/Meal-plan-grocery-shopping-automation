@@ -440,18 +440,3 @@ export function onDemandDay(need: Pick<Need, "date" | "plannedOn">): IsoDate {
   const saturday = addDays(need.date, -1);
   return need.plannedOn && need.plannedOn > saturday ? need.date : saturday;
 }
-
-/**
- * The next errand from `today` on that sells something: where a thing that ran out at home
- * is bought. Something fresh is bought at its place when that comes before the supermarket.
- */
-export function nextTrip(
-  days: readonly ShoppingDay[],
-  today: IsoDate,
-  fresh: FreshPlace | null,
-): ShoppingTrip | null {
-  const coming = tripsBetween(days, today, addDays(today, 13));
-  return (
-    coming.find((trip) => trip.place === "supermarket" || trip.place === fresh) ?? coming[0] ?? null
-  );
-}

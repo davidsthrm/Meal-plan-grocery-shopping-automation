@@ -5,8 +5,8 @@ import { parseFreeEntry } from "./free-entry";
 import { supermarketForKind } from "./supermarkets";
 import {
   freshPlaceFor,
-  nextTrip,
   tripsBetween,
+  withMovedErrands,
   type FreshPlace,
   type ShoppingDay,
   type ShoppingTrip,
@@ -78,13 +78,30 @@ export function restockTrip(
   item: Pick<RestockItem, "freshPlace" | "text">,
   days: readonly ShoppingDay[],
   today: IsoDate,
+  /**
+   * Errands done on another day, by the note of their own day (`shopping_list.moved_to`).
+   * Monday's errand done on Tuesday is Tuesday's next errand: without it, Putzessig written
+   * on the Merkzettel on Tuesday went to Friday's note (October 2026).
+   */
+  movedTo: ReadonlyMap<string, IsoDate> = new Map(),
 ): ShoppingTrip | null {
+  // From a week back: an errand of the days before may have been moved to today or later.
+  const coming = withMovedErrands(
+    tripsBetween(days, addDays(today, -7), addDays(today, 13)),
+    movedTo,
+  )
+    .filter((trip) => trip.date >= today)
+    .map(({ date, place }) => ({ date, place }));
   if (isDrugstoreItem(item.text)) {
-    const drugstore = nextDrugstoreTrip(tripsBetween(days, today, addDays(today, 13)), today);
+    const drugstore = nextDrugstoreTrip(coming, today);
     if (drugstore) return drugstore;
   }
   if (item.freshPlace === "bakery" && days.length > 0) {
     return { date: isoWeekday(today) === 7 ? addDays(today, 1) : today, place: "bakery" };
   }
-  return nextTrip(days, today, item.freshPlace);
+  return (
+    coming.find((trip) => trip.place === "supermarket" || trip.place === item.freshPlace) ??
+    coming[0] ??
+    null
+  );
 }
