@@ -147,8 +147,8 @@ interface Sums {
   /** True when a part asks for no quantity, or for a spoonful that cannot be added. */
   hasUnquantified: boolean;
   /**
-   * Whether everything with an amount asks for a spoonful or a pinch: then no amount is
-   * shown, three tablespoons of oil are "Öl", not "45 ml Öl".
+   * Whether everything with an amount asks for a spoonful or a pinch: then a pantry staple
+   * shows no amount, three tablespoons of oil are "Öl", not "45 ml Öl".
    */
   bySpoonOnly: boolean;
   /** Amounts with no conversion path: one exact sum per dimension, in its base unit. */
@@ -237,7 +237,10 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   if (primary.length > 0) {
     // The amount needed stands in front of the name whenever it is known, whatever the
     // ingredient is bought as: "200 g Crème fraîche", "1x Schalotte", "400 g Champignons".
-    const purchase = sum !== null && !bySpoonOnly ? purchaseFor(ingredient, sum) : null;
+    // By the spoonful only, a staple is "Öl", but six tablespoons of Schmand are bought:
+    // "90 g Schmand". Without its amount the household did not know how much (October 2026).
+    const spoonOnly = bySpoonOnly && ingredient.isPantryStaple;
+    const purchase = sum !== null && !spoonOnly ? purchaseFor(ingredient, sum) : null;
     lines.push({
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
