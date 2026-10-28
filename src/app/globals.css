@@ -2929,6 +2929,55 @@ summary,
     }
   }
 
+  @media (width >= 40rem) {
+    .discovery-figures {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  /* The badges of discovering, in "Statistik": earned in the green, the others pale with a bar. */
+  .badges {
+    display: grid;
+    gap: 0.25rem 1.5rem;
+  }
+  @media (width >= 46rem) {
+    .badges {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .badge-row {
+    display: flex;
+    min-height: 3.25rem;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .badge-medal {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    flex: none;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--color-line);
+    color: var(--color-muted);
+  }
+  .badge-row[data-earned="true"] .badge-medal {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .badge-progress {
+    width: 3.5rem;
+    height: 0.35rem;
+    flex: none;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+  .badge-progress > i {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+
   /* On a touch screen the rows scroll under the finger; a bar under each says nothing. */
   @media (pointer: coarse) {
     .shelf,

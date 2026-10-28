@@ -3,8 +3,10 @@ import { dayAndMonth, daysBetween, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { EFFORT_NAME } from "@/domain/library/tags";
 import { BALANCE_GROUPS } from "@/domain/recommend/balance";
+import type { DiscoveryStats } from "@/domain/stats/discovery";
 import type { EffortCounts, MealKind, MealStats, RankedRecipe } from "@/domain/stats/meals";
 import type { Bucket, Period } from "@/domain/stats/period";
+import { StarIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { RecipeBadge } from "@/components/recipe-card";
 import {
@@ -56,12 +58,15 @@ const weeksAgo = (date: IsoDate, today: IsoDate) => {
 
 export function MealsView({
   stats,
+  discovery,
   period,
   today,
   recipes,
   periodHref,
 }: {
   stats: MealStats;
+  /** What the family tried that was new to it, and its badges. */
+  discovery: DiscoveryStats;
   period: Period;
   today: IsoDate;
   recipes: ReadonlyMap<string, RecipeSummary>;
@@ -248,6 +253,9 @@ export function MealsView({
           </NotYet>
         )}
       </StatCard>
+
+      {/* As wide as the large cards: three figures and the badges need the room. */}
+      <DiscoveryCard discovery={discovery} />
 
       <div className="stat-columns">
         <StatCard title="Am häufigsten gekocht">
@@ -550,5 +558,56 @@ function EffortBar({ title, counts }: { title: string; counts: EffortCounts }) {
       </p>
       {total > 0 ? <ShareBar parts={parts} label={title} /> : <NotYet>Nichts gekocht.</NotYet>}
     </div>
+  );
+}
+
+/**
+ * What the family discovered: dishes new to it, how much of the library was ever cooked, the
+ * cuisines of the period, and badges for trying something new, each saying how far it is.
+ */
+function DiscoveryCard({ discovery }: { discovery: DiscoveryStats }) {
+  const share = discovery.library === 0 ? 0 : discovery.everCooked / discovery.library;
+  return (
+    <StatCard title="Entdeckt" counts="Neu Gekochtes, das Kochbuch und die Küchen">
+      <div className="stat-figures discovery-figures">
+        <Figure
+          value={String(discovery.newDishes)}
+          label={discovery.newDishes === 1 ? "Gericht zum ersten Mal" : "Gerichte zum ersten Mal"}
+          tone="kind-vegetarian"
+        />
+        <Figure
+          value={`${Math.round(share * 100)} %`}
+          label="vom Kochbuch je gekocht"
+          detail={`${discovery.everCooked} von ${discovery.library} Rezepten`}
+          href="/rezepte/regal"
+        />
+        <Figure
+          value={`${discovery.cuisines.cooked} von ${discovery.cuisines.of}`}
+          label="Küchen gekocht"
+          tone="kind-fish"
+        />
+      </div>
+      <ul className="badges mt-4" aria-label="Abzeichen">
+        {discovery.badges.map((badge) => (
+          <li key={badge.key} className="badge-row" data-earned={badge.earned}>
+            <span className="badge-medal" aria-hidden>
+              <StarIcon filled={badge.earned} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold leading-snug">
+                {badge.title}
+                {badge.earned && <span className="sr-only"> (geschafft)</span>}
+              </span>
+              <span className="block text-sm text-muted">{badge.detail}</span>
+            </span>
+            {!badge.earned && (
+              <span className="badge-progress" aria-hidden>
+                <i style={{ width: `${badge.progress * 100}%` }} />
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </StatCard>
   );
 }

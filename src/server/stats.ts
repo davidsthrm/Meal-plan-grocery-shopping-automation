@@ -1,4 +1,5 @@
 import "server-only";
+import { discoveryStats, type DiscoveryStats } from "@/domain/stats/discovery";
 import type { Place } from "@/domain/catalog";
 import { mondayOf, type IsoDate } from "@/domain/dates";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
@@ -51,7 +52,7 @@ export async function loadMealStats(
   household: StatsHousehold,
   period: Period,
   today: IsoDate,
-): Promise<{ stats: MealStats; library: Library }> {
+): Promise<{ stats: MealStats; discovery: DiscoveryStats; library: Library }> {
   const [library, weeks, seasonalFoods] = await Promise.all([
     loadLibrary(db),
     loadWeeks(db, household.firstWeek ?? "2000-01-03", period.end),
@@ -72,7 +73,14 @@ export async function loadMealStats(
     tags,
     seasonalFoods,
   });
-  return { stats, library };
+  const discovery = discoveryStats({
+    period,
+    today,
+    slots: weeks.flatMap((week) => week.slots),
+    recipes: new Map(library.recipes.map((recipe) => [recipe.id, recipe])),
+    tags,
+  });
+  return { stats, discovery, library };
 }
 
 /** How the household shopped: the notes of the period, and of the bars before a week. */
