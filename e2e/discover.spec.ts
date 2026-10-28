@@ -185,6 +185,48 @@ test("the cookbook page is folded away and shows the recipe's own part", async (
   await expect(page.getByRole("link", { name: "In voller Größe ansehen" })).toBeVisible();
 });
 
+test("the stepper scales the ingredients, the amounts in the steps and the cooking view", async ({
+  page,
+}) => {
+  await page.goto("/rezepte?q=kartoffelsuppe");
+  await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
+  const amount = page.getByRole("group", { name: "Menge" });
+  const ingredients = page.getByRole("region", { name: "Zutaten" });
+  const steps = page.locator("#arbeitsschritte");
+  await expect(amount).toContainText("4 Personen");
+  await expect(ingredients).toContainText("1 kg");
+
+  await amount.getByRole("button", { name: "Mehr" }).click();
+  await amount.getByRole("button", { name: "Mehr" }).click();
+  await expect(amount).toContainText("6 Personen");
+  await expect(ingredients).toContainText("1,5 kg");
+  await expect(ingredients).toContainText("150 ml");
+  await page.getByText("Arbeitsschritte · 3").click();
+  await expect(steps).toContainText("3 Karotten und die Kartoffeln");
+  await expect(steps).toContainText("150 ml Sahne");
+  // A time is no amount.
+  await expect(steps).toContainText("20 Minuten weich kochen");
+  await expect(steps).toContainText("Mengen für 6 Personen");
+
+  // The steps as printed, one tap away.
+  await steps.getByRole("button", { name: "Wie gedruckt zeigen" }).click();
+  await expect(steps).toContainText("2 Karotten und die Kartoffeln");
+  await expect(steps).toContainText("100 ml Sahne");
+  await steps.getByRole("button", { name: "Umgerechnet zeigen" }).click();
+  await expect(steps).toContainText("150 ml Sahne");
+
+  // The number is kept in the address: a reload finds it again.
+  await expect(page).toHaveURL(/portionen=6/);
+  await page.reload();
+  await expect(amount).toContainText("6 Personen");
+
+  await page.getByRole("link", { name: "Kochen" }).click();
+  const cooking = page.getByRole("dialog", { name: "Kochen: Kartoffelsuppe" });
+  await expect(cooking).toContainText("6 Personen");
+  await expect(cooking).toContainText("150 ml");
+  await expect(cooking).toContainText("3 Karotten");
+});
+
 test("the Arbeitsschritte are folded away, and a recipe without any says so", async ({ page }) => {
   await page.goto("/rezepte?q=risotto");
   await page.getByRole("link", { name: /Pilzrisotto/ }).click();

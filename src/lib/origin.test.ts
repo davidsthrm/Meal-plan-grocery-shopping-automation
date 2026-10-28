@@ -35,6 +35,13 @@ describe("where a recipe was opened from", () => {
     );
     // A day outside the week, or no day at all, leads to the week alone.
     expect(read(fromPlan("2026-10-12", "2026-10-19")).href).toBe("/woche?w=2026-10-12");
+    // How much the meal cooks goes along for the recipe's page, not for the way back.
+    expect(fromPlan("2026-10-12", "2026-10-15", 6)).toBe(
+      "?von=woche&w=2026-10-12&tag=2026-10-15&portionen=6",
+    );
+    expect(read(fromPlan("2026-10-12", "2026-10-15", 6)).href).toBe(
+      "/woche?w=2026-10-12#tag-2026-10-15",
+    );
     expect(read("?von=woche&w=2026-10-12&tag=x#y").href).toBe("/woche?w=2026-10-12");
   });
 

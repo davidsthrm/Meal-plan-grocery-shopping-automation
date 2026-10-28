@@ -13,11 +13,12 @@ export interface Origin {
 const LIBRARY: Origin = { href: "/rezepte", label: "Entdecken" };
 
 /**
- * What a link to a recipe adds to its address when it stands on the week plan: the week, and
- * the day it stands on, which the way back lands on when it cannot step back.
+ * What a link to a recipe adds to its address when it stands on the week plan: the week, the
+ * day it stands on, which the way back lands on when it cannot step back, and how much of it
+ * the meal cooks, which its page starts with.
  */
-export function fromPlan(week: string, day?: string): string {
-  return `?von=woche&w=${week}${day ? `&tag=${day}` : ""}`;
+export function fromPlan(week: string, day?: string, servings?: number): string {
+  return `?von=woche&w=${week}${day ? `&tag=${day}` : ""}${servings ? `&portionen=${servings}` : ""}`;
 }
 
 /** What a link to a recipe adds to its address when it stands among the favourites. */

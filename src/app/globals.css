@@ -1613,6 +1613,20 @@ summary,
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }
+  .stepper button:disabled {
+    opacity: 0.35;
+  }
+  /*
+   * An amount scaled to the servings cooked, in the ingredients and inside the steps: in the
+   * green with a faint dotted line, so that it reads as changed without standing out.
+   */
+  .scaled {
+    color: var(--color-accent);
+    font-weight: 600;
+    text-decoration: underline dotted color-mix(in srgb, var(--color-accent) 45%, transparent);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.2em;
+  }
   .stepper-value {
     display: inline-flex;
     align-items: center;

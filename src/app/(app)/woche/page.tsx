@@ -49,6 +49,7 @@ import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { openingWeek } from "@/domain/planned";
 import {
+  cookedServings,
   LEFTOVER_DAYS,
   mealsOf,
   MEALS,
@@ -745,6 +746,7 @@ function Today({
                   week={week}
                   day={date}
                   small={small}
+                  servings={{ planned: item.servings, extra: slot.extra }}
                 />
               </li>
             ))}
@@ -837,6 +839,7 @@ function KindTitle({
   week,
   day,
   small = false,
+  servings,
 }: {
   recipe: RecipeSummary | undefined;
   id: string;
@@ -846,14 +849,22 @@ function KindTitle({
   day?: IsoDate;
   /** Smaller, in a card of the weekend. */
   small?: boolean;
+  /**
+   * The meal's servings and its extra portions: the recipe's page starts with as much as the
+   * meal cooks.
+   */
+  servings?: { planned: number; extra?: number };
 }) {
+  const cooked =
+    servings &&
+    cookedServings(servings.planned, servings.extra, (recipe?.servings?.unit ?? null) === null);
   return (
     <span className={`flex items-center ${small ? "gap-2" : "gap-2.5"}`}>
       {recipe && (
         <RecipeBadge recipe={recipe} className={small ? "size-6 shrink-0" : "size-8 shrink-0"} />
       )}
       <Link
-        href={`/rezepte/${id}${fromPlan(week, day)}`}
+        href={`/rezepte/${id}${fromPlan(week, day, cooked)}`}
         prefetch
         transitionTypes={[FORWARD]}
         className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-[0.92rem] leading-snug" : ""}`}
@@ -1142,7 +1153,13 @@ function MealCell({
               const recipe = recipeOf.get(item.recipeId);
               return (
                 <li key={item.recipeId}>
-                  <KindTitle recipe={recipe} id={item.recipeId} week={week} day={date} />
+                  <KindTitle
+                    recipe={recipe}
+                    id={item.recipeId}
+                    week={week}
+                    day={date}
+                    servings={{ planned: item.servings, extra: slot.extra }}
+                  />
                   <p className="mt-0.5 text-sm text-muted">
                     {plannedText(item.servings, recipe?.servings?.unit ?? null)}
                   </p>
@@ -1204,7 +1221,13 @@ function MealCell({
                     : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2"
                 }
               >
-                <KindTitle recipe={recipe} id={item.recipeId} week={week} day={date} />
+                <KindTitle
+                  recipe={recipe}
+                  id={item.recipeId}
+                  week={week}
+                  day={date}
+                  servings={{ planned: item.servings, extra: slot.extra }}
+                />
                 <Amount
                   action={changeServings}
                   fields={{ week, date, meal, recipe: item.recipeId }}

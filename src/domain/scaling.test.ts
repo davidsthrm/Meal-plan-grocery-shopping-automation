@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cookingAmount,
   cookingNumber,
+  scaleLine,
   scaleStep,
   stepIngredients,
   type StepIngredient,
@@ -276,5 +277,22 @@ describe("stepIngredients", () => {
   it("knows both words of a known ingredient where they differ", () => {
     expect(stepIngredients([known("Eier", "Ei")])[0]).toMatchObject({ one: "Ei", many: "Eier" });
     expect(stepIngredients([known("Mehl")])[0]).not.toHaveProperty("one");
+  });
+});
+
+describe("scaleLine", () => {
+  it("scales a line and rounds it as a cook measures", () => {
+    expect(scaleLine(200, null, "g", 4 / 3)).toEqual({ quantity: 270, quantityMax: null });
+    expect(scaleLine(2, null, "Stück", 1.5)).toEqual({ quantity: 3, quantityMax: null });
+  });
+
+  it("scales both ends of a range, and keeps one number where they meet", () => {
+    expect(scaleLine(2, 3, "Stück", 2)).toEqual({ quantity: 4, quantityMax: 6 });
+    expect(scaleLine(1, 2, "Prise", 0.25)).toEqual({ quantity: 1, quantityMax: null });
+  });
+
+  it("leaves a line without an amount, and any line at a factor of 1", () => {
+    expect(scaleLine(null, null, null, 2)).toEqual({ quantity: null, quantityMax: null });
+    expect(scaleLine(133.3, null, "g", 1)).toEqual({ quantity: 133.3, quantityMax: null });
   });
 });

@@ -28,6 +28,22 @@ export interface StepIngredient {
 /** A piece of a step: as written, or an amount scaled, with what was written there. */
 export type StepPart = string | { text: string; original: string };
 
+/**
+ * A line of the ingredients scaled: both ends of a range, rounded as a cook measures. A range
+ * that rounds to one number is that number.
+ */
+export function scaleLine(
+  quantity: number | null,
+  quantityMax: number | null,
+  unit: Unit | null,
+  factor: number,
+): { quantity: number | null; quantityMax: number | null } {
+  if (quantity === null || Math.abs(factor - 1) < 1e-9) return { quantity, quantityMax };
+  const low = cookingAmount(quantity * factor, unit);
+  const high = quantityMax === null ? null : cookingAmount(quantityMax * factor, unit);
+  return { quantity: low, quantityMax: high !== null && high > low ? high : null };
+}
+
 /** Rounds a scaled amount to what a cook measures: no "1,33 Eier", no "133,33 g". */
 export function cookingAmount(quantity: number, unit: Unit | null): number {
   if (quantity <= 0) return quantity;

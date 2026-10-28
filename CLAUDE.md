@@ -309,7 +309,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `?loeschen=<id>` asks before deleting), `/rezepte/saison` ("Was hat gerade Saison?";
   `?monat=1..12` another month, `?zutat=<key>` the recipes with one food), `/rezepte/stichworte` (the tags themselves;
   `?stichwort=<id>` opens one), `/favoriten`,
-  `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
+  `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place, `?portionen=` how much is
+  cooked), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
   `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/rezepte/hinzufuegen` (a recipe
   added: photo, pasted text or typed; `?d=<date>&m=<meal>` for a meal planned as text), `/import/pruefen/angaben` (assigned
   fields that do not fit; `?feld=` one of them) and `/import/pruefen/doppelt` (duplicates;
@@ -684,6 +685,21 @@ Recipes
 - A recipe for persons is planned for the household's servings. A recipe with a unit is
   planned as written (`plannedServings`): scaled to four persons, a recipe for one cake tin
   would bake four cakes. Someone who wants two trays sets the slot to 2.
+- A recipe's page has a stepper next to "Zutaten" (`ServingsScale`, `ServingsStepper`): the
+  ingredients, the amounts inside the steps and the view for cooking follow it in the
+  browser, kept in the address (`?portionen=`). It starts with the household's servings
+  (`plannedServings`: a recipe with a unit as written), and opened from a planned meal with
+  that meal's, its extra portions included (`fromPlan`, `cookedServings`). Amounts are
+  rounded as a cook measures (`cookingAmount`: 135 g, 1½ EL, ⅓ Zwiebel, whole eggs) and a
+  changed one is marked (`.scaled`); "Wie gedruckt zeigen" shows the steps as printed.
+- A number in a step is scaled only where it is an amount (`scaleStep`,
+  `src/domain/scaling.ts`): a weight or volume, a counted unit with one of the recipe's
+  ingredients behind it, or one of them itself ("2 Eier"), past adjectives only. Never a
+  size, a time, a share ("⅔ der Kräuter"), an amount per piece ("je 2 Scheiben", "à 150 g"),
+  a form or tray, or a number written as "ein". Where singular and plural would change and
+  the other word is not known, or an adjective would have to change its ending, the step
+  stays as printed. Measured on the household's 4,724 steps at 6 instead of 4 persons
+  (October 2026): 1,273 amounts scaled, a sample of 120 read by eye without a wrong one.
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
 - A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
