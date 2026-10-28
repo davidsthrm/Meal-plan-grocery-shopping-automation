@@ -2379,22 +2379,10 @@ summary,
   }
 
   /*
-   * Entdecken while nothing is searched, made for the iPad (October 2026): the recipe of the
-   * day beside three small cards, the categories as tiles, shelves of tiles whose covers carry
-   * the kind's pastel and pictogram, and shelves of rows three to a column.
+   * Entdecken while nothing is searched, made for the iPad (October 2026): the tabs of the
+   * categories, the recipe of the day as one band, a row of what there is to do besides
+   * browsing, and shelves of the library's cards or of rows three to a column.
    */
-  .today-grid {
-    display: grid;
-    gap: 0.75rem;
-  }
-  /* From an iPad's width on, the small cards stand in a row under it. */
-  @media (width >= 40rem) {
-    .side-cards {
-      grid-auto-columns: minmax(0, 1fr);
-      grid-auto-flow: column;
-      grid-template-columns: none;
-    }
-  }
   .featured {
     display: flex;
     flex-direction: column;
@@ -2426,17 +2414,6 @@ summary,
       font-size: 1.5rem;
     }
   }
-  .side-cards {
-    display: grid;
-    /* As wide as its column: an automatic one grew to the whole of the season's foods. */
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: 1fr;
-    gap: 0.75rem;
-  }
-  .side-cards > a {
-    display: block;
-    border-radius: 1.1rem;
-  }
   .side-card {
     display: flex;
     height: 100%;
@@ -2450,7 +2427,53 @@ summary,
   .side-card > .badge {
     background: var(--color-surface);
   }
-  /* A warm sand for a recipe drawn by chance. */
+  /*
+   * The tiles of what there is to do besides browsing: the blush of the favourites for the
+   * stack (what is kept there becomes a wish), a misty blue for what is left in the fridge,
+   * a warm sand for chance.
+   */
+  .tone-stack {
+    --kind: #f5e1e6;
+    --kind-ink: #8a3f56;
+  }
+  .tone-fridge {
+    --kind: #e2ebf2;
+    --kind-ink: #3f5a70;
+  }
+  .feature-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(78%, 17rem);
+    gap: 0.6rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    margin-inline: -1rem;
+    padding: 0.1rem 1rem 0.3rem;
+    scroll-padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+  .feature-row > * {
+    display: block;
+    border-radius: 1.1rem;
+    scroll-snap-align: start;
+  }
+  /* Four side by side on an iPad: each its sign above its name, so that the words have room. */
+  @media (width >= 46rem) {
+    .feature-row {
+      grid-auto-columns: minmax(0, 1fr);
+      overflow: visible;
+      margin-inline: 0;
+      padding: 0;
+    }
+    .feature-row .side-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.55rem;
+    }
+    .feature-row .side-card > :last-child {
+      display: none;
+    }
+  }
   .tone-chance {
     --kind: #efe5d3;
     --kind-ink: #7a5a2e;
@@ -2612,6 +2635,9 @@ summary,
   .tab-row > [aria-current] {
     background: var(--color-accent);
     color: var(--color-accent-ink);
+  }
+  .tab-row > [aria-current] .chip-picture {
+    color: currentColor;
   }
   @media (prefers-reduced-motion: reduce) {
     .spine[aria-current] {

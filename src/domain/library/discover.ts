@@ -318,24 +318,6 @@ export function recipeOfTheDay(
 }
 
 /**
- * Recipes for "Überrasch mich": a few meals nobody marked, drawn at random, of which a tap
- * opens one. A new draw each time the page is read.
- */
-export function surprisePool(
-  recipes: readonly RecipeSummary[],
-  random: () => number,
-  size = 40,
-): string[] {
-  const pool = recipes.filter((recipe) => !isMarked(recipe) && isMeal(recipe)).map((r) => r.id);
-  // The first `size` places of a shuffle.
-  for (let at = 0; at < Math.min(size, pool.length); at += 1) {
-    const other = at + Math.floor(random() * (pool.length - at));
-    [pool[at], pool[other]] = [pool[other], pool[at]];
-  }
-  return pool.slice(0, size);
-}
-
-/**
  * Shelves for a few of the tags used most: the most used ones, a different few each day,
  * shown most used first.
  */
@@ -362,6 +344,57 @@ function tagShelves(
     .map((entry) =>
       filtered(`tag-${entry.tag.ref}`, entry.tag.name, { ...NO_FILTER, tags: [entry.tag.ref] }),
     );
+}
+
+/** A category of Entdecken's tabs: its own page of shelves inside the category. */
+export interface CategoryTab {
+  key: string;
+  name: string;
+  count: number;
+}
+
+/** A category with fewer recipes nobody marked gets no tab of its own. */
+const TAB_AT_LEAST = 4;
+
+/** The categories that get a tab, in the household's order, each with its count. */
+export function categoryTabs(
+  recipes: readonly RecipeSummary[],
+  categories: readonly Category[],
+): CategoryTab[] {
+  return categories
+    .map((category) => ({
+      key: category.key,
+      name: category.name,
+      count: recipes.filter((recipe) => !isMarked(recipe) && recipe.category === category.key)
+        .length,
+    }))
+    .filter((tab) => tab.count >= TAB_AT_LEAST);
+}
+
+/** A tag to narrow a category down by, with how many of its recipes have it. */
+export interface TagChip {
+  ref: string;
+  name: string;
+  count: number;
+}
+
+/** A chip needs this many recipes behind it. */
+const CHIP_AT_LEAST = 2;
+
+/** The tags of one group the given recipes have, the most used first. */
+export function tagChips(
+  recipes: readonly RecipeSummary[],
+  group: TagGroup | undefined,
+): TagChip[] {
+  if (!group) return [];
+  return group.tags
+    .map((tag) => ({
+      ref: tag.ref,
+      name: tag.name,
+      count: recipes.filter((recipe) => recipe.tags.includes(tag.ref)).length,
+    }))
+    .filter((chip) => chip.count >= CHIP_AT_LEAST)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "de"));
 }
 
 /**
@@ -504,16 +537,14 @@ export function themes(recipes: readonly RecipeSummary[], today: IsoDate): Theme
     })
     .filter((theme) => theme.count >= THEME_AT_LEAST)
     .sort((a, b) => Number(b.timely) - Number(a.timely) || rank(today, a.key) - rank(today, b.key));
-  return offered
-    .slice(0, THEMES_SHOWN)
-    .map(({ key, title, line, picture, filter, count }) => ({
-      key,
-      title,
-      line,
-      picture,
-      filter,
-      count,
-    }));
+  return offered.slice(0, THEMES_SHOWN).map(({ key, title, line, picture, filter, count }) => ({
+    key,
+    title,
+    line,
+    picture,
+    filter,
+    count,
+  }));
 }
 
 export const DIET_LABEL: Record<Diet, string> = {

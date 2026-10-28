@@ -1,12 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Featured, Shelf, Theme } from "@/domain/library/discover";
+import type { CategoryTab, Featured, Shelf, TagChip, Theme } from "@/domain/library/discover";
 import type { RecipeFilter } from "@/domain/library/filter";
 import { sourceLabel } from "@/domain/library/source";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { filterTone, recipeTone } from "@/lib/plan-text";
 import { timeText } from "@/lib/recipe-text";
-import { FORWARD } from "@/lib/transitions";
+import { NO_FILTER } from "@/domain/library/filter";
+import { pictogramForFilter } from "@/domain/library/pictogram";
+import { FORWARD, SWAP } from "@/lib/transitions";
 import { ClockIcon } from "./icons";
 import { PictogramIcon } from "./pictogram";
 import { RecipeBadge, RecipeCard } from "./recipe-card";
@@ -27,14 +29,17 @@ export function FeaturedRecipe({
   featured,
   category,
   tags,
+  from = "",
 }: {
   featured: Featured;
   category: string | null;
   /** What describes it: its main ingredient, kind of dish, cuisine, occasion. */
   tags: readonly string[];
+  /** What says where it stands, for the way back: see `lib/origin.ts`. */
+  from?: string;
 }) {
   const { recipe, why } = featured;
-  const href = `/rezepte/${recipe.id}`;
+  const href = `/rezepte/${recipe.id}${from}`;
   const facts = [
     timeText(recipe),
     recipe.sourceBook && sourceLabel(recipe.sourceBook, recipe.sourceEdition),
@@ -241,6 +246,106 @@ export function ThemeRow({
               <span className="ml-auto self-start text-sm text-muted tabular-nums">
                 {theme.count}
               </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * The tabs of Entdecken in one row that scrolls sideways: "Für euch", then every category with
+ * enough recipes, each its own page of shelves. A tab changes the view in place: it does not
+ * add a step to the history.
+ */
+export function CategoryTabsNav({
+  tabs,
+  current,
+}: {
+  tabs: readonly CategoryTab[];
+  current: string | null;
+}) {
+  if (tabs.length === 0) return null;
+  const tab = (key: string | null, label: string, picture: ReactNode) => (
+    <Link
+      key={key ?? "fuer-euch"}
+      href={key ? `/rezepte?art=${key}` : "/rezepte"}
+      replace
+      scroll={false}
+      transitionTypes={[SWAP]}
+      className="chip"
+      aria-current={current === key ? "page" : undefined}
+    >
+      {picture}
+      {label}
+    </Link>
+  );
+  return (
+    <nav aria-label="Kategorien" className="tab-row mt-4">
+      {tab(null, "Für euch", null)}
+      {tabs.map((entry) =>
+        tab(
+          entry.key,
+          entry.name,
+          <PictogramIcon
+            name={pictogramForFilter({ ...NO_FILTER, category: entry.key })}
+            className="chip-picture"
+          />,
+        ),
+      )}
+    </nav>
+  );
+}
+
+/** A tile of the row of features: a sign on its pastel, a name and what it does. */
+export function FeatureTile({
+  href,
+  tone,
+  picture,
+  title,
+  text,
+}: {
+  href: string;
+  tone: string;
+  picture: ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <Link href={href} prefetch transitionTypes={[FORWARD]} className={`lift ${tone}`}>
+      <SideCard picture={picture} title={title} text={text} />
+    </Link>
+  );
+}
+
+/**
+ * The tags of one group inside a category, as a row of chips to narrow it down with: "Nach
+ * Hauptzutat: Pilze 12, Lachs 7".
+ */
+export function ChipRow({
+  title,
+  chips,
+  href,
+}: {
+  title: string;
+  chips: readonly TagChip[];
+  href: (tag: string) => string;
+}) {
+  if (chips.length === 0) return null;
+  return (
+    <section className="mt-6" aria-label={title}>
+      <h2 className="eyebrow">{title}</h2>
+      <ul className="tab-row mt-1.5">
+        {chips.map((chip) => (
+          <li key={chip.ref}>
+            <Link href={href(chip.ref)} className="chip">
+              <PictogramIcon
+                name={pictogramForFilter({ ...NO_FILTER, tags: [chip.ref] })}
+                className="chip-picture"
+              />
+              {chip.name}
+              <span className="chip-count">{chip.count}</span>
             </Link>
           </li>
         ))}

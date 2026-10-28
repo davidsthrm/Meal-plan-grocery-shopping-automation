@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   byCategory,
+  categoryTabs,
+  tagChips,
   discover,
   isMarked,
   recipeOfTheDay,
   seasonOf,
-  surprisePool,
   themes,
   toDiscover,
   withHistory,
@@ -355,24 +356,6 @@ describe("recipeOfTheDay", () => {
   });
 });
 
-describe("surprisePool", () => {
-  it("draws meals nobody marked, each once", () => {
-    const list = [
-      ...Array.from({ length: 30 }, (_, i) => summary(`m${i}`, old)),
-      summary("fav", { isFavorite: true }),
-      summary("kuchen", { category: "kuchen" }),
-    ];
-    let seed = 1;
-    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const pool = surprisePool(list, random, 10);
-    expect(pool).toHaveLength(10);
-    expect(new Set(pool).size).toBe(10);
-    expect(pool).not.toContain("fav");
-    expect(pool).not.toContain("kuchen");
-    expect(surprisePool(list, random, 100)).toHaveLength(30);
-  });
-});
-
 describe("themes", () => {
   const many = (prefix: string, patch: object, count = 5) =>
     Array.from({ length: count }, (_, i) => summary(`${prefix}${i}`, { ...old, ...patch }));
@@ -422,5 +405,48 @@ describe("themes", () => {
       ...many("away", { tags: ["mitnehmen"] }),
     ];
     expect(themes(full, "2026-10-12")).toHaveLength(6);
+  });
+});
+
+describe("categoryTabs", () => {
+  it("gives a tab to each category with enough recipes nobody marked, in their order", () => {
+    const list = [
+      ...Array.from({ length: 4 }, (_, i) => summary(`m${i}`, { category: "hauptgericht" })),
+      ...Array.from({ length: 4 }, (_, i) => summary(`k${i}`, { category: "kuchen" })),
+      // Three and a favourite: too few.
+      ...Array.from({ length: 3 }, (_, i) => summary(`g${i}`, { category: "getraenk" })),
+      summary("gfav", { category: "getraenk", isFavorite: true }),
+    ];
+    expect(categoryTabs(list, categories)).toEqual([
+      { key: "hauptgericht", name: "Hauptgericht", count: 4 },
+      { key: "kuchen", name: "Kuchen & Gebäck", count: 4 },
+    ]);
+  });
+});
+
+describe("tagChips", () => {
+  const group = {
+    name: "Hauptzutat",
+    tags: [
+      { ref: "lachs", name: "Lachs & Forelle", group: "Hauptzutat" },
+      { ref: "pilze", name: "Pilze", group: "Hauptzutat" },
+      { ref: "eier", name: "Eier", group: "Hauptzutat" },
+    ],
+  };
+
+  it("lists the tags of a group the recipes have, the most used first", () => {
+    const list = [
+      summary("a", { tags: ["pilze"] }),
+      summary("b", { tags: ["pilze", "lachs"] }),
+      summary("c", { tags: ["lachs"] }),
+      summary("d", { tags: ["pilze"] }),
+      // One recipe makes no chip.
+      summary("e", { tags: ["eier"] }),
+    ];
+    expect(tagChips(list, group)).toEqual([
+      { ref: "pilze", name: "Pilze", count: 3 },
+      { ref: "lachs", name: "Lachs & Forelle", count: 2 },
+    ]);
+    expect(tagChips(list, undefined)).toEqual([]);
   });
 });
