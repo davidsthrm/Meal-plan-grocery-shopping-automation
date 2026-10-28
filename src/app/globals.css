@@ -1336,6 +1336,43 @@ summary,
     font-weight: 700;
     color: var(--kind-ink, var(--color-accent));
   }
+  /*
+   * A recipe's three actions in one row. On a phone each is as wide as its sign and words
+   * and shares what is left; their words a little smaller, so that the three fit a 360-pixel
+   * screen.
+   */
+  .recipe-actions {
+    display: flex;
+    gap: 0.3rem;
+  }
+  .recipe-actions .btn {
+    flex: 1 1 auto;
+    gap: 0.25rem;
+    padding: 0 0.45rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .recipe-actions .btn > svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  @media (width >= 40rem) {
+    .recipe-actions {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .recipe-actions .btn {
+      flex: none;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      font-size: 1rem;
+    }
+    .recipe-actions .btn > svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
   /* The way to change the tags, as small as one of them, an edge drawn instead of a fill. */
   .tag-edit {
     display: inline-flex;

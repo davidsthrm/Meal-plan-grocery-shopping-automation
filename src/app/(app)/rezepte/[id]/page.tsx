@@ -217,8 +217,9 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       )}
 
       {recipe.status === "approved" && (
-        // Einplanen, the wish and Kochen in one row, also on a phone: three equal parts.
-        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+        // Einplanen, the wish and Kochen in one row, also on a phone: each as wide as its words
+        // (`.recipe-actions`). Three equal parts were too narrow for a sign and a word.
+        <div className="recipe-actions mt-3">
           {planned ? (
             // On this week's plan already: the button says so and leads to where it stands.
             <Link
@@ -227,7 +228,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
                   ? `/woche?w=${planned.week}#tag-${planned.date}`
                   : `/woche?w=${planned.week}&t=extra`
               }
-              className="btn border-line bg-line px-2 text-accent sm:px-4"
+              className="btn border-line bg-line text-accent"
               title={
                 planned.date
                   ? `${weekdayLong(planned.date)}, ${MEAL_NAME[planned.meal]}`
@@ -238,7 +239,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               Eingeplant
             </Link>
           ) : (
-            <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary px-2 sm:px-4">
+            <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
               Einplanen
             </Link>
           )}
@@ -246,7 +247,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
             <input type="hidden" name="recipe" value={recipe.id} />
             <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
             <SubmitButton
-              className={`btn px-2 sm:px-4 ${wanted ? "border-accent text-accent" : ""}`}
+              className={`btn ${wanted ? "border-accent text-accent" : ""}`}
               label={wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
             >
               <WishIcon filled={wanted} />
