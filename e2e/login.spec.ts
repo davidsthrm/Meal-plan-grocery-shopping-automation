@@ -30,7 +30,7 @@ test("a wrong password is refused without saying which part was wrong", async ({
 
 test("signing in opens the week plan, signing out closes it again", async ({ page }) => {
   await signIn(page);
-  // The test user has a name: the plan greets them and is called "Euer Wochenplan".
+  // The test user has a name: the plan greets them and is headed by its week.
   await expect(page.getByRole("heading", { level: 1, name: /Wochenplan/ })).toBeVisible();
   // Signing out is in the settings only, not on every page.
   await expect(page.getByRole("button", { name: "Abmelden" })).toHaveCount(0);

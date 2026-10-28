@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  weekPlanned,
   byDayAndMeal,
   cookedServings,
   mealsOf,
@@ -160,5 +161,30 @@ describe("weekStrip", () => {
       "coffee",
       "dinner",
     ]);
+  });
+});
+
+describe("weekPlanned", () => {
+  const MONDAY = "2026-11-02";
+  const all = Array.from({ length: 7 }, (_, day) => {
+    const date = new Date(Date.UTC(2026, 10, 2 + day)).toISOString().slice(0, 10);
+    return [
+      { date, meal: "lunch" as const },
+      { date, meal: "dinner" as const },
+    ];
+  }).flat();
+
+  it("is planned once every lunch and dinner holds something, coffee or not", () => {
+    expect(weekPlanned(all, MONDAY)).toBe(true);
+    expect(weekPlanned([...all, { date: "2026-11-08", meal: "coffee" }], MONDAY)).toBe(true);
+  });
+
+  it("is not planned while one meal is open", () => {
+    expect(weekPlanned(all.slice(1), MONDAY)).toBe(false);
+    expect(weekPlanned([], MONDAY)).toBe(false);
+    // A meal of another week does not count for this one.
+    expect(weekPlanned([...all.slice(1), { date: "2026-11-09", meal: "lunch" }], MONDAY)).toBe(
+      false,
+    );
   });
 });

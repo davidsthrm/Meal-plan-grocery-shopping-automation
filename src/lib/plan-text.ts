@@ -109,7 +109,15 @@ export const DIET_NAME: Record<Diet, string> = {
 };
 
 /** What a week aims for in a group: "mind. 3", "max. 2", short enough for a small tile. */
+/**
+ * The goal of a group of meals as the week's count says it: "mind. 3", "max. 2", or
+ * "geschafft" once a week has at least as many as it aims for and no more than allowed.
+ * A limit alone ("max. 2") is nothing to reach.
+ */
 export function targetText(line: BalanceLine): string {
+  if (line.min !== null && line.count >= line.min && (line.max === null || line.count <= line.max)) {
+    return "geschafft";
+  }
   if (line.min !== null && line.max !== null) return `${line.min} bis ${line.max}`;
   if (line.min !== null) return `mind. ${line.min}`;
   if (line.max !== null) return `max. ${line.max}`;
@@ -175,4 +183,21 @@ export function slotText(slot: Exclude<PlanSlot, { kind: "recipes" }>): string {
     case "skipped":
       return "Keiner daheim";
   }
+}
+
+/**
+ * The meal of today that comes next, said as one sentence under the greeting: "Heute Abend
+ * gibt's Lachs mit Dill." Lunch until two in the afternoon, then dinner; nothing after nine
+ * in the evening, or where that meal holds nothing. A meal without a recipe is named:
+ * "Heute Mittag: Oma Heidrun."
+ */
+export function nextMealText(
+  hour: number,
+  lunch: { text: string; recipe: boolean } | null,
+  dinner: { text: string; recipe: boolean } | null,
+): string | null {
+  if (hour >= 21) return null;
+  const [when, meal] = hour < 14 ? ["Heute Mittag", lunch] : ["Heute Abend", dinner];
+  if (!meal) return null;
+  return meal.recipe ? `${when} gibt's ${meal.text}.` : `${when}: ${meal.text}.`;
 }

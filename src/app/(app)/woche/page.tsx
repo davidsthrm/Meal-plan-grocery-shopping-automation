@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { WeekDone } from "@/components/week-done";
 import { BACK, FORWARD, SWAP } from "@/lib/transitions";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -51,6 +52,7 @@ import {
   namedMeal,
   openMealsAfter,
   slotKey,
+  weekPlanned,
   type Meal,
   type PlanExtra,
   type PlanSlot,
@@ -70,6 +72,8 @@ import {
   GROUP_NAME,
   kindGroupName,
   MEAL_NAME,
+  nextMealText,
+  recipeTone,
   plannedText,
   slotText,
   targetText,
@@ -210,7 +214,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     picks.find((pick) => pick.date === date && pick.meal === meal)?.suggestion;
   // A few of them are offered in their meal: the ones with the most to say for them.
   const hinted = hintedMeals(picks, week);
-  // The answer to "Hast du einen Vorschlag?": the pick for that meal first, then the next best
+  // The answer to "Was könnten wir kochen?": the pick for that meal first, then the next best
   // one each time another is asked for, and round again when the list is through.
   const question = open.find((slot) => `${slot.date}.${slot.meal}` === askedFor);
   let proposal: Suggestion | undefined;
@@ -286,6 +290,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     </li>
   );
 
+  const todaysSlot = (meal: Meal) => {
+    const slot = runningSlots.find((entry) => entry.date === now && entry.meal === meal);
+    return slot ? { text: slotSaid(slot, recipeOf), recipe: slot.kind === "recipes" } : null;
+  };
+  const nextMeal = nextMealText(hourNow(), todaysSlot("lunch"), todaysSlot("dinner"));
+
   const title = (
     <div>
       {greeting ? (
@@ -301,8 +311,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           <p className="greeting mt-1">
             {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
           </p>
-          <h1 className="mt-2 text-lg font-semibold tracking-tight text-muted">
-            Euer Wochenplan
+          {/* What comes next today, in a sentence; the week's dates stay the heading. */}
+          {nextMeal && <p className="mt-1.5 text-[1.05rem] font-semibold">{nextMeal}</p>}
+          <h1 className="mt-1 text-base font-semibold tracking-tight text-muted">
+            Wochenplan
             <span aria-hidden className="mx-2 text-line">
               ·
             </span>
@@ -390,6 +402,14 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
 
       <Balance lines={balance} />
+      {/* A week ahead planned to its last meal is celebrated, once. */}
+      {week > running && (
+        <WeekDone
+          week={week}
+          planned={weekPlanned(slots, week)}
+          meals={slots.filter((slot) => slot.meal !== "coffee").length}
+        />
+      )}
 
       {placing ? (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-accent-soft px-4 py-3">
@@ -661,6 +681,21 @@ function hasToday(slots: readonly PlanSlot[], now: IsoDate): boolean {
   return todayAndWeekend(now).some((date) => slots.some((slot) => slot.date === date));
 }
 
+/** What a meal holds, as words: "Lachs mit Dill und Dinkelbaguette", "Vesper", "noch offen". */
+function slotSaid(slot: PlanSlot | undefined, recipeOf: ReadonlyMap<string, RecipeSummary>) {
+  if (!slot) return "noch offen";
+  if (slot.kind !== "recipes") return slotText(slot);
+  return [
+    ...slot.items.map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept"),
+    ...(slot.foods ?? []).map(foodText),
+  ].join(" und ");
+}
+
+/**
+ * Today's meals, and below them Saturday and Sunday as two small cards, each meal on a line
+ * of its own with its pictogram: the weekend was one grey sentence the household did not
+ * read (October 2026).
+ */
 function Today({
   now,
   week,
@@ -683,18 +718,40 @@ function Today({
   // Coffee on Sunday is said only when there is some.
   const mealsOn = (date: IsoDate) =>
     mealsOf(date).filter((meal) => meal !== "coffee" || at(date, meal));
-  const said = (slot: PlanSlot | undefined) =>
-    !slot
-      ? "nichts geplant"
-      : slot.kind === "recipes"
-        ? [
-            ...slot.items.map((item) => recipeOf.get(item.recipeId)?.title ?? "Rezept"),
-            ...(slot.foods ?? []).map(foodText),
-          ].join(" und ")
-        : slotText(slot);
+  const meal = (date: IsoDate, which: Meal, small: boolean) => {
+    const slot = at(date, which);
+    return (
+      <li key={which} className="min-w-0">
+        <p className="eyebrow">{MEAL_NAME[which]}</p>
+        {slot?.kind === "recipes" ? (
+          <ul className="mt-0.5 space-y-1">
+            {slot.items.map((item) => (
+              <li key={item.recipeId}>
+                <KindTitle
+                  recipe={recipeOf.get(item.recipeId)}
+                  id={item.recipeId}
+                  week={week}
+                  day={date}
+                  small={small}
+                />
+              </li>
+            ))}
+            {(slot.foods?.length ?? 0) > 0 && (
+              <li className="text-sm">
+                <span className="text-muted">Dazu: </span>
+                {slot.foods?.map(foodText).join(", ")}
+              </li>
+            )}
+          </ul>
+        ) : (
+          <p className={slot ? "font-semibold" : "text-muted"}>{slotSaid(slot, recipeOf)}</p>
+        )}
+      </li>
+    );
+  };
 
   return (
-    <section aria-label="Heute" className="card px-4 py-4 sm:px-5">
+    <section aria-label="Heute" className="card px-4 py-3.5 sm:px-5">
       <h2 className="text-lg font-bold tracking-tight">
         {dated ? (
           <>
@@ -705,57 +762,25 @@ function Today({
           "Heute"
         )}
       </h2>
-      <ul className="mt-2 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-        {mealsOn(now).map((meal) => {
-          const slot = at(now, meal);
-          return (
-            <li key={meal}>
-              <p className="eyebrow">{MEAL_NAME[meal]}</p>
-              {slot?.kind === "recipes" ? (
-                <ul className="mt-0.5 space-y-1">
-                  {slot.items.map((item) => (
-                    <li key={item.recipeId}>
-                      <KindTitle
-                        recipe={recipeOf.get(item.recipeId)}
-                        id={item.recipeId}
-                        week={week}
-                        day={now}
-                      />
-                    </li>
-                  ))}
-                  {(slot.foods?.length ?? 0) > 0 && (
-                    <li className="text-sm">
-                      <span className="text-muted">Dazu: </span>
-                      {slot.foods?.map(foodText).join(", ")}
-                    </li>
-                  )}
-                </ul>
-              ) : (
-                <p className={slot ? "font-semibold" : "text-muted"}>{said(slot)}</p>
-              )}
-            </li>
-          );
-        })}
+      <ul className="mt-1.5 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+        {mealsOn(now).map((which) => meal(now, which, false))}
       </ul>
       {weekend.length > 0 && (
-        <>
-          <h3 className="eyebrow mt-4 border-t border-line pt-3">Am Wochenende</h3>
-          <ul className="mt-1 space-y-0.5">
+        <section aria-label="Am Wochenende" className="mt-3.5">
+          <h3 className="eyebrow">Am Wochenende</h3>
+          <div className="weekend-days mt-1.5">
             {weekend.map((date) => (
-              <li key={date}>
-                <Link href={`/woche?w=${monday}#tag-${date}`} className="font-semibold">
+              <div key={date} className="weekend-day">
+                <Link href={`/woche?w=${monday}#tag-${date}`} className="font-bold tracking-tight">
                   {weekdayLong(date)}
                 </Link>
-                <span className="text-muted">
-                  {": "}
-                  {mealsOn(date)
-                    .map((meal) => `${MEAL_NAME[meal]} ${said(at(date, meal))}`)
-                    .join(" · ")}
-                </span>
-              </li>
+                <ul className="mt-1 space-y-1.5">
+                  {mealsOn(date).map((which) => meal(date, which, true))}
+                </ul>
+              </div>
             ))}
-          </ul>
-        </>
+          </div>
+        </section>
       )}
     </section>
   );
@@ -767,6 +792,7 @@ function KindTitle({
   id,
   week,
   day,
+  small = false,
 }: {
   recipe: RecipeSummary | undefined;
   id: string;
@@ -774,14 +800,18 @@ function KindTitle({
   week: IsoDate;
   /** The day it stands on, where the way back lands when it cannot step back. */
   day?: IsoDate;
+  /** Smaller, in a card of the weekend. */
+  small?: boolean;
 }) {
   return (
-    <span className="flex items-center gap-2.5">
-      {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
+    <span className={`flex items-center ${small ? "gap-2" : "gap-2.5"}`}>
+      {recipe && (
+        <RecipeBadge recipe={recipe} className={small ? "size-6 shrink-0" : "size-8 shrink-0"} />
+      )}
       <Link
         href={`/rezepte/${id}${fromPlan(week, day)}`}
         transitionTypes={[FORWARD]}
-        className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
+        className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-[0.92rem] leading-snug" : ""}`}
       >
         {recipe?.title ?? "Rezept"}
       </Link>
@@ -970,7 +1000,7 @@ interface CellProps {
   date: IsoDate;
   meal: Meal;
   slot: PlanSlot | undefined;
-  /** The answer to "Hast du einen Vorschlag?", when this meal was asked about. */
+  /** The answer to "Was könnten wir kochen?", when this meal was asked about. */
   proposal: Suggestion | undefined;
   /** An idea offered in an open meal nobody asked about. */
   hint: Suggestion | undefined;
@@ -1043,10 +1073,15 @@ function MealCell({
         ? "sm:col-start-2 sm:row-start-2 lg:col-start-3 lg:row-start-1"
         : "sm:col-start-1 sm:row-start-2 lg:col-start-2 lg:row-start-1";
 
+  // The kind of its first dish colours the meal's edge: the week reads at a glance.
+  const first = slot?.kind === "recipes" ? recipeOf.get(slot.items[0]?.recipeId ?? "") : undefined;
+  const edge = first ? (recipeTone(first)?.className ?? "") : "";
+  const cell = `meal-cell min-w-0 ${column} ${edge}`;
+
   // A saved plan is read, not planned: what there is, and a small pen for a change.
   if (locked) {
     return (
-      <section aria-label={what} className={`min-w-0 ${column}`}>
+      <section aria-label={what} className={cell}>
         <p className="eyebrow flex items-center justify-between gap-2">
           {MEAL_NAME[meal]}
           <Link
@@ -1093,13 +1128,13 @@ function MealCell({
         {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
           <p className="text-sm text-muted">{slot.foods?.map(foodText).join(", ")}</p>
         )}
-        {!slot && <p className="text-muted">Nichts geplant</p>}
+        {!slot && <p className="text-muted">Noch offen</p>}
       </section>
     );
   }
 
   return (
-    <section aria-label={what} className={`min-w-0 ${column}`}>
+    <section aria-label={what} className={cell}>
       <p className="eyebrow flex items-center justify-between gap-2">
         {MEAL_NAME[meal]}
         {withPen && (
@@ -1226,7 +1261,7 @@ function MealCell({
             </form>
             {/* An idea offered unasked is the first answer; the next one is the second. */}
             <Link href={ask(proposal ? draw + 1 : 1)} scroll={false} className="btn btn-small">
-              Noch ein Vorschlag
+              Lieber was anderes
             </Link>
           </div>
         </div>
@@ -1312,9 +1347,9 @@ function MealCell({
                 href={ask(0)}
                 scroll={false}
                 className="link text-sm"
-                aria-label={`${what}: Hast du einen Vorschlag?`}
+                aria-label={`${what}: Was könnten wir kochen?`}
               >
-                Hast du einen Vorschlag?
+                Was könnten wir kochen?
               </Link>
             )}
           </>

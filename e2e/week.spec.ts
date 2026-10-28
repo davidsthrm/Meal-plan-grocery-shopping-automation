@@ -63,7 +63,7 @@ test("a saved plan is read, with what there is today on top and a pen for a chan
   await expect(meal(page, lunch)).toContainText("Pilzrisotto");
   await expect(page.getByRole("link", { name: `${lunch} ändern` })).toHaveCount(0);
   await expect(page.getByRole("button", { name: `${lunch} leeren` })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Was könnten wir kochen/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Plan vervollständigen" })).toHaveCount(0);
 
   // The pen opens one meal, and only that one.
