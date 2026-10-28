@@ -1117,11 +1117,8 @@ function MealCell({
 
   // The kind of its first dish colours the meal's edge: the week reads at a glance.
   const first = slot?.kind === "recipes" ? recipeOf.get(slot.items[0]?.recipeId ?? "") : undefined;
-  const edge = first
-    ? (recipeTone(first)?.className ?? "")
-    : slot && slot.kind !== "recipes" && slotPictogram(slot)
-      ? "kind-none"
-      : "";
+  // Every planned meal has an edge: grey where its dish has no kind or it has no recipe.
+  const edge = first ? (recipeTone(first)?.className ?? "kind-none") : slot ? "kind-none" : "";
   const cell = `meal-cell min-w-0 ${column} ${edge}`;
 
   // A saved plan is read, not planned: what there is, and a small pen for a change.
@@ -1377,7 +1374,7 @@ function MealCell({
                     : `/woche?w=${week}&mehr=${date}.${meal}#tag-${date}`
                 }
                 scroll={false}
-                className={`link inline-flex min-h-11 items-center rounded-full text-sm ${cookingMore ? "bg-accent-soft px-3" : "px-1"}`}
+                className={`link link-quiet inline-flex min-h-11 items-center rounded-full px-2 text-sm whitespace-nowrap ${cookingMore ? "bg-accent-soft text-accent" : "text-muted"}`}
                 aria-label={`${what}: mehr kochen`}
                 aria-expanded={cookingMore}
               >

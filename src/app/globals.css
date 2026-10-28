@@ -1375,10 +1375,12 @@ summary,
    * Every button is a pill on a soft tint, and so is an action written as a link: the way
    * back ("← Wochenplan", `BackLink`) and a standalone link the size of a finger
    * ("Alle Wochen", "An einem anderen Tag einkaufen"). Their words in the green say they
-   * lead somewhere; the tint says they can be tapped (October 2026).
+   * lead somewhere; the tint says they can be tapped (October 2026). A word inside a row of
+   * signs ("Mehr kochen") or of a panel's head stays a word (`.link-quiet`): as a pill it
+   * outshone the meal and its words ran past the tint.
    */
   .back-link,
-  .link.min-h-11 {
+  .link.min-h-11:not(.link-quiet) {
     display: inline-flex;
     min-height: 2.6rem;
     font-size: 0.92rem;
@@ -1400,19 +1402,19 @@ summary,
     font-size: 0.92rem;
   }
   .back-link:active,
-  .link.min-h-11:active {
+  .link.min-h-11:not(.link-quiet):active {
     transform: scale(0.96);
     transition-duration: 60ms;
   }
   @media (hover: hover) and (pointer: fine) {
     .back-link:hover,
-    .link.min-h-11:hover {
+    .link.min-h-11:not(.link-quiet):hover {
       background: color-mix(in srgb, var(--color-accent-soft) 70%, var(--color-accent) 12%);
       text-decoration: none;
     }
   }
   .back-link:focus-visible,
-  .link.min-h-11:focus-visible {
+  .link.min-h-11:not(.link-quiet):focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }

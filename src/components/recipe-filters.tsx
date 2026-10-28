@@ -189,7 +189,7 @@ export function FilterPanel({
               <Link
                 href={reset}
                 scroll={false}
-                className="link inline-flex min-h-11 items-center px-2 text-sm"
+                className="link link-quiet inline-flex min-h-11 items-center px-2 text-sm"
               >
                 Zurücksetzen
               </Link>
@@ -309,7 +309,7 @@ export function FilterBar({
             <Link
               href={reset}
               scroll={false}
-              className="link inline-flex min-h-11 items-center px-1 text-sm"
+              className="link link-quiet inline-flex min-h-11 items-center px-1 text-sm"
             >
               Alle entfernen
             </Link>
