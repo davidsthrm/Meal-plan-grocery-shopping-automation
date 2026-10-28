@@ -128,7 +128,9 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   Then, from the household's first look on the iPhone (branch `phase-17b-fixes`): the bar
   of the sections above a page on its way, a line at the top while a page loads, loading
   shapes that breathe, a recipe's buttons in the order Einplanen, Vormerken, Kochen, and a
-  tighter Regal on a phone.
+  tighter Regal on a phone. After that (`phase-17c-fixes`): the bar of glass again, taps
+  answered from pages fetched ahead, a start that shows the loading shape at once, an edge
+  for every planned meal, and a quiet "Mehr kochen".
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -176,10 +178,15 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `body`), and upright on a phone: the manifest and `screen.orientation.lock` hold Android
   upright; an iPhone cannot be held, so a phone held across (low, touched: `TurnUpright`)
   sees only "Bitte das Handy hochkant halten." until it is upright again. An iPad turns.
-- A page seen in the last 30 seconds comes back from the browser's memory
-  (`experimental.staleTimes.dynamic`): going to another tab and back waited 0.4 to 0.8
-  seconds each time (October 2026). `router.refresh()` (LiveRefresh) and the answer to every
-  form clear that memory, so a change of the household still shows at once.
+- A tap answers from the browser's memory, not the server: a page took 0.4 to 1.3 seconds
+  to come, and a week or a recipe opened in front of a guest took seconds (October 2026).
+  The tabs, the week's arrows (plan and notes), every link to a recipe and the way back
+  fetch their whole page as soon as they are on the screen (`prefetch` on the `Link`),
+  kept for five minutes (`staleTimes.static`); a page seen is kept for two
+  (`staleTimes.dynamic`). Measured on a production build: those taps went from 0.4 to 1.3
+  seconds to 30 to 130ms. `router.refresh()` (LiveRefresh) and the answer to every form
+  clear that memory, so a change of the household still shows at once. Prefetching runs in
+  production only; the browser tests run on the dev server and do not see it.
 - The installed app opens on the plate on the green: Android draws it from the manifest, an
   iPhone needs a picture of exactly its screen (`STARTUP_SCREENS` in
   `src/lib/startup-screens.ts`, drawn into `public/startup/` by `npm run icons:build`,
@@ -357,7 +364,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   without one to `/login`. Pages get the household through `requireHousehold()`.
 - What the layout and a page both need is read once per request (`cache` of React):
   the household (`requireHousehold`), the signed-in member (`loadSelf`) and the Merkzettel
-  (`loadOwnRestock`). A page starts what does not depend on its week before it finds the
+  (`loadOwnRestock`). The layout awaits none of it: the Merkzettel's count and the initial
+  stream in behind `Suspense` (a plain Merkzettel button and an empty circle until then),
+  so the frame and the page's loading shape are the first bytes. Waiting for them, opening
+  the app showed nothing until they were read (October 2026). A page starts what does not depend on its week before it finds the
   week (the library on `/woche`), and reads that do not depend on each other go side by
   side: a week's recipes and foods, the library's recipes, tags and links, and the earlier
   dm entries with everything else of the notes.
@@ -496,9 +506,11 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   shorter way. A blur at the start stuttered on the iPhone and was taken out. The old page
   is not drawn at all: Safari draws the picture of an old page over everything, the bar of
   the sections included, whatever its z-index, and one picture less is what the iPhone
-  needed to move smoothly. The header and the bar are views of their own above the page
-  (`app-header`, `app-tabbar`), shown at once in their new state, frosted paper instead of
-  glass for that moment (a view sees nothing behind it to blur). The
+  needed to move smoothly. While a page moves, the header and the bar are views of their
+  own above it (`app-header`, `app-tabbar`), shown at once in their new state, frosted paper
+  instead of glass for that moment. Only then: a named element is a backdrop root, and named
+  for good, the bar saw nothing behind it to blur and stood clear as glass (October 2026).
+  The
   pastel of a section is not faded: a change of an inherited value recalculated every
   element of the page in every frame while the tap loaded the next page. The raised pill of
   a segmented control is an element of its own (`SegmentPill`, named per control) that
@@ -778,11 +790,12 @@ Week plan
   and under it on a phone; otherwise the header is the greeting alone. Today's lunch and
   dinner stand side by side, and Saturday and Sunday are two small cards, each meal on a
   line of its own with its pictogram: the weekend was one grey sentence (October 2026).
-- Every meal on the plan carries the kind of its first dish as a coloured edge, a stronger
-  shade of the kind's pastel (`.meal-cell`). A meal without a recipe has a picture where it
-  has one (`slotPictogram`): the bread of a "Vesper", the pot of leftovers, a pin with a
-  plate for a meal away ("Auswärts", "Oma Heidrun"), on grey with a grey edge. An open
-  meal says "noch offen".
+- Every planned meal on the plan carries the kind of its first dish as a coloured edge, a
+  stronger shade of the kind's pastel (`.meal-cell`), and a grey one where its dish has no
+  kind or it has no recipe. A meal without a recipe has a picture where it has one
+  (`slotPictogram`): the bread of a "Vesper", the pot of leftovers, a pin with a plate for
+  a meal away ("Auswärts", "Oma Heidrun"), on grey. An open meal has no edge and says
+  "noch offen".
 - A week ahead planned to its last lunch and dinner (`weekPlanned`) is celebrated once per
   device (`WeekDone`): a stamp, "Woche steht!", is pressed onto the screen and the colours
   of the kinds of meals fly off it, 1.8 seconds, meant to be seen. Only a week the device
@@ -887,7 +900,8 @@ Week plan
   +", a person's sign and the number, "4 Personen" for a screen reader; a recipe with a unit
   of its own shows that below the dish), and its actions as signs in one row, each with its
   words as label and title: a pen to change it, a plus for a side, a bin to empty it;
-  "Mehr kochen" is the one word among them, a green word that opens its form under the row
+  "Mehr kochen" is the one word among them, a quiet grey word (`.link-quiet`: as a green
+  pill it outshone the meal) that opens its form under the row
   (`?mehr=<date>.<meal>`, "Übernehmen" or "Abbrechen"), the way a suggestion is asked for.
   The household found the row of words, and "Mehr kochen" on a line of its own, took too
   much room in the plan; folded open inside the row it stood beside the signs in Safari.
@@ -1134,8 +1148,9 @@ Library
   card's link, not inside it, and both lie in the card that lifts. A recipe made a favourite
   on "Entdecken" leaves its shelves.
 - A recipe's page offers "Einplanen", "Möchte ich kochen" and "Kochen", in that order and in
-  one row on a phone ("Vormerken" there); a sign in a narrow button keeps its size
-  (`flex-shrink: 0`). Its tags are changed from a dashed pill as small as a tag
+  one row on a phone ("Vormerken" there), each as wide as its sign and words
+  (`.recipe-actions`): three equal columns were too narrow, and the words ran past the
+  pills. A sign in a narrow button keeps its size (`flex-shrink: 0`). Its tags are changed from a dashed pill as small as a tag
   (`.tag-edit`, "Ändern"), not a button of its own row. The favourite is the same heart
   as on a card, next to its title, and a pen next to "Zutaten" opens the form to change it
   ("Rezept ändern"). Under its facts it
