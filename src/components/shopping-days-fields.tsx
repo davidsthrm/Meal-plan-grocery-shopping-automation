@@ -59,7 +59,14 @@ export function DrugstoreDayField({ days }: { days: readonly ShoppingDay[] }) {
  * The fields for the days a household shops on: a row per place, a box per weekday, the
  * butcher's days last. They are read back with `readDaysForm`.
  */
-export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
+export function ShoppingDaysFields({
+  days,
+  explained = true,
+}: {
+  days: readonly ShoppingDay[];
+  /** Whether the butcher's rule is said under its days; the settings fold it behind "?". */
+  explained?: boolean;
+}) {
   return (
     <div className="space-y-3">
       {WEEKDAY_PLACES.map((place) => (
@@ -82,7 +89,7 @@ export function ShoppingDaysFields({ days }: { days: readonly ShoppingDay[] }) {
               </label>
             ))}
           </div>
-          {place === "butcher" && (
+          {place === "butcher" && explained && (
             <p className="mt-1.5 text-sm text-muted">
               Zum Metzger geht es nur, wenn eine Mahlzeit Fleisch braucht. Ein Besuch kauft das
               Fleisch für {BUTCHER_REACH_DAYS} Tage im Voraus: am Montag für Montag bis Donnerstag.

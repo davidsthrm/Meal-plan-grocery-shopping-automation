@@ -19,8 +19,8 @@ test("the weeks go back no further than the one the household started with", asy
 
   await page.goto("/einkauf?w=2026-10-12");
   const notes = page.getByRole("navigation", { name: "Woche wechseln" });
-  await expect(notes.getByText("Vorige")).toHaveAttribute("aria-disabled", "true");
-  await expect(notes.getByRole("link", { name: /Nächste/ })).toBeVisible();
+  await expect(notes.getByLabel("Vorige Woche")).toHaveAttribute("aria-disabled", "true");
+  await expect(notes.getByRole("link", { name: "Nächste Woche" })).toBeVisible();
 
   await page.goto("/woche/verlauf");
   await expect(page.getByRole("link", { name: "Ältere Wochen anzeigen" })).toHaveCount(0);

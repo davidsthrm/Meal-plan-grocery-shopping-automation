@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HelpHeading } from "@/components/help-heading";
 import { ArrowIcon, LockIcon, StarIcon, TickIcon } from "@/components/icons";
 import { ShopLogo } from "@/components/shop-logo";
 import { SubmitButton } from "@/components/submit-button";
@@ -76,14 +77,11 @@ export function SupermarketsCard({
   );
   return (
     <section className="card scroll-mt-4 p-4" aria-labelledby="supermaerkte">
-      <h2 id="supermaerkte" className="text-lg font-bold tracking-tight">
-        Supermärkte
-      </h2>
-      <p className="mt-1 text-sm text-muted">
+      <HelpHeading id="supermaerkte" title="Supermärkte" level={2}>
         Alles für den Supermarkt steht unter dem Hauptmarkt. Was ihr bei einem weiteren Markt kauft
         (unter „Angaben“, etwa Tiefkühl bei Aldi), bekommt dort einen eigenen Abschnitt, und eine
         einzelne Zeile lässt sich auf dem Zettel hinschieben.
-      </p>
+      </HelpHeading>
 
       <form action={savePostalCode} className="mt-3 flex flex-wrap items-end gap-2">
         <label className="flex-1">

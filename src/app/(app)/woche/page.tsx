@@ -248,7 +248,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     <li
       key={date}
       id={`tag-${date}`}
-      className="grid scroll-mt-4 gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-[7.5rem_1fr_1fr]"
+      className="grid scroll-mt-4 gap-x-4 gap-y-2.5 px-4 py-3 sm:grid-cols-2 sm:px-5 sm:py-4 lg:grid-cols-[7.5rem_1fr_1fr]"
     >
       {/* On an iPad upright the day stands above its meals: beside them, each meal had a
           third of the width and a long dish ran into its stepper. The gap clears the
@@ -331,7 +331,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   );
   // Back, the running week and forward as one control; all weeks and the statistics words next to it.
   const weekNav = (
-    <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <nav
+      aria-label="Woche wechseln"
+      className="flex flex-wrap items-center gap-1.5 max-sm:text-sm sm:gap-x-3"
+    >
       <span className="capsule">
         {/* Not before the week the household started with the app. */}
         {hasWeekBefore(week, household.firstWeek) ? (
@@ -370,10 +373,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       <Link
         href="/woche/statistik"
         transitionTypes={[FORWARD]}
-        className="link inline-flex min-h-11 items-center gap-1.5"
+        className="link inline-flex min-h-11 items-center gap-1.5 max-sm:px-3"
+        aria-label="Statistik"
+        title="Statistik"
       >
         <ChartIcon />
-        Statistik
+        <span className="max-sm:hidden">Statistik</span>
       </Link>
     </nav>
   );
@@ -432,7 +437,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
          * The two views of the week on the left; on the right what can be done with the
          * whole plan, saving it last. On a phone they wrap below the views.
          */
-        <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-3">
+        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
           <nav aria-label="Ansicht" className="segmented">
             <Link
               href={`/woche?w=${week}`}
@@ -464,7 +469,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                       value={`${pick.date}|${pick.meal}|${pick.suggestion.recipe.id}`}
                     />
                   ))}
-                  <SubmitButton className="btn btn-small">Plan vervollständigen</SubmitButton>
+                  <SubmitButton className="btn btn-small" label="Plan vervollständigen">
+                    <span className="sm:hidden">Vervollständigen</span>
+                    <span className="max-sm:hidden">Plan vervollständigen</span>
+                  </SubmitButton>
                 </form>
               )}
               {/* The plan as a small note to pin up: a PDF the size of a postcard. */}
@@ -473,10 +481,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                   href={`/woche/pdf?w=${week}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn btn-small"
+                  className="btn btn-small max-sm:px-3"
+                  aria-label="Für die Pinnwand"
+                  title="Für die Pinnwand"
                 >
                   <PinIcon />
-                  Für die Pinnwand
+                  <span className="max-sm:hidden">Für die Pinnwand</span>
                 </a>
               )}
               {/* Done planning: the plan is saved and shown to read. Or the whole week is
@@ -502,8 +512,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                     <form action={saveWeekPlan}>
                       <input type="hidden" name="week" value={week} />
                       <input type="hidden" name="saved" value="1" />
-                      <SubmitButton className="btn btn-primary btn-small">
-                        Plan speichern
+                      <SubmitButton className="btn btn-primary btn-small" label="Plan speichern">
+                        <span className="sm:hidden">Speichern</span>
+                        <span className="max-sm:hidden">Plan speichern</span>
                       </SubmitButton>
                     </form>
                   </>
@@ -762,7 +773,7 @@ function Today({
           "Heute"
         )}
       </h2>
-      <ul className="mt-1.5 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+      <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2.5">
         {mealsOn(now).map((which) => meal(now, which, false))}
       </ul>
       {weekend.length > 0 && (
@@ -958,9 +969,10 @@ function Extras({
 /** The week counted: how many meals of each kind, against what the household aims for. */
 function Balance({ lines }: { lines: BalanceLine[] }) {
   return (
-    <div className="mt-5">
-      {/* A tile per group in its pastel, with a bar that fills towards the goal: the week can
-          be read at a glance. */}
+    // A tile per group in its pastel, with a bar that fills towards the goal: the week can be
+    // read at a glance. The tiles are the way to the goals: "Ziele ändern" below them took a
+    // row of its own on a phone.
+    <Link href="/woche/ziele" aria-label="Ziele ändern" className="balance-link mt-4 block">
       <ul aria-label="Ausgewogenheit der Woche" className="balance-tiles">
         {lines.map((line) => {
           const filled = progress(line);
@@ -982,12 +994,7 @@ function Balance({ lines }: { lines: BalanceLine[] }) {
           );
         })}
       </ul>
-      <p className="mt-1 text-right">
-        <Link href="/woche/ziele" className="link inline-flex min-h-11 items-center text-sm">
-          Ziele ändern
-        </Link>
-      </p>
-    </div>
+    </Link>
   );
 }
 

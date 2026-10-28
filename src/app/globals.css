@@ -64,6 +64,13 @@
  * enough for two columns and tall enough to plan in them. Decided by the screen, never by
  * the name of the device.
  */
+/* The pastel of the section (`.app-shell`), registered so that it can fade into the next. */
+@property --section-tint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f7f4ee;
+}
+
 @custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
 html {
@@ -272,6 +279,101 @@ summary,
     border-radius: 0.9rem;
     background: color-mix(in srgb, var(--color-accent-soft) 70%, transparent);
     padding: 0.6rem 0.75rem 0.7rem;
+  }
+
+  /* The week's count is the way to the goals: it gives under the finger like a button. */
+  .balance-link {
+    border-radius: 1rem;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms var(--ease-out);
+  }
+  .balance-link:active {
+    transform: scale(0.98);
+    transition-duration: 60ms;
+  }
+  .balance-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  /* A heading with a round "?" beside it that unfolds what it is about (`HelpHeading`). */
+  .help-head {
+    display: flex;
+    min-height: 2.75rem;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .help-head::-webkit-details-marker {
+    display: none;
+  }
+  .help-q {
+    display: inline-grid;
+    flex-shrink: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 120ms ease;
+  }
+  .help-head:active .help-q {
+    transform: scale(0.9);
+    transition-duration: 60ms;
+  }
+  .help[open] .help-q {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .help-head:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+  .help-text {
+    max-width: 65ch;
+    padding-bottom: 0.25rem;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+
+  /*
+   * Each section has a pastel of its own at the top of its pages, fading into the paper:
+   * Woche the green, Einkauf the yellow of the notes, Rezepte apricot, Favoriten rose,
+   * Import a pale blue. Read from the section the bar marks as current, so it is there from
+   * the first paint and changes the moment a section is tapped.
+   */
+  .app-shell {
+    --section-tint: var(--color-paper);
+    background: linear-gradient(var(--section-tint), var(--color-paper) 20rem) no-repeat;
+    transition: --section-tint 200ms ease;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
+    --section-tint: #e6efe9;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
+    --section-tint: #faf2cf;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
+    --section-tint: #f7e8d3;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
+    --section-tint: #f5e2df;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
+    --section-tint: #e1ebf1;
+  }
+  @media print {
+    .app-shell {
+      background: none;
+    }
   }
 
   /* The line whose form it is pales with it: the tap was taken, the line is going. */
@@ -647,7 +749,7 @@ summary,
     left: 50%;
     width: 100vw;
     translate: -50% 0;
-    background: color-mix(in srgb, var(--color-paper) 70%, transparent);
+    background: color-mix(in srgb, var(--section-tint, var(--color-paper)) 70%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(170%);
     backdrop-filter: blur(18px) saturate(170%);
     mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
@@ -957,11 +1059,18 @@ summary,
   }
 
   /* The title of a page and of a recipe. */
+  /* A size smaller on a phone, where a long title took two lines of the first screen. */
   .title {
-    font-size: 1.9rem;
+    font-size: 1.6rem;
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  @media (width >= 40rem) {
+    .title {
+      font-size: 1.9rem;
+    }
   }
 
   /*
@@ -1240,6 +1349,7 @@ summary,
   .link.min-h-11 {
     display: inline-flex;
     min-height: 2.6rem;
+    font-size: 0.92rem;
     align-items: center;
     gap: 0.35rem;
     border-radius: 999px;

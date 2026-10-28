@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { BACK, FORWARD } from "@/lib/transitions";
 import { BackLink } from "@/components/back-link";
 import Link from "next/link";
-import { NoteIcon, TickIcon } from "@/components/icons";
+import { ArrowIcon, NoteIcon, TickIcon } from "@/components/icons";
 import { PrintButton } from "@/components/print-button";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -128,27 +128,38 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2.5">
         <div>
-          <p className="eyebrow">Einkaufszettel</p>
-          <h1 className="title mt-1">{weekRange(week)}</h1>
-          {!nothing && (
-            <p className="mt-1 text-muted">
-              {open} offen{done > 0 ? `, ${done} erledigt` : ""}
-            </p>
-          )}
+          <p className="eyebrow">
+            Einkaufszettel
+            {!nothing && (
+              <span className="font-normal">
+                {" "}
+                · {open} offen{done > 0 ? `, ${done} erledigt` : ""}
+              </span>
+            )}
+          </p>
+          <h1 className="title mt-0.5">{weekRange(week)}</h1>
         </div>
-        {/* The week as one control, as on the plan; the plan itself a word next to it. */}
-        <nav aria-label="Woche wechseln" className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {/* The week as one control, as on the plan; the plan itself a word next to it. All in
+            one row on a phone: the arrows are signs, as on the plan. */}
+        <nav
+          aria-label="Woche wechseln"
+          className="flex flex-wrap items-center gap-1.5 max-sm:text-sm sm:gap-x-3"
+        >
           <span className="capsule">
             {/* Not before the week the household started with the app. */}
             {hasWeekBefore(week, household.firstWeek) ? (
-              <Link href={`/einkauf?w=${addDays(week, -7)}`} transitionTypes={[BACK]}>
-                <span aria-hidden>←</span> Vorige
+              <Link
+                href={`/einkauf?w=${addDays(week, -7)}`}
+                transitionTypes={[BACK]}
+                aria-label="Vorige Woche"
+              >
+                <ArrowIcon back />
               </Link>
             ) : (
-              <a aria-disabled="true" className="opacity-30">
-                <span aria-hidden>←</span> Vorige
+              <a aria-disabled="true" aria-label="Vorige Woche" className="opacity-30">
+                <ArrowIcon back />
               </a>
             )}
             {week !== thisWeek && (
@@ -159,8 +170,12 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
                 Aktuelle
               </Link>
             )}
-            <Link href={`/einkauf?w=${addDays(week, 7)}`} transitionTypes={[FORWARD]}>
-              Nächste <span aria-hidden>→</span>
+            <Link
+              href={`/einkauf?w=${addDays(week, 7)}`}
+              transitionTypes={[FORWARD]}
+              aria-label="Nächste Woche"
+            >
+              <ArrowIcon />
             </Link>
           </span>
           <Link href={`/woche?w=${week}`} className="link inline-flex min-h-11 items-center">
@@ -349,10 +364,20 @@ function NoteTile({
       ) : (
         // As tall as what is on it.
         <span
-          className={`flex flex-1 flex-col px-4 pt-3 pb-3 ${note.completed ? "done-note" : ""}`}
+          className={`flex flex-1 flex-col px-4 pt-2.5 pb-3 ${note.completed ? "done-note" : ""}`}
         >
-          <NoteHead note={note} today={now} markets={markets} />
-          <span className="mt-3 block flex-1 text-[0.95rem]">
+          {/* How many are open stands beside the head: at the foot it took a row of its own. */}
+          <span className="flex items-start justify-between gap-3">
+            <NoteHead note={note} today={now} markets={markets} />
+            <span className="mt-0.5 shrink-0 text-sm text-muted tabular-nums">
+              {note.completed
+                ? note.view.notBought.length > 0
+                  ? notBoughtText(note.view.notBought.length)
+                  : `${note.done} gekauft`
+                : `${note.open} offen${note.done > 0 ? `, ${note.done} erledigt` : ""}`}
+            </span>
+          </span>
+          <span className="mt-2 block flex-1 text-[0.95rem]">
             {lines.slice(0, PREVIEW).map((entry) => (
               <span
                 key={entry.line.key}
@@ -364,16 +389,7 @@ function NoteTile({
               </span>
             ))}
           </span>
-          <span className="mt-2 flex items-baseline justify-between gap-3 text-sm text-muted">
-            <span>{more > 0 ? `und ${more} weitere` : ""}</span>
-            <span className="tabular-nums">
-              {note.completed
-                ? note.view.notBought.length > 0
-                  ? notBoughtText(note.view.notBought.length)
-                  : `${note.done} gekauft`
-                : `${note.open} offen${note.done > 0 ? `, ${note.done} erledigt` : ""}`}
-            </span>
-          </span>
+          {more > 0 && <span className="mt-1.5 text-sm text-muted">und {more} weitere</span>}
         </span>
       )}
       {note.completed && <Stamp by={note.completed.by} pressed={justDone} />}
