@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NO_FILTER } from "./filter";
-import { PICTOGRAMS, pictogramFor, pictogramForFilter } from "./pictogram";
+import { PICTOGRAMS, pictogramFor, pictogramForFilter, slotPictogram } from "./pictogram";
 import { summary } from "./testing";
 
 const of = (title: string, patch = {}) => pictogramFor(summary("r", { title, ...patch }));
@@ -87,5 +87,20 @@ describe("pictogramForFilter", () => {
     for (const key of [...keys, "pizza", "ofen", "burger", "mitnehmen", "grillen", "fest"]) {
       expect(PICTOGRAMS).toContain(of({ tags: [key] }));
     }
+  });
+});
+
+describe("slotPictogram", () => {
+  it("gives a meal without a recipe its picture where it has one", () => {
+    expect(slotPictogram({ kind: "free_text", label: "Vesper" })).toBe("brot");
+    expect(slotPictogram({ kind: "free_text", label: "vesper mit Brezeln" })).toBe("brot");
+    expect(slotPictogram({ kind: "leftovers" })).toBe("topf");
+    expect(slotPictogram({ kind: "away", label: "Auswärts" })).toBe("auswaerts");
+    expect(slotPictogram({ kind: "away", label: "Oma Heidrun" })).toBe("auswaerts");
+  });
+
+  it("leaves a typed meal and one nobody is home for without one", () => {
+    expect(slotPictogram({ kind: "free_text", label: "Pizza bestellen" })).toBeNull();
+    expect(slotPictogram({ kind: "skipped" })).toBeNull();
   });
 });

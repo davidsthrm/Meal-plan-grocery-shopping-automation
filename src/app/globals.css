@@ -346,8 +346,8 @@ summary,
 
   /*
    * Each section has a pastel of its own at the top of its pages, fading into the paper:
-   * Woche the green, Einkauf the yellow of the notes, Rezepte apricot, Favoriten rose,
-   * Import a pale blue. Read from the section the bar marks as current, so it is there from
+   * Woche sage, Einkauf a misty blue, Rezepte peach, Favoriten blush, Import lavender. No
+   * yellow: the household did not like it (October 2026). Read from the section the bar marks as current, so it is there from
    * the first paint and changes the moment a section is tapped.
    */
   .app-shell {
@@ -356,19 +356,19 @@ summary,
     transition: --section-tint 200ms ease;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
-    --section-tint: #e6efe9;
+    --section-tint: #e3eee7;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
-    --section-tint: #faf2cf;
+    --section-tint: #e2ebf2;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
-    --section-tint: #f7e8d3;
+    --section-tint: #f6e6da;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
-    --section-tint: #f5e2df;
+    --section-tint: #f5e1e6;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
-    --section-tint: #e1ebf1;
+    --section-tint: #e9e4f3;
   }
   @media print {
     .app-shell {
@@ -1177,6 +1177,11 @@ summary,
   .kind-sweet {
     --kind: var(--color-sweet);
     --kind-ink: var(--color-sweet-ink);
+  }
+  /* A meal without a recipe (Vesper, Reste, Auswärts): grey, no kind of meal. */
+  .kind-none {
+    --kind: #e9e5de;
+    --kind-ink: #5f5a52;
   }
 
   /*
@@ -2735,9 +2740,12 @@ summary,
   }
 }
 
-/* The shape of a page on its way: after a moment, so that a quick page does not flash. */
+/*
+ * The shape of a page on its way, at once: a tap is answered before the page arrives. After a
+ * delay of 150ms, the household saw nothing happen and tapped again (October 2026).
+ */
 .page-loading {
-  animation: fade-in 200ms ease 150ms both;
+  animation: fade-in 120ms ease both;
 }
 .loading-bar {
   border-radius: 0.5rem;

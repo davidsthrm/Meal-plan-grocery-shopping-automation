@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import sharp from "sharp";
+import { STARTUP_SCREENS } from "../src/lib/startup-screens";
 
 /**
  * The app's icons for the home screen, drawn from the logo (`src/app/icon.svg`): a plate
@@ -11,6 +12,8 @@ import sharp from "sharp";
  *   Android cuts its own shape out of it (a circle, a squircle) and keeps only the middle.
  * - `src/app/apple-icon.png`: the same for the iPhone, which rounds the corners itself and
  *   shows transparent corners black.
+ * - `public/startup/<w>x<h>.png`: the start screen of the installed app on each iPhone,
+ *   the plate on the green, as Android shows it from the manifest (`STARTUP_SCREENS`).
  */
 
 const logo = readFileSync(new URL("../src/app/icon.svg", import.meta.url), "utf8");
@@ -40,6 +43,24 @@ async function main(): Promise<void> {
   // Android keeps a circle of 80 % of the width: the plate and the cutlery fit inside it.
   await png(fullBleed(0.78), 512, "public/icon-maskable-512.png");
   await png(fullBleed(0.86), 180, "src/app/apple-icon.png");
+  for (const { width, height, ratio } of STARTUP_SCREENS) {
+    await startup(width * ratio, height * ratio);
+  }
+}
+
+/** The whole screen green, the plate and its cutlery in the middle, a third of its width. */
+async function startup(width: number, height: number): Promise<void> {
+  const side = Math.round(width / 3);
+  const mark = await sharp(Buffer.from(fullBleed(1)), { density: (72 * side) / 32 })
+    .resize(side, side)
+    .png()
+    .toBuffer();
+  const path = `public/startup/${width}x${height}.png`;
+  await sharp({ create: { width, height, channels: 3, background: green as string } })
+    .composite([{ input: mark, gravity: "centre" }])
+    .png({ compressionLevel: 9 })
+    .toFile(new URL(`../${path}`, import.meta.url).pathname);
+  console.log(`${path}`);
 }
 
 void main();

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { slotPictogram } from "@/domain/library/pictogram";
+import { PictogramIcon } from "@/components/pictogram";
 import { WeekDone } from "@/components/week-done";
 import { BACK, FORWARD, SWAP } from "@/lib/transitions";
 import { cookies } from "next/headers";
@@ -72,7 +74,6 @@ import {
   GROUP_NAME,
   kindGroupName,
   MEAL_NAME,
-  nextMealText,
   recipeTone,
   plannedText,
   slotText,
@@ -290,12 +291,6 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     </li>
   );
 
-  const todaysSlot = (meal: Meal) => {
-    const slot = runningSlots.find((entry) => entry.date === now && entry.meal === meal);
-    return slot ? { text: slotSaid(slot, recipeOf), recipe: slot.kind === "recipes" } : null;
-  };
-  const nextMeal = nextMealText(hourNow(), todaysSlot("lunch"), todaysSlot("dinner"));
-
   const title = (
     <div>
       {greeting ? (
@@ -311,8 +306,6 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           <p className="greeting mt-1">
             {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
           </p>
-          {/* What comes next today, in a sentence; the week's dates stay the heading. */}
-          {nextMeal && <p className="mt-1.5 text-[1.05rem] font-semibold">{nextMeal}</p>}
           <h1 className="mt-1 text-base font-semibold tracking-tight text-muted">
             Wochenplan
             <span aria-hidden className="mx-2 text-line">
@@ -754,8 +747,12 @@ function Today({
               </li>
             )}
           </ul>
+        ) : slot ? (
+          <SlotName slot={slot} small={small} className="font-semibold">
+            {slotSaid(slot, recipeOf)}
+          </SlotName>
         ) : (
-          <p className={slot ? "font-semibold" : "text-muted"}>{slotSaid(slot, recipeOf)}</p>
+          <p className="text-muted">{slotSaid(slot, recipeOf)}</p>
         )}
       </li>
     );
@@ -794,6 +791,34 @@ function Today({
         </section>
       )}
     </section>
+  );
+}
+
+/**
+ * A meal without a recipe with its picture in front, where it has one: the bread of a
+ * "Vesper", the pot of leftovers, a house left behind for a meal away. On the grey of no
+ * kind of meal.
+ */
+function SlotName({
+  slot,
+  small = false,
+  className = "",
+  children,
+}: {
+  slot: Exclude<PlanSlot, { kind: "recipes" }>;
+  small?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const picture = slotPictogram(slot);
+  if (!picture) return <p className={className}>{children}</p>;
+  return (
+    <p className={`flex items-center ${small ? "gap-2" : "gap-2.5"} ${className}`}>
+      <span className={`badge kind-none ${small ? "size-6" : "size-8"}`}>
+        <PictogramIcon name={picture} className="h-[68%] w-[68%]" />
+      </span>
+      <span className="min-w-0">{children}</span>
+    </p>
   );
 }
 
@@ -1082,7 +1107,11 @@ function MealCell({
 
   // The kind of its first dish colours the meal's edge: the week reads at a glance.
   const first = slot?.kind === "recipes" ? recipeOf.get(slot.items[0]?.recipeId ?? "") : undefined;
-  const edge = first ? (recipeTone(first)?.className ?? "") : "";
+  const edge = first
+    ? (recipeTone(first)?.className ?? "")
+    : slot && slot.kind !== "recipes" && slotPictogram(slot)
+      ? "kind-none"
+      : "";
   const cell = `meal-cell min-w-0 ${column} ${edge}`;
 
   // A saved plan is read, not planned: what there is, and a small pen for a change.
@@ -1127,10 +1156,13 @@ function MealCell({
           </ul>
         )}
         {slot && slot.kind !== "recipes" && (
-          <p className={`font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
+          <SlotName
+            slot={slot}
+            className={`font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}
+          >
             {slotText(slot)}
             {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
-          </p>
+          </SlotName>
         )}
         {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
           <p className="text-sm text-muted">{slot.foods?.map(foodText).join(", ")}</p>
@@ -1203,10 +1235,13 @@ function MealCell({
       )}
 
       {slot && slot.kind !== "recipes" && (
-        <p className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
+        <SlotName
+          slot={slot}
+          className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}
+        >
           {slotText(slot)}
           {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
-        </p>
+        </SlotName>
       )}
       {slot?.kind === "free_text" && (slot.foods?.length ?? 0) > 0 && (
         <p className="text-sm text-muted">{slot.foods?.map(foodText).join(", ")}</p>

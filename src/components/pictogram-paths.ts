@@ -12,6 +12,18 @@ const BOWL = "M7 23h34c0 9-7 15-17 15S7 32 7 23Z";
 const FOOT = "M18 42h12";
 
 export const PICTOGRAM_PATHS: Record<Pictogram, string[]> = {
+  // A meal away: a house left behind, its door open, and someone stepping out of it.
+  auswaerts: [
+    "M4 23 17 11l13 12",
+    "M8 19.500V40h18V19.500",
+    "M13 40V31h6v9",
+    circle(37, 12, 3),
+    "M36.500 17l-2 10",
+    "M34.500 27l5 5.500-.5 7.500",
+    "M34.500 27l-4.500 6.500",
+    "M35.500 20.500l-4 3.500",
+    "M36 20.500l5 3",
+  ],
   // A round biscuit with its chocolate chips.
   keks: [circle(24, 24, 15), dot(18, 18), dot(27, 17), dot(30, 26), dot(20, 29), dot(26, 32)],
   teller: [

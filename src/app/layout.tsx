@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { AppFeel, TurnUpright } from "@/components/app-feel";
 import { ServiceWorker } from "@/components/service-worker";
 import "./globals.css";
+import { startupImages } from "@/lib/startup-screens";
 
 export const metadata: Metadata = {
   title: { default: "Essensplan", template: "%s · Essensplan" },
@@ -9,7 +10,13 @@ export const metadata: Metadata = {
   // Private household app: keep it out of search engines.
   robots: { index: false, follow: false },
   // On the iPhone's home screen: its own name, without Safari's bars.
-  appleWebApp: { capable: true, title: "Essensplan", statusBarStyle: "default" },
+  appleWebApp: {
+    capable: true,
+    title: "Essensplan",
+    statusBarStyle: "default",
+    // The installed app opens on the plate on the green, not on a white screen.
+    startupImage: startupImages(),
+  },
 };
 
 export const viewport: Viewport = {

@@ -30,7 +30,14 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   // Recipe photos are uploaded straight to storage, but form posts with long ingredient lists
   // should not hit the 1 MB default either.
-  experimental: { serverActions: { bodySizeLimit: "4mb" } },
+  experimental: {
+    serverActions: { bodySizeLimit: "4mb" },
+    // A page seen in the last 30 seconds comes back at once from the browser's memory: going
+    // to another tab and back waited 0.4 to 0.8 seconds each time (October 2026). A change of
+    // the household refreshes it as before: `router.refresh()` (LiveRefresh) and the answer
+    // to every form clear this memory.
+    staleTimes: { dynamic: 30 },
+  },
   // The service worker is fetched again on every visit, so that a new version arrives at
   // once. It may load nothing from anywhere else but the supermarkets' logos, which it keeps
   // for the shop: Wikimedia Commons sends them on from another of its servers.
