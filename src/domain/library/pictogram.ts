@@ -242,7 +242,7 @@ export function pictogramForFilter(
 
 /**
  * The picture of a meal without a recipe, where it has one: the bread of a "Vesper", the pot
- * of leftovers, a house left behind for a meal away ("Auswärts", "Oma Heidrun"). A typed
+ * of leftovers, a pin with a plate for a meal away ("Auswärts", "Oma Heidrun"). A typed
  * meal and one nobody is home for have none. Shown on the grey of no kind of meal.
  */
 export function slotPictogram(slot: { kind: string; label?: string }): Pictogram | null {

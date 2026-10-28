@@ -796,7 +796,7 @@ function Today({
 
 /**
  * A meal without a recipe with its picture in front, where it has one: the bread of a
- * "Vesper", the pot of leftovers, a house left behind for a meal away. On the grey of no
+ * "Vesper", the pot of leftovers, a pin with a plate for a meal away. On the grey of no
  * kind of meal.
  */
 function SlotName({
