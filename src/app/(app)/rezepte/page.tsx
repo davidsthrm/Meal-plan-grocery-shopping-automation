@@ -3,7 +3,10 @@ import { ListMemory } from "@/components/list-return";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PictogramIcon } from "@/components/pictogram";
+import { FeaturedRecipe, ShelfRow, SideCard, ThemeRow } from "@/components/discover";
+import { DiceIcon } from "@/components/icons";
 import { RecipeCard } from "@/components/recipe-card";
+import { SurpriseLink } from "@/components/surprise";
 import {
   activeChips,
   FilterBar,
@@ -14,7 +17,14 @@ import {
   WaysOut,
 } from "@/components/recipe-filters";
 import { RecipeViews } from "@/components/recipe-views";
-import { directory, discover, toDiscover, type Shelf } from "@/domain/library/discover";
+import {
+  discover,
+  recipeOfTheDay,
+  surprisePool,
+  themes,
+  toDiscover,
+  type Shelf,
+} from "@/domain/library/discover";
 import {
   byFavoriteThenTitle,
   filterParams,
@@ -25,7 +35,6 @@ import {
 } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
 import { monthInSeason, monthOf, MONTH_NAME, seasonTagOf } from "@/domain/season/calendar";
-import { filterTone } from "@/lib/plan-text";
 import { today } from "@/lib/today";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { CALENDAR } from "@/server/season";
@@ -40,6 +49,8 @@ const RELATED = 12;
 /** A library this small is shown whole, below its shelves. */
 const SMALL = 30;
 const PATH = "/rezepte";
+/** The tags the recipe of the day shows: what it is made of and for, not its effort. */
+const FEATURED_GROUPS = new Set(["Hauptzutat", "Gericht", "Küche", "Anlass", "Eigene"]);
 
 /** Where a shelf's "Alle anzeigen" leads: its filter, or the Regal by what is new. */
 function shelfHref(shelf: Shelf): string | null {
@@ -62,7 +73,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
     loadLibraryForLists(db, now),
     db.from("recipe").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
   ]);
-  const { recipes, categories, books, tagGroups } = library;
+  const { recipes, categories, tagGroups } = library;
   const waiting = waitingRows.count ?? 0;
   const categoryName = new Map(categories.map((category) => [category.key, category.name]));
   const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
@@ -71,10 +82,18 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   // Favourites and wishes are on "Favoriten": only a search by words finds them here.
   const offered = toDiscover(recipes, filter);
   const list = await listRecipes(db, library, offered, filter, { season: true, longAgo: true });
+  const favorites = recipes.filter((recipe) => recipe.isFavorite);
   const shelves = browsing
-    ? discover(offered, { today: now, history: library.history, tagGroups })
+    ? discover(offered, { today: now, history: library.history, tagGroups, favorites })
     : [];
-  const sections = browsing ? directory(offered, { categories, tagGroups, books }) : [];
+  const featured = browsing
+    ? recipeOfTheDay(offered, { today: now, history: library.history })
+    : null;
+  // Drawn anew each time the page is read; a tap picks one of them in the browser.
+  const surprise = browsing ? surprisePool(offered, Math.random) : [];
+  const ideas = browsing ? themes(offered, now) : [];
+  // While browsing the page has the whole width; the filters are a sheet, as on a phone.
+  const layout = browsing ? "sheet" : "aside";
   const results = list.results;
   const related = list.related.slice(0, RELATED);
   const href = (next: RecipeFilter) => filterHref(PATH, next);
@@ -117,10 +136,10 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
       ) : (
         <div className="mt-5">
           <FilterLayout
-            layout="aside"
+            layout={layout}
             panel={
               <FilterPanel
-                layout="aside"
+                layout={layout}
                 groups={panelGroups(list.groups, href)}
                 total={results.length}
                 reset={reset}
@@ -131,72 +150,60 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
               path={PATH}
               filter={filter}
               hidden={filterParams({ ...filter, text: "" })}
-              layout="aside"
+              layout={layout}
               chips={activeChips(list.groups, href)}
               reset={reset}
             />
 
-            {browsing && harvest.length > 0 && (
-              <Link
-                href="/rezepte/saison"
-                className="card lift kind-vegetarian mt-5 flex items-center gap-3 px-4 py-3"
-              >
-                <span className="badge h-11 w-11">
-                  <PictogramIcon
-                    name={pictogramForFilter({ ...NO_FILTER, tags: [seasonTagOf(month)] })}
-                    className="h-[68%] w-[68%]"
+            {browsing && (featured || harvest.length > 0) && (
+              <div className="today-grid mt-5">
+                {featured && (
+                  <FeaturedRecipe
+                    featured={featured}
+                    category={nameOf(featured.recipe.category)}
+                    tags={tagGroups
+                      .filter((group) => FEATURED_GROUPS.has(group.name))
+                      .flatMap((group) => group.tags)
+                      .filter((tag) => featured.recipe.tags.includes(tag.ref))
+                      .slice(0, 4)
+                      .map((tag) => tag.name)}
                   />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold">
-                    Was hat im {MONTH_NAME[month]} Saison?
-                  </span>
-                  <span className="block truncate text-sm text-muted">{harvest.join(", ")}</span>
-                </span>
-                <span aria-hidden className="text-accent">
-                  →
-                </span>
-              </Link>
+                )}
+                <div className="side-cards">
+                  {harvest.length > 0 && (
+                    <Link href="/rezepte/saison" className="lift kind-vegetarian">
+                      <SideCard
+                        picture={
+                          <PictogramIcon
+                            name={pictogramForFilter({ ...NO_FILTER, tags: [seasonTagOf(month)] })}
+                            className="h-[68%] w-[68%]"
+                          />
+                        }
+                        title={`Was hat im ${MONTH_NAME[month]} Saison?`}
+                        text={harvest.join(", ")}
+                      />
+                    </Link>
+                  )}
+                  <SurpriseLink pool={surprise} className="lift tone-chance">
+                    <SideCard
+                      picture={<DiceIcon />}
+                      title="Überrasch mich"
+                      text="Ein Rezept, zufällig gezogen"
+                    />
+                  </SurpriseLink>
+                </div>
+              </div>
             )}
 
-            {shelves.map((shelf) => {
-              const all = shelfHref(shelf);
-              return (
-                <section key={shelf.key} className="mt-7" aria-label={shelf.title}>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 className="text-xl font-bold tracking-tight">
-                      {shelf.title}{" "}
-                      <span className="text-base font-normal text-muted tabular-nums">
-                        {shelf.total}
-                      </span>
-                    </h2>
-                    {all && (
-                      <Link
-                        href={all}
-                        className="link inline-flex min-h-11 shrink-0 items-center text-sm"
-                      >
-                        Alle anzeigen
-                      </Link>
-                    )}
-                  </div>
-                  <div className="shelf mt-1">
-                    {shelf.recipes.map((recipe) => (
-                      <RecipeCard
-                        key={recipe.id}
-                        recipe={recipe}
-                        category={nameOf(recipe.category)}
-                        note={shelf.why?.[recipe.id]}
-                        className="w-60"
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            <ThemeRow themes={ideas} href={href} />
+
+            {shelves.map((shelf) => (
+              <ShelfRow key={shelf.key} shelf={shelf} all={shelfHref(shelf)} nameOf={nameOf} />
+            ))}
 
             {browsing && recipes.length <= SMALL && (
               <section className="mt-7" aria-label="Alle Rezepte">
-                <h2 className="text-xl font-bold tracking-tight">Alle Rezepte</h2>
+                <h2 className="shelf-title">Alle Rezepte</h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {[...recipes].sort(byFavoriteThenTitle).map((recipe) => (
                     <RecipeCard
@@ -206,44 +213,6 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
                     />
                   ))}
                 </div>
-              </section>
-            )}
-
-            {sections.length > 0 && (
-              <section className="mt-10" aria-label="Stöbern">
-                <h2 className="border-b border-line pb-2 text-xl font-bold tracking-tight">
-                  Stöbern
-                </h2>
-                {sections.map((section) => (
-                  <section key={section.title} className="mt-5" aria-label={section.title}>
-                    <h3 className="eyebrow">{section.title}</h3>
-                    <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-                      {section.entries.map((entry) => (
-                        <li key={entry.key}>
-                          <Link
-                            href={href(entry.filter)}
-                            className={`card lift flex h-full min-h-14 items-center gap-2.5 px-3 py-2 ${filterTone(entry.filter)}`}
-                          >
-                            <span className="badge h-9 w-9">
-                              <PictogramIcon
-                                name={pictogramForFilter(entry.filter)}
-                                className="h-[68%] w-[68%]"
-                              />
-                            </span>
-                            {/* A long name breaks at a syllable and takes two lines at most. */}
-                            <span
-                              className="line-clamp-2 min-w-0 flex-1 leading-tight font-semibold hyphens-auto"
-                              title={entry.label}
-                            >
-                              {entry.label}
-                            </span>
-                            <span className="text-sm text-muted tabular-nums">{entry.count}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
               </section>
             )}
 

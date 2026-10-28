@@ -2378,6 +2378,149 @@ summary,
     }
   }
 
+  /*
+   * Entdecken while nothing is searched, made for the iPad (October 2026): the recipe of the
+   * day beside three small cards, the categories as tiles, shelves of tiles whose covers carry
+   * the kind's pastel and pictogram, and shelves of rows three to a column.
+   */
+  .today-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+  /* From an iPad's width on, the small cards stand in a row under it. */
+  @media (width >= 40rem) {
+    .side-cards {
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      grid-template-columns: none;
+    }
+  }
+  .featured {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--kind) 70%, var(--color-line));
+    border-radius: 1.25rem;
+    background: color-mix(in srgb, var(--kind) 45%, var(--color-surface));
+  }
+  .featured .badge {
+    background: var(--color-surface);
+  }
+  @media (width >= 40rem) {
+    .featured {
+      flex-direction: row;
+      align-items: center;
+      gap: 1.25rem;
+    }
+  }
+  .featured-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  @media (width >= 46rem) {
+    .featured-title {
+      font-size: 1.5rem;
+    }
+  }
+  .side-cards {
+    display: grid;
+    /* As wide as its column: an automatic one grew to the whole of the season's foods. */
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 0.75rem;
+  }
+  .side-cards > a {
+    display: block;
+    border-radius: 1.1rem;
+  }
+  .side-card {
+    display: flex;
+    height: 100%;
+    min-height: 4.5rem;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.85rem 1rem;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--kind) 65%, var(--color-surface));
+  }
+  .side-card > .badge {
+    background: var(--color-surface);
+  }
+  /* A warm sand for a recipe drawn by chance. */
+  .tone-chance {
+    --kind: #efe5d3;
+    --kind-ink: #7a5a2e;
+  }
+  .shelf-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+  }
+  @media (width >= 46rem) {
+    .shelf-title {
+      font-size: 1.45rem;
+    }
+  }
+  .shelf-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(3, auto);
+    grid-auto-columns: min(84%, 20rem);
+    column-gap: 1.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    margin-inline: -1rem;
+    padding: 0.25rem 1rem 0.5rem;
+    scroll-padding-inline: 1rem;
+  }
+  .shelf-list > * {
+    scroll-snap-align: start;
+  }
+  .list-row {
+    display: flex;
+    min-height: 4.5rem;
+    align-items: center;
+    gap: 0.8rem;
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--color-line);
+    transition: transform 120ms var(--ease-out);
+  }
+  .shelf-list > :nth-child(3n) {
+    border-bottom-color: transparent;
+  }
+  .list-row:active {
+    transform: scale(0.985);
+  }
+  /* A theme in the row "Worauf habt ihr Lust?": its sign, its name and what is behind it. */
+  .theme-tile {
+    display: flex;
+    width: 16rem;
+    height: 100%;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: 1.1rem;
+    background: var(--color-surface);
+  }
+  /* On a touch screen the rows scroll under the finger; a bar under each says nothing. */
+  @media (pointer: coarse) {
+    .shelf,
+    .shelf-list {
+      scrollbar-width: none;
+    }
+    .shelf::-webkit-scrollbar,
+    .shelf-list::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
   .shelf {
     display: flex;
     gap: 0.75rem;

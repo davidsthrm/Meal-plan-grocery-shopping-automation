@@ -310,3 +310,17 @@ export function PhotosIcon() {
     </svg>
   );
 }
+
+/** A die: a recipe drawn by chance ("Überrasch mich"). */
+export function DiceIcon() {
+  return (
+    <svg {...base}>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <circle cx="8.6" cy="8.6" r="0.4" fill="currentColor" />
+      <circle cx="15.4" cy="8.6" r="0.4" fill="currentColor" />
+      <circle cx="12" cy="12" r="0.4" fill="currentColor" />
+      <circle cx="8.6" cy="15.4" r="0.4" fill="currentColor" />
+      <circle cx="15.4" cy="15.4" r="0.4" fill="currentColor" />
+    </svg>
+  );
+}

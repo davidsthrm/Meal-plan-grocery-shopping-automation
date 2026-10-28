@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("the library has a few shelves and a directory to narrow it down", async ({ page }) => {
+test("the library has a recipe of the day, themes and shelves to browse", async ({ page }) => {
   await page.goto("/rezepte");
   await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
   await expect(page.getByText("20 Rezepte im Kochbuch")).toBeVisible();
@@ -18,15 +18,21 @@ test("the library has a few shelves and a directory to narrow it down", async ({
   ).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Rezept hinzufügen" })).toHaveCount(0);
 
-  // The directory says how many recipes are behind each way to narrow the library down.
-  const browse = page.getByRole("region", { name: "Stöbern" });
-  await expect(browse.getByRole("region", { name: "Kochbuch" })).toContainText("Zweites Buch");
-  await expect(browse.getByRole("region", { name: "Aufwand" })).toContainText("Braucht Zeit");
-  await browse
-    .getByRole("region", { name: "Art", exact: true })
-    .getByRole("link", { name: /Hauptgericht/ })
-    .click();
+  // A recipe of the day to plan at once, and a theme says what is behind it and how many.
+  await expect(
+    page.getByRole("region", { name: "Heute entdecken" }).getByRole("link", { name: "Einplanen" }),
+  ).toBeVisible();
+  const evening = page
+    .getByRole("region", { name: "Worauf habt ihr Lust?" })
+    .getByRole("link", { name: /Feierabendküche/ });
+  await expect(evening).toContainText("Hauptgerichte in höchstens 30 Minuten");
+  const count = (await evening.textContent())!.match(/(\d+)\s*$/)![1];
+  await evening.click();
+  await expect(page.getByRole("status")).toHaveText(`${count} Rezepte passen dazu`);
+  await expect(page).toHaveURL(/kategorie=hauptgericht/);
+
   // The favourite Gemüse-Lasagne is on "Favoriten", not here: only words typed find it.
+  await page.goto("/rezepte?kategorie=hauptgericht");
   await expect(page.getByRole("status")).toHaveText("14 Rezepte passen dazu");
   await expect(page.getByRole("link", { name: /Gemüse-Lasagne/ })).toHaveCount(0);
 
@@ -45,7 +51,7 @@ test("the library has a few shelves and a directory to narrow it down", async ({
   await active.getByRole("link", { name: "bis 20 Min. entfernen" }).click();
   await expect(page.getByRole("status")).toHaveText("2 Rezepte passen dazu");
   await active.getByRole("link", { name: "Alle entfernen" }).click();
-  await expect(page.getByRole("region", { name: "Stöbern" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Heute entdecken" })).toBeVisible();
 
   // Nothing left: each filter that is on, left out, shows how many recipes come back.
   await page.goto("/rezepte?kost=fisch&kategorie=salat");
@@ -183,6 +189,15 @@ test("the cookbook page is folded away and shows the recipe's own part", async (
     /pages\/0001\.jpg/,
   );
   await expect(page.getByRole("link", { name: "In voller Größe ansehen" })).toBeVisible();
+});
+
+test("Überrasch mich opens a recipe nobody marked", async ({ page }) => {
+  await page.goto("/rezepte");
+  await page.getByRole("link", { name: /Überrasch mich/ }).click();
+  await expect(page).toHaveURL(/\/rezepte\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Favourites have a page of their own: the draw leaves them out.
+  await expect(page.getByRole("button", { name: /^Favorit:/, pressed: true })).toHaveCount(0);
 });
 
 test("the stepper scales the ingredients, the amounts in the steps and the cooking view", async ({

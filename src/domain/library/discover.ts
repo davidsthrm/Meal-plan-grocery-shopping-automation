@@ -1,18 +1,26 @@
 import { daysBetween, type IsoDate } from "../dates";
 import { rank } from "../rank";
-import { DIETS, matchesFilter, NO_FILTER, type Diet, type RecipeFilter } from "./filter";
+import { matchesFilter, NO_FILTER, type Diet, type RecipeFilter } from "./filter";
+import type { Pictogram } from "./pictogram";
 import { isMeal, type Category, type History, type RecipeSummary } from "./summary";
 import type { TagGroup } from "./tags";
 
 /**
- * The library to browse. On top a few shelves that change with the day: what is quick, what is
- * in season, what was cooked long ago, what is new. Below them a directory: every way the
- * library can be narrowed down, with the number of recipes behind it.
+ * The library to browse. On top a recipe of the day and a few shelves that change with the
+ * day: what is in season, what is quick, what is like the favourites, what was cooked long
+ * ago, a cookbook, what is new, what was never cooked; and a few themes to browse.
  */
+
+/**
+ * How a shelf shows its recipes: large cards, rows three to a column (more at a glance,
+ * for what is picked quickly), or cards.
+ */
+export type ShelfLook = "large" | "list" | "card";
 
 export interface Shelf {
   key: string;
   title: string;
+  look: ShelfLook;
   /** The filter that lists the whole shelf ("Alle anzeigen"). Null where none can say it. */
   filter: RecipeFilter | null;
   /** How many recipes the shelf stands for: as many as its filter lists, where it has one. */
@@ -30,6 +38,8 @@ export interface DiscoverOptions {
   tagGroups?: readonly TagGroup[];
   /** How many recipes a shelf shows. */
   size?: number;
+  /** The household's favourites: a shelf brings up what is like them. */
+  favorites?: readonly RecipeSummary[];
 }
 
 /** After this many days without it, a dish the household knows is worth bringing up again. */
@@ -44,6 +54,17 @@ const TAG_CANDIDATES = 8;
 const TAG_SHELF_AT_LEAST = 4;
 /** Groups whose tags make shelves: the effort and the season have shelves of their own. */
 const SHELF_GROUPS = new Set(["Gericht", "Hauptzutat", "Küche", "Anlass", "Eigene"]);
+/**
+ * What makes a recipe like a favourite, and how much: the same main ingredient most, then the
+ * same kind of dish, the same cuisine, and the same kind of meal (vegetarian, fish, …). It
+ * takes `LIKE_AT_LEAST`: one shared cuisine made 211 of 278 recipes "like a favourite", and a
+ * mushroom risotto like a mince gratin (October 2026).
+ */
+const LIKE_WEIGHT: Record<string, number> = { Hauptzutat: 2, Gericht: 1, Küche: 1 };
+const SAME_KIND_WEIGHT = 1;
+const LIKE_AT_LEAST = 3;
+/** A cookbook with fewer recipes nobody marked is no cookbook of the day. */
+const BOOK_AT_LEAST = 6;
 
 export const SEASONS = ["fruehling", "sommer", "herbst", "winter"] as const;
 export type Season = (typeof SEASONS)[number];
@@ -108,23 +129,32 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
     members: RecipeSummary[],
     filter: RecipeFilter | null,
     sort = order,
+    look: ShelfLook = "card",
   ): Shelf => {
     const unmarked = members.filter((recipe) => !isMarked(recipe));
     return {
       key,
       title,
+      look,
       filter,
       total: filter ? members.length : unmarked.length,
       recipes: unmarked.sort(sort).slice(0, size),
     };
   };
-  const filtered = (key: string, title: string, filter: RecipeFilter, sort = order) =>
+  const filtered = (
+    key: string,
+    title: string,
+    filter: RecipeFilter,
+    sort = order,
+    look: ShelfLook = "card",
+  ) =>
     shelf(
       key,
       title,
       recipes.filter((recipe) => matchesFilter(recipe, filter)),
       filter,
       sort,
+      look,
     );
 
   const lastCooked = (recipe: RecipeSummary) => history.get(recipe.id) ?? null;
@@ -136,6 +166,7 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
     "Passt zur Saison",
     { ...NO_FILTER, season: true },
     (a, b) => (b.season?.points ?? 0) - (a.season?.points ?? 0) || order(a, b),
+    "large",
   );
   season.why = Object.fromEntries(
     season.recipes.flatMap((recipe) =>
@@ -150,6 +181,7 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
     `Schnell (bis ${QUICK_MINUTES} Min.)`,
     { ...NO_FILTER, maxMinutes: QUICK_MINUTES },
     (a, b) => Number(isMeal(b)) - Number(isMeal(a)) || order(a, b),
+    "list",
   );
   // Longest ago first.
   const longAgo = filtered(
@@ -159,7 +191,13 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
     (a, b) => (lastCooked(a) ?? "").localeCompare(lastCooked(b) ?? ""),
   );
 
-  const shelves: Shelf[] = [season, quick, longAgo];
+  const shelves: Shelf[] = [season, quick];
+  const liked = likeFavorites(recipes, options, shelf);
+  if (liked) shelves.push(liked);
+  shelves.push(longAgo);
+  shelves.push(...tagShelves(recipes, options, filtered));
+  const book = bookOfTheDay(recipes, today);
+  if (book) shelves.push(filtered(`buch-${book}`, `Aus „${book}“`, { ...NO_FILTER, book }));
   // Right after a cookbook was photographed, everything is new, and a shelf saying so says
   // nothing. It appears once new recipes are the exception.
   if (fresh.length * 3 < recipes.length) {
@@ -167,8 +205,134 @@ export function discover(recipes: readonly RecipeSummary[], options: DiscoverOpt
       shelf("neu", "Neu im Kochbuch", fresh, null, (a, b) => b.addedOn.localeCompare(a.addedOn)),
     );
   }
-  shelves.push(...tagShelves(recipes, options, filtered));
+  // Only once there are plans: before that, every recipe was never cooked.
+  if (history.size > 0) {
+    const never = recipes.filter((recipe) => isMeal(recipe) && !history.has(recipe.id));
+    shelves.push(shelf("nie", "Noch nie gekocht", never, null, order, "list"));
+  }
   return shelves.filter((entry) => entry.recipes.length > 0);
+}
+
+/**
+ * What is like the favourites: recipes nobody marked that share enough with one of them
+ * (`LIKE_WEIGHT`), the closest first, each saying which favourite it is like. None without
+ * favourites.
+ */
+function likeFavorites(
+  recipes: readonly RecipeSummary[],
+  options: DiscoverOptions,
+  shelf: (
+    key: string,
+    title: string,
+    members: RecipeSummary[],
+    filter: RecipeFilter | null,
+    sort: (a: RecipeSummary, b: RecipeSummary) => number,
+  ) => Shelf,
+): Shelf | null {
+  const favorites = options.favorites ?? [];
+  if (favorites.length === 0) return null;
+  const weight = new Map(
+    (options.tagGroups ?? []).flatMap((group) =>
+      group.tags.map((tag) => [tag.ref, LIKE_WEIGHT[group.name] ?? 0] as const),
+    ),
+  );
+  const closest = new Map<string, { shared: number; favorite: RecipeSummary }>();
+  for (const recipe of recipes) {
+    if (isMarked(recipe) || !isMeal(recipe)) continue;
+    for (const favorite of favorites) {
+      const tags = recipe.tags
+        .filter((tag) => favorite.tags.includes(tag))
+        .reduce((sum, tag) => sum + (weight.get(tag) ?? 0), 0);
+      // The same kind of meal alone is no likeness: half the library is vegetarian.
+      const kind =
+        tags > 0 && recipe.proteinType !== null && recipe.proteinType === favorite.proteinType
+          ? SAME_KIND_WEIGHT
+          : 0;
+      const shared = tags + kind;
+      const best = closest.get(recipe.id);
+      if (shared >= LIKE_AT_LEAST && (!best || shared > best.shared)) {
+        closest.set(recipe.id, { shared, favorite });
+      }
+    }
+  }
+  const members = recipes.filter((recipe) => closest.has(recipe.id));
+  const result = shelf(
+    "wie-favoriten",
+    "Wie eure Favoriten",
+    members,
+    null,
+    (a, b) =>
+      closest.get(b.id)!.shared - closest.get(a.id)!.shared ||
+      rank(options.today, a.id) - rank(options.today, b.id),
+  );
+  result.why = Object.fromEntries(
+    result.recipes.map((recipe) => [recipe.id, `Wie „${closest.get(recipe.id)!.favorite.title}“`]),
+  );
+  return result;
+}
+
+/** A cookbook to leaf through today, among those with enough recipes nobody marked. */
+function bookOfTheDay(recipes: readonly RecipeSummary[], today: IsoDate): string | null {
+  const counts = new Map<string, number>();
+  for (const recipe of recipes) {
+    if (recipe.sourceBook && !isMarked(recipe)) {
+      counts.set(recipe.sourceBook, (counts.get(recipe.sourceBook) ?? 0) + 1);
+    }
+  }
+  const books = [...counts].filter(([, count]) => count >= BOOK_AT_LEAST).map(([book]) => book);
+  books.sort((a, b) => rank(today, a) - rank(today, b) || a.localeCompare(b, "de"));
+  return books[0] ?? null;
+}
+
+/** The recipe of the day, and what speaks for it today. */
+export interface Featured {
+  recipe: RecipeSummary;
+  /** "Passt zur Saison: Kürbis, Lauch", "Noch nie gekocht". Null where nothing says more. */
+  why: string | null;
+}
+
+/**
+ * One meal nobody marked, a different one each day: one that fits the season where there is
+ * such a one, else any.
+ */
+export function recipeOfTheDay(
+  recipes: readonly RecipeSummary[],
+  { today, history }: { today: IsoDate; history: History },
+): Featured | null {
+  const meals = recipes.filter((recipe) => !isMarked(recipe) && isMeal(recipe));
+  const inSeason = meals.filter((recipe) => recipe.season?.fits);
+  const pool = inSeason.length > 0 ? inSeason : meals;
+  const [recipe] = [...pool].sort((a, b) => rank(today, a.id) - rank(today, b.id));
+  if (!recipe) return null;
+  const foods = recipe.season?.fits ? recipe.season.foods.slice(0, 3) : [];
+  const last = history.get(recipe.id);
+  const why =
+    foods.length > 0
+      ? `Passt zur Saison: ${foods.join(", ")}`
+      : history.size > 0 && last === undefined
+        ? "Noch nie gekocht"
+        : last !== undefined && daysBetween(last, today) >= LONG_AGO_DAYS
+          ? "Lange nicht gekocht"
+          : null;
+  return { recipe, why };
+}
+
+/**
+ * Recipes for "Überrasch mich": a few meals nobody marked, drawn at random, of which a tap
+ * opens one. A new draw each time the page is read.
+ */
+export function surprisePool(
+  recipes: readonly RecipeSummary[],
+  random: () => number,
+  size = 40,
+): string[] {
+  const pool = recipes.filter((recipe) => !isMarked(recipe) && isMeal(recipe)).map((r) => r.id);
+  // The first `size` places of a shuffle.
+  for (let at = 0; at < Math.min(size, pool.length); at += 1) {
+    const other = at + Math.floor(random() * (pool.length - at));
+    [pool[at], pool[other]] = [pool[other], pool[at]];
+  }
+  return pool.slice(0, size);
 }
 
 /**
@@ -200,24 +364,156 @@ function tagShelves(
     );
 }
 
-/** One way to narrow the library down, and how many recipes it leaves. */
-export interface DirectoryEntry {
+/**
+ * A theme to browse: filters put together into something to cook, with a line that says what
+ * is behind it. Not the filters one by one again: those are in the panel (October 2026).
+ */
+export interface Theme {
   key: string;
-  label: string;
-  count: number;
-  filter: RecipeFilter;
-}
-
-export interface DirectorySection {
   title: string;
-  entries: DirectoryEntry[];
+  /** What is behind it, said plainly: "Hauptgerichte in höchstens 30 Minuten". */
+  line: string;
+  picture: Pictogram;
+  filter: RecipeFilter;
+  count: number;
 }
 
-export interface DirectoryOptions {
-  /** The household's categories, in their order. */
-  categories: readonly Category[];
-  tagGroups: readonly TagGroup[];
-  books: readonly string[];
+interface ThemeIdea extends Omit<Theme, "filter" | "count"> {
+  filter: Partial<RecipeFilter>;
+  /** The months it belongs to (1 to 12); all year where none are said. */
+  months?: readonly number[];
+}
+
+const THEME_IDEAS: readonly ThemeIdea[] = [
+  {
+    key: "feierabend",
+    title: "Feierabendküche",
+    line: "Hauptgerichte in höchstens 30 Minuten",
+    picture: "blitz",
+    filter: { category: "hauptgericht", maxMinutes: 30 },
+  },
+  {
+    key: "wochenende",
+    title: "Wochenendprojekt",
+    line: "Hauptgerichte, die Zeit brauchen",
+    picture: "sanduhr",
+    filter: { category: "hauptgericht", tags: ["aufwendig"] },
+  },
+  {
+    key: "vegetarisch",
+    title: "Vegetarisch satt",
+    line: "Vegetarische Hauptgerichte",
+    picture: "gemuese",
+    filter: { category: "hauptgericht", diet: "vegetarisch" },
+  },
+  {
+    key: "pasta",
+    title: "Pasta, schnell",
+    line: "Nudeln in höchstens 30 Minuten",
+    picture: "pasta",
+    filter: { tags: ["pasta"], maxMinutes: 30 },
+  },
+  {
+    key: "fisch",
+    title: "Fisch, schnell",
+    line: "Fisch in höchstens 30 Minuten",
+    picture: "fisch",
+    filter: { diet: "fisch", maxMinutes: 30 },
+  },
+  {
+    key: "ofen",
+    title: "Ab in den Ofen",
+    line: "Aufläufe und Gratins",
+    picture: "auflauf",
+    filter: { tags: ["auflauf"] },
+  },
+  {
+    key: "gaeste",
+    title: "Besuch kommt",
+    line: "Rezepte für Gäste",
+    picture: "glas",
+    filter: { tags: ["fuer-gaeste"] },
+  },
+  {
+    key: "suppe",
+    title: "Suppenzeit",
+    line: "Suppen und Eintöpfe",
+    picture: "suppe",
+    filter: { category: "suppe-eintopf" },
+    months: [10, 11, 12, 1, 2, 3],
+  },
+  {
+    key: "grill",
+    title: "Grillabend",
+    line: "Rezepte zum Grillen",
+    picture: "grill",
+    filter: { tags: ["grillen"] },
+    months: [5, 6, 7, 8, 9],
+  },
+  {
+    key: "salat",
+    title: "Leicht im Sommer",
+    line: "Salate",
+    picture: "salat",
+    filter: { category: "salat" },
+    months: [6, 7, 8],
+  },
+  {
+    key: "plaetzchen",
+    title: "Weihnachtsbäckerei",
+    line: "Plätzchen und Kekse",
+    picture: "keks",
+    filter: { category: "plaetzchen" },
+    months: [11, 12],
+  },
+  {
+    key: "kuchen",
+    title: "Kaffee & Kuchen",
+    line: "Kuchen und Gebäck",
+    picture: "kuchen",
+    filter: { category: "kuchen" },
+  },
+  {
+    key: "mitnehmen",
+    title: "Für unterwegs",
+    line: "Rezepte zum Mitnehmen",
+    picture: "korb",
+    filter: { tags: ["mitnehmen"] },
+  },
+];
+
+/** A theme with fewer recipes is not offered; this many are. */
+const THEME_AT_LEAST = 4;
+const THEMES_SHOWN = 6;
+
+/**
+ * The themes worth offering today: those with enough recipes, the ones of this time of year
+ * first, then a few of the others, a different few each day.
+ */
+export function themes(recipes: readonly RecipeSummary[], today: IsoDate): Theme[] {
+  const month = Number(today.slice(5, 7));
+  const offered = THEME_IDEAS.filter((idea) => !idea.months || idea.months.includes(month))
+    .map(({ months, ...idea }) => {
+      const filter = { ...NO_FILTER, ...idea.filter };
+      return {
+        ...idea,
+        filter,
+        count: recipes.filter((recipe) => matchesFilter(recipe, filter)).length,
+        timely: months !== undefined,
+      };
+    })
+    .filter((theme) => theme.count >= THEME_AT_LEAST)
+    .sort((a, b) => Number(b.timely) - Number(a.timely) || rank(today, a.key) - rank(today, b.key));
+  return offered
+    .slice(0, THEMES_SHOWN)
+    .map(({ key, title, line, picture, filter, count }) => ({
+      key,
+      title,
+      line,
+      picture,
+      filter,
+      count,
+    }));
 }
 
 export const DIET_LABEL: Record<Diet, string> = {
@@ -227,47 +523,6 @@ export const DIET_LABEL: Record<Diet, string> = {
   gefluegel: "Geflügel",
   fleisch: "Fleisch",
 };
-
-/**
- * The library as a directory: by category, by each group of tags, by diet and by cookbook.
- * Entries nothing is behind are left out, and so are sections without an entry.
- */
-export function directory(
-  recipes: readonly RecipeSummary[],
-  options: DirectoryOptions,
-): DirectorySection[] {
-  const entry = (key: string, label: string, filter: RecipeFilter): DirectoryEntry => ({
-    key,
-    label,
-    filter,
-    count: recipes.filter((recipe) => matchesFilter(recipe, filter)).length,
-  });
-  const sections: DirectorySection[] = [
-    {
-      title: "Art",
-      entries: options.categories.map((category) =>
-        entry(`kategorie-${category.key}`, category.name, { ...NO_FILTER, category: category.key }),
-      ),
-    },
-    ...options.tagGroups.map((group) => ({
-      title: group.name,
-      entries: group.tags.map((tag) =>
-        entry(`tag-${tag.ref}`, tag.name, { ...NO_FILTER, tags: [tag.ref] }),
-      ),
-    })),
-    {
-      title: "Ernährung",
-      entries: DIETS.map((diet) => entry(`kost-${diet}`, DIET_LABEL[diet], { ...NO_FILTER, diet })),
-    },
-    {
-      title: "Kochbuch",
-      entries: options.books.map((book) => entry(`buch-${book}`, book, { ...NO_FILTER, book })),
-    },
-  ];
-  return sections
-    .map((section) => ({ ...section, entries: section.entries.filter((e) => e.count > 0) }))
-    .filter((section) => section.entries.length > 0);
-}
 
 export interface CategoryGroup {
   /** Key of the category. Null for recipes without one. */
