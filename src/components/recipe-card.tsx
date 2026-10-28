@@ -96,6 +96,7 @@ export function RecipeCard({
     >
       <Link
         href={`/rezepte/${recipe.id}${from}`}
+        prefetch
         transitionTypes={[FORWARD]}
         className="flex flex-1 flex-col"
       >
@@ -151,6 +152,7 @@ export function RecipeRow({
     <li className="flex items-center gap-3 px-4 py-3">
       <Link
         href={`/rezepte/${recipe.id}`}
+        prefetch
         transitionTypes={[FORWARD]}
         className="flex min-w-0 flex-1 items-center gap-3"
       >

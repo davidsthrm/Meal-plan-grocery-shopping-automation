@@ -334,6 +334,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
         {hasWeekBefore(week, household.firstWeek) ? (
           <Link
             href={weekLink(addDays(week, -7))}
+            prefetch
             transitionTypes={[BACK]}
             aria-label="Vorige Woche"
           >
@@ -345,12 +346,17 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           </a>
         )}
         {week !== thisWeek && (
-          <Link href={weekLink(thisWeek)} transitionTypes={[thisWeek > week ? FORWARD : BACK]}>
+          <Link
+            href={weekLink(thisWeek)}
+            prefetch
+            transitionTypes={[thisWeek > week ? FORWARD : BACK]}
+          >
             Aktuelle
           </Link>
         )}
         <Link
           href={weekLink(addDays(week, 7))}
+          prefetch
           transitionTypes={[FORWARD]}
           aria-label="Nächste Woche"
         >
@@ -848,6 +854,7 @@ function KindTitle({
       )}
       <Link
         href={`/rezepte/${id}${fromPlan(week, day)}`}
+        prefetch
         transitionTypes={[FORWARD]}
         className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-[0.92rem] leading-snug" : ""}`}
       >
@@ -933,6 +940,7 @@ function Extras({
                 <p>
                   <Link
                     href={`/rezepte/${extra.recipeId}${fromPlan(week)}`}
+                    prefetch
                     transitionTypes={[FORWARD]}
                     className="font-semibold decoration-line underline-offset-4 hover:underline"
                   >
