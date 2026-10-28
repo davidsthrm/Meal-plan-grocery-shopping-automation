@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ViewTransition } from "react";
 import { AppNav } from "@/components/app-nav";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { ConnectionGuard } from "@/components/connection";
 import { SettingsIcon } from "@/components/icons";
 import { InstallHintCard } from "@/components/install-hint";
@@ -30,6 +31,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     // app rises into place (`.app-in`); any other way in, it is simply there.
     <ViewTransition enter={{ willkommen: "app-in", default: "none" }} default="none">
       <div className="app-shell min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
+        <NavigationProgress />
         {/* Paper gets the content only: no header, no navigation. */}
         <header className="app-header mx-auto flex max-w-5xl items-center justify-between gap-4 pt-2.5 pb-3.5 print:hidden">
           <Link href="/" aria-label="Essensplan, zum Wochenplan">

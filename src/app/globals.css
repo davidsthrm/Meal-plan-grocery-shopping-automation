@@ -2823,11 +2823,76 @@ summary,
  * delay of 150ms, the household saw nothing happen and tapped again (October 2026).
  */
 .page-loading {
-  animation: fade-in 120ms ease both;
+  animation: none;
+}
+/*
+ * A page on its way (`NavigationProgress`): a thin line of the green runs along the top
+ * edge until it is there. It appears after 60ms, so that a page from the browser's memory
+ * does not flash it.
+ */
+.nav-progress {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 0;
+  z-index: 30;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.nav-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transform: translateX(-100%);
+}
+html[data-navigating] .nav-progress {
+  opacity: 1;
+  transition-delay: 60ms;
+}
+html[data-navigating] .nav-progress::before {
+  animation: nav-progress 1100ms var(--ease-in-out) 60ms infinite;
+}
+@keyframes nav-progress {
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still there, but it does not run: the whole width, faint. */
+  html[data-navigating] .nav-progress::before {
+    width: 100%;
+    animation: none;
+    transform: none;
+    opacity: 0.5;
+  }
 }
 .loading-bar {
   border-radius: 0.5rem;
   background: rgb(35 33 29 / 0.06);
+}
+/*
+ * Waiting, it breathes: a shape that stood still read as a page that was there but empty,
+ * and the household did not see that anything was loading (October 2026). Only after a
+ * moment, so that a page that comes quickly does not flicker.
+ */
+.page-loading :is(.loading-bar, .sheet, .card) {
+  animation: loading-breathe 900ms ease-in-out 250ms infinite alternate;
+}
+@keyframes loading-breathe {
+  to {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-loading :is(.loading-bar, .sheet, .card) {
+    animation: none;
+  }
 }
 
 /* A page comes in softly. Whoever asked for less motion gets none. */
