@@ -492,7 +492,10 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   with a sign above each name and the open section on the green's pastel. It has a layer
   of its own (`translateZ(0)`), and every entrance of a page lets go of its transform when
   it ends (`backwards`, not `both`): on the iPhone, content left on a layer by its
-  animation was drawn over the glass (October 2026). A tapped section
+  animation was drawn over the glass (October 2026). That entrance (`page-in`) is never
+  switched off or renamed, only where it starts (`--page-in-*`): switched off while a page
+  moved, it started again the moment the move ended, and the page flickered once after every
+  tap on a section (October 2026). A tapped section
   is the current one the moment the finger lands, before its page has come (`AppNav`).
 - Each section has a pastel of its own at the top of its pages, fading into the paper
   (`.app-shell`, `--section-tint`): Woche sage, Einkauf a misty blue, Rezepte peach,

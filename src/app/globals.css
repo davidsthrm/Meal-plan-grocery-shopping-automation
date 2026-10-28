@@ -2955,11 +2955,14 @@ html[data-navigating] .nav-progress::before {
   }
 }
 
-/* A page comes in softly. Whoever asked for less motion gets none. */
+/*
+ * A page comes in softly. Whoever asked for less motion gets none. Where it starts is read
+ * from the element (`--page-in-*`), so that the way in can change without a new animation.
+ */
 @keyframes page-in {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: var(--page-in-opacity, 0);
+    transform: translate(var(--page-in-x, 0), var(--page-in-y, 6px));
   }
 }
 @keyframes fade-in {
@@ -3186,13 +3189,21 @@ main > *,
 main > .page {
   animation: none;
 }
+/*
+ * The animation itself is never switched, only where it starts: a change of its name starts
+ * it again. Switched off while a page moved, the content faded in a second time the moment
+ * the move ended, once after every tap on a section (October 2026).
+ */
 /* Stepped back in the history (`BackToList`), which names no transition: from the left. */
 html[data-going="back"] .page > * {
-  animation-name: page-from-left;
+  --page-in-x: -1.25rem;
+  --page-in-y: 0;
 }
 /* Led there by a link that names how (`transitionTypes`): the transition moves it instead. */
 :root:active-view-transition .page > * {
-  animation: none;
+  --page-in-opacity: 1;
+  --page-in-x: 0;
+  --page-in-y: 0;
 }
 /*
  * From one page to the next. The old one is gone at once, the new one comes in from the
