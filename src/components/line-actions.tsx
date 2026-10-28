@@ -477,7 +477,8 @@ export function ActionRow({
     },
   });
 
-  if (decision.kind === "removed") return null;
+  // A line removed folds away (`data-gone`): gone at once, the lines below it jumped up.
+  const gone = decision.kind === "removed";
   if (decision.kind === "moved" && leavesNote(decision, host.page.note)) {
     const to = readNoteId(decision.to);
     return (
@@ -546,6 +547,7 @@ export function ActionRow({
       ref={row}
       className={`swipe-row ${variant === "note" ? "tick-line" : ""} ${className}`}
       data-at-home={home || undefined}
+      data-gone={gone || undefined}
     >
       <span className="swipe-under" aria-hidden>
         <span className="swipe-buy">
@@ -1266,12 +1268,22 @@ function MoveForm({
  */
 function UndoBar({ toast, onDone }: { toast: Toast | null; onDone: () => void }) {
   const bar = useRef<HTMLDivElement>(null);
+  // How many views over the whole screen were open when the bar was last shown.
+  const viewsWhenShown = useRef(0);
   useEffect(() => {
     const element = bar.current;
     if (!element || !toast) return;
-    // Shown again, it comes above a view that opened since.
-    if (element.matches(":popover-open")) element.hidePopover();
-    element.showPopover();
+    const views = document.querySelectorAll("dialog:modal").length;
+    if (!element.matches(":popover-open")) {
+      element.showPopover();
+    } else if (views > viewsWhenShown.current) {
+      // A view opened over the page since: shown again, the bar comes above it.
+      element.hidePopover();
+      element.showPopover();
+    }
+    // Otherwise it stays where it is and only its words change: shown afresh for every
+    // decision, it rose again from nothing and jumped under quick swipes.
+    viewsWhenShown.current = views;
     const timer = window.setTimeout(() => {
       element.hidePopover();
       onDone();

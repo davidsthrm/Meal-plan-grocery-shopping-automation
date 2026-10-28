@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SegmentPill } from "@/components/segment-pill";
 import { slotPictogram } from "@/domain/library/pictogram";
 import { PictogramIcon } from "@/components/pictogram";
 import { WeekDone } from "@/components/week-done";
@@ -432,6 +433,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
          */
         <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
           <nav aria-label="Ansicht" className="segmented">
+            <SegmentPill name="pill-woche" at={showExtras ? 1 : 0} of={2} />
             <Link
               href={`/woche?w=${week}`}
               transitionTypes={[SWAP]}

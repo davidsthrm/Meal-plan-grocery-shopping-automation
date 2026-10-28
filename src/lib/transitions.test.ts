@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { BACK, FORWARD, PAGE_MOTION, SWAP, sideways } from "./transitions";
+import { FORWARD, PAGE_MOTION, SWAP, TAB_BACK, TAB_FORWARD, sideways } from "./transitions";
 
 describe("sideways", () => {
   it("brings a section further right in from the right, one further left from the left", () => {
     // Woche (0) to Einkauf (1), and back.
-    expect(sideways(0, 1)).toEqual([FORWARD]);
-    expect(sideways(1, 0)).toEqual([BACK]);
-    expect(sideways(0, 4)).toEqual([FORWARD]);
+    expect(sideways(0, 1)).toEqual([TAB_FORWARD]);
+    expect(sideways(1, 0)).toEqual([TAB_BACK]);
+    expect(sideways(0, 4)).toEqual([TAB_FORWARD]);
   });
 
   it("cross-fades from a page of no section, such as the settings, and to the same one", () => {

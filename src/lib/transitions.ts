@@ -12,12 +12,20 @@ export const FORWARD = "nav-forward";
 export const BACK = "nav-back";
 /** Another view of the same thing (Mahlzeiten and Außerdem): the two cross-fade. */
 export const SWAP = "nav-swap";
+/**
+ * To a section further right in the bar, or further left: the same directions, nearer and
+ * quicker. Sections are changed dozens of times a day, so their move is barely there.
+ */
+export const TAB_FORWARD = "nav-tab-forward";
+export const TAB_BACK = "nav-tab-back";
 
 /** The view transition classes of the page, by the type of the navigation. */
 export const PAGE_MOTION = {
   [FORWARD]: FORWARD,
   [BACK]: BACK,
   [SWAP]: SWAP,
+  [TAB_FORWARD]: TAB_FORWARD,
+  [TAB_BACK]: TAB_BACK,
   default: "none",
 } as const;
 
@@ -27,5 +35,5 @@ export const PAGE_MOTION = {
  */
 export function sideways(from: number, to: number): string[] {
   if (from < 0 || to === from) return [SWAP];
-  return [to > from ? FORWARD : BACK];
+  return [to > from ? TAB_FORWARD : TAB_BACK];
 }
