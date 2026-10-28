@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import {
   addDays,
@@ -63,9 +64,7 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <Link href={`/woche?w=${cameFrom}`} className="link text-sm">
-        ← Wochenplan
-      </Link>
+      <BackLink href={`/woche?w=${cameFrom}`}>Wochenplan</BackLink>
       <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4">
         <h1 className="title">Alle Wochen</h1>
         <Link href="/woche/statistik" className="link inline-flex min-h-11 items-center">

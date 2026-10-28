@@ -93,12 +93,14 @@ export function ResetWeek({
       ) : (
         <button
           type="button"
-          className="btn btn-small"
+          className="btn btn-small max-sm:px-3"
           aria-label="Ganze Woche leeren"
+          title="Woche leeren"
           onClick={() => setAsking(true)}
         >
           <EraserIcon />
-          Woche leeren
+          {/* On a phone the sign alone: the plan's actions stay in one row. */}
+          <span className="max-sm:hidden">Woche leeren</span>
         </button>
       )}
     </form>

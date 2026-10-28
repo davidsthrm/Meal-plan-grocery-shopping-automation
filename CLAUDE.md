@@ -120,6 +120,11 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   was bought, and its moment is the last purchase; lines the catalog does not know yet go
   on the list by their proposed name; no "Auch auf" under the lines. Then, as a hotfix: an
   errand done on another day moves as an errand, and empty notes are left out.
+- Phase 17 (branch `phase-17-look-and-feel`), picked by the household from previews: every
+  button a pill, the tab bar of liquid glass, pages that move the way their links point, a
+  pastel per section, the weekend as two cards, pictures for meals without a recipe, a
+  stamp for a week planned to its last meal, explanations behind a "?", tighter pages that
+  keep buttons of one kind in one row, remembered tabs and a start screen on the iPhone.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -167,6 +172,14 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `body`), and upright on a phone: the manifest and `screen.orientation.lock` hold Android
   upright; an iPhone cannot be held, so a phone held across (low, touched: `TurnUpright`)
   sees only "Bitte das Handy hochkant halten." until it is upright again. An iPad turns.
+- A page seen in the last 30 seconds comes back from the browser's memory
+  (`experimental.staleTimes.dynamic`): going to another tab and back waited 0.4 to 0.8
+  seconds each time (October 2026). `router.refresh()` (LiveRefresh) and the answer to every
+  form clear that memory, so a change of the household still shows at once.
+- The installed app opens on the plate on the green: Android draws it from the manifest, an
+  iPhone needs a picture of exactly its screen (`STARTUP_SCREENS` in
+  `src/lib/startup-screens.ts`, drawn into `public/startup/` by `npm run icons:build`,
+  named in `appleWebApp.startupImage`). Without one it opened on white.
 - The app starts at `/woche` (`start_url`); the proxy sends a signed-in "/" there before any
   page is rendered. The redirect through the page "/" cost 250 to 850 ms on every start
   (October 2026). The service worker enables navigation preload: the page is asked for
@@ -312,7 +325,8 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `searchRecipes` the server uses, so a list unfolds with the first letter and changes with
   every further one. Sending the search still goes to the server and works without scripts.
 - Every main section has a `loading.tsx` (`PageLoading`: its name and the pale shape of a
-  sheet or of cards, faded in after 150ms). Without one a dynamic route is not prefetched,
+  sheet or of cards, faded in at once: after a delay of 150ms nothing answered a tap, and
+  the household tapped again). Without one a dynamic route is not prefetched,
   and a tap on a tab waited half a second for the whole page with nothing to show for it.
   A change of the search part of the address and the redirect after a form do not show
   it; a full load streams it first, so it carries no status role.
@@ -401,8 +415,13 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
 - The shared classes (`.btn`, `.field`, `.card`, `.chip`, `.title`, `.eyebrow`) are in the
   `components` layer of `src/app/globals.css`, so a utility class on the same element wins.
 - A button or a chip is a soft tint of the ink over whatever it lies on, not a white box with
-  an edge; only `.btn-primary` is solid, so the one green button on a screen is what stands
-  out. Every control gives a little the moment a finger lands on it (`:active`, a scale of
+  an edge, and a pill; only `.btn-primary` is solid, so the one green button on a screen is
+  what stands out. An action written as a link is a pill too, its words in the green on the
+  green's pastel: the way back (`BackLink`, "← Wochenplan") and every standalone link the
+  size of a finger (`.link.min-h-11`, "Alle Wochen"). Buttons that belong together stand
+  in one row, also on a phone: where words would break it, the lesser ones are a sign with
+  their words as label and title (the plan's Pinnwand and Leeren, the statistics, the
+  week's arrows), and "Plan speichern" is "Speichern" (October 2026). Every control gives a little the moment a finger lands on it (`:active`, a scale of
   0.96), not only when it lifts, also for whoever asked for less motion: nothing travels.
   While its form is on its way to the server (`SubmitButton`, `data-pending`), a button stays
   pressed and after 150ms shows a small ring instead of its words, and the line of a note it
@@ -444,9 +463,33 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   or it is shown as a label. To look at a new drawing, render the paths with sharp: at the
   size of a badge a line is about a pixel wide.
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
-  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a bar of frosted glass
-  that floats above the bottom of the screen (`.tabbar`), the page visible under it, with a
-  sign above each name and the open section on the green's pastel. The header stays at the
+  green (`logo.tsx`, `app/icon.svg`). On a phone the five sections are a round bar of liquid
+  glass that floats above the bottom of the screen (`.tabbar`, `GlassSurface` from
+  `src/components/ui/glass.tsx`: blur, a white tint, a sheen and a bright rim; Safari cannot
+  bend the page through it as Chrome can and keeps it frosted), the page visible under it,
+  with a sign above each name and the open section on the green's pastel. A tapped section
+  is the current one the moment the finger lands, before its page has come (`AppNav`).
+- Each section has a pastel of its own at the top of its pages, fading into the paper
+  (`.app-shell`, `--section-tint`): Woche sage, Einkauf a misty blue, Rezepte peach,
+  Favoriten blush, Import lavender; no yellow. It is read in CSS from the section the bar
+  marks as current, so it is there from the first paint and changes with the tap.
+- A page follows the one before it as its link says (`transitionTypes`, `src/lib/transitions.ts`,
+  the `<ViewTransition>` around the page in the layout): from the right going in, to a
+  section further right or to the next week; from the left going back; cross-faded for
+  another view of the same page (Mahlzeiten and Außerdem, Entdecken and Regal). Going in or
+  back takes 240ms with a light blur at the start that joins old and new into one movement;
+  another section of the bar, changed dozens of times a day, 200ms over a shorter way. The
+  pastel of a section is not faded: a change of an inherited value recalculated every
+  element of the page in every frame while the tap loaded the next page. The raised pill of
+  a segmented control is an element of its own (`SegmentPill`, named per control) that
+  slides to the other view, under the words. Only a link
+  that names one moves the page: a live refresh and the answer to a form change it in place,
+  or every tick in the shop would make the note flicker. A step back in the history
+  (`BackToList`) names none and marks the page (`data-going`) instead. Asked for less
+  motion, pages only fade.
+- A card that explains itself does so behind a round "?" beside its heading (`HelpHeading`):
+  the settings explained every card at length and their controls stood a screen further
+  down (October 2026). The header stays at the
   top of every page on a strip of frosted paper as wide as the screen (`.app-header`), so
   that the Merkzettel and the settings are one tap away halfway down a long list; anchors
   land below it (`scroll-padding-top`), and `body` clips sideways so that the strip does not
@@ -568,7 +611,9 @@ Household
   ("Zuhause"). The week plan greets whoever opens it by the first word of their own name
   as a large title, the way an app's first screen does: the day small above it, "Guten
   Morgen, David" by the time of day (`salutation`, `firstName`; `.greeting`, the name in the
-  accent green), and "Euer Wochenplan · 12.–18. Oktober" below as the page's heading.
+  accent green), and "Wochenplan · 12.–18. Oktober" below as the page's heading. A sentence
+  under the greeting saying what there is to eat today was taken out again: the card of
+  today says it.
   Without a name, the plain label and the week as the title. Nowhere else.
 - A new household for another family is not made in the app: it needs its own catalog,
   tags and categories, as `npm run e2e:setup` makes them for the test household.
@@ -636,7 +681,9 @@ Week plan
   the actions wrap below it. The week is changed with one capsule (back, "Aktuelle",
   forward) and "Alle Wochen" next to it.
 - The week's count stands above it as four tiles in the kinds' pastels, each with its number,
-  its goal ("mind. 3", "max. 2") and a bar that fills towards the goal, in the warning colour
+  its goal ("mind. 3", "max. 2", "geschafft" once reached; a limit alone is never reached,
+  `targetText`). The tiles are the way to the goals: "Ziele ändern" below them took a row of
+  its own and a bar that fills towards the goal, in the warning colour
   once there are too many (`progress`: towards the most where there is one, else the
   least). Two by two on a phone narrower than an iPhone 14, where "Vegetarisch" no longer
   fits a quarter of the width.
@@ -707,7 +754,19 @@ Week plan
 - Above the plan of the running week stands what there is to eat today and what the weekend
   holds (`Today`), also while the page already shows the coming week. Once something is
   planned for those days, it stands next to the greeting like a widget on a large screen,
-  and under it on a phone; otherwise the header is the greeting alone.
+  and under it on a phone; otherwise the header is the greeting alone. Today's lunch and
+  dinner stand side by side, and Saturday and Sunday are two small cards, each meal on a
+  line of its own with its pictogram: the weekend was one grey sentence (October 2026).
+- Every meal on the plan carries the kind of its first dish as a coloured edge, a stronger
+  shade of the kind's pastel (`.meal-cell`). A meal without a recipe has a picture where it
+  has one (`slotPictogram`): the bread of a "Vesper", the pot of leftovers, a pin with a
+  plate for a meal away ("Auswärts", "Oma Heidrun"), on grey with a grey edge. An open
+  meal says "noch offen".
+- A week ahead planned to its last lunch and dinner (`weekPlanned`) is celebrated once per
+  device (`WeekDone`): a stamp, "Woche steht!", is pressed onto the screen and the colours
+  of the kinds of meals fly off it, 1.8 seconds, meant to be seen. Only a week the device
+  saw still open: weeks planned before are not celebrated out of the blue. It is put into
+  the body, as the page's transform would pin a fixed overlay to the page.
 - "Für die Pinnwand" (in the row of the plan's actions, once anything is planned) opens the
   week as a PDF the size of a postcard (A6) to pin up (`planNote` in `src/lib/plan-note.ts`,
   `planNotePdf`): every day a row with its lunch and dinner, Sunday's coffee only when
@@ -750,17 +809,17 @@ Week plan
   library, and a recipe's dish and effort are read once per recipe: a week's suggestions
   took 190 ms of the server for the family's 1,146 recipes on every look at the plan, and
   take 60 (October 2026). The suggestions themselves are the same.
-- The plan does not fill itself. An open meal has "Planen" and "Hast du einen Vorschlag?".
-  Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Noch
-  ein Vorschlag" for the next best; after twelve they come round again. The household found
+- The plan does not fill itself. An open meal has "Planen" and "Was könnten wir kochen?".
+  Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Lieber
+  was anderes" for the next best; after twelve they come round again. The household found
   a plan that arrives full of suggestions too pushy.
 - Up to five open meals offer a suggestion without being asked: those with the most to say
   for them (a wish, a favourite, a gap in the week, the season; `HINT_SCORE`; "never
   cooked" alone is not enough), at most two of them favourites (`hintedMeals`), spread
   over the week. It
-  is the same box as an answer to "Hast du einen Vorschlag?", with a dashed edge and
-  "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Noch ein
-  Vorschlag" shows the next best. More wishes and favourites mean more such meals, up to
+  is the same box as an answer to "Was könnten wir kochen?", with a dashed edge and
+  "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Lieber was
+  anderes" shows the next best. More wishes and favourites mean more such meals, up to
   five. The household took the pale ideas shown before for planned meals.
 - "Plan vervollständigen" plans every open meal that is still to come at once. Those
   suggestions are chosen one after the other as if the earlier ones were accepted
@@ -1345,7 +1404,10 @@ Shopping list
   menu, for a slip of the pen; the drugstore's note, which has no "Haben wir schon", keeps
   the bin. The household found the bin there meant "not bought", which is decided in the
   shop (October 2026). Each decision can be taken back for five seconds from the bar
-  at the foot ("Widerrufen"). The view for the shop has its own menu, sheets and bar
+  at the foot ("Widerrufen"). The bar rises when it first appears and then stays, the next
+  decision only changing its words (a transition, not keyframes): shown afresh for each, it
+  jumped under quick swipes. A line removed folds away (`data-gone`: its height closes and
+  it fades in 160ms) instead of making the lines below it jump. The view for the shop has its own menu, sheets and bar
   (`LineActionsHere`): a modal dialog makes everything outside it inert. On a note the
   actions stand at the end of the line's first row, and an opened line runs the width of
   the note under them; beside them it was a narrow column on a phone.

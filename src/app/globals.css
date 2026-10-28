@@ -64,6 +64,13 @@
  * enough for two columns and tall enough to plan in them. Decided by the screen, never by
  * the name of the device.
  */
+/* The pastel of the section (`.app-shell`), registered so that it can fade into the next. */
+@property --section-tint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f7f4ee;
+}
+
 @custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
 html {
@@ -148,7 +155,7 @@ summary,
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 0.8rem;
+    border-radius: 999px;
     border: 1px solid transparent;
     background: rgb(35 33 29 / 0.065);
     padding: 0 1rem;
@@ -256,6 +263,118 @@ summary,
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--color-muted);
+  }
+
+  /*
+   * The weekend on the card of today: Saturday and Sunday side by side, each a small card
+   * of its own on the green's pastel; one alone takes the whole width.
+   */
+  .weekend-days {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.5rem;
+  }
+  .weekend-day {
+    min-width: 0;
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--color-accent-soft) 70%, transparent);
+    padding: 0.6rem 0.75rem 0.7rem;
+  }
+
+  /* The week's count is the way to the goals: it gives under the finger like a button. */
+  .balance-link {
+    border-radius: 1rem;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 120ms var(--ease-out);
+  }
+  .balance-link:active {
+    transform: scale(0.98);
+    transition-duration: 60ms;
+  }
+  .balance-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  /* A heading with a round "?" beside it that unfolds what it is about (`HelpHeading`). */
+  .help-head {
+    display: flex;
+    min-height: 2.75rem;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .help-head::-webkit-details-marker {
+    display: none;
+  }
+  .help-q {
+    display: inline-grid;
+    flex-shrink: 0;
+    width: 1.6rem;
+    height: 1.6rem;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 120ms ease;
+  }
+  .help-head:active .help-q {
+    transform: scale(0.9);
+    transition-duration: 60ms;
+  }
+  .help[open] .help-q {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .help-head:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+  .help-text {
+    max-width: 65ch;
+    padding-bottom: 0.25rem;
+    color: var(--color-muted);
+    font-size: 0.875rem;
+  }
+
+  /*
+   * Each section has a pastel of its own at the top of its pages, fading into the paper:
+   * Woche sage, Einkauf a misty blue, Rezepte peach, Favoriten blush, Import lavender. No
+   * yellow: the household did not like it (October 2026). Read from the section the bar marks as current, so it is there from
+   * the first paint and changes the moment a section is tapped.
+   */
+  .app-shell {
+    --section-tint: var(--color-paper);
+    /* Not faded: a change of an inherited value recalculates every element on the page in
+       every frame, just while a tap loads the next page. The page cross-fades anyway. */
+    background: linear-gradient(var(--section-tint), var(--color-paper) 20rem) no-repeat;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
+    --section-tint: #e3eee7;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
+    --section-tint: #e2ebf2;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
+    --section-tint: #f6e6da;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
+    --section-tint: #f5e1e6;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
+    --section-tint: #e9e4f3;
+  }
+  @media print {
+    .app-shell {
+      background: none;
+    }
   }
 
   /* The line whose form it is pales with it: the tap was taken, the line is going. */
@@ -577,17 +696,14 @@ summary,
     z-index: 10;
     max-width: 30rem;
     margin: 0 auto;
+    border-radius: 999px;
+  }
+  /*
+   * Liquid glass (`GlassSurface`): blur, a white tint, a sheen across it and light catching
+   * its rim. Safari cannot bend the page through it as Chrome can; it stays frosted there.
+   */
+  .tabbar-glass > :last-child {
     padding: 0.3rem;
-    /* Frosted glass, with light catching its upper edge: the page shows through. */
-    border: 1px solid rgb(255 255 255 / 0.65);
-    border-radius: 1.4rem;
-    background: color-mix(in srgb, var(--color-surface) 58%, transparent);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.8),
-      0 1px 2px rgb(35 33 29 / 0.08),
-      0 18px 36px -16px rgb(35 33 29 / 0.4);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    backdrop-filter: blur(22px) saturate(180%);
   }
   .tab {
     display: flex;
@@ -596,7 +712,7 @@ summary,
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    border-radius: 1.1rem;
+    border-radius: 999px;
     /* Darker than muted: on glass the page behind takes contrast away. */
     color: color-mix(in srgb, var(--color-ink) 72%, transparent);
     font-size: 0.7rem;
@@ -634,7 +750,7 @@ summary,
     left: 50%;
     width: 100vw;
     translate: -50% 0;
-    background: color-mix(in srgb, var(--color-paper) 70%, transparent);
+    background: color-mix(in srgb, var(--section-tint, var(--color-paper)) 70%, transparent);
     -webkit-backdrop-filter: blur(18px) saturate(170%);
     backdrop-filter: blur(18px) saturate(170%);
     mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
@@ -642,10 +758,11 @@ summary,
   /* Glass only for whoever wants it: asked for less transparency, the bars are solid. */
   @media (prefers-reduced-transparency: reduce) {
     .app-header::before,
-    .tabbar {
-      background: var(--color-surface);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+    .tabbar-glass > [aria-hidden] {
+      /* The glass draws its layers inline: only this outweighs them. */
+      background: var(--color-surface) !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
     }
     .app-header::before {
       background: var(--color-paper);
@@ -943,11 +1060,18 @@ summary,
   }
 
   /* The title of a page and of a recipe. */
+  /* A size smaller on a phone, where a long title took two lines of the first screen. */
   .title {
-    font-size: 1.9rem;
+    font-size: 1.6rem;
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  @media (width >= 40rem) {
+    .title {
+      font-size: 1.9rem;
+    }
   }
 
   /*
@@ -1054,6 +1178,30 @@ summary,
   .kind-sweet {
     --kind: var(--color-sweet);
     --kind-ink: var(--color-sweet-ink);
+  }
+  /* A meal without a recipe (Vesper, Reste, Auswärts): grey, no kind of meal. */
+  .kind-none {
+    --kind: #e9e5de;
+    --kind-ink: #5f5a52;
+  }
+
+  /*
+   * A meal on the plan carries the kind of its first dish as an edge, in a stronger shade of
+   * the kind's pastel: the week reads in colour before a word of it is read.
+   */
+  .meal-cell {
+    position: relative;
+    padding-left: 0.8rem;
+  }
+  .meal-cell[class*="kind-"]::before {
+    content: "";
+    position: absolute;
+    top: 0.1rem;
+    bottom: 0.1rem;
+    left: 0;
+    width: 0.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--kind) 50%, var(--kind-ink));
   }
 
   /* A card that leads somewhere lifts a little when it is touched or pointed at. */
@@ -1197,6 +1345,52 @@ summary,
     font-size: 0.92rem;
   }
 
+  /*
+   * Every button is a pill on a soft tint, and so is an action written as a link: the way
+   * back ("← Wochenplan", `BackLink`) and a standalone link the size of a finger
+   * ("Alle Wochen", "An einem anderen Tag einkaufen"). Their words in the green say they
+   * lead somewhere; the tint says they can be tapped (October 2026).
+   */
+  .back-link,
+  .link.min-h-11 {
+    display: inline-flex;
+    min-height: 2.6rem;
+    font-size: 0.92rem;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    padding: 0 0.95rem;
+    color: var(--color-accent);
+    font-weight: 600;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 120ms ease;
+  }
+  .back-link {
+    padding-left: 0.75rem;
+    font-size: 0.92rem;
+  }
+  .back-link:active,
+  .link.min-h-11:active {
+    transform: scale(0.96);
+    transition-duration: 60ms;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .back-link:hover,
+    .link.min-h-11:hover {
+      background: color-mix(in srgb, var(--color-accent-soft) 70%, var(--color-accent) 12%);
+      text-decoration: none;
+    }
+  }
+  .back-link:focus-visible,
+  .link.min-h-11:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
   /* An action that should not compete with the content next to it. */
   .link {
     font-weight: 600;
@@ -1257,22 +1451,50 @@ summary,
    * and "Regal". The open one lies raised on the track. Full width on a phone.
    */
   .segmented {
-    display: flex;
+    position: relative;
+    display: grid;
     width: 100%;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
     padding: 3px;
     border-radius: 999px;
     background: rgb(35 33 29 / 0.07);
   }
   @media (width >= 40rem) {
     .segmented {
-      display: inline-flex;
+      display: inline-grid;
       width: auto;
     }
   }
+  /*
+   * The raised pill under the open view (`SegmentPill`): equally wide views, so it stands at
+   * its index. Going to the other view it slides across (a view transition between pages,
+   * a transition within one), instead of jumping.
+   */
+  .segment-pill {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc((100% - 6px) / var(--count));
+    transform: translateX(calc(100% * var(--at)));
+    border-radius: 999px;
+    background: var(--color-surface);
+    box-shadow:
+      0 1px 2px rgb(35 33 29 / 0.12),
+      0 2px 8px -2px rgb(35 33 29 / 0.12);
+    transition: transform 220ms var(--ease-in-out);
+    view-transition-class: segment-pill;
+  }
+  /* The view transition moves it: its own transition would move it twice. */
+  :root:active-view-transition .segment-pill {
+    transition: none;
+  }
   .segment {
+    position: relative;
+    z-index: 1;
     display: flex;
     min-height: 2.6rem;
-    flex: 1;
     align-items: center;
     justify-content: center;
     padding: 0 1.15rem;
@@ -1284,11 +1506,7 @@ summary,
     transition: transform 120ms var(--ease-out);
   }
   .segment[aria-current="page"] {
-    background: var(--color-surface);
     color: var(--color-ink);
-    box-shadow:
-      0 1px 2px rgb(35 33 29 / 0.12),
-      0 2px 8px -2px rgb(35 33 29 / 0.12);
   }
   .segment:active {
     transform: scale(0.97);
@@ -2221,8 +2439,36 @@ summary,
 @layer components {
   .swipe-row {
     position: relative;
+    display: grid;
+    grid-template-rows: 1fr;
     overflow-x: clip;
     touch-action: pan-y;
+    transition:
+      grid-template-rows 160ms var(--ease-out),
+      opacity 120ms ease,
+      display 160ms allow-discrete;
+  }
+  /*
+   * A line removed folds away: its height closes and it fades, so the lines below move up
+   * instead of jumping. Short, as it happens often in the shop. One removed before the page
+   * was drawn is simply not there.
+   */
+  .swipe-row[data-gone] {
+    display: none;
+    grid-template-rows: 0fr;
+    border-bottom-color: transparent;
+    opacity: 0;
+  }
+  .swipe-row[data-gone] > .swipe-face {
+    min-height: 0;
+    overflow: hidden;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .swipe-row {
+      transition:
+        opacity 120ms ease,
+        display 120ms allow-discrete;
+    }
   }
   .swipe-under {
     position: absolute;
@@ -2507,16 +2753,38 @@ summary,
     color: var(--color-surface);
     box-shadow: 0 14px 30px -14px rgb(35 33 29 / 0.6);
   }
+  /*
+   * It rises when it first appears and goes down when it goes. While it stays, the next
+   * decision only changes its words: shown afresh for each, its rise started again from
+   * nothing, and quick swipes made it jump (October 2026). A transition, not keyframes.
+   */
+  .undo-bar {
+    opacity: 0;
+    transform: translateY(0.5rem);
+    transition:
+      opacity 160ms ease,
+      transform 160ms var(--ease-out),
+      overlay 160ms allow-discrete,
+      display 160ms allow-discrete;
+  }
   .undo-bar:popover-open {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    animation: bar-in 200ms var(--ease-out) both;
+    opacity: 1;
+    transform: none;
+    transition-duration: 200ms;
+  }
+  @starting-style {
+    .undo-bar:popover-open {
+      opacity: 0;
+      transform: translateY(0.5rem);
+    }
   }
   .undo-button {
     min-height: 2.75rem;
     padding: 0 0.85rem;
-    border-radius: 0.7rem;
+    border-radius: 999px;
     color: #cfe3dc;
     font-weight: 700;
   }
@@ -2530,26 +2798,27 @@ summary,
     transform: scale(0.96);
   }
 }
-@keyframes bar-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.5rem);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .row-menu:popover-open,
-  .action-sheet[open],
-  .undo-bar:popover-open {
+  .action-sheet[open] {
     animation: fade-in 160ms ease both;
+  }
+  /* It still fades in and out, but does not rise. */
+  .undo-bar,
+  .undo-bar:popover-open {
+    transform: none;
   }
   .action-sheet.going {
     animation: fade-out 160ms ease both;
   }
 }
 
-/* The shape of a page on its way: after a moment, so that a quick page does not flash. */
+/*
+ * The shape of a page on its way, at once: a tap is answered before the page arrives. After a
+ * delay of 150ms, the household saw nothing happen and tapped again (October 2026).
+ */
 .page-loading {
-  animation: fade-in 200ms ease 150ms both;
+  animation: fade-in 120ms ease both;
 }
 .loading-bar {
   border-radius: 0.5rem;
@@ -2677,6 +2946,95 @@ summary,
     transform: scale(1.25);
   }
 }
+/*
+ * A week ahead planned to its last meal (`WeekDone`): a stamp is pressed onto the screen and
+ * the colours of the kinds of meals fly off it, then all of it fades. Rare and meant to be
+ * seen, so it may take longer than the rest: 1.8 seconds in all.
+ */
+.week-done {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  place-items: center;
+  pointer-events: none;
+}
+.week-done.celebrating {
+  display: grid;
+}
+.week-done > * {
+  grid-area: 1 / 1;
+}
+.week-done-stamp {
+  display: grid;
+  rotate: -7deg;
+  padding: 0.6rem 1.3rem 0.7rem;
+  border: 3px solid var(--color-accent);
+  border-radius: 0.8rem;
+  background: rgb(255 253 249 / 0.94);
+  box-shadow: 0 18px 40px -18px rgb(35 33 29 / 0.5);
+  color: var(--color-accent);
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-align: center;
+  animation:
+    week-stamp 420ms var(--ease-out) both,
+    fade-out 320ms ease 1500ms forwards;
+}
+.week-done-stamp small {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-ink);
+}
+.week-done-piece {
+  width: 0.7rem;
+  height: 0.45rem;
+  border-radius: 0.15rem;
+  animation: week-piece 1100ms var(--ease-out) 120ms both;
+}
+.week-done-piece[data-round] {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+@keyframes week-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.96);
+  }
+}
+@keyframes week-piece {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--to-x), var(--to-y)) rotate(var(--turn));
+  }
+}
+/* Asked for less motion: the stamp is simply there for a moment, and nothing flies. */
+@media (prefers-reduced-motion: reduce) {
+  .week-done-stamp {
+    animation:
+      fade-in 200ms ease both,
+      fade-out 320ms ease 1500ms forwards;
+  }
+  .week-done-piece {
+    display: none;
+  }
+}
 /* What a fold holds comes out of it: a short fade and a little drop. */
 @keyframes unfold {
   from {
@@ -2687,8 +3045,102 @@ summary,
 details[open] > :not(summary) {
   animation: unfold 200ms var(--ease-out);
 }
-main > * {
+main > *,
+.page > * {
   animation: page-in 220ms var(--ease-out) both;
+}
+main > .page {
+  animation: none;
+}
+/* Stepped back in the history (`BackToList`), which names no transition: from the left. */
+html[data-going="back"] .page > * {
+  animation-name: page-from-left;
+}
+/* Led there by a link that names how (`transitionTypes`): the transition moves it instead. */
+:root:active-view-transition .page > * {
+  animation: none;
+}
+/*
+ * From one page to the next. The old one fades away at once, the new one comes in from the
+ * side the link points to: from the right going in or to a section further right, from
+ * the left going back. Another view of the same page cross-fades. The box itself does not
+ * morph between two heights: the new page simply stands where it will stay.
+ */
+::view-transition-group(.nav-forward),
+::view-transition-group(.nav-back),
+::view-transition-group(.nav-swap),
+::view-transition-group(.nav-tab-forward),
+::view-transition-group(.nav-tab-back) {
+  animation: none;
+}
+::view-transition-old(.nav-forward),
+::view-transition-old(.nav-back),
+::view-transition-old(.nav-swap),
+::view-transition-old(.nav-tab-forward),
+::view-transition-old(.nav-tab-back) {
+  animation: fade-out 120ms ease both;
+}
+/*
+ * Going in or back: a short way, and a light blur at the start that joins the old page and
+ * the new one into one movement instead of two pictures over each other.
+ */
+::view-transition-new(.nav-forward) {
+  animation: page-from-right 240ms var(--ease-out) both;
+}
+::view-transition-new(.nav-back) {
+  animation: page-from-left 240ms var(--ease-out) both;
+}
+/*
+ * The pill of a segmented control slides across between the root and the page, so that the
+ * words of the views stay on top of it while it moves.
+ */
+::view-transition-group(.segment-pill) {
+  z-index: 1;
+  animation-duration: 220ms;
+  animation-timing-function: var(--ease-in-out);
+}
+::view-transition-group(.nav-forward),
+::view-transition-group(.nav-back),
+::view-transition-group(.nav-swap),
+::view-transition-group(.nav-tab-forward),
+::view-transition-group(.nav-tab-back) {
+  z-index: 2;
+}
+/* Another section: dozens of times a day, so nearer and quicker, barely there. */
+::view-transition-new(.nav-tab-forward) {
+  animation: tab-from-right 200ms var(--ease-out) both;
+}
+::view-transition-new(.nav-tab-back) {
+  animation: tab-from-left 200ms var(--ease-out) both;
+}
+::view-transition-new(.nav-swap) {
+  animation: fade-in 200ms ease both;
+}
+@keyframes page-from-right {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateX(1.25rem);
+  }
+}
+@keyframes page-from-left {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateX(-1.25rem);
+  }
+}
+@keyframes tab-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(0.6rem);
+  }
+}
+@keyframes tab-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-0.6rem);
+  }
 }
 /*
  * On to the next meal: the meal's page is torn off like a sheet of a pad. It stays on top,
@@ -2788,7 +3240,23 @@ main > * {
   ::view-transition-group(*) {
     animation: none !important;
   }
+  /* From page to page it still fades: less motion is not none. */
+  ::view-transition-old(.nav-forward),
+  ::view-transition-old(.nav-back),
+  ::view-transition-old(.nav-swap),
+  ::view-transition-old(.nav-tab-forward),
+  ::view-transition-old(.nav-tab-back) {
+    animation: fade-out 120ms ease both !important;
+  }
+  ::view-transition-new(.nav-forward),
+  ::view-transition-new(.nav-back),
+  ::view-transition-new(.nav-swap),
+  ::view-transition-new(.nav-tab-forward),
+  ::view-transition-new(.nav-tab-back) {
+    animation: fade-in 180ms ease both !important;
+  }
   main > *,
+  .page > *,
   .zoom-in,
   .note-drawer[open],
   .note-drawer[open]::backdrop,

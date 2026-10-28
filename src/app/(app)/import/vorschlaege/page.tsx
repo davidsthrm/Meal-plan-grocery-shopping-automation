@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { loadCatalogIndex, loadIngredientNames, must } from "@/server/catalog";
 import { loadOpenProposals, settleKnownProposals } from "@/server/import/proposals";
 import { createSessionClient } from "@/server/supabase/server";
@@ -19,9 +19,7 @@ export default async function ProposalsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/import" className="text-sm font-semibold text-accent">
-        ← Import
-      </Link>
+      <BackLink href="/import">Import</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Neue Zutaten</h1>
       {proposals.length === 0 ? (
         <p className="mt-2 text-muted">

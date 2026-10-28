@@ -158,8 +158,10 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
       <p className="eyebrow">
         {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
       </p>
-      <h1 className="title mt-1">Regal</h1>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+      {/* The switch below says which view is open: the same word as a large title above it
+          only took the first screen. */}
+      <h1 className="sr-only">Regal</h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <RecipeViews current="regal" />
         <Link href="/rezepte/stichworte" className="btn btn-small">
           <TagIcon />

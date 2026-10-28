@@ -32,7 +32,7 @@ test("an empty week waits to be asked: a suggestion comes on request", async ({ 
   await page.goto(`/woche?w=${WEEK}&frage=${WEEK}.lunch&v=0`);
   await expect(monday.getByText("Vorschlag", { exact: true })).toBeVisible();
   const first = await monday.getByRole("link").first().innerText();
-  await monday.getByRole("link", { name: "Noch ein Vorschlag" }).click();
+  await monday.getByRole("link", { name: "Lieber was anderes" }).click();
   await expect(monday.getByRole("link").first()).not.toHaveText(first);
 
   await monday.getByRole("button", { name: /einplanen/ }).click();
@@ -40,7 +40,7 @@ test("an empty week waits to be asked: a suggestion comes on request", async ({ 
   await expect(monday.getByText("Vorschlag", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Plan vervollständigen" }).click();
-  await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Was könnten wir kochen/ })).toHaveCount(0);
   // Completed, the week meets what the household aims for.
   expect(await count(page, "Vegetarisch")).toBeGreaterThanOrEqual(3);
   expect(await count(page, "Fisch")).toBeGreaterThanOrEqual(1);

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BUTCHER_REACH_DAYS } from "@/domain/shopping-list/trips";
+import { HelpHeading } from "@/components/help-heading";
 import Link from "next/link";
 import { CopyLink } from "@/components/copy-link";
 import { FamilySizeField } from "@/components/family-size-field";
@@ -91,9 +93,9 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
     <div className="mx-auto max-w-5xl">
       <h1 className="title">Einstellungen</h1>
       <p className="mt-1 text-muted">Haushalt „{household.name}“</p>
-      <nav aria-label="Teile der Einstellungen" className="mt-4 flex flex-wrap gap-2 lg:hidden">
+      <nav aria-label="Teile der Einstellungen" className="mt-3 flex flex-wrap gap-1.5 lg:hidden">
         {PARTS.map((part) => (
-          <a key={part.id} href={`#${part.id}`} className="chip">
+          <a key={part.id} href={`#${part.id}`} className="chip px-3 text-[0.85rem]">
             {part.name}
           </a>
         ))}
@@ -108,16 +110,19 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
         <div className="mt-2 grid items-start gap-4 lg:grid-cols-2">
           <div className="grid gap-4">
             <section className="card scroll-mt-4 p-4" aria-labelledby="einkaufstage">
-              <h3 id="einkaufstage" className="text-lg font-bold tracking-tight">
-                Einkaufstage
-              </h3>
-              <p className="mt-1 mb-3 text-sm text-muted">
+              <HelpHeading id="einkaufstage" title="Einkaufstage">
                 Jeder Einkauf bekommt seinen eigenen Zettel. Zum Metzger geht es an seinen Tagen,
                 und nur wenn ein Essen Fleisch braucht. Der Bäcker hat keinen festen Tag: was eine
                 Mahlzeit von dort braucht, steht auf einem Zettel für den Tag dieser Mahlzeit, für
                 einen Sonntag auf dem vom Samstag. Der Zettel für dm liegt jede Woche an seinem Tag
                 bereit und wird von Hand geschrieben.
-              </p>
+                <span className="mt-1.5 block">
+                  Ein Besuch beim Metzger kauft das Fleisch für {BUTCHER_REACH_DAYS} Tage im Voraus:
+                  am Montag für Montag bis Donnerstag. Ist kein Metzgertag angehakt, geht es an den
+                  Tagen von Supermarkt und Markt zum Metzger.
+                </span>
+              </HelpHeading>
+              <div className="mb-2" />
               {one(params.fehler) === "tage" && (
                 <p role="alert" className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-warn">
                   Es braucht mindestens einen Tag im Supermarkt: dort gibt es alles, was Markt und
@@ -125,7 +130,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
                 </p>
               )}
               <form action={saveShoppingDays}>
-                <ShoppingDaysFields days={household.shoppingDays} />
+                <ShoppingDaysFields days={household.shoppingDays} explained={false} />
                 <div className="mt-3">
                   <DrugstoreDayField days={household.shoppingDays} />
                 </div>
@@ -277,10 +282,11 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </form>
             </div>
 
-            <h4 className="mt-5 font-semibold">Wer dazugehört</h4>
-            <p className="text-sm text-muted">
-              Alle sehen denselben Plan, dieselben Zettel und Favoriten, jeder mit eigenem Konto.
-            </p>
+            <div className="mt-4">
+              <HelpHeading id="mitglieder" title="Wer dazugehört" level={4}>
+                Alle sehen denselben Plan, dieselben Zettel und Favoriten, jeder mit eigenem Konto.
+              </HelpHeading>
+            </div>
             <ul className="mt-2 divide-y divide-line">
               {members.map((member) => (
                 <li key={member.userId} className="flex items-center justify-between gap-3 py-2">
@@ -327,11 +333,12 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
               </div>
             )}
 
-            <h4 className="mt-5 font-semibold">Jemanden einladen</h4>
-            <p className="text-sm text-muted">
-              Ein Link, der einmal gilt und {INVITE_DAYS} Tage lang. Wer ihn öffnet, legt sich ein
-              Konto an und gehört dazu.
-            </p>
+            <div className="mt-4">
+              <HelpHeading id="einladen" title="Jemanden einladen" level={4}>
+                Ein Link, der einmal gilt und {INVITE_DAYS} Tage lang. Wer ihn öffnet, legt sich ein
+                Konto an und gehört dazu.
+              </HelpHeading>
+            </div>
             {token && (
               <div role="status" className="mt-3 rounded-lg bg-accent-soft p-3">
                 <p className="mb-2 text-sm font-semibold">

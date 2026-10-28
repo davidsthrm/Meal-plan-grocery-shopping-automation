@@ -80,7 +80,7 @@ export function CookView({
     <>
       <a
         href="#kochen"
-        className="btn print:hidden"
+        className="btn px-2 sm:px-4 print:hidden"
         aria-haspopup="dialog"
         onClick={(event) => {
           event.preventDefault();

@@ -31,7 +31,7 @@ test("screens @look", async ({ page }, info) => {
   await page.goto("/woche?w=2027-03-01");
   await page.waitForLoadState("networkidle");
   await shot("2-woche-leer");
-  const ask = page.getByRole("link", { name: /Hast du einen Vorschlag/ }).first();
+  const ask = page.getByRole("link", { name: /Was könnten wir kochen/ }).first();
   if (await ask.count()) {
     await ask.click();
     // A library with nothing left to suggest answers with nothing: then there is no picture.

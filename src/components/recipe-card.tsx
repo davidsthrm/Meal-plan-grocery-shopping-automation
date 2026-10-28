@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FORWARD } from "@/lib/transitions";
 import { sourceLabel } from "@/domain/library/source";
 import type { ReactNode } from "react";
 import { setFavorite } from "@/app/(app)/rezepte/actions";
@@ -93,7 +94,11 @@ export function RecipeCard({
     <div
       className={`card lift relative flex min-h-44 flex-col overflow-hidden ${tone?.className ?? ""} ${className}`}
     >
-      <Link href={`/rezepte/${recipe.id}${from}`} className="flex flex-1 flex-col">
+      <Link
+        href={`/rezepte/${recipe.id}${from}`}
+        transitionTypes={[FORWARD]}
+        className="flex flex-1 flex-col"
+      >
         {/* A band in the colour of the kind: a shelf can be read at a glance. */}
         <span aria-hidden className="h-1.5 bg-(--kind,var(--color-line))" />
         <PictogramIcon name={pictogramFor(recipe)} className="watermark" />
@@ -144,7 +149,11 @@ export function RecipeRow({
 }) {
   return (
     <li className="flex items-center gap-3 px-4 py-3">
-      <Link href={`/rezepte/${recipe.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+      <Link
+        href={`/rezepte/${recipe.id}`}
+        transitionTypes={[FORWARD]}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
         <RecipeBadge recipe={recipe} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">

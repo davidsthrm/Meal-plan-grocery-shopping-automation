@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ViewTransition, type ReactNode } from "react";
@@ -221,9 +222,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
         default="none"
       >
         <div className="min-w-0">
-          <Link href={back} className="link text-sm">
-            ← Wochenplan
-          </Link>
+          <BackLink href={back}>Wochenplan</BackLink>
           <p className="eyebrow mt-3">
             {extra ? weekRange(week) : `${weekdayLong(date)}, ${dayAndMonth(date)}`}
           </p>

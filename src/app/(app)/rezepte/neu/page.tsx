@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { SegmentPill } from "@/components/segment-pill";
+import { SWAP } from "@/lib/transitions";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { PastedRecipeForm } from "@/components/pasted-recipe-form";
 import { TypedRecipeForm } from "@/components/typed-recipe-form";
@@ -34,12 +37,9 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link
-        href={forMeal ? `/woche?w=${meal.w}#tag-${meal.d}` : "/rezepte"}
-        className="link text-sm"
-      >
-        ← {forMeal ? "Wochenplan" : "Entdecken"}
-      </Link>
+      <BackLink href={forMeal ? `/woche?w=${meal.w}#tag-${meal.d}` : "/rezepte"}>
+        {forMeal ? "Wochenplan" : "Entdecken"}
+      </BackLink>
       <h1 className="title mt-3">Neues Rezept</h1>
 
       <nav
@@ -47,10 +47,21 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
         className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2"
       >
         <span className="segmented">
-          <Link href={way("")} className="segment" aria-current={pasting ? undefined : "page"}>
+          <SegmentPill name="pill-neu" at={pasting ? 1 : 0} of={2} />
+          <Link
+            href={way("")}
+            transitionTypes={[SWAP]}
+            className="segment"
+            aria-current={pasting ? undefined : "page"}
+          >
             Eintippen
           </Link>
-          <Link href={way("text")} className="segment" aria-current={pasting ? "page" : undefined}>
+          <Link
+            href={way("text")}
+            transitionTypes={[SWAP]}
+            className="segment"
+            aria-current={pasting ? "page" : undefined}
+          >
             Text einfügen
           </Link>
         </span>

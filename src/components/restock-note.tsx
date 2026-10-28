@@ -78,7 +78,7 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
       )}
 
       {items.length === 0 ? (
-        <p className="muted mt-3 text-sm">Es steht nichts darauf.</p>
+        <p className="muted mt-3 text-sm">Nichts ist ausgegangen.</p>
       ) : (
         <ul className="note-lines mt-2">
           {items.map((item) => (

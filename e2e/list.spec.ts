@@ -337,7 +337,7 @@ test("what ran out at home is noted on a note pulled down over any page", async 
   // The page stays where it is: the note lies on top of it.
   await expect(note).toBeVisible();
   await expect(page).toHaveURL(/\/rezepte$/);
-  await expect(note.getByText("Es steht nichts darauf.")).toBeVisible();
+  await expect(note.getByText("Nichts ist ausgegangen.")).toBeVisible();
 
   const write = note.getByLabel("Auf den Merkzettel schreiben");
   for (const text of ["Mehl", "Spülmittel"]) {
@@ -370,7 +370,7 @@ test("what ran out at home is noted on a note pulled down over any page", async 
     .click();
   await expect(note).toBeVisible();
   await note.getByRole("button", { name: "Spülmittel streichen" }).click();
-  await expect(note.getByText("Es steht nichts darauf.")).toBeVisible();
+  await expect(note.getByText("Nichts ist ausgegangen.")).toBeVisible();
   await note.getByRole("button", { name: "Zurückstecken" }).click();
   await expect(note).toBeHidden();
 });

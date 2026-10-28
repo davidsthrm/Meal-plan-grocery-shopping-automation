@@ -89,6 +89,11 @@ export function BackToList({
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
         if (!canStepBack(read(), href, history.length)) return;
         event.preventDefault();
+        // A step back in the history carries no transition: the page comes in from the left
+        // by this mark instead, as it does by a link back.
+        const root = document.documentElement;
+        root.dataset.going = "back";
+        window.setTimeout(() => delete root.dataset.going, 800);
         router.back();
       }}
     >

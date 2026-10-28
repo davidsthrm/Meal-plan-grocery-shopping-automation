@@ -108,6 +108,20 @@ export function mealsOf(date: IsoDate): Meal[] {
   return isoWeekday(date) === 7 ? ["lunch", "coffee", "dinner"] : ["lunch", "dinner"];
 }
 
+/**
+ * Whether every lunch and dinner of the week from `monday` has something planned: a recipe,
+ * leftovers, a meal away or one skipped on purpose. Coffee on Sunday is optional and never
+ * keeps a week from being planned. What the week page celebrates, once.
+ */
+export function weekPlanned(slots: readonly { date: IsoDate; meal: Meal }[], monday: IsoDate) {
+  const taken = new Set(slots.map((slot) => slotKey(slot.date, slot.meal)));
+  for (let day = 0; day < 7; day++) {
+    const date = addDays(monday, day);
+    if (MEALS.some((meal) => !taken.has(slotKey(date, meal)))) return false;
+  }
+  return true;
+}
+
 const MEAL_ORDER: Record<Meal, number> = { lunch: 0, coffee: 1, dinner: 2 };
 
 /** Sorts meals by day and by their time of day. */

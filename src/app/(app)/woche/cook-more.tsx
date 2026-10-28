@@ -24,7 +24,7 @@ const mealText = (slot: { date: IsoDate; meal: Meal }) =>
  * "Mehr kochen": a meal cooked with extra portions for leftovers. The portions are bought
  * with it, and the leftovers are planned for a later meal that is still open, which the
  * household picks. The button in the meal's row of actions opens this under the row
- * (`?mehr=<date>.<meal>`), the way "Hast du einen Vorschlag?" opens a suggestion: the
+ * (`?mehr=<date>.<meal>`), the way "Was könnten wir kochen?" opens a suggestion: the
  * household found it squeezed into the row of signs.
  */
 export function CookMore({

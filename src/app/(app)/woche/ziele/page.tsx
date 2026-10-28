@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { FamilySizeField } from "@/components/family-size-field";
 import { ShoppingDaysFields } from "@/components/shopping-days-fields";
 import { SubmitButton } from "@/components/submit-button";
@@ -22,11 +22,7 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
 
   return (
     <div className="mx-auto max-w-xl">
-      {!first && (
-        <Link href="/woche" className="link text-sm">
-          ← Wochenplan
-        </Link>
-      )}
+      {!first && <BackLink href="/woche">Wochenplan</BackLink>}
       <p className="eyebrow mt-3">{first ? "Bevor es losgeht" : "Wochenplan"}</p>
       <h1 className="title mt-1">Ziele der Woche</h1>
       <p className="mt-2 text-muted">

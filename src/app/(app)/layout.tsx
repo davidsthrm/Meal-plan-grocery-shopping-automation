@@ -9,6 +9,7 @@ import { Logo } from "@/components/logo";
 import { NoteDrawer } from "@/components/note-drawer";
 import { initialOf } from "@/domain/family";
 import { today } from "@/lib/today";
+import { PAGE_MOTION } from "@/lib/transitions";
 import { loadSelf } from "@/server/auth";
 import { loadOwnRestock } from "@/server/shopping/restock";
 
@@ -28,7 +29,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
     // them and for the bar the phone itself keeps there. Coming from the welcome, the whole
     // app rises into place (`.app-in`); any other way in, it is simply there.
     <ViewTransition enter={{ willkommen: "app-in", default: "none" }} default="none">
-      <div className="min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
+      <div className="app-shell min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
         {/* Paper gets the content only: no header, no navigation. */}
         <header className="app-header mx-auto flex max-w-5xl items-center justify-between gap-4 pt-2.5 pb-3.5 print:hidden">
           <Link href="/" aria-label="Essensplan, zum Wochenplan">
@@ -50,7 +51,13 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <InstallHintCard />
-        <main>{children}</main>
+        <main>
+          {/* A page follows the one before it as its link says: from the right going in, from
+              the left going back, cross-faded for another view of the same thing. */}
+          <ViewTransition update={PAGE_MOTION} default="none">
+            <div className="page">{children}</div>
+          </ViewTransition>
+        </main>
         <LiveRefresh />
         <ConnectionGuard />
         <div className="sm:hidden print:hidden">

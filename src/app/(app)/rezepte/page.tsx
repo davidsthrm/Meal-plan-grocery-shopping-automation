@@ -90,8 +90,10 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
       <p className="eyebrow">
         {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
       </p>
-      <h1 className="title mt-1">Entdecken</h1>
-      <div className="mt-4">
+      {/* The switch below says which view is open: the same word as a large title above it
+          only took the first screen. */}
+      <h1 className="sr-only">Entdecken</h1>
+      <div className="mt-2">
         <RecipeViews current="entdecken" />
       </div>
 

@@ -33,7 +33,7 @@ test("back from a recipe, the week plan stands at the meal it was left at", asyn
   await page.goto(`/woche?w=${week}`);
   await page.getByRole("button", { name: "Plan vervollständigen" }).click();
   // Fourteen meals are written at once.
-  await expect(page.getByRole("link", { name: /Hast du einen Vorschlag/ })).toHaveCount(0, {
+  await expect(page.getByRole("link", { name: /Was könnten wir kochen/ })).toHaveCount(0, {
     timeout: 15_000,
   });
   const sunday = page.getByRole("region", { name: "Sonntag Abend", exact: true });

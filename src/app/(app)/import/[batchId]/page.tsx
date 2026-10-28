@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/back-link";
 import { batchSource } from "@/domain/import/batch-shelf";
 import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
@@ -84,9 +85,7 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/import" className="text-sm font-semibold text-accent">
-        ← Alle Stapel
-      </Link>
+      <BackLink href="/import">Alle Stapel</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">
         {source ? sourceLabel(source.book, source.edition) : "Stapel ohne Kochbuch"}
       </h1>

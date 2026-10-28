@@ -60,6 +60,7 @@ export const PICTOGRAMS = [
   "bohne",
   "kaese",
   "garnele",
+  "auswaerts",
 ] as const;
 export type Pictogram = (typeof PICTOGRAMS)[number];
 
@@ -237,4 +238,22 @@ export function pictogramForFilter(
   if (filter.tags.length > 0) return TAG_PICTURE[filter.tags[0]] ?? "etikett";
   if (filter.diet) return DIET_PICTURE[filter.diet];
   return filter.book ? "buch" : "teller";
+}
+
+/**
+ * The picture of a meal without a recipe, where it has one: the bread of a "Vesper", the pot
+ * of leftovers, a pin with a plate for a meal away ("Auswärts", "Oma Heidrun"). A typed
+ * meal and one nobody is home for have none. Shown on the grey of no kind of meal.
+ */
+export function slotPictogram(slot: { kind: string; label?: string }): Pictogram | null {
+  switch (slot.kind) {
+    case "leftovers":
+      return "topf";
+    case "away":
+      return "auswaerts";
+    case "free_text":
+      return searchKey(slot.label ?? "").includes("vesper") ? "brot" : null;
+    default:
+      return null;
+  }
 }

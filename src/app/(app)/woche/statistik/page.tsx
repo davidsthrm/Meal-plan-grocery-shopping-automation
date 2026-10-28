@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { SegmentPill } from "@/components/segment-pill";
+import { BACK, FORWARD, SWAP } from "@/lib/transitions";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { planningWeek, weekRange } from "@/domain/dates";
 import {
@@ -90,16 +93,16 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
 
   return (
     <div className="mx-auto max-w-5xl">
-      <Link
+      <BackLink
         href={period.kind === "week" ? `/woche?w=${period.key}` : `/woche?w=${planningWeek(now)}`}
-        className="link text-sm"
       >
-        ← Wochenplan
-      </Link>
+        Wochenplan
+      </BackLink>
       <h1 className="title mt-3">Statistik</h1>
 
       {/* What is counted: the meals or the shopping. */}
       <nav aria-label="Bereich" className="segmented mt-5">
+        <SegmentPill name="pill-bereich" at={area === "essen" ? 0 : 1} of={2} />
         {(
           [
             ["essen", "Essen", "teller"],
@@ -109,6 +112,7 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
           <Link
             key={key}
             href={href(period, key)}
+            transitionTypes={[SWAP]}
             className="segment gap-2"
             aria-current={area === key ? "page" : undefined}
           >
@@ -121,10 +125,16 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
       {/* For when: a week, a month or a year, and which one. */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3">
         <nav aria-label="Zeitraum" className="segmented sm:w-auto">
+          <SegmentPill
+            name="pill-zeitraum"
+            at={PERIOD_KINDS.indexOf(period.kind)}
+            of={PERIOD_KINDS.length}
+          />
           {PERIOD_KINDS.map((kind) => (
             <Link
               key={kind}
               href={href(periodOf(kind, pick(period, now)))}
+              transitionTypes={[SWAP]}
               className="segment"
               aria-current={period.kind === kind ? "page" : undefined}
             >
@@ -134,7 +144,11 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
         </nav>
         <nav aria-label="Zeitraum wechseln" className="capsule">
           {hasPeriodBefore(period, first) ? (
-            <Link href={href(shiftPeriod(period, -1))} aria-label={BEFORE[period.kind]}>
+            <Link
+              href={href(shiftPeriod(period, -1))}
+              transitionTypes={[BACK]}
+              aria-label={BEFORE[period.kind]}
+            >
               <ArrowIcon back />
             </Link>
           ) : (
@@ -142,9 +156,17 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
               <ArrowIcon back />
             </a>
           )}
-          {period.key !== current.key && <Link href={href(current)}>Aktuell</Link>}
+          {period.key !== current.key && (
+            <Link href={href(current)} transitionTypes={[FORWARD]}>
+              Aktuell
+            </Link>
+          )}
           {hasPeriodAfter(period, now) ? (
-            <Link href={href(shiftPeriod(period, 1))} aria-label={AFTER[period.kind]}>
+            <Link
+              href={href(shiftPeriod(period, 1))}
+              transitionTypes={[FORWARD]}
+              aria-label={AFTER[period.kind]}
+            >
               <ArrowIcon />
             </Link>
           ) : (

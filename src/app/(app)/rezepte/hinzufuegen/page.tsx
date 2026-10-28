@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { AddRecipe } from "@/components/add-recipe";
 import { NeedsConnection } from "@/components/connection";
 import { isIsoDate, mondayOf, weekdayLong } from "@/domain/dates";
@@ -47,12 +47,9 @@ export default async function AddRecipePage(props: PageProps<"/rezepte/hinzufueg
   return (
     <div className="mx-auto max-w-3xl">
       <NeedsConnection>Ein Rezept hinzufügen geht nur mit Verbindung.</NeedsConnection>
-      <Link
-        href={forMeal ? `/woche?w=${forMeal.week}#tag-${forMeal.date}` : "/import"}
-        className="link inline-flex min-h-11 items-center text-sm"
-      >
-        ← {forMeal ? "Wochenplan" : "Import"}
-      </Link>
+      <BackLink href={forMeal ? `/woche?w=${forMeal.week}#tag-${forMeal.date}` : "/import"}>
+        {forMeal ? "Wochenplan" : "Import"}
+      </BackLink>
       {forMeal && <p className="eyebrow mt-1">Für {forMeal.when}</p>}
       <h1 className="title mt-1">{forMeal ? forMeal.label : "Rezept hinzufügen"}</h1>
       {forMeal && <p className="mt-2 text-muted">Noch kein Rezept dazu. Wie kommt es herein?</p>}
