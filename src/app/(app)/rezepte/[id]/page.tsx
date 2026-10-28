@@ -134,8 +134,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     // Wider on an iPad, where ingredients and steps stand side by side.
     <article className="mx-auto max-w-3xl tablet:max-w-5xl">
       <BackToList href={back.href} className="back-link">
-        <span aria-hidden>←</span>
-        {back.label}
+        ← {back.label}
       </BackToList>
       <div className="mt-3 flex items-start gap-3.5">
         <RecipeBadge
@@ -214,7 +213,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       )}
 
       {recipe.status === "approved" && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        // Einplanen, Kochen and the wish in one row, also on a phone: three equal parts.
+        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
           {planned ? (
             // On this week's plan already: the button says so and leads to where it stands.
             <Link
@@ -223,7 +223,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
                   ? `/woche?w=${planned.week}#tag-${planned.date}`
                   : `/woche?w=${planned.week}&t=extra`
               }
-              className="btn border-line bg-line text-accent"
+              className="btn border-line bg-line px-2 text-accent sm:px-4"
               title={
                 planned.date
                   ? `${weekdayLong(planned.date)}, ${MEAL_NAME[planned.meal]}`
@@ -234,7 +234,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               Eingeplant
             </Link>
           ) : (
-            <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary">
+            <Link href={`/woche?rezept=${recipe.id}`} className="btn btn-primary px-2 sm:px-4">
               Einplanen
             </Link>
           )}
@@ -256,12 +256,19 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
             }))}
             steps={steps}
           />
-          <form action={setWanted}>
+          <form action={setWanted} className="contents">
             <input type="hidden" name="recipe" value={recipe.id} />
             <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
-            <SubmitButton className={`btn ${wanted ? "border-accent text-accent" : ""}`}>
+            <SubmitButton
+              className={`btn px-2 sm:px-4 ${wanted ? "border-accent text-accent" : ""}`}
+              label={wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
+            >
               <WishIcon filled={wanted} />
-              {wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
+              {/* Short on a phone, so that the three share one row. */}
+              <span className="sm:hidden">{wanted ? "Vorgemerkt" : "Vormerken"}</span>
+              <span className="max-sm:hidden">
+                {wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
+              </span>
             </SubmitButton>
           </form>
         </div>
