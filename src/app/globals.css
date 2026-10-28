@@ -2823,6 +2823,43 @@ summary,
     }
   }
 
+  /* "Was ist noch da?": what is there on the left on an iPad, the recipes beside it. */
+  .fridge {
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (width >= 46rem) {
+    .fridge {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      align-items: start;
+      gap: 2rem;
+    }
+    .fridge-pick {
+      position: sticky;
+      top: 5rem;
+    }
+  }
+  .fridge-found {
+    margin-top: 0.4rem;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+  }
+  .fridge-found-row {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.9rem;
+    font-weight: 600;
+    text-align: left;
+  }
+  .fridge-found li + li .fridge-found-row {
+    border-top: 1px solid var(--color-line);
+  }
+
   /* On a touch screen the rows scroll under the finger; a bar under each says nothing. */
   @media (pointer: coarse) {
     .shelf,
