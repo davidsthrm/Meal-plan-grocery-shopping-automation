@@ -3,8 +3,9 @@ import { SheetHoles } from "./sheet-holes";
 /**
  * What a section shows the moment its tab is tapped, while the server reads the page: its
  * name and the pale shape of what comes, a sheet of the pad or a few cards. Without it a
- * tap waited half a second for the whole page and seemed not to have landed. It appears
- * only after a moment, so that a page that comes quickly does not flash.
+ * tap waited half a second for the whole page and seemed not to have landed. It stands at
+ * once and starts to breathe after a moment, so that a page that comes quickly does not
+ * flicker.
  */
 export function PageLoading({ label, shape }: { label: string; shape: "sheet" | "cards" }) {
   return (

@@ -56,6 +56,15 @@ export function ArrowIcon({ back = false }: { back?: boolean }) {
   );
 }
 
+/** Pointing down: what is folded away under it. */
+export function ChevronIcon() {
+  return (
+    <svg {...base} width={18} height={18}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
 export function CloseIcon() {
   return (
     <svg {...base} width={18} height={18}>

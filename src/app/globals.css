@@ -165,6 +165,10 @@ summary,
       transform 120ms var(--ease-out),
       background-color 120ms ease;
   }
+  /* A sign keeps its size where the words are tight: in three narrow buttons it shrank to a speck. */
+  :is(.btn, .chip, .link, .tag-edit) > svg {
+    flex-shrink: 0;
+  }
   @media (hover: hover) and (pointer: fine) {
     .btn:hover {
       background: rgb(35 33 29 / 0.1);
@@ -697,6 +701,11 @@ summary,
     max-width: 30rem;
     margin: 0 auto;
     border-radius: 999px;
+    /*
+     * A layer of its own: on the iPhone a card that lifts under the finger was drawn over the
+     * blurred bar, which then lay under the page (October 2026).
+     */
+    transform: translateZ(0);
   }
   /*
    * Liquid glass (`GlassSurface`): blur, a white tint, a sheen across it and light catching
@@ -953,7 +962,7 @@ summary,
   /* A shopping note picked up from among the others comes closer. */
   .zoom-in {
     transform-origin: 50% 0;
-    animation: zoom-in 260ms var(--ease-out) both;
+    animation: zoom-in 260ms var(--ease-out) backwards;
   }
   /*
    * Notes lying next to each other do not lie straight. Picked up, one does.
@@ -1326,6 +1335,23 @@ summary,
     font-size: 0.78rem;
     font-weight: 700;
     color: var(--kind-ink, var(--color-accent));
+  }
+  /* The way to change the tags, as small as one of them, an edge drawn instead of a fill. */
+  .tag-edit {
+    display: inline-flex;
+    min-height: 1.75rem;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px dashed color-mix(in srgb, var(--color-accent) 45%, transparent);
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--color-accent);
+  }
+  .tag-edit > svg {
+    width: 0.95rem;
+    height: 0.95rem;
   }
 
   /* A coloured dot in front of a name. */
@@ -2818,11 +2844,76 @@ summary,
  * delay of 150ms, the household saw nothing happen and tapped again (October 2026).
  */
 .page-loading {
-  animation: fade-in 120ms ease both;
+  animation: none;
+}
+/*
+ * A page on its way (`NavigationProgress`): a thin line of the green runs along the top
+ * edge until it is there. It appears after 60ms, so that a page from the browser's memory
+ * does not flash it.
+ */
+.nav-progress {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 0;
+  z-index: 30;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.nav-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  transform: translateX(-100%);
+}
+html[data-navigating] .nav-progress {
+  opacity: 1;
+  transition-delay: 60ms;
+}
+html[data-navigating] .nav-progress::before {
+  animation: nav-progress 1100ms var(--ease-in-out) 60ms infinite;
+}
+@keyframes nav-progress {
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still there, but it does not run: the whole width, faint. */
+  html[data-navigating] .nav-progress::before {
+    width: 100%;
+    animation: none;
+    transform: none;
+    opacity: 0.5;
+  }
 }
 .loading-bar {
   border-radius: 0.5rem;
   background: rgb(35 33 29 / 0.06);
+}
+/*
+ * Waiting, it breathes: a shape that stood still read as a page that was there but empty,
+ * and the household did not see that anything was loading (October 2026). Only after a
+ * moment, so that a page that comes quickly does not flicker.
+ */
+.page-loading :is(.loading-bar, .sheet, .card) {
+  animation: loading-breathe 900ms ease-in-out 250ms infinite alternate;
+}
+@keyframes loading-breathe {
+  to {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-loading :is(.loading-bar, .sheet, .card) {
+    animation: none;
+  }
 }
 
 /* A page comes in softly. Whoever asked for less motion gets none. */
@@ -3045,9 +3136,13 @@ summary,
 details[open] > :not(summary) {
   animation: unfold 200ms var(--ease-out);
 }
+/*
+ * Only before and while it runs: kept to its end, the motion left every page on a layer of
+ * its own, which the iPhone drew over the glass of the bar of the sections (October 2026).
+ */
 main > *,
 .page > * {
-  animation: page-in 220ms var(--ease-out) both;
+  animation: page-in 220ms var(--ease-out) backwards;
 }
 main > .page {
   animation: none;
@@ -3061,10 +3156,14 @@ html[data-going="back"] .page > * {
   animation: none;
 }
 /*
- * From one page to the next. The old one fades away at once, the new one comes in from the
+ * From one page to the next. The old one is gone at once, the new one comes in from the
  * side the link points to: from the right going in or to a section further right, from
- * the left going back. Another view of the same page cross-fades. The box itself does not
+ * the left going back. Another view of the same page fades in. The box itself does not
  * morph between two heights: the new page simply stands where it will stay.
+ *
+ * The old page is not drawn at all: Safari draws the picture of an old page over everything
+ * else, the bar of the sections included, whatever its z-index (October 2026). One picture
+ * less to move is also what the iPhone needed to move the new one smoothly.
  */
 ::view-transition-group(.nav-forward),
 ::view-transition-group(.nav-back),
@@ -3078,11 +3177,11 @@ html[data-going="back"] .page > * {
 ::view-transition-old(.nav-swap),
 ::view-transition-old(.nav-tab-forward),
 ::view-transition-old(.nav-tab-back) {
-  animation: fade-out 120ms ease both;
+  display: none;
 }
 /*
- * Going in or back: a short way, and a light blur at the start that joins the old page and
- * the new one into one movement instead of two pictures over each other.
+ * Going in or back: a short way. A light blur at the start joined the two pages in Chrome,
+ * but drawing it over a whole page stuttered on the iPhone (October 2026).
  */
 ::view-transition-new(.nav-forward) {
   animation: page-from-right 240ms var(--ease-out) both;
@@ -3099,12 +3198,53 @@ html[data-going="back"] .page > * {
   animation-duration: 220ms;
   animation-timing-function: var(--ease-in-out);
 }
+/* A pill whose page goes, without one on the next, goes with it; one that comes, comes with its page. */
+::view-transition-old(.segment-pill):only-child {
+  display: none;
+}
+::view-transition-new(.segment-pill):only-child {
+  animation: fade-in 200ms ease both;
+}
 ::view-transition-group(.nav-forward),
 ::view-transition-group(.nav-back),
 ::view-transition-group(.nav-swap),
 ::view-transition-group(.nav-tab-forward),
 ::view-transition-group(.nav-tab-back) {
   z-index: 2;
+}
+/*
+ * The header and the bar of the sections stay where they are, above the page on its way:
+ * left in the picture of the whole screen, they lay under the page while it moved. Their
+ * new state shows at once, the tapped section already marked.
+ */
+.app-header {
+  view-transition-name: app-header;
+}
+.tabbar {
+  view-transition-name: app-tabbar;
+}
+::view-transition-group(app-header),
+::view-transition-group(app-tabbar) {
+  z-index: 3;
+  animation: none;
+}
+::view-transition-old(app-header),
+::view-transition-old(app-tabbar) {
+  display: none;
+}
+::view-transition-new(app-header),
+::view-transition-new(app-tabbar) {
+  animation: none;
+}
+/*
+ * Drawn on its own for that moment, a glass sees nothing behind it to blur: it is frosted
+ * paper instead, until the page has come.
+ */
+:root:active-view-transition .tabbar-glass > [aria-hidden]:first-child {
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+}
+:root:active-view-transition .app-header::before {
+  background: color-mix(in srgb, var(--section-tint, var(--color-paper)) 94%, transparent);
 }
 /* Another section: dozens of times a day, so nearer and quicker, barely there. */
 ::view-transition-new(.nav-tab-forward) {
@@ -3119,14 +3259,12 @@ html[data-going="back"] .page > * {
 @keyframes page-from-right {
   from {
     opacity: 0;
-    filter: blur(2px);
     transform: translateX(1.25rem);
   }
 }
 @keyframes page-from-left {
   from {
     opacity: 0;
-    filter: blur(2px);
     transform: translateX(-1.25rem);
   }
 }
@@ -3187,24 +3325,18 @@ html[data-going="back"] .page > * {
     transform: translateY(-2.5rem) scale(0.98);
   }
 }
-:root:active-view-transition-type(willkommen) .app-header {
-  view-transition-name: app-header;
-}
-:root:active-view-transition-type(willkommen) .tabbar {
-  view-transition-name: app-tabbar;
-}
 /* What is left of the welcome has lifted off already: it goes at once. */
 :root:active-view-transition-type(willkommen)::view-transition-old(root) {
   animation: none;
   opacity: 0;
 }
-::view-transition-new(app-header) {
+:root:active-view-transition-type(willkommen)::view-transition-new(app-header) {
   animation: app-header-in 380ms var(--ease-out) both;
 }
 ::view-transition-new(.app-in) {
   animation: app-in 420ms var(--ease-out) 60ms both;
 }
-::view-transition-new(app-tabbar) {
+:root:active-view-transition-type(willkommen)::view-transition-new(app-tabbar) {
   animation: app-tabbar-in 380ms var(--ease-out) 120ms both;
 }
 @keyframes app-header-in {
@@ -3240,13 +3372,13 @@ html[data-going="back"] .page > * {
   ::view-transition-group(*) {
     animation: none !important;
   }
-  /* From page to page it still fades: less motion is not none. */
+  /* From page to page the new one still fades in: less motion is not none. */
   ::view-transition-old(.nav-forward),
   ::view-transition-old(.nav-back),
   ::view-transition-old(.nav-swap),
   ::view-transition-old(.nav-tab-forward),
   ::view-transition-old(.nav-tab-back) {
-    animation: fade-out 120ms ease both !important;
+    display: none;
   }
   ::view-transition-new(.nav-forward),
   ::view-transition-new(.nav-back),
