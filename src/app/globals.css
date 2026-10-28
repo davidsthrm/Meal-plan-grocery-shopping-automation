@@ -2573,10 +2573,16 @@ summary,
   .spine:active {
     transform: scale(0.97);
   }
-  /* A long name takes two lines along the spine rather than losing its end. */
+  /*
+   * The name along the spine, read from the foot upwards as on German books. A long name
+   * takes a second line beside the first; the spine's width keeps it to two. No line clamp:
+   * Safari does not draw one in vertical writing, and laid the names across the spines,
+   * upside down and over each other (October 2026).
+   */
   .spine-name {
-    display: -webkit-box;
+    display: block;
     min-height: 0;
+    max-width: 2rem;
     flex: 1;
     overflow: hidden;
     font-size: 0.86rem;
@@ -2585,8 +2591,6 @@ summary,
     text-wrap: balance;
     writing-mode: vertical-rl;
     rotate: 180deg;
-    -webkit-box-orient: horizontal;
-    -webkit-line-clamp: 2;
   }
   .spine-count {
     font-size: 0.72rem;
