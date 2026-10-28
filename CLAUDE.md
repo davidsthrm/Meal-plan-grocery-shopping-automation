@@ -476,7 +476,13 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
 - A page follows the one before it as its link says (`transitionTypes`, `src/lib/transitions.ts`,
   the `<ViewTransition>` around the page in the layout): from the right going in, to a
   section further right or to the next week; from the left going back; cross-faded for
-  another view of the same page (Mahlzeiten and Außerdem, Entdecken and Regal). Only a link
+  another view of the same page (Mahlzeiten and Außerdem, Entdecken and Regal). Going in or
+  back takes 240ms with a light blur at the start that joins old and new into one movement;
+  another section of the bar, changed dozens of times a day, 200ms over a shorter way. The
+  pastel of a section is not faded: a change of an inherited value recalculated every
+  element of the page in every frame while the tap loaded the next page. The raised pill of
+  a segmented control is an element of its own (`SegmentPill`, named per control) that
+  slides to the other view, under the words. Only a link
   that names one moves the page: a live refresh and the answer to a form change it in place,
   or every tick in the shop would make the note flicker. A step back in the history
   (`BackToList`) names none and marks the page (`data-going`) instead. Asked for less
@@ -1398,7 +1404,10 @@ Shopping list
   menu, for a slip of the pen; the drugstore's note, which has no "Haben wir schon", keeps
   the bin. The household found the bin there meant "not bought", which is decided in the
   shop (October 2026). Each decision can be taken back for five seconds from the bar
-  at the foot ("Widerrufen"). The view for the shop has its own menu, sheets and bar
+  at the foot ("Widerrufen"). The bar rises when it first appears and then stays, the next
+  decision only changing its words (a transition, not keyframes): shown afresh for each, it
+  jumped under quick swipes. A line removed folds away (`data-gone`: its height closes and
+  it fades in 160ms) instead of making the lines below it jump. The view for the shop has its own menu, sheets and bar
   (`LineActionsHere`): a modal dialog makes everything outside it inert. On a note the
   actions stand at the end of the line's first row, and an opened line runs the width of
   the note under them; beside them it was a narrow column on a phone.
