@@ -14,13 +14,10 @@ async function openSelection(page: Page, count: string) {
   return bar;
 }
 
-test("the Regal lists every recipe and changes the ticked ones together", async ({ page }) => {
-  await page.goto("/rezepte");
-  await page
-    .getByRole("navigation", { name: "Ansicht" })
-    .getByRole("link", { name: "Regal" })
-    .click();
-  await expect(page.getByRole("heading", { name: "Regal" })).toBeVisible();
+test("Alle Rezepte lists every recipe and changes the ticked ones together", async ({ page }) => {
+  await page.goto("/import");
+  await page.getByRole("link", { name: /Alle Rezepte/ }).click();
+  await expect(page.getByRole("heading", { name: /Alle Rezepte/ })).toBeVisible();
   await expect(page.getByRole("status").first()).toHaveText("20 Rezepte");
   // Nothing ticked: the bar is out of sight.
   await expect(page.locator(".selection-bar")).toBeHidden();
@@ -42,7 +39,7 @@ test("the Regal lists every recipe and changes the ticked ones together", async 
   await expect(page.getByText("„Omas Rezept“ steht jetzt bei 1 Rezept.")).toBeVisible();
 
   // An effort for every recipe of the page, and the list narrowed to what still lacks one.
-  await page.goto("/rezepte/regal?ohne=aufwand");
+  await page.goto("/import/rezepte?ohne=aufwand");
   const before = await page.getByRole("status").first().innerText();
   expect(before).not.toBe("0 Rezepte");
   // "Alle auf dieser Seite", on a phone "Alle wählen".
@@ -65,17 +62,17 @@ test("the Regal lists every recipe and changes the ticked ones together", async 
   );
 });
 
-test("a sorted column and a page of the Regal live in its address", async ({ page }) => {
-  await page.goto("/rezepte/regal?sortierung=titel&richtung=ab");
+test("a sorted column and a page of Alle Rezepte live in its address", async ({ page }) => {
+  await page.goto("/import/rezepte?sortierung=titel&richtung=ab");
   const titles = page.locator("tbody tr td:nth-child(2) a");
   await expect(titles.first()).toHaveText("Zitronenhähnchen");
-  await page.goto("/rezepte/regal?sortierung=titel");
+  await page.goto("/import/rezepte?sortierung=titel");
   await expect(titles.first()).toHaveText("Forelle Müllerin");
 });
 
 test("a recipe is deleted after asking, one on a plan stays", async ({ page }) => {
   await planAsExtra("Pfeffersteak", "2026-10-12");
-  await page.goto("/rezepte/regal");
+  await page.goto("/import/rezepte");
 
   // The way to delete is a sign on a wide screen and under "Mehr" on a phone; both lead here.
   const ask = async (title: string) => {
@@ -100,9 +97,14 @@ test("a recipe is deleted after asking, one on a plan stays", async ({ page }) =
 test("tags are changed in place on a recipe's page and merged on their own page", async ({
   page,
 }) => {
-  await page.goto("/rezepte/regal");
+  await page.goto("/import/rezepte");
   await page.getByRole("link", { name: "Kürbisgnocchi", exact: true }).click();
-  await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}\?von=regal$/);
+  await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}\?von=alle$/);
+  // The way back leads to "Alle Rezepte", not to Entdecken.
+  await expect(page.getByRole("link", { name: "← Alle Rezepte" })).toHaveAttribute(
+    "href",
+    /^\/import\/rezepte#r-/,
+  );
   await page.getByRole("link", { name: /Stichworte (ändern|vergeben)/ }).click();
   const editor = page.getByRole("form", { name: "Stichworte ändern" });
   await editor.getByText("Braucht Zeit", { exact: true }).click();
@@ -119,7 +121,7 @@ test("tags are changed in place on a recipe's page and merged on their own page"
   await expect(editor.getByLabel("Neues Stichwort")).toHaveValue("");
 
   // A second tag of the household's own goes into the first.
-  await page.goto("/rezepte/regal");
+  await page.goto("/import/rezepte");
   await page.getByLabel("Pilzrisotto auswählen").check();
   const bar = await openSelection(page, "1 Rezept ausgewählt");
   await bar.getByLabel("Stichwort hinzufügen").fill("Party");
@@ -198,7 +200,9 @@ test("a magazine's batches are one folder with its editions", async ({ page }) =
     { book: "E2E Kochbuch" },
   ]);
   await page.goto("/import");
-  const batches = page.locator("ul.card > li");
+  // Folded below "Alle Rezepte": a batch is opened again rarely.
+  await page.getByText("Bisherige Stapel").click();
+  const batches = page.locator("details.card > ul > li");
   await expect(batches).toHaveCount(2);
   const folder = batches.filter({ hasText: "Testheft" });
   await expect(folder).toContainText("2 Ausgaben · 0 Rezepte");

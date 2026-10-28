@@ -73,9 +73,10 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
 
   const view =
     area === "essen" ? (
-      await loadMealStats(db, counted, period, now).then(({ stats, library }) => (
+      await loadMealStats(db, counted, period, now).then(({ stats, discovery, library }) => (
         <MealsView
           stats={stats}
+          discovery={discovery}
           period={period}
           today={now}
           recipes={new Map(library.recipes.map((recipe) => [recipe.id, recipe]))}

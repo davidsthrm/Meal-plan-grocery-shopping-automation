@@ -36,13 +36,16 @@ test("a recipe that needs a decision is reviewed, corrected and lands in the lib
   await expect(page.getByText("übernommen", { exact: true })).toBeVisible();
 
   await page.goto("/rezepte");
-  // The one recipe of the library stands on several shelves.
-  const card = page.getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ }).first();
+  // The one recipe of the library stands on several shelves, and as a card among all of them.
+  const card = page
+    .getByRole("region", { name: "Alle Rezepte" })
+    .getByRole("link", { name: /Kartoffelsuppe mit Topinambur/ });
   await expect(card).toContainText("6 Gläser");
   await card.click();
   await expect(page.getByRole("heading", { name: "Kartoffelsuppe mit Topinambur" })).toBeVisible();
   await expect(page.getByText("750 g")).toBeVisible();
-  await expect(page.getByText("6 Gläser")).toBeVisible();
+  // Made as written, six jars, and the stepper counts jars.
+  await expect(page.getByRole("group", { name: "Menge" })).toContainText("6 Gläser");
   await expect(page.getByText("E2E Kochbuch, S. 12")).toBeVisible();
 });
 
@@ -85,6 +88,8 @@ test("a photo that is no recipe can be thrown out", async ({ page }) => {
 
 test("a batch can be deleted together with what was read from it", async ({ page }) => {
   await page.goto("/import");
+  // The earlier batches are folded below "Alle Rezepte".
+  await page.getByText("Bisherige Stapel").click();
   await page.getByRole("link", { name: /E2E Kochbuch/ }).click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Stapel löschen" }).click();

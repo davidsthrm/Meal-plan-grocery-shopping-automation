@@ -3,6 +3,15 @@ import { ListMemory } from "@/components/list-return";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PictogramIcon } from "@/components/pictogram";
+import {
+  CategoryTabsNav,
+  ChipRow,
+  FeaturedRecipe,
+  FeatureTile,
+  ShelfRow,
+  ThemeRow,
+} from "@/components/discover";
+import { DiceIcon, StackIcon } from "@/components/icons";
 import { RecipeCard } from "@/components/recipe-card";
 import {
   activeChips,
@@ -14,7 +23,17 @@ import {
   WaysOut,
 } from "@/components/recipe-filters";
 import { RecipeViews } from "@/components/recipe-views";
-import { directory, discover, toDiscover, type Shelf } from "@/domain/library/discover";
+import {
+  categoryTabs,
+  discover,
+  recipeOfTheDay,
+  tagChips,
+  themes,
+  toDiscover,
+  type Shelf,
+} from "@/domain/library/discover";
+import { isMeal } from "@/domain/library/summary";
+import { fromDiscover } from "@/lib/origin";
 import {
   byFavoriteThenTitle,
   filterParams,
@@ -25,7 +44,6 @@ import {
 } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
 import { monthInSeason, monthOf, MONTH_NAME, seasonTagOf } from "@/domain/season/calendar";
-import { filterTone } from "@/lib/plan-text";
 import { today } from "@/lib/today";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { CALENDAR } from "@/server/season";
@@ -40,12 +58,20 @@ const RELATED = 12;
 /** A library this small is shown whole, below its shelves. */
 const SMALL = 30;
 const PATH = "/rezepte";
+/** The tags the recipe of the day shows: what it is made of and for, not its effort. */
+const FEATURED_GROUPS = new Set(["Hauptzutat", "Gericht", "Küche", "Anlass", "Eigene"]);
 
-/** Where a shelf's "Alle anzeigen" leads: its filter, or the Regal by what is new. */
-function shelfHref(shelf: Shelf): string | null {
-  if (shelf.filter) return filterHref(PATH, shelf.filter);
-  return shelf.key === "neu" ? "/rezepte/regal?sortierung=neu&richtung=ab" : null;
+/**
+ * Where a shelf's "Alle anzeigen" leads: its filter, inside the category of the tab it stands
+ * on, or "Alle Rezepte" by what is new.
+ */
+function shelfHref(shelf: Shelf, category: string | null): string | null {
+  if (shelf.filter)
+    return filterHref(PATH, { ...shelf.filter, category: shelf.filter.category ?? category });
+  return shelf.key === "neu" ? "/import/rezepte?sortierung=neu&richtung=ab" : null;
 }
+
+const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const params = await props.searchParams;
@@ -62,7 +88,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
     loadLibraryForLists(db, now),
     db.from("recipe").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
   ]);
-  const { recipes, categories, books, tagGroups } = library;
+  const { recipes, categories, tagGroups } = library;
   const waiting = waitingRows.count ?? 0;
   const categoryName = new Map(categories.map((category) => [category.key, category.name]));
   const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
@@ -71,10 +97,25 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   // Favourites and wishes are on "Favoriten": only a search by words finds them here.
   const offered = toDiscover(recipes, filter);
   const list = await listRecipes(db, library, offered, filter, { season: true, longAgo: true });
+  const favorites = recipes.filter((recipe) => recipe.isFavorite);
+  // A category's tab is a page of its own inside the category; "Für euch" is the whole library.
+  const tabs = browsing ? categoryTabs(offered, categories) : [];
+  const tab = tabs.find((entry) => entry.key === one(params.art)) ?? null;
+  const pool = tab ? offered.filter((recipe) => recipe.category === tab.key) : offered;
+  const from = fromDiscover(tab?.key ?? null);
   const shelves = browsing
-    ? discover(offered, { today: now, history: library.history, tagGroups })
+    ? discover(pool, { today: now, history: library.history, tagGroups, favorites })
     : [];
-  const sections = browsing ? directory(offered, { categories, tagGroups, books }) : [];
+  const featured = browsing ? recipeOfTheDay(pool, { today: now, history: library.history }) : null;
+  const ideas = browsing && !tab ? themes(offered, now) : [];
+  const groupNamed = (name: string) => tagGroups.find((group) => group.name === name);
+  const inTab = (tag: string) =>
+    filterHref(PATH, { ...NO_FILTER, category: tab?.key ?? null, tags: [tag] });
+  const neverCooked = offered.filter(
+    (recipe) => isMeal(recipe) && !library.history.has(recipe.id),
+  ).length;
+  // While browsing the page has the whole width; the filters are a sheet, as on a phone.
+  const layout = browsing ? "sheet" : "aside";
   const results = list.results;
   const related = list.related.slice(0, RELATED);
   const href = (next: RecipeFilter) => filterHref(PATH, next);
@@ -117,10 +158,10 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
       ) : (
         <div className="mt-5">
           <FilterLayout
-            layout="aside"
+            layout={layout}
             panel={
               <FilterPanel
-                layout="aside"
+                layout={layout}
                 groups={panelGroups(list.groups, href)}
                 total={results.length}
                 reset={reset}
@@ -131,72 +172,100 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
               path={PATH}
               filter={filter}
               hidden={filterParams({ ...filter, text: "" })}
-              layout="aside"
+              layout={layout}
               chips={activeChips(list.groups, href)}
               reset={reset}
             />
 
-            {browsing && harvest.length > 0 && (
-              <Link
-                href="/rezepte/saison"
-                className="card lift kind-vegetarian mt-5 flex items-center gap-3 px-4 py-3"
-              >
-                <span className="badge h-11 w-11">
-                  <PictogramIcon
-                    name={pictogramForFilter({ ...NO_FILTER, tags: [seasonTagOf(month)] })}
-                    className="h-[68%] w-[68%]"
-                  />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold">
-                    Was hat im {MONTH_NAME[month]} Saison?
-                  </span>
-                  <span className="block truncate text-sm text-muted">{harvest.join(", ")}</span>
-                </span>
-                <span aria-hidden className="text-accent">
-                  →
-                </span>
-              </Link>
+            {browsing && <CategoryTabsNav tabs={tabs} current={tab?.key ?? null} />}
+
+            {featured && (
+              <div className="mt-4">
+                <FeaturedRecipe
+                  featured={featured}
+                  category={nameOf(featured.recipe.category)}
+                  from={from}
+                  tags={tagGroups
+                    .filter((group) => FEATURED_GROUPS.has(group.name))
+                    .flatMap((group) => group.tags)
+                    .filter((tag) => featured.recipe.tags.includes(tag.ref))
+                    .slice(0, 4)
+                    .map((tag) => tag.name)}
+                />
+              </div>
             )}
 
-            {shelves.map((shelf) => {
-              const all = shelfHref(shelf);
-              return (
-                <section key={shelf.key} className="mt-7" aria-label={shelf.title}>
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 className="text-xl font-bold tracking-tight">
-                      {shelf.title}{" "}
-                      <span className="text-base font-normal text-muted tabular-nums">
-                        {shelf.total}
-                      </span>
-                    </h2>
-                    {all && (
-                      <Link
-                        href={all}
-                        className="link inline-flex min-h-11 shrink-0 items-center text-sm"
-                      >
-                        Alle anzeigen
-                      </Link>
-                    )}
-                  </div>
-                  <div className="shelf mt-1">
-                    {shelf.recipes.map((recipe) => (
-                      <RecipeCard
-                        key={recipe.id}
-                        recipe={recipe}
-                        category={nameOf(recipe.category)}
-                        note={shelf.why?.[recipe.id]}
-                        className="w-60"
+            {browsing && !tab && (
+              // What there is to do besides browsing, one row: four on an iPad, sideways on a phone.
+              <nav aria-label="Mehr entdecken" className="feature-row mt-3">
+                {harvest.length > 0 && (
+                  <FeatureTile
+                    href="/rezepte/saison"
+                    tone="kind-vegetarian"
+                    picture={
+                      <PictogramIcon
+                        name={pictogramForFilter({ ...NO_FILTER, tags: [seasonTagOf(month)] })}
+                        className="h-[68%] w-[68%]"
                       />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+                    }
+                    title={`Saison im ${MONTH_NAME[month]}`}
+                    text={harvest.join(", ")}
+                  />
+                )}
+                <FeatureTile
+                  href="/rezepte/stapel"
+                  tone="tone-stack"
+                  picture={<StackIcon />}
+                  title="Rezept-Stapel"
+                  text={`${neverCooked} noch nie gekocht, zum Durchwischen`}
+                />
+                <FeatureTile
+                  href="/rezepte/zutaten"
+                  tone="tone-fridge"
+                  picture={<PictogramIcon name="korb" className="h-[68%] w-[68%]" />}
+                  title="Was ist noch da?"
+                  text="Zutaten antippen, Rezepte finden"
+                />
+                <FeatureTile
+                  href="/rezepte/roulette"
+                  tone="tone-chance"
+                  picture={<DiceIcon />}
+                  title="Rezept-Roulette"
+                  text="Zutat, Küche, Aufwand ausgelost"
+                />
+              </nav>
+            )}
+
+            {tab && (
+              <>
+                <ChipRow
+                  title="Nach Hauptzutat"
+                  chips={tagChips(pool, groupNamed("Hauptzutat"))}
+                  href={inTab}
+                />
+                <ChipRow
+                  title="Nach Küche"
+                  chips={tagChips(pool, groupNamed("Küche"))}
+                  href={inTab}
+                />
+              </>
+            )}
+
+            <ThemeRow themes={ideas} href={href} />
+
+            {shelves.map((shelf) => (
+              <ShelfRow
+                key={shelf.key}
+                shelf={shelf}
+                all={shelfHref(shelf, tab?.key ?? null)}
+                nameOf={nameOf}
+                from={from}
+              />
+            ))}
 
             {browsing && recipes.length <= SMALL && (
               <section className="mt-7" aria-label="Alle Rezepte">
-                <h2 className="text-xl font-bold tracking-tight">Alle Rezepte</h2>
+                <h2 className="shelf-title">Alle Rezepte</h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {[...recipes].sort(byFavoriteThenTitle).map((recipe) => (
                     <RecipeCard
@@ -206,44 +275,6 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
                     />
                   ))}
                 </div>
-              </section>
-            )}
-
-            {sections.length > 0 && (
-              <section className="mt-10" aria-label="Stöbern">
-                <h2 className="border-b border-line pb-2 text-xl font-bold tracking-tight">
-                  Stöbern
-                </h2>
-                {sections.map((section) => (
-                  <section key={section.title} className="mt-5" aria-label={section.title}>
-                    <h3 className="eyebrow">{section.title}</h3>
-                    <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-                      {section.entries.map((entry) => (
-                        <li key={entry.key}>
-                          <Link
-                            href={href(entry.filter)}
-                            className={`card lift flex h-full min-h-14 items-center gap-2.5 px-3 py-2 ${filterTone(entry.filter)}`}
-                          >
-                            <span className="badge h-9 w-9">
-                              <PictogramIcon
-                                name={pictogramForFilter(entry.filter)}
-                                className="h-[68%] w-[68%]"
-                              />
-                            </span>
-                            {/* A long name breaks at a syllable and takes two lines at most. */}
-                            <span
-                              className="line-clamp-2 min-w-0 flex-1 leading-tight font-semibold hyphens-auto"
-                              title={entry.label}
-                            >
-                              {entry.label}
-                            </span>
-                            <span className="text-sm text-muted tabular-nums">{entry.count}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
               </section>
             )}
 

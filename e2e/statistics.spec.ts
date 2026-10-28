@@ -38,6 +38,12 @@ test.describe("statistics", () => {
     await expect(card(page, "Ziele der Woche")).toContainText("pro Woche");
     await expect(card(page, "Ohne Rezept")).toContainText("Vesper");
     await expect(card(page, "Kaffee & Kuchen")).toContainText("Zitronen-Mohn-Kuchen");
+    // What was new to the family, and the badges for trying something new.
+    const found = card(page, "Entdeckt");
+    await expect(found).toContainText("vom Kochbuch je gekocht");
+    await expect(found.getByRole("list", { name: "Abzeichen" }).getByRole("listitem")).toHaveCount(
+      5,
+    );
 
     // A dish cooked more than once leads to its recipe, and the recipe back here.
     const top = card(page, "Am häufigsten gekocht");

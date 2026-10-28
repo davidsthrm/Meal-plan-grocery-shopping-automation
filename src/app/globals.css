@@ -1613,6 +1613,20 @@ summary,
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }
+  .stepper button:disabled {
+    opacity: 0.35;
+  }
+  /*
+   * An amount scaled to the servings cooked, in the ingredients and inside the steps: in the
+   * green with a faint dotted line, so that it reads as changed without standing out.
+   */
+  .scaled {
+    color: var(--color-accent);
+    font-weight: 600;
+    text-decoration: underline dotted color-mix(in srgb, var(--color-accent) 45%, transparent);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.2em;
+  }
   .stepper-value {
     display: inline-flex;
     align-items: center;
@@ -2364,6 +2378,626 @@ summary,
     }
   }
 
+  /*
+   * Entdecken while nothing is searched, made for the iPad (October 2026): the tabs of the
+   * categories, the recipe of the day as one band, a row of what there is to do besides
+   * browsing, and shelves of the library's cards or of rows three to a column.
+   */
+  .featured {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--kind) 70%, var(--color-line));
+    border-radius: 1.25rem;
+    background: color-mix(in srgb, var(--kind) 45%, var(--color-surface));
+  }
+  .featured .badge {
+    background: var(--color-surface);
+  }
+  @media (width >= 40rem) {
+    .featured {
+      flex-direction: row;
+      align-items: center;
+      gap: 1.25rem;
+    }
+  }
+  .featured-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  @media (width >= 46rem) {
+    .featured-title {
+      font-size: 1.5rem;
+    }
+  }
+  .side-card {
+    display: flex;
+    height: 100%;
+    min-height: 4.5rem;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.85rem 1rem;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--kind) 65%, var(--color-surface));
+  }
+  .side-card > .badge {
+    background: var(--color-surface);
+  }
+  /*
+   * The tiles of what there is to do besides browsing: the blush of the favourites for the
+   * stack (what is kept there becomes a wish), a misty blue for what is left in the fridge,
+   * a warm sand for chance.
+   */
+  .tone-stack {
+    --kind: #f5e1e6;
+    --kind-ink: #8a3f56;
+  }
+  .tone-fridge {
+    --kind: #e2ebf2;
+    --kind-ink: #3f5a70;
+  }
+  .feature-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(78%, 17rem);
+    gap: 0.6rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    margin-inline: -1rem;
+    padding: 0.1rem 1rem 0.3rem;
+    scroll-padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+  .feature-row > * {
+    display: block;
+    border-radius: 1.1rem;
+    scroll-snap-align: start;
+  }
+  /* Four side by side on an iPad: each its sign above its name, so that the words have room. */
+  @media (width >= 46rem) {
+    .feature-row {
+      grid-auto-columns: minmax(0, 1fr);
+      overflow: visible;
+      margin-inline: 0;
+      padding: 0;
+    }
+    .feature-row .side-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.55rem;
+    }
+    .feature-row .side-card > :last-child {
+      display: none;
+    }
+  }
+  .tone-chance {
+    --kind: #efe5d3;
+    --kind-ink: #7a5a2e;
+  }
+  .shelf-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+  }
+  @media (width >= 46rem) {
+    .shelf-title {
+      font-size: 1.45rem;
+    }
+  }
+  .shelf-list {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(3, auto);
+    grid-auto-columns: min(84%, 20rem);
+    column-gap: 1.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    margin-inline: -1rem;
+    padding: 0.25rem 1rem 0.5rem;
+    scroll-padding-inline: 1rem;
+  }
+  .shelf-list > * {
+    scroll-snap-align: start;
+  }
+  .list-row {
+    display: flex;
+    min-height: 4.5rem;
+    align-items: center;
+    gap: 0.8rem;
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--color-line);
+    transition: transform 120ms var(--ease-out);
+  }
+  .shelf-list > :nth-child(3n) {
+    border-bottom-color: transparent;
+  }
+  .list-row:active {
+    transform: scale(0.985);
+  }
+  /* A theme in the row "Worauf habt ihr Lust?": its sign, its name and what is behind it. */
+  .theme-tile {
+    display: flex;
+    width: 16rem;
+    height: 100%;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: 1.1rem;
+    background: var(--color-surface);
+  }
+  /*
+   * The Regal: the cookbooks as spines standing on a board, each as tall as it is thick, its
+   * name along it and a bar at its foot for how much of it was cooked. The open one stands a
+   * little forward, outlined in the green.
+   */
+  .bookshelf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    margin-inline: -1rem;
+    padding: 0.75rem 1rem 0;
+    scroll-padding-inline: 1rem;
+    border-bottom: 0.6rem solid color-mix(in srgb, var(--color-line) 70%, #b9a37e);
+  }
+  .spine {
+    position: relative;
+    display: flex;
+    width: 3.1rem;
+    height: var(--spine-height);
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0 0.55rem;
+    scroll-snap-align: start;
+    border-radius: 0.35rem 0.35rem 0 0;
+    background: var(--spine);
+    color: var(--spine-ink);
+    box-shadow: inset -0.25rem 0 0 rgb(0 0 0 / 0.05);
+    transition: transform 160ms var(--ease-out);
+  }
+  .spine[aria-current] {
+    transform: translateY(-0.5rem);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .spine:active {
+    transform: scale(0.97);
+  }
+  /*
+   * The name along the spine, read from the foot upwards as on German books. A long name
+   * takes a second line beside the first; the spine's width keeps it to two. No line clamp:
+   * Safari does not draw one in vertical writing, and laid the names across the spines,
+   * upside down and over each other (October 2026).
+   */
+  .spine-name {
+    display: block;
+    min-height: 0;
+    max-width: 2rem;
+    flex: 1;
+    overflow: hidden;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-wrap: balance;
+    writing-mode: vertical-rl;
+    rotate: 180deg;
+  }
+  .spine-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .spine-bar {
+    display: flex;
+    width: 0.4rem;
+    height: 2.2rem;
+    flex: none;
+    flex-direction: column-reverse;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.65);
+  }
+  .spine-bar > i {
+    display: block;
+    background: var(--color-accent);
+  }
+  .cooked-bar {
+    display: block;
+    width: 12rem;
+    max-width: 100%;
+    height: 0.4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+  .cooked-bar > i {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+  /* A row of choices that scrolls sideways: a magazine's editions, the tabs of Entdecken. */
+  .tab-row {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    margin-inline: -1rem;
+    padding: 0.1rem 1rem 0.3rem;
+    scroll-padding-inline: 1rem;
+  }
+  .tab-row > * {
+    flex: none;
+  }
+  .tab-row > [aria-current] {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .tab-row > [aria-current] .chip-picture {
+    color: currentColor;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spine[aria-current] {
+      transform: none;
+    }
+  }
+  /*
+   * The recipe stack: one card on the next two, in the pastel of its kind, its pictogram
+   * large and pale behind the words, and a stamp for where it is going that grows as it
+   * goes there (`--keep`, `--skip`, `--plan`, set while it is dragged).
+   */
+  .stack {
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+  .stack-deck {
+    position: relative;
+    width: min(100%, 26rem);
+    height: clamp(19rem, 46dvh, 24rem);
+  }
+  .stack-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 1.4rem 1.4rem 1.2rem;
+    border: 1px solid color-mix(in srgb, var(--kind) 70%, var(--color-line));
+    border-radius: 1.5rem;
+    background: color-mix(in srgb, var(--kind) 50%, var(--color-surface));
+    box-shadow: 0 1.2rem 2.4rem -1.6rem rgb(35 33 29 / 0.45);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition:
+      transform 240ms var(--ease-out),
+      opacity 240ms ease;
+  }
+  .stack-card:active {
+    cursor: grabbing;
+  }
+  /* The cards underneath wait a little smaller, and come forward as the top one goes. */
+  .stack-card[data-depth="1"] {
+    transform: translateY(0.7rem) scale(0.955);
+  }
+  .stack-card[data-depth="2"] {
+    transform: translateY(1.4rem) scale(0.91);
+    opacity: 0.7;
+  }
+  .stack-card[data-depth="1"],
+  .stack-card[data-depth="2"] {
+    pointer-events: none;
+  }
+  .stack-card .badge,
+  .stack-card .tag {
+    background: var(--color-surface);
+  }
+  .stack-picture {
+    position: absolute;
+    right: -1.5rem;
+    bottom: -1.5rem;
+    width: 11rem;
+    height: 11rem;
+    color: var(--kind-ink, var(--color-muted));
+    opacity: 0.16;
+    rotate: -8deg;
+    stroke-width: 1.4;
+    pointer-events: none;
+  }
+  .stack-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .stack-ingredients {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+  }
+  .stack-stamp {
+    position: absolute;
+    z-index: 1;
+    top: 1.1rem;
+    padding: 0.2rem 0.7rem;
+    border: 0.18rem solid currentColor;
+    border-radius: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .stack-stamp-keep {
+    left: 1.1rem;
+    color: var(--color-accent);
+    opacity: var(--keep, 0);
+    rotate: -10deg;
+  }
+  .stack-stamp-skip {
+    right: 1.1rem;
+    color: #86423a;
+    opacity: var(--skip, 0);
+    rotate: 10deg;
+  }
+  .stack-stamp-plan {
+    left: 50%;
+    translate: -50% 0;
+    color: #7f5318;
+    opacity: var(--plan, 0);
+  }
+  .stack-empty {
+    display: grid;
+    height: 100%;
+    place-content: center;
+    justify-items: center;
+    padding: 1.5rem;
+    border: 1.5px dashed var(--color-line);
+    border-radius: 1.5rem;
+    text-align: center;
+  }
+  /* Three round buttons, as large as the thumb: the same three decisions as the swipes. */
+  .stack-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1.75rem;
+  }
+  .stack-button {
+    display: grid;
+    justify-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+  .stack-button > span {
+    display: grid;
+    width: 3.6rem;
+    height: 3.6rem;
+    place-items: center;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+    font-size: 1.35rem;
+    font-weight: 700;
+    box-shadow: 0 0.5rem 1rem -0.8rem rgb(35 33 29 / 0.4);
+    transition: transform 120ms var(--ease-out);
+  }
+  .stack-button:active > span {
+    transform: scale(0.92);
+  }
+  .stack-button:disabled {
+    opacity: 0.4;
+  }
+  .stack-button-skip > span {
+    color: #86423a;
+  }
+  .stack-button-plan > span {
+    color: #7f5318;
+  }
+  .stack-button-keep > span {
+    color: var(--color-accent);
+  }
+  .stack-button:focus-visible > span {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .stack-foot {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stack-card {
+      transition: opacity 120ms ease;
+    }
+  }
+
+  /* "Was ist noch da?": what is there on the left on an iPad, the recipes beside it. */
+  .fridge {
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (width >= 46rem) {
+    .fridge {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      align-items: start;
+      gap: 2rem;
+    }
+    .fridge-pick {
+      position: sticky;
+      top: 5rem;
+    }
+  }
+  .fridge-found {
+    margin-top: 0.4rem;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+  }
+  .fridge-found-row {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.9rem;
+    font-weight: 600;
+    text-align: left;
+  }
+  .fridge-found li + li .fridge-found-row {
+    border-top: 1px solid var(--color-line);
+  }
+
+  /*
+   * The roulette: three reels and the spin in one row from an iPad's width on. A reel running
+   * blurs a little in its own direction, the way a fast thing looks; a held one is outlined.
+   */
+  .roulette {
+    display: grid;
+    gap: 0.75rem;
+  }
+  @media (width >= 40rem) {
+    .roulette {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: stretch;
+    }
+  }
+  .roulette-reels {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .roulette-reel {
+    display: flex;
+    min-width: 0;
+    min-height: 5.5rem;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--color-line);
+    border-radius: 1.1rem;
+    background: var(--color-surface);
+    text-align: left;
+    transition: transform 120ms var(--ease-out);
+  }
+  .roulette-reel:active {
+    transform: scale(0.97);
+  }
+  .roulette-reel[aria-pressed="true"] {
+    border-color: var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+  .roulette-reel[data-turning="true"] > :last-child {
+    filter: blur(0.6px);
+    translate: 0 1px;
+  }
+  .roulette-reel:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .roulette-spin {
+    min-height: 3rem;
+    gap: 0.5rem;
+  }
+  @media (width >= 40rem) {
+    .roulette-spin {
+      min-height: auto;
+      padding-inline: 1.5rem;
+    }
+  }
+  .roulette-results {
+    display: grid;
+    column-gap: 1.5rem;
+    transition: opacity 150ms ease;
+  }
+  @media (width >= 46rem) {
+    .roulette-results {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (width >= 40rem) {
+    .discovery-figures {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  /* The badges of discovering, in "Statistik": earned in the green, the others pale with a bar. */
+  .badges {
+    display: grid;
+    gap: 0.25rem 1.5rem;
+  }
+  @media (width >= 46rem) {
+    .badges {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .badge-row {
+    display: flex;
+    min-height: 3.25rem;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .badge-medal {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    flex: none;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--color-line);
+    color: var(--color-muted);
+  }
+  .badge-row[data-earned="true"] .badge-medal {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  .badge-progress {
+    width: 3.5rem;
+    height: 0.35rem;
+    flex: none;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+  .badge-progress > i {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+
+  /* On a touch screen the rows scroll under the finger; a bar under each says nothing. */
+  @media (pointer: coarse) {
+    .shelf,
+    .shelf-list,
+    .bookshelf,
+    .tab-row {
+      scrollbar-width: none;
+    }
+    .shelf::-webkit-scrollbar,
+    .shelf-list::-webkit-scrollbar,
+    .bookshelf::-webkit-scrollbar,
+    .tab-row::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
   .shelf {
     display: flex;
     gap: 0.75rem;
@@ -2955,11 +3589,14 @@ html[data-navigating] .nav-progress::before {
   }
 }
 
-/* A page comes in softly. Whoever asked for less motion gets none. */
+/*
+ * A page comes in softly. Whoever asked for less motion gets none. Where it starts is read
+ * from the element (`--page-in-*`), so that the way in can change without a new animation.
+ */
 @keyframes page-in {
   from {
-    opacity: 0;
-    transform: translateY(6px);
+    opacity: var(--page-in-opacity, 0);
+    transform: translate(var(--page-in-x, 0), var(--page-in-y, 6px));
   }
 }
 @keyframes fade-in {
@@ -3186,13 +3823,21 @@ main > *,
 main > .page {
   animation: none;
 }
+/*
+ * The animation itself is never switched, only where it starts: a change of its name starts
+ * it again. Switched off while a page moved, the content faded in a second time the moment
+ * the move ended, once after every tap on a section (October 2026).
+ */
 /* Stepped back in the history (`BackToList`), which names no transition: from the left. */
 html[data-going="back"] .page > * {
-  animation-name: page-from-left;
+  --page-in-x: -1.25rem;
+  --page-in-y: 0;
 }
 /* Led there by a link that names how (`transitionTypes`): the transition moves it instead. */
 :root:active-view-transition .page > * {
-  animation: none;
+  --page-in-opacity: 1;
+  --page-in-x: 0;
+  --page-in-y: 0;
 }
 /*
  * From one page to the next. The old one is gone at once, the new one comes in from the

@@ -144,6 +144,10 @@ test("a meal with a recipe takes bread to go with it, which the bakery's note bu
   await sunday.getByRole("button", { name: "Mehr von Pilzrisotto" }).click();
   await expect(sunday).toContainText("5 Personen");
   await expect(sunday).toContainText("Dazu: 1 Dinkelbaguette");
+  // The recipe's page starts with as much as the meal cooks.
+  await sunday.getByRole("link", { name: "Pilzrisotto" }).click();
+  await expect(page.getByRole("group", { name: "Menge" })).toContainText("5 Personen");
+  await page.goBack();
 
   // Bread from the bakery, for a Sunday on the Saturday.
   await page.goto(`/einkauf?w=${WEEK}`);
@@ -239,7 +243,8 @@ test("a recipe can be corrected by hand, its ingredients included", async ({ pag
   await page.getByRole("button", { name: "Speichern" }).click();
 
   await expect(page.getByRole("heading", { name: "Zitronen-Mohn-Kuchen" })).toBeVisible();
-  await expect(page.getByText("2 Kastenform")).toBeVisible();
+  // Made as written, two tins, and the stepper counts tins.
+  await expect(page.getByRole("group", { name: "Menge" })).toContainText("2 Kastenform");
   await expect(page.getByText("Dessert & Süßspeise")).toBeVisible();
   await expect(page.getByText("300 g")).toBeVisible();
   await expect(page.getByText("Mehl")).toBeVisible();

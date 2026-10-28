@@ -130,7 +130,13 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   shapes that breathe, a recipe's buttons in the order Einplanen, Vormerken, Kochen, and a
   tighter Regal on a phone. After that (`phase-17c-fixes`): the bar of glass again, taps
   answered from pages fetched ahead, a start that shows the loading shape at once, an edge
-  for every planned meal, and a quiet "Mehr kochen".
+  for every planned meal, and a quiet "Mehr kochen"; then a page that fades in once after a
+  tap on a section, and the amounts of a recipe's steps scaled with a stepper.
+- Phase 18 (branch `phase-18-discover`), picked by the household from proposals for the
+  iPad: Entdecken with a tab per category, a recipe of the day, themes and shelves of their
+  own kind; the Regal as a shelf of cookbooks; the recipe stack to swipe; "Was ist noch
+  da?"; the recipe roulette; the table of every recipe as "Alle Rezepte" under Import; and
+  what the family discovered in the statistics.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -304,12 +310,18 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   (choosing a recipe for a meal or for the extras), `/woche/lebensmittel` (what to buy for a
   meal without a recipe), `/woche/ziele` (the goals of a week), `/woche/verlauf` (all weeks,
   month by month), `/woche/statistik` (how the family eats and shops: `?zeit=woche|monat|jahr`
-  with `&am=<monday|yyyy-mm|yyyy>`, `&bereich=einkauf` for the shopping), `/rezepte` (browse and search, called "Entdecken"), `/rezepte/regal`
-  (every recipe as a table to look after; `?stichworte=<id>` opens a row's tags,
-  `?loeschen=<id>` asks before deleting), `/rezepte/saison` ("Was hat gerade Saison?";
+  with `&am=<monday|yyyy-mm|yyyy>`, `&bereich=einkauf` for the shopping), `/rezepte` (browse and search, called "Entdecken";
+  `?art=<category>` a category's tab), `/rezepte/regal` (the shelf of cookbooks; `?buch=` the
+  open one, `&ausgabe=` an edition), `/rezepte/stapel` (the recipe stack; `?art=` one
+  category), `/rezepte/zutaten` ("Was ist noch da?"; `?z=<food>` per food tapped),
+  `/rezepte/roulette` (`?k=<main>.<cuisine>.<effort>` the combination shown),
+  `/import/rezepte` ("Alle Rezepte", every recipe as a table to look after; it was the Regal
+  under Rezepte until October 2026; `?stichworte=<id>` opens a row's tags, `?loeschen=<id>`
+  asks before deleting), `/rezepte/saison` ("Was hat gerade Saison?";
   `?monat=1..12` another month, `?zutat=<key>` the recipes with one food), `/rezepte/stichworte` (the tags themselves;
   `?stichwort=<id>` opens one), `/favoriten`,
-  `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
+  `/rezepte/[id]` (`?stichworte=bearbeiten` changes its tags in place, `?portionen=` how much is
+  cooked), `/rezepte/neu` (a recipe typed in, or with `?art=text` pasted as text) and
   `/rezepte/[id]/bearbeiten` (a recipe corrected by hand), `/rezepte/hinzufuegen` (a recipe
   added: photo, pasted text or typed; `?d=<date>&m=<meal>` for a meal planned as text), `/import/pruefen/angaben` (assigned
   fields that do not fit; `?feld=` one of them) and `/import/pruefen/doppelt` (duplicates;
@@ -492,7 +504,10 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   with a sign above each name and the open section on the green's pastel. It has a layer
   of its own (`translateZ(0)`), and every entrance of a page lets go of its transform when
   it ends (`backwards`, not `both`): on the iPhone, content left on a layer by its
-  animation was drawn over the glass (October 2026). A tapped section
+  animation was drawn over the glass (October 2026). That entrance (`page-in`) is never
+  switched off or renamed, only where it starts (`--page-in-*`): switched off while a page
+  moved, it started again the moment the move ended, and the page flickered once after every
+  tap on a section (October 2026). A tapped section
   is the current one the moment the finger lands, before its page has come (`AppNav`).
 - Each section has a pastel of its own at the top of its pages, fading into the paper
   (`.app-shell`, `--section-tint`): Woche sage, Einkauf a misty blue, Rezepte peach,
@@ -538,8 +553,10 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   settings, under "Dein Konto": the family wanted it off every main section (October 2026).
 - The sections in the bar are Woche, Einkauf, Rezepte, Favoriten and Import. "Rezepte" has
   two views at its top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to
-  find something to cook and "Regal" to look after the library.
-- What is done with the recipes ticked in the Regal is a bar at the foot of the screen that
+  find something to cook and "Regal" to leaf through the cookbooks. Looking after the
+  library ("Alle Rezepte") is under Import, beside bringing recipes in, where the earlier
+  batches were; those are folded below it.
+- What is done with the recipes ticked in "Alle Rezepte" is a bar at the foot of the screen that
   opens upwards (`.selection-bar`, `SelectionBar`), out of sight while nothing is ticked.
   It is put directly into the body: every page comes in with a transform (`page-in`), and
   inside a transformed element "fixed" is fixed to that element, not to the screen.
@@ -559,7 +576,7 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   holds comes out with a short fade and drop (`unfold`); the bars of the week's balance grow
   when a meal is planned (`scaleX`, not the width); the views for the shop and for cooking
   rise like a sheet (`sheet-up`) and go back down the way they came (`leaveSheet`,
-  `sheet-down`, 200ms, as the Merkzettel goes up on its string); the Regal's bar for ticked
+  `sheet-down`, 200ms, as the Merkzettel goes up on its string); the bar of "Alle Rezepte" for ticked
   recipes rises from the foot and goes back down (`@starting-style` and `display` with
   `allow-discrete`); the offline bar comes up a little and goes at once; a heart swells
   while the favourite is saved; the stamp of an errand finished moments ago is pressed on
@@ -681,6 +698,22 @@ Recipes
 - A recipe for persons is planned for the household's servings. A recipe with a unit is
   planned as written (`plannedServings`): scaled to four persons, a recipe for one cake tin
   would bake four cakes. Someone who wants two trays sets the slot to 2.
+- A recipe's page has a stepper next to "Zutaten" (`ServingsScale`, `ServingsStepper`): the
+  ingredients, the amounts inside the steps and the view for cooking follow it in the
+  browser, kept in the address (`?portionen=`). It starts with the household's servings
+  (`plannedServings`: a recipe with a unit as written), and opened from a planned meal with
+  that meal's, its extra portions included (`fromPlan`, `cookedServings`). Amounts are
+  rounded as a cook measures (`cookingAmount`: 135 g, 1½ EL, ⅓ Zwiebel, whole eggs) and a
+  changed one is marked (`.scaled`); "Wie gedruckt zeigen" shows the steps as printed.
+- A number in a step is scaled only where it is an amount (`scaleStep`,
+  `src/domain/scaling.ts`): a weight or volume, a counted unit with one of the recipe's
+  ingredients behind it, or one of them itself ("2 Eier"), past adjectives only. Never a
+  size, a time, a share ("⅔ der Kräuter"), an amount per piece ("je 2 Scheiben", "à 150 g"),
+  a form or tray, or a number written as "ein". Where singular and plural would change and
+  the other word is not known, or an adjective would have to change its ending, the step
+  stays as printed. Measured on the household's 4,724 steps at 6 instead of 4 persons
+  (October 2026): 1,273 amounts scaled; of about 100 read by eye all were amounts or things that grow
+  with the meal ("8 Holzspieße", "4 Teigstücke"), none a size, time or share.
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
 - A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
@@ -812,8 +845,12 @@ Week plan
   soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an
   element with opacity 0 visible, so the test asks for the opacity.
 - A recipe opened from the week plan or from the favourites leads back there
-  (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`); from
-  anywhere else it leads to "Entdecken". Nothing but a week and its day is taken from the
+  (`lib/origin.ts`: the link carries `?von=woche&w=<week>` or `?von=favoriten`), and so does
+  one opened from any other list of recipes: the open book of the Regal
+  (`?von=regal&buch=`), a category's tab (`?von=entdecken&art=`), "Alle Rezepte"
+  (`?von=alle`), the stack, the fridge and the roulette. The household landed on Entdecken
+  from the Regal (October 2026). From anywhere else it leads to "Entdecken". Nothing but a
+  week, its day, a book, an edition and a category is taken from the
   address. Opened from a list or the week plan, the link back is a step back in the history
   (`BackToList`, `canStepBack`), so the filter and the place on the page are kept, and each
   shelf is scrolled sideways as it was (`ListMemory`, `cameBack`). The link opened the list
@@ -946,6 +983,12 @@ Statistics
   figures are read. A new period or view fades in where the old one stood (`.stats-in`).
   Not counted yet: wishes fulfilled (the mark goes when a recipe is planned), amounts bought,
   spending, and what ran out at home.
+- "Entdeckt", as wide as the large cards (`discoveryStats`, `src/domain/stats/discovery.ts`):
+  dishes cooked for the first time in the period, how much of the library was ever cooked,
+  the cuisines cooked of those the library has, and five badges for trying something new,
+  each saying how far it is (five new dishes in a calendar month, every cuisine once, four
+  weeks in a row each with something new, fifty different dishes, half of a cookbook of at
+  least ten recipes). It belongs to looking back, not to Entdecken (October 2026).
 
 Library
 
@@ -954,7 +997,7 @@ Library
   them; `saison=1`, `lange=1`). `ausgabe` counts only with its `buch`.
 - Every list of recipes has the same filters (`FilterPanel` and `FilterBar` in
   `src/components/recipe-filters.tsx`, the groups from `facets`, the search and narrowing
-  from `listRecipes` in `src/server/recipe-list.ts`): Entdecken, Favoriten, the Regal (with
+  from `listRecipes` in `src/server/recipe-list.ts`): Entdecken, Favoriten, "Alle Rezepte" (with
   "Was fehlt" as a group of its own) and the chooser of a meal. From an iPad's width on the
   panel stands beside the list (`.filter-aside`), on a phone it is a sheet from the foot
   opened by "Filter" next to the search field, and in the chooser, whose side holds the week,
@@ -1011,7 +1054,7 @@ Library
   the household makes itself. The app refers to a tag by its key, or by its id when it has
   none. "Aufwand" and "Küche" hold one tag per recipe.
 - The tags are suggestions and the household's to change: "Stichworte ändern" on a recipe's
-  page and in a row of the Regal switches them on and off and takes new ones ("Omas
+  page and in a row of "Alle Rezepte" switches them on and off and takes new ones ("Omas
   Rezept"), as does the recipe's form. One form for both (`TagEditor`): every tag a chip,
   a group that allows one tag a choice of one with "Keins". Typing a new one offers the
   tags there are first (`suggestTags`), and a name that is one of them however it is
@@ -1086,7 +1129,7 @@ Library
 - The recipe page shows the photographed page folded away (`<details>`): what is cooked from
   are the ingredients above it. Opened, it shows the recipe's own part of the page where it
   shares the page with others, with a link to the whole page below.
-- The Regal (`/rezepte/regal`) is the library as a table, the place to look after recipes:
+- "Alle Rezepte" (`/import/rezepte`) is the library as a table, the place to look after recipes:
   title, cookbook, page, category, kind, effort and time, servings, tags, heart, wish and
   when it was last cooked (`loadLastCookedAll`, the whole plan history). Its filter is the
   one of "Entdecken"; it also narrows to what lacks a category, an effort or any tag other
@@ -1103,7 +1146,7 @@ Library
   above) or taken away, a category or an effort set (`changeSeveral`). A tag added in a
   group that allows one replaces the one a recipe had there. Category and effort set this
   way count as checked by a person, like on "Angaben prüfen".
-- A recipe is deleted from the Regal after asking (`deleteRecipe`). One that stands on any
+- A recipe is deleted from "Alle Rezepte" after asking (`deleteRecipe`). One that stands on any
   plan, past weeks and extras included, is not: the page lists where it stands, with links,
   and points to "Doppelte Rezepte" for a duplicate, whose merge takes its meals along. The
   recipe's own cut-out view goes from storage; its page photo stays with its batch, where
@@ -1128,21 +1171,48 @@ Library
   then has no tag but its effort is described by the model with `import:tag-recipes --more`,
   which keeps its effort. On the household's 1,148 recipes (25 October 2026, dry run): 472
   had no tag but their effort, 200 still none after the main ingredients.
-- Without a filter the page shows rows of recipes that change with the day (`discover`):
-  "Passt zur Saison", "Schnell (bis 20 Min.)", "Lange nicht gekocht", "Neu im Kochbuch", and
-  three of the eight tags used most (Gericht, Hauptzutat, Küche, Anlass, Eigene), a different
-  three each day. Each row says how many recipes it stands for, and "Alle anzeigen" turns on
-  its filter (the new ones open the Regal by what is new). They bring up what nobody
-  has marked yet (`isMarked`): favourites and what someone wants to cook are on "Favoriten"
-  and on no shelf. A shelf shows ten recipes in an order that changes by the day; its "Alle"
-  link lists everything behind it that is not marked. Marked recipes are on no list of
-  "Entdecken" a filter or a tile makes, and Stöbern does not count them (`toDiscover`); only
-  words typed into the search find them, so that a favourite is found by its name (October
-  2026). "Entdecken" has no favourites chip
-  (`/rezepte?favoriten=1` leads to `/favoriten`) and no button to add a recipe: that is
-  under Import ("Ohne Foto: Rezept eintippen"). Below the shelves "Stöbern" is a directory (`directory`): every category,
-  tag, diet and cookbook as a tile with the number of recipes behind it. A library of up to
+- Without a filter Entdecken has the whole width, the filters a sheet behind "Filter", and is
+  made for the iPad, where the family browses (October 2026). One row of tabs: "Für euch" and
+  every category with at least four recipes nobody marked (`categoryTabs`), each a page of its
+  own inside its category. On each, the recipe of the day as one band (`recipeOfTheDay`: a
+  meal that fits the season where there is one, its tags, "Einplanen"), then shelves that
+  change with the day (`discover`): "Passt zur Saison" (wider cards), "Schnell" and "Noch nie
+  gekocht" as rows three to a column (`look: "list"`), "Wie eure Favoriten" (meals sharing
+  enough with a favourite: main ingredient 2, dish 1, cuisine 1, the same kind of meal 1, at
+  least 3, `LIKE_WEIGHT`; one shared cuisine made 211 of 278 recipes "like a favourite"),
+  "Lange nicht gekocht", three of the tags used most, a cookbook of the day, "Neu im
+  Kochbuch". "Für euch" also has a row of four (the season, the stack, the fridge, the
+  roulette) and "Worauf habt ihr Lust?", six themes that put filters together (`themes`:
+  "Feierabendküche" is main dishes of 30 minutes; "Suppenzeit" from October to March,
+  "Weihnachtsbäckerei" in November and December). A category's tab has chips by main
+  ingredient and cuisine instead. Every shelf and row brings up what nobody has marked yet
+  (`isMarked`): favourites and wishes are on "Favoriten" and on no shelf; a shelf shows ten
+  in an order that changes by the day, and "Alle anzeigen" turns on its filter, inside the
+  tab's category. Marked recipes are on no list a filter makes (`toDiscover`); only words
+  typed into the search find them. There is no directory of every filter as tiles any more:
+  it repeated the panel, and its names were cut off (October 2026). A library of up to
   thirty recipes is also shown whole.
+- The Regal (`/rezepte/regal`) is the family's cookbooks and magazines as spines on a shelf
+  (`bookshelf`), each as tall as it has recipes, its name along it and a bar for how much of
+  it was cooked (on a plan before today). The book of the day lies open below unless one is
+  tapped (`?buch=`): its editions as chips, then what of it fits the season, what was never
+  cooked from it (by page) and what was, with the day it was last cooked (`openBook`).
+- The recipe stack (`/rezepte/stapel`) deals recipes no plan ever held and nobody marked,
+  forty at a time in an order that changes by the day (`stackOf`), all meals or one
+  category. Each card shows what is in it, pantry staples left out. A swipe to the right
+  keeps it as a wish (`wanted_at`), to the left puts it aside for four weeks
+  (`recipe.skipped_at`, `SKIP_DAYS`), upwards plans it. The card follows the finger from
+  where it was taken, gives less and less downwards, and the swipe decides by where it
+  would come to rest (Apple's projection), not where the finger let go; a tap opens the
+  recipe. The three are round buttons as well and the arrow keys; "Zurück" takes the last
+  back, and the card returns the way it left. Asked for less motion, cards only fade.
+- "Was ist noch da?" (`/rezepte/zutaten`) matches in the browser (`fridgeMatches`,
+  `loadFridge`): tap the foods recipes use most, or find any by typing, and the recipes that
+  use most of them come first, each with what it still lacks. Pantry staples are neither
+  offered nor missing. Favourites are among the results.
+- The roulette (`/rezepte/roulette`) stops three reels, main ingredient, cuisine and effort,
+  one after another on a combination with meals behind it (`combinations`, `spin`), and
+  lists the meals. A tap holds a reel. Without main-ingredient and cuisine tags it says so.
 - A recipe card has a heart in its corner (`FavoriteHeart`): a tap makes the recipe a
   favourite or takes the mark away, without opening it. The heart is a form next to the
   card's link, not inside it, and both lie in the card that lifts. A recipe made a favourite

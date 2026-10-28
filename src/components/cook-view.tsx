@@ -3,23 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stepAfter, stepText } from "@/domain/cooking";
 import { TickIcon } from "./icons";
+import { ScaledStep, useScaledLine, useServingsText, type RecipeLine } from "./servings-scale";
 import { leaveSheet } from "./sheet";
 import { useWakeLock } from "./wake-lock";
-
-/** An ingredient as the cooking view lists it: "200 g", "Spaghetti", ", gekocht". */
-export interface CookIngredient {
-  id: string;
-  amount: string;
-  name: string;
-  note: string | null;
-}
 
 /**
  * "Kochen": the recipe alone on the whole screen, for the kitchen. The ingredients to tick off
  * as they are set out, the steps in large writing, the one being cooked marked, and "Weiter"
  * and "Zurück" large at the foot for a hand that is not clean. The screen stays on. On an
  * iPad the ingredients stand beside the steps. A link to "#kochen" opens it too; it needs
- * scripts, and without them the recipe page itself is there. Nothing of it is stored.
+ * scripts, and without them the recipe page itself is there. Nothing of it is stored. Its
+ * amounts are those of the stepper on the recipe page (`ServingsScale`).
  */
 export function CookView({
   title,
@@ -28,11 +22,12 @@ export function CookView({
   steps,
 }: {
   title: string;
-  /** "4 Portionen · 20 Min." */
+  /** "20 Min.": what is said besides how much is cooked. */
   facts: string;
-  ingredients: CookIngredient[];
+  ingredients: RecipeLine[];
   steps: string[];
 }) {
+  const servings = useServingsText();
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState<ReadonlySet<string>>(new Set());
@@ -104,7 +99,7 @@ export function CookView({
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-xl leading-tight font-bold tracking-tight">{title}</h2>
                 <p className="text-muted" aria-live="polite">
-                  {[facts, stepText(step, steps.length)].filter(Boolean).join(" · ")}
+                  {[servings, facts, stepText(step, steps.length)].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <button type="button" className="btn shrink-0" onClick={close}>
@@ -122,31 +117,14 @@ export function CookView({
                     Zutaten
                   </h3>
                   <ul className="mt-1">
-                    {ingredients.map((entry) => {
-                      const on = ready.has(entry.id);
-                      return (
-                        <li key={entry.id}>
-                          <button
-                            type="button"
-                            className="store-row"
-                            aria-pressed={on}
-                            data-on={on}
-                            onClick={() => toggle(entry.id)}
-                          >
-                            <span className="tickbox tickbox-large" data-on={on} aria-hidden>
-                              <TickIcon />
-                            </span>
-                            <span className="store-text min-w-0">
-                              {entry.amount && (
-                                <span className="font-semibold tabular-nums">{entry.amount} </span>
-                              )}
-                              {entry.name}
-                              {entry.note && <span className="text-muted">, {entry.note}</span>}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
+                    {ingredients.map((line) => (
+                      <CookIngredient
+                        key={line.id}
+                        line={line}
+                        on={ready.has(line.id)}
+                        toggle={() => toggle(line.id)}
+                      />
+                    ))}
                   </ul>
                 </section>
               )}
@@ -176,7 +154,7 @@ export function CookView({
                           </span>
                           <span className="min-w-0">
                             <span className="sr-only">Schritt {at + 1}: </span>
-                            {text}
+                            <ScaledStep text={text} />
                           </span>
                         </button>
                       </li>
@@ -215,5 +193,43 @@ export function CookView({
         )}
       </dialog>
     </>
+  );
+}
+
+/** An ingredient to tick off as it is set out: "300 g Mehl, gesiebt". */
+function CookIngredient({
+  line,
+  on,
+  toggle,
+}: {
+  line: RecipeLine;
+  on: boolean;
+  toggle: () => void;
+}) {
+  const { amount, name, scaled } = useScaledLine(line);
+  const note = [
+    line.note,
+    line.alternative ? "Alternative" : null,
+    line.optional ? "nach Belieben" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return (
+    <li>
+      <button type="button" className="store-row" aria-pressed={on} data-on={on} onClick={toggle}>
+        <span className="tickbox tickbox-large" data-on={on} aria-hidden>
+          <TickIcon />
+        </span>
+        <span className="store-text min-w-0">
+          {amount && (
+            <span className={`font-semibold tabular-nums ${scaled ? "scaled" : ""}`}>
+              {amount}{" "}
+            </span>
+          )}
+          {name}
+          {note && <span className="text-muted">, {note}</span>}
+        </span>
+      </button>
+    </li>
   );
 }

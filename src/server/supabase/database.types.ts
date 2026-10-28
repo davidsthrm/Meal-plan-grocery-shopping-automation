@@ -1068,6 +1068,7 @@ export type Database = {
           servings_max: number | null
           servings_min: number | null
           servings_unit: string | null
+          skipped_at: string | null
           source_book: string | null
           source_edition: string | null
           source_page: number | null
@@ -1093,6 +1094,7 @@ export type Database = {
           servings_max?: number | null
           servings_min?: number | null
           servings_unit?: string | null
+          skipped_at?: string | null
           source_book?: string | null
           source_edition?: string | null
           source_page?: number | null
@@ -1118,6 +1120,7 @@ export type Database = {
           servings_max?: number | null
           servings_min?: number | null
           servings_unit?: string | null
+          skipped_at?: string | null
           source_book?: string | null
           source_edition?: string | null
           source_page?: number | null

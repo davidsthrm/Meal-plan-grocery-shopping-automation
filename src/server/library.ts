@@ -253,3 +253,57 @@ export async function searchLibrary(
     tagName: (ref) => tagNames.get(ref),
   });
 }
+
+/** What "Was ist noch da?" offers and matches: foods to tap, and which recipes use them. */
+export interface FridgeLibrary {
+  /** The household's names of the foods recipes use, without what is always at home. */
+  foods: string[];
+  /** Per recipe, which of `foods` it uses, by their place. */
+  recipes: (RecipeSummary & { uses: number[] })[];
+}
+
+/**
+ * The library as "Was ist noch da?" needs it. Pantry staples are left out: salt and oil are
+ * always there and decide nothing. A food no recipe uses is not offered.
+ */
+export async function loadFridge(db: Db): Promise<FridgeLibrary> {
+  const [library, catalog, lines] = await Promise.all([
+    loadLibrary(db),
+    allRows(
+      (from, to) =>
+        db
+          .from("ingredient")
+          .select("id, name, is_pantry_staple")
+          .order("name")
+          .order("id")
+          .range(from, to),
+      "load the catalog for the fridge",
+    ),
+    allRows(
+      (from, to) =>
+        db
+          .from("recipe_ingredient")
+          .select("recipe_id, ingredient_id")
+          .not("ingredient_id", "is", null)
+          .order("id")
+          .range(from, to),
+      "load what recipes use",
+    ),
+  ]);
+  const staple = new Set(catalog.filter((food) => food.is_pantry_staple).map((food) => food.id));
+  const used = new Map<string, Set<string>>();
+  for (const line of lines) {
+    if (!line.ingredient_id || staple.has(line.ingredient_id)) continue;
+    used.set(line.recipe_id, (used.get(line.recipe_id) ?? new Set()).add(line.ingredient_id));
+  }
+  const usedAtAll = new Set([...used.values()].flatMap((foods) => [...foods]));
+  const foods = catalog.filter((food) => usedAtAll.has(food.id));
+  const at = new Map(foods.map((food, position) => [food.id, position]));
+  return {
+    foods: foods.map((food) => food.name),
+    recipes: library.recipes.map((recipe) => ({
+      ...recipe,
+      uses: [...(used.get(recipe.id) ?? [])].map((id) => at.get(id)!),
+    })),
+  };
+}

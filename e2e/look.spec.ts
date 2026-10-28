@@ -186,9 +186,9 @@ test("screens @look", async ({ page }, info) => {
   await page.screenshot({ path: `test-results/look/${info.project.name}-2-kochen.png` });
   await cooking.getByRole("button", { name: "Fertig", exact: true }).first().click();
 
-  await page.goto("/rezepte/regal");
+  await page.goto("/import/rezepte");
   await page.waitForLoadState("networkidle");
-  await shot("2-regal");
+  await shot("2-alle-rezepte");
   // Two recipes ticked: the bar for them opens.
   const boxes = page.locator('input[name="rezept"]');
   if ((await boxes.count()) >= 2) {

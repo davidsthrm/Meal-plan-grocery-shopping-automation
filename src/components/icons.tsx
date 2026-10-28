@@ -310,3 +310,27 @@ export function PhotosIcon() {
     </svg>
   );
 }
+
+/** A die: a recipe drawn by chance (the roulette). */
+export function DiceIcon() {
+  return (
+    <svg {...base}>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <circle cx="8.6" cy="8.6" r="0.4" fill="currentColor" />
+      <circle cx="15.4" cy="8.6" r="0.4" fill="currentColor" />
+      <circle cx="12" cy="12" r="0.4" fill="currentColor" />
+      <circle cx="8.6" cy="15.4" r="0.4" fill="currentColor" />
+      <circle cx="15.4" cy="15.4" r="0.4" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Cards in a stack, the top one turned: the recipes to swipe through ("Rezept-Stapel"). */
+export function StackIcon() {
+  return (
+    <svg {...base}>
+      <rect x="6" y="5" width="11" height="15" rx="2.5" transform="rotate(-8 11.5 12.5)" />
+      <path d="M17.5 7.5 19 8a2 2 0 0 1 1.3 2.5l-3 9.5" />
+    </svg>
+  );
+}

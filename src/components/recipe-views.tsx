@@ -4,7 +4,8 @@ import { SegmentPill } from "./segment-pill";
 
 /**
  * The two views of the recipes, as the week has "Mahlzeiten" and "Außerdem": "Entdecken" to
- * find something to cook, "Regal" to look after the whole library.
+ * find something to cook, "Regal" to leaf through the cookbooks. The table of every recipe,
+ * to look after the library, is under Import ("Alle Rezepte").
  */
 export function RecipeViews({ current }: { current: "entdecken" | "regal" }) {
   const view = (key: typeof current, href: string, label: string) => (

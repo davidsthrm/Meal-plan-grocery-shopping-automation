@@ -96,7 +96,7 @@ export async function saveTags(form: FormData): Promise<void> {
   const back = new URLSearchParams(String(form.get("zurueck") ?? ""));
   if (form.get("ziel") === "regal") {
     const query = new URLSearchParams(shelfParams(Object.fromEntries(back))).toString();
-    redirect(`/rezepte/regal${query ? `?${query}` : ""}#r-${id}`);
+    redirect(`/import/rezepte${query ? `?${query}` : ""}#r-${id}`);
   }
   const kept = new URLSearchParams();
   for (const key of ["von", "w", "feld"]) {
@@ -121,6 +121,34 @@ export async function setWanted(form: FormData): Promise<void> {
     .eq("id", input.recipe);
   if (updated.error) throw new Error(`mark wish: ${updated.error.message}`);
   revalidatePath("/", "layout");
+}
+
+/** What is decided about a card of the recipe stack, and taking it back. */
+export type StackDecision = "keep" | "skip" | "undo-keep" | "undo-skip";
+
+/**
+ * A card of the recipe stack decided: kept as a wish, or put aside for a few weeks. Taking
+ * it back clears the mark again. Called from the stack in the browser, which keeps its own
+ * order: nothing is read again, the other pages follow by the live refresh.
+ */
+export async function decideInStack(recipe: string, decision: StackDecision): Promise<void> {
+  const input = z
+    .object({ recipe: z.guid(), decision: z.enum(["keep", "skip", "undo-keep", "undo-skip"]) })
+    .parse({ recipe, decision });
+  await requireHousehold();
+  const db = await createSessionClient();
+  const now = new Date().toISOString();
+  const change =
+    input.decision === "keep"
+      ? { wanted_at: now }
+      : input.decision === "skip"
+        ? { skipped_at: now }
+        : input.decision === "undo-keep"
+          ? { wanted_at: null }
+          : { skipped_at: null };
+  // Row level security lets this reach the household's own recipes only.
+  const updated = await db.from("recipe").update(change).eq("id", input.recipe);
+  if (updated.error) throw new Error(`decide in stack: ${updated.error.message}`);
 }
 
 export interface TypedRecipeState {
