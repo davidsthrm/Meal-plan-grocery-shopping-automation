@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ViewTransition } from "react";
+import { Suspense, ViewTransition } from "react";
 import { AppNav } from "@/components/app-nav";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ConnectionGuard } from "@/components/connection";
-import { SettingsIcon } from "@/components/icons";
+import { NoteIcon, SettingsIcon } from "@/components/icons";
 import { InstallHintCard } from "@/components/install-hint";
 import { LiveRefresh } from "@/components/live-refresh";
 import { Logo } from "@/components/logo";
@@ -21,10 +21,10 @@ import { loadOwnRestock } from "@/server/shopping/restock";
  * settings, under "Dein Konto": the family asked for it off every main section (October
  * 2026).
  */
-export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const [noted, self] = await Promise.all([loadOwnRestock(today()), loadSelf()]);
-  const name = self.name;
-  const initial = initialOf(name);
+export default function AppLayout({ children }: LayoutProps<"/">) {
+  // Nothing is awaited here: the frame and the page's loading shape go out at once, and the
+  // count of the Merkzettel and the initial follow. Waiting for them, opening the app showed
+  // nothing at all until they were read (October 2026).
   return (
     // On a phone the sections float above the bottom of the screen: the page leaves room for
     // them and for the bar the phone itself keeps there. Coming from the welcome, the whole
@@ -41,15 +41,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <AppNav />
           </div>
           <div className="flex items-center gap-2">
-            <NoteDrawer items={noted} />
-            <Link
-              href="/einstellungen"
-              className="account"
-              aria-label="Einstellungen"
-              title={name ? `${name} · Einstellungen` : "Einstellungen"}
-            >
-              {initial ?? <SettingsIcon />}
-            </Link>
+            <Suspense fallback={<NoteButtonWaiting />}>
+              <HeaderNote />
+            </Suspense>
+            <Suspense fallback={<AccountWaiting />}>
+              <HeaderAccount />
+            </Suspense>
           </div>
         </header>
         <InstallHintCard />
@@ -68,4 +65,43 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       </div>
     </ViewTransition>
   );
+}
+
+/** The Merkzettel with the number of its entries, pulled down over any page. */
+async function HeaderNote() {
+  return <NoteDrawer items={await loadOwnRestock(today())} />;
+}
+
+/** Until its entries are read: the same button, a plain way to the note's page. */
+function NoteButtonWaiting() {
+  return (
+    <Link
+      href="/merkzettel"
+      className="btn min-h-11 gap-1.5 border-note-line bg-note px-3 text-sm"
+      aria-label="Merkzettel"
+    >
+      <NoteIcon />
+      Merkzettel
+    </Link>
+  );
+}
+
+/** The way to the settings, behind the first letter of whoever is signed in. */
+async function HeaderAccount() {
+  const { name } = await loadSelf();
+  return (
+    <Link
+      href="/einstellungen"
+      className="account"
+      aria-label="Einstellungen"
+      title={name ? `${name} · Einstellungen` : "Einstellungen"}
+    >
+      {initialOf(name) ?? <SettingsIcon />}
+    </Link>
+  );
+}
+
+/** Until the name is read: the green circle without its letter. */
+function AccountWaiting() {
+  return <Link href="/einstellungen" className="account" aria-label="Einstellungen" />;
 }

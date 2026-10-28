@@ -152,6 +152,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             {hasWeekBefore(week, household.firstWeek) ? (
               <Link
                 href={`/einkauf?w=${addDays(week, -7)}`}
+                prefetch
                 transitionTypes={[BACK]}
                 aria-label="Vorige Woche"
               >
@@ -165,6 +166,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             {week !== thisWeek && (
               <Link
                 href={`/einkauf?w=${thisWeek}`}
+                prefetch
                 transitionTypes={[thisWeek > week ? FORWARD : BACK]}
               >
                 Aktuelle
@@ -172,6 +174,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             )}
             <Link
               href={`/einkauf?w=${addDays(week, 7)}`}
+              prefetch
               transitionTypes={[FORWARD]}
               aria-label="Nächste Woche"
             >

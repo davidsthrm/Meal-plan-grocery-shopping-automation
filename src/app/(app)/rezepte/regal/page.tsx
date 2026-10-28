@@ -567,6 +567,7 @@ function ShelfRow({
             <div className="min-w-0 flex-1">
               <Link
                 href={`/rezepte/${recipe.id}${FROM_SHELF}`}
+                prefetch
                 className="font-semibold hover:underline"
               >
                 {recipe.title}

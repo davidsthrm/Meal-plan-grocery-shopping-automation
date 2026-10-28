@@ -47,6 +47,8 @@ export function AppNav({ floating = false }: { floating?: boolean }) {
           <li key={href} className={floating ? "min-w-0 flex-1" : undefined}>
             <Link
               href={href}
+              // The whole page ahead, kept for minutes: a tab answers without the server.
+              prefetch
               transitionTypes={sideways(here, index)}
               aria-current={active ? "page" : undefined}
               onPointerDown={() => setTapped({ index, on: pathname })}

@@ -334,6 +334,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
         {hasWeekBefore(week, household.firstWeek) ? (
           <Link
             href={weekLink(addDays(week, -7))}
+            prefetch
             transitionTypes={[BACK]}
             aria-label="Vorige Woche"
           >
@@ -345,12 +346,17 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           </a>
         )}
         {week !== thisWeek && (
-          <Link href={weekLink(thisWeek)} transitionTypes={[thisWeek > week ? FORWARD : BACK]}>
+          <Link
+            href={weekLink(thisWeek)}
+            prefetch
+            transitionTypes={[thisWeek > week ? FORWARD : BACK]}
+          >
             Aktuelle
           </Link>
         )}
         <Link
           href={weekLink(addDays(week, 7))}
+          prefetch
           transitionTypes={[FORWARD]}
           aria-label="Nächste Woche"
         >
@@ -848,6 +854,7 @@ function KindTitle({
       )}
       <Link
         href={`/rezepte/${id}${fromPlan(week, day)}`}
+        prefetch
         transitionTypes={[FORWARD]}
         className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-[0.92rem] leading-snug" : ""}`}
       >
@@ -933,6 +940,7 @@ function Extras({
                 <p>
                   <Link
                     href={`/rezepte/${extra.recipeId}${fromPlan(week)}`}
+                    prefetch
                     transitionTypes={[FORWARD]}
                     className="font-semibold decoration-line underline-offset-4 hover:underline"
                   >
@@ -1109,11 +1117,8 @@ function MealCell({
 
   // The kind of its first dish colours the meal's edge: the week reads at a glance.
   const first = slot?.kind === "recipes" ? recipeOf.get(slot.items[0]?.recipeId ?? "") : undefined;
-  const edge = first
-    ? (recipeTone(first)?.className ?? "")
-    : slot && slot.kind !== "recipes" && slotPictogram(slot)
-      ? "kind-none"
-      : "";
+  // Every planned meal has an edge: grey where its dish has no kind or it has no recipe.
+  const edge = first ? (recipeTone(first)?.className ?? "kind-none") : slot ? "kind-none" : "";
   const cell = `meal-cell min-w-0 ${column} ${edge}`;
 
   // A saved plan is read, not planned: what there is, and a small pen for a change.
@@ -1369,7 +1374,7 @@ function MealCell({
                     : `/woche?w=${week}&mehr=${date}.${meal}#tag-${date}`
                 }
                 scroll={false}
-                className={`link inline-flex min-h-11 items-center rounded-full text-sm ${cookingMore ? "bg-accent-soft px-3" : "px-1"}`}
+                className={`link link-quiet inline-flex min-h-11 items-center rounded-full px-2 text-sm whitespace-nowrap ${cookingMore ? "bg-accent-soft text-accent" : "text-muted"}`}
                 aria-label={`${what}: mehr kochen`}
                 aria-expanded={cookingMore}
               >

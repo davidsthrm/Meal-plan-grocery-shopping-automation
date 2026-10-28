@@ -32,11 +32,13 @@ const nextConfig: NextConfig = {
   // should not hit the 1 MB default either.
   experimental: {
     serverActions: { bodySizeLimit: "4mb" },
-    // A page seen in the last 30 seconds comes back at once from the browser's memory: going
-    // to another tab and back waited 0.4 to 0.8 seconds each time (October 2026). A change of
-    // the household refreshes it as before: `router.refresh()` (LiveRefresh) and the answer
-    // to every form clear this memory.
-    staleTimes: { dynamic: 30 },
+    // A page seen in the last two minutes comes back at once from the browser's memory, and
+    // one fetched whole ahead (`prefetch` on the tabs, the week's arrows and the recipes) for
+    // five: going to another tab and back waited 0.4 to 0.8 seconds each time, and a week or
+    // a recipe opened in front of a guest took seconds (October 2026). A change of the
+    // household refreshes it as before: `router.refresh()` (LiveRefresh) and the answer to
+    // every form clear this memory.
+    staleTimes: { dynamic: 120, static: 300 },
   },
   // The service worker is fetched again on every visit, so that a new version arrives at
   // once. It may load nothing from anywhere else but the supermarkets' logos, which it keeps
