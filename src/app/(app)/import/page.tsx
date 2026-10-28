@@ -6,7 +6,8 @@ import { MEAL_NAME } from "@/lib/plan-text";
 import { allRows, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { FolderIcon } from "@/components/icons";
+import { FolderIcon, ListIcon } from "@/components/icons";
+import { FORWARD } from "@/lib/transitions";
 import { batchShelf, type BatchEntry } from "@/domain/import/batch-shelf";
 import { sourceLabel } from "@/domain/library/source";
 import { loadSources } from "@/server/sources";
@@ -56,10 +57,15 @@ export default async function ImportPage(props: PageProps<"/import">) {
     loadSources(db),
     allRows(
       (from, to) =>
-        db.from("recipe").select("id, source_book, source_edition").order("id").range(from, to),
+        db
+          .from("recipe")
+          .select("id, source_book, source_edition, status")
+          .order("id")
+          .range(from, to),
       "load sources of recipes",
     ),
   ]);
+  const approved = recipeSources.filter((recipe) => recipe.status === "approved").length;
   const sourceOfRecipe = new Map(
     recipeSources.map((recipe) => [
       recipe.id,
@@ -131,10 +137,45 @@ export default async function ImportPage(props: PageProps<"/import">) {
         forMeal={forMeal && { date: forMeal.date, meal: forMeal.meal }}
       />
 
+      {/* Looking after the library is part of bringing recipes in: every recipe as a table,
+          to sort, tag and change several at once. It was the Regal under Rezepte, which now
+          is the shelf of cookbooks (October 2026). */}
+      <h2 className="sr-only">Alle Rezepte</h2>
+      <Link
+        href="/import/rezepte"
+        prefetch
+        transitionTypes={[FORWARD]}
+        className="card lift mt-8 flex min-h-16 items-center gap-3 px-4 py-3"
+      >
+        <span className="badge size-11 rounded-xl">
+          <ListIcon />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Alle Rezepte</span>
+          <span className="block text-sm text-muted">
+            {countText(approved, "Rezept", "Rezepte")} · sortieren, Stichworte, mehrere auf einmal
+            ändern
+          </span>
+        </span>
+        <span aria-hidden className="text-accent">
+          →
+        </span>
+      </Link>
+
       {batchRows.length > 0 && (
-        <>
-          <h2 className="mt-8 mb-2 text-lg font-semibold">Bisherige Stapel</h2>
-          <ul className="card divide-y divide-line">
+        // Folded: a batch is opened again rarely, once it is read.
+        <details className="group card mt-3">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
+            <span>
+              Bisherige Stapel{" "}
+              <span className="font-normal text-muted tabular-nums">{batchRows.length}</span>
+            </span>
+            <span className="text-sm font-semibold text-accent">
+              <span className="group-open:hidden">Ansehen</span>
+              <span className="hidden group-open:inline">Ausblenden</span>
+            </span>
+          </summary>
+          <ul className="divide-y divide-line border-t border-line">
             {shelf.map((entry) =>
               entry.kind === "batch" ? (
                 <li key={entry.batch.id}>
@@ -207,7 +248,7 @@ export default async function ImportPage(props: PageProps<"/import">) {
               ),
             )}
           </ul>
-        </>
+        </details>
       )}
     </div>
   );

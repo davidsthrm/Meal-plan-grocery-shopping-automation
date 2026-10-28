@@ -35,8 +35,8 @@ export function fromFieldChecks(field: string | null): string {
 /** What a link to a recipe adds to its address when it stands among the steps to check. */
 export const FROM_STEP_CHECKS = "?von=schritte";
 
-/** What a link to a recipe adds to its address when it stands in the Regal. */
-export const FROM_SHELF = "?von=regal";
+/** What a link to a recipe adds to its address when it stands in "Alle Rezepte". */
+export const FROM_ALL_RECIPES = "?von=alle";
 
 /** What a link to a recipe adds to its address when it stands in the statistics. */
 export const FROM_STATISTICS = "?von=statistik";
@@ -63,9 +63,9 @@ export function readOrigin(
     const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";
     return { href: `/import/pruefen/angaben${filter}${anchor}`, label: "Angaben prüfen" };
   }
-  if (von === "regal") {
+  if (von === "alle") {
     const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";
-    return { href: `/rezepte/regal${anchor}`, label: "Regal" };
+    return { href: `/import/rezepte${anchor}`, label: "Alle Rezepte" };
   }
   if (von === "statistik") return { href: "/woche/statistik", label: "Statistik" };
   if (von === "doppelt") return { href: "/import/pruefen/doppelt", label: "Doppelte Rezepte" };

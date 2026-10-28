@@ -44,7 +44,10 @@ export function LiveRefresh() {
     let pace: Pace | null = null;
     let lastOwn = -Infinity;
     // An import stores recipes by the hundred. Its own pages follow it by themselves.
-    const quiet = () => window.location.pathname.startsWith("/import");
+    const quiet = () =>
+      window.location.pathname.startsWith("/import") &&
+      // "Alle Rezepte" lies under Import but is the library, which the family changes.
+      !window.location.pathname.startsWith("/import/rezepte");
     // A recipe, tag or ingredient changed since the search index was last fetched.
     let searchStale = false;
     const refresh = () => {

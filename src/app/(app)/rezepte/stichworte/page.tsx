@@ -41,8 +41,8 @@ export default async function TagsPage(props: PageProps<"/rezepte/stichworte">) 
       : library.recipes.filter((recipe) => recipe.tags.includes(ref(tag))).length;
   const shelfOf = (tag: StoredTag) =>
     tag.group === CATEGORY_GROUP
-      ? `/rezepte/regal?kategorie=${tag.key}`
-      : `/rezepte/regal?tag=${ref(tag)}`;
+      ? `/import/rezepte?kategorie=${tag.key}`
+      : `/import/rezepte?tag=${ref(tag)}`;
 
   const open = tags.find((tag) => tag.id === one(params.stichwort)) ?? null;
   const problem = open ? await whyNot(db, open, tags, params) : null;
@@ -56,7 +56,7 @@ export default async function TagsPage(props: PageProps<"/rezepte/stichworte">) 
 
   return (
     <div className="mx-auto max-w-3xl">
-      <BackLink href="/rezepte/regal">Regal</BackLink>
+      <BackLink href="/import/rezepte">Alle Rezepte</BackLink>
       <h1 className="title mt-3">Stichworte</h1>
       <p className="mt-2 text-muted">
         Umbenennen lässt sich jedes Stichwort: Die App erkennt ihre eigenen auch unter einem neuen

@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { createPortal } from "react-dom";
 
 /**
- * The bar for what is done with the recipes ticked in the Regal. It counts the ticked boxes
+ * The bar for what is done with the recipes ticked in "Alle Rezepte". It counts the ticked boxes
  * of its form and stays out of sight while none is. "Alle auf dieser Seite" ticks every box
  * of the page. Without a script the bar is always there and the server reads the boxes.
  *

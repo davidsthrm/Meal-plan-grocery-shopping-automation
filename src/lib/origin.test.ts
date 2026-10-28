@@ -3,7 +3,7 @@ import {
   FROM_DUPLICATES,
   FROM_STEP_CHECKS,
   FROM_FAVORITES,
-  FROM_SHELF,
+  FROM_ALL_RECIPES,
   FROM_STATISTICS,
   fromFieldChecks,
   fromPlan,
@@ -62,12 +62,12 @@ describe("where a recipe was opened from", () => {
     expect(read("?von=angaben&feld=//boese", "x#y").href).toBe("/import/pruefen/angaben");
   });
 
-  it("leads back to the recipe in the Regal", () => {
-    expect(read(FROM_SHELF, RECIPE)).toEqual({
-      href: `/rezepte/regal#r-${RECIPE}`,
-      label: "Regal",
+  it("leads back to the recipe in Alle Rezepte", () => {
+    expect(read(FROM_ALL_RECIPES, RECIPE)).toEqual({
+      href: `/import/rezepte#r-${RECIPE}`,
+      label: "Alle Rezepte",
     });
-    expect(read(FROM_SHELF, "x#y").href).toBe("/rezepte/regal");
+    expect(read(FROM_ALL_RECIPES, "x#y").href).toBe("/import/rezepte");
   });
 
   it("leads back to the duplicates", () => {

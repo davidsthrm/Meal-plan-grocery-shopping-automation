@@ -15,7 +15,7 @@ import {
   WaysOut,
   type PanelGroup,
 } from "@/components/recipe-filters";
-import { RecipeViews } from "@/components/recipe-views";
+import { BackLink } from "@/components/back-link";
 import { SubmitButton } from "@/components/submit-button";
 import { TagEditor } from "@/components/tag-editor";
 import { TagNameField } from "@/components/tag-name-field";
@@ -44,7 +44,7 @@ import {
 } from "@/domain/library/recipe-table";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { EFFORT_NAME, EFFORTS, effortOf, type Tag } from "@/domain/library/tags";
-import { FROM_SHELF } from "@/lib/origin";
+import { FROM_ALL_RECIPES } from "@/lib/origin";
 import { MEAL_NAME, recipeTone } from "@/lib/plan-text";
 import { servingsText } from "@/lib/recipe-text";
 import { today } from "@/lib/today";
@@ -52,11 +52,11 @@ import type { Library } from "@/server/library";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { loadLastCookedAll, loadRecipePlaces, type PlanPlace } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { setFavorite, setWanted } from "../actions";
+import { setFavorite, setWanted } from "@/app/(app)/rezepte/actions";
 import { changeSeveral, deleteFromShelf } from "./actions";
 import { SelectionBar } from "./selection-bar";
 
-export const metadata: Metadata = { title: "Regal" };
+export const metadata: Metadata = { title: "Alle Rezepte" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -64,12 +64,12 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 const SELECTION = "auswahl";
 
 /**
- * The Regal: every recipe of the library in one table, to look after it. Sorted by any
+ * "Alle Rezepte" (under Import, where it was the Regal before October 2026): every recipe of the library in one table, to look after it. Sorted by any
  * column, narrowed like "Entdecken" and to what still lacks something, a page at a time.
  * Ticked recipes are changed together; each row has its marks, its tags, the form to change
  * it and a way to delete it. On a phone a row shows title and effort and opens for the rest.
  */
-export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
+export default async function ShelfPage(props: PageProps<"/import/rezepte">) {
   const params = await props.searchParams;
   const filter = readFilter(params);
   const view = readTableView(params);
@@ -104,13 +104,13 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
   const shelf = shelfParams(params);
   const query = new URLSearchParams(shelf).toString();
   const href = (extra: Record<string, string>, anchor = "") =>
-    `/rezepte/regal?${new URLSearchParams({ ...shelf, ...extra })}${anchor}`;
+    `/import/rezepte?${new URLSearchParams({ ...shelf, ...extra })}${anchor}`;
   const withView = (next: TableView) =>
-    `/rezepte/regal?${new URLSearchParams({ ...filterParams(filter), ...tableParams(next) })}`;
+    `/import/rezepte?${new URLSearchParams({ ...filterParams(filter), ...tableParams(next) })}`;
 
   // The filter's links keep the table's order and what is lacking, from the first page.
   const keep = tableParams({ ...view, page: 1 });
-  const filterLink = (next: RecipeFilter) => filterHref("/rezepte/regal", next, keep);
+  const filterLink = (next: RecipeFilter) => filterHref("/import/rezepte", next, keep);
   const lacking: PanelGroup = {
     key: "ohne",
     title: "Was fehlt",
@@ -143,7 +143,7 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
     isNoFilter({ ...filter, text: "" }) && !view.lacks
       ? null
       : filterHref(
-          "/rezepte/regal",
+          "/import/rezepte",
           { ...NO_FILTER, text: filter.text },
           tableParams({ ...view, lacks: null, page: 1 }),
         );
@@ -155,16 +155,16 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
 
   return (
     <div className="mx-auto max-w-5xl pb-20 xl:max-w-7xl">
-      <p className="eyebrow">
-        {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
-      </p>
-      {/* The switch below says which view is open: the same word as a large title above it
-          only took the first screen. */}
-      <h1 className="sr-only">Regal</h1>
       {/* One row, also on a phone: there the way to the tags is its sign alone. */}
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <div className="min-w-0 flex-1 sm:flex-none">
-          <RecipeViews current="regal" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <BackLink href="/import">Import</BackLink>
+          <h1 className="title mt-2">
+            Alle Rezepte{" "}
+            <span className="text-base font-normal tracking-normal text-muted tabular-nums">
+              {recipes.length}
+            </span>
+          </h1>
         </div>
         <Link
           href="/rezepte/stichworte"
@@ -194,7 +194,7 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
           panel={<FilterPanel layout="aside" groups={groups} total={shown.total} reset={reset} />}
         >
           <FilterBar
-            path="/rezepte/regal"
+            path="/import/rezepte"
             filter={filter}
             hidden={{ ...keep, ...filterParams({ ...filter, text: "" }) }}
             layout="aside"
@@ -566,7 +566,7 @@ function ShelfRow({
             <RecipeBadge recipe={recipe} className="mt-0.5 hidden h-8 w-8 shrink-0 sm:flex" />
             <div className="min-w-0 flex-1">
               <Link
-                href={`/rezepte/${recipe.id}${FROM_SHELF}`}
+                href={`/rezepte/${recipe.id}${FROM_ALL_RECIPES}`}
                 prefetch
                 className="font-semibold hover:underline"
               >

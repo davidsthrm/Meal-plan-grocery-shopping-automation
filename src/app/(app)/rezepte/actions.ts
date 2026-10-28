@@ -96,7 +96,7 @@ export async function saveTags(form: FormData): Promise<void> {
   const back = new URLSearchParams(String(form.get("zurueck") ?? ""));
   if (form.get("ziel") === "regal") {
     const query = new URLSearchParams(shelfParams(Object.fromEntries(back))).toString();
-    redirect(`/rezepte/regal${query ? `?${query}` : ""}#r-${id}`);
+    redirect(`/import/rezepte${query ? `?${query}` : ""}#r-${id}`);
   }
   const kept = new URLSearchParams();
   for (const key of ["von", "w", "feld"]) {

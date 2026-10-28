@@ -12,7 +12,7 @@ import { createSessionClient } from "@/server/supabase/server";
 import { addTagToRecipes, loadStoredTags, removeTagFromRecipes, tagForName } from "@/server/tags";
 
 /**
- * What the household does in the Regal: change several recipes at once, and delete one.
+ * What the household does in "Alle Rezepte": change several recipes at once, and delete one.
  * Every action is the target of a plain form; nothing needs a script.
  */
 
@@ -33,12 +33,12 @@ function ids(form: FormData, name: string): string[] {
   ];
 }
 
-/** Back to the Regal as it was (its filter, sorting and page), with what to say. */
+/** Back to "Alle Rezepte" as it was (its filter, sorting and page), with what to say. */
 function backToShelf(form: FormData, said: Record<string, string> = {}): never {
   revalidatePath("/", "layout");
   const shelf = shelfParams(Object.fromEntries(new URLSearchParams(text(form, "zurueck"))));
   const query = new URLSearchParams({ ...shelf, ...said }).toString();
-  redirect(`/rezepte/regal${query ? `?${query}` : ""}`);
+  redirect(`/import/rezepte${query ? `?${query}` : ""}`);
 }
 
 /**

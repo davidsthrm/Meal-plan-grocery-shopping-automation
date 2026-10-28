@@ -55,7 +55,7 @@ const FEATURED_GROUPS = new Set(["Hauptzutat", "Gericht", "Küche", "Anlass", "E
 /** Where a shelf's "Alle anzeigen" leads: its filter, or the Regal by what is new. */
 function shelfHref(shelf: Shelf): string | null {
   if (shelf.filter) return filterHref(PATH, shelf.filter);
-  return shelf.key === "neu" ? "/rezepte/regal?sortierung=neu&richtung=ab" : null;
+  return shelf.key === "neu" ? "/import/rezepte?sortierung=neu&richtung=ab" : null;
 }
 
 export default async function DiscoverPage(props: PageProps<"/rezepte">) {

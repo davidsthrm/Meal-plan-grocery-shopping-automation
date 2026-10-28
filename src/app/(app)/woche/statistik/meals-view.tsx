@@ -507,7 +507,7 @@ export function MealsView({
           {stats.library.added === 0 ? (
             <NotYet>Keine neuen Rezepte in diesem Zeitraum.</NotYet>
           ) : (
-            <Link href="/rezepte/regal?sortierung=neu" className="bar-row">
+            <Link href="/import/rezepte?sortierung=neu" className="bar-row">
               <span className="badge kind-place size-10">
                 <PictogramIcon name="buch" className="h-[64%] w-[64%]" />
               </span>
