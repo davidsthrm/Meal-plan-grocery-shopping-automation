@@ -45,7 +45,13 @@ export function FridgeFinder({
   /** What the address says is there. */
   initial: number[];
 }) {
-  const [there, setThere] = useState<number[]>(initial);
+  // From the address where there is one: stepping back to this page shows it from the
+  // router's memory, drawn before anything was tapped, while the address kept the taps.
+  const [there, setThere] = useState<number[]>(() => {
+    if (typeof window === "undefined") return initial;
+    const named = new URLSearchParams(window.location.search).getAll("z");
+    return named.map((name) => foods.indexOf(name)).filter((food) => food >= 0);
+  });
   const [typed, setTyped] = useState("");
   const chosen = useMemo(() => new Set(there), [there]);
 

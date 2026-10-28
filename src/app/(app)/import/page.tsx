@@ -164,15 +164,16 @@ export default async function ImportPage(props: PageProps<"/import">) {
 
       {batchRows.length > 0 && (
         // Folded: a batch is opened again rarely, once it is read.
-        <details className="group card mt-3">
+        // A group of its own name: the folders inside are folds with "Öffnen" of their own.
+        <details className="group/stapel card mt-3">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold [&::-webkit-details-marker]:hidden">
             <span>
               Bisherige Stapel{" "}
               <span className="font-normal text-muted tabular-nums">{batchRows.length}</span>
             </span>
             <span className="text-sm font-semibold text-accent">
-              <span className="group-open:hidden">Ansehen</span>
-              <span className="hidden group-open:inline">Ausblenden</span>
+              <span className="group-open/stapel:hidden">Ansehen</span>
+              <span className="hidden group-open/stapel:inline">Ausblenden</span>
             </span>
           </summary>
           <ul className="divide-y divide-line border-t border-line">

@@ -53,9 +53,15 @@ export function RecipeRoulette({
   recipes: Record<string, RouletteRecipe>;
   initial: string | null;
 }) {
-  const [shown, setShown] = useState<Combination | null>(
-    () => combos.find((combo) => comboKey(combo) === initial) ?? combos[0] ?? null,
-  );
+  // From the address where there is one: stepping back to this page shows it from the
+  // router's memory, drawn before the spin, while the address kept what it stopped on.
+  const [shown, setShown] = useState<Combination | null>(() => {
+    const key =
+      typeof window === "undefined"
+        ? initial
+        : (new URLSearchParams(window.location.search).get("k") ?? initial);
+    return combos.find((combo) => comboKey(combo) === key) ?? combos[0] ?? null;
+  });
   const [held, setHeld] = useState<Held>({});
   // While spinning: what each reel shows for a moment, and which have stopped.
   const [turning, setTurning] = useState<Partial<Record<Reel, string>> | null>(null);

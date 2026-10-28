@@ -100,6 +100,11 @@ test("tags are changed in place on a recipe's page and merged on their own page"
   await page.goto("/import/rezepte");
   await page.getByRole("link", { name: "Kürbisgnocchi", exact: true }).click();
   await page.waitForURL(/\/rezepte\/[0-9a-f-]{36}\?von=alle$/);
+  // The way back leads to "Alle Rezepte", not to Entdecken.
+  await expect(page.getByRole("link", { name: "← Alle Rezepte" })).toHaveAttribute(
+    "href",
+    /^\/import\/rezepte#r-/,
+  );
   await page.getByRole("link", { name: /Stichworte (ändern|vergeben)/ }).click();
   const editor = page.getByRole("form", { name: "Stichworte ändern" });
   await editor.getByText("Braucht Zeit", { exact: true }).click();
@@ -195,7 +200,9 @@ test("a magazine's batches are one folder with its editions", async ({ page }) =
     { book: "E2E Kochbuch" },
   ]);
   await page.goto("/import");
-  const batches = page.locator("ul.card > li");
+  // Folded below "Alle Rezepte": a batch is opened again rarely.
+  await page.getByText("Bisherige Stapel").click();
+  const batches = page.locator("details.card > ul > li");
   await expect(batches).toHaveCount(2);
   const folder = batches.filter({ hasText: "Testheft" });
   await expect(folder).toContainText("2 Ausgaben · 0 Rezepte");
