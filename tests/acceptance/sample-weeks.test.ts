@@ -4,7 +4,8 @@ import { addDays, type IsoDate } from "@/domain/dates";
 import type { PlanExtra, PlanSlot } from "@/domain/plan";
 import { groupAtHome } from "@/domain/shopping-list/at-home";
 import { buildShoppingList, moveKey, type BuildInput } from "@/domain/shopping-list/build";
-import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
+import { dayProblems, lineWindow, windowProblems } from "@/domain/shopping-list/change-day";
+import { placeSells } from "@/domain/shopping-list/shop-choice";
 import { presentByAisle } from "@/domain/shopping-list/present";
 import {
   butcherWeekdays,
@@ -263,7 +264,15 @@ describe("a full week with lines moved", () => {
     const moves = new Map<string, ShoppingTrip>();
     for (const line of lines) {
       const here = { date: line.shoppingDate, place: line.place };
-      const [target] = moveTargets(line, here, notes, TODAY, index);
+      // Another note of the week where the line is in time, keeps, and is sold.
+      const target = notes.find(
+        (trip) =>
+          noteId(trip) !== noteId(here) &&
+          trip.place !== "drugstore" &&
+          trip.date >= TODAY &&
+          (trip.place === here.place || placeSells(trip.place, line.aisleGroupId, index)) &&
+          windowProblems(lineWindow(line, index), trip, "too-late").length === 0,
+      );
       if (target) moves.set(moveKey(here, line.key), target);
     }
     expect(moves.size).toBeGreaterThan(5);

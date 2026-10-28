@@ -137,9 +137,15 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await write.press("Enter");
   await expect(sheet(page, MONDAY).getByText("Geschenkpapier", { exact: true })).toBeVisible();
 
-  // The wrapping paper is bought on Friday after all: the line moves to that note.
-  await sheet(page, MONDAY).getByText("Geschenkpapier", { exact: true }).click();
-  await page.getByRole("button", { name: "Geschenkpapier verschieben: Fr 5. Supermarkt" }).click();
+  // The wrapping paper is bought on Friday after all: the arrow moves it to that note. It
+  // belongs to no meal, so there is nothing to warn of.
+  await sheet(page, MONDAY)
+    .getByRole("button", { name: "Geschenkpapier verschieben", exact: true })
+    .click();
+  const paper = page.getByRole("dialog", { name: "Geschenkpapier verschieben" });
+  await paper.getByLabel("Datum wählen").selectOption("2027-03-05");
+  await expect(paper.locator(".text-warn")).toHaveCount(0);
+  await paper.getByRole("button", { name: "Geschenkpapier auf Fr 5." }).click();
   // On Monday's note it is said, quietly, where it went.
   await expect(
     sheet(page, MONDAY).getByRole("button", { name: "Geschenkpapier: erledigt" }),
@@ -153,14 +159,16 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await sheet(page, FRIDAY).getByText("Geschenkpapier", { exact: true }).click();
   await expect(sheet(page, FRIDAY)).toContainText("verschoben von Mo 1. Supermarkt");
   await all(page).click();
-  // The cream is for Tuesday: Friday is too late for it and is not offered, an errand
-  // before Tuesday is. The Metzger's is not: it sells no cream.
+  // The cream is for lunch on Tuesday. Friday may still be picked, and the form says it is
+  // too late.
+  // The Metzger is not offered at all: it sells no cream.
   await tile(page, MONDAY).click();
-  await sheet(page, MONDAY).getByText("300 ml Sahne").click();
-  const moves = sheet(page, MONDAY).getByRole("group", { name: "Sahne verschieben" });
-  await expect(moves.getByRole("button", { name: /Fr 5\. Supermarkt/ })).toHaveCount(0);
-  await expect(moves.getByRole("button", { name: /Fr 26\. Markt/ })).toBeVisible();
-  await expect(moves.getByRole("button", { name: /Mo 1\. Metzger/ })).toHaveCount(0);
+  await sheet(page, MONDAY).getByRole("button", { name: "Sahne verschieben", exact: true }).click();
+  const cream = page.getByRole("dialog", { name: "Sahne verschieben" });
+  await cream.getByLabel("Datum wählen").selectOption("2027-03-05");
+  await expect(cream).toContainText("Sahne wird schon am Dienstagmittag gebraucht.");
+  await expect(cream.getByRole("radio", { name: "Metzger" })).toHaveCount(0);
+  await cream.getByRole("button", { name: "Abbrechen" }).click();
   await all(page).click();
 
   // Ticking off, and the tick survives a change of the plan.

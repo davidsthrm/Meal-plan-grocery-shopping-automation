@@ -132,27 +132,29 @@ export function movedAway(note: ShoppingTrip, lines: readonly ShoppingLine[]): M
 /** How many days after its note a line can be moved: the notes are read for the week around. */
 export const MOVE_DAYS = 7;
 
-/** The first day a line of a note can be bought on instead: the day after it, never before today. */
-function firstDay(noteDate: IsoDate, today: IsoDate): IsoDate {
-  return noteDate >= today ? addDays(noteDate, 1) : addDays(today, 1);
-}
-
 /**
- * The days a line can be bought on instead: from the day after its note, or from tomorrow
- * where that note's day is over, up to a week after its note. Whether that is too late for
- * the plan does not matter: in the shop the thing is not to be had today, and on a note for
- * later the household knows its week.
+ * The days a line can be bought on: from today, up to a week before its note as well as up
+ * to a week after it. Whether that suits the plan does not decide it: in the shop the
+ * thing is not to be had today, and at home the salad for Sunday may be bought on Wednesday
+ * with everything else (October 2026). The form says what would not keep or come too late
+ * (`windowProblems`).
  */
 export function moveDays(noteDate: IsoDate, today: IsoDate): IsoDate[] {
   const days: IsoDate[] = [];
+  const weekBefore = addDays(noteDate, -MOVE_DAYS);
   for (
-    let day = firstDay(noteDate, today);
+    let day = weekBefore > today ? weekBefore : today;
     day <= addDays(noteDate, MOVE_DAYS) || days.length < 2;
     day = addDays(day, 1)
   ) {
     days.push(day);
   }
   return days;
+}
+
+/** The next day to buy a line on, offered in its menu: the day after its note, or tomorrow. */
+export function nextMoveDay(noteDate: IsoDate, today: IsoDate): IsoDate {
+  return addDays(moveStartDay(noteDate, today), 1);
 }
 
 /**
@@ -172,6 +174,5 @@ export function moveStartDay(noteDate: IsoDate, today: IsoDate): IsoDate {
 export function canMoveTo(to: string, from: ShoppingTrip, today: IsoDate): ShoppingTrip | null {
   const trip = readNoteId(to);
   if (!trip || trip.place === "drugstore") return null;
-  const last = moveDays(from.date, today).at(-1) as IsoDate;
-  return trip.date >= today && trip.date >= from.date && trip.date <= last ? trip : null;
+  return moveDays(from.date, today).includes(trip.date) ? trip : null;
 }

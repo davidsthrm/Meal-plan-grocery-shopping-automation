@@ -17,13 +17,15 @@ import {
   leavesNote,
   moveDays,
   moveStartDay,
+  nextMoveDay,
   type Decision,
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
+import { windowProblems, type LineWindow } from "@/domain/shopping-list/change-day";
 import type { ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { convert, type Amount, type Unit } from "@/domain/units";
-import { dayName, PLACE_LOOK } from "@/lib/list-text";
+import { dayName, PLACE_LOOK, problemText } from "@/lib/list-text";
 import { MoveIcon, PenIcon, ShelfIcon, TickIcon, TrashIcon, UndoIcon } from "./icons";
 import { SubmitButton } from "./submit-button";
 import { PictogramIcon } from "./pictogram";
@@ -62,6 +64,8 @@ export interface ActionLine extends PageLine {
   others: string[];
   /** False on the drugstore's note: its lines are not bought on another note. */
   movable: boolean;
+  /** When its meals need it and how long it keeps: what a move warns of. Null: any day. */
+  window: LineWindow | null;
   /** Said after the name, small: the shop it was named for ("Bäcker"). */
   hint?: string | null;
 }
@@ -701,7 +705,7 @@ function RowMenu({
   const { host, decision, bought, toggle, remove } = useLine(line);
   const menu = useRef<HTMLDivElement>(null);
   // The day after the note, or tomorrow where its day is over.
-  const next = moveDays(host.note.date, host.today)[0];
+  const next = nextMoveDay(host.note.date, host.today);
   const nextWord = dayWord(next, host.today);
 
   useEffect(() => {
@@ -1084,8 +1088,23 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
 }
 
 /**
+ * The days offered as chips, in their order: today, tomorrow and the note's own day, made
+ * up to three with the days after. The others are in "Datum wählen".
+ */
+function quickDays(days: readonly IsoDate[], noteDate: IsoDate, today: IsoDate): IsoDate[] {
+  const quick = [...new Set([today, addDays(today, 1), noteDate])]
+    .filter((each) => days.includes(each))
+    .sort();
+  for (const each of days) {
+    if (quick.length >= 3) break;
+    if (quick.length === 0 || each > quick[quick.length - 1]) quick.push(each);
+  }
+  return quick;
+}
+
+/**
  * Where it is bought instead: another day, another shop, or both, decided once. The days
- * from today up to a week on; the shops that sell it, where it was bought before first, and
+ * from today, also before the note, up to a week after it; the shops that sell it, where it was bought before first, and
  * the others behind "Alle Geschäfte".
  */
 function MoveForm({
@@ -1102,19 +1121,24 @@ function MoveForm({
   const here =
     choices.find((choice) => choice.id === line.about.shop) ??
     choices.find((choice) => choice.place === note.place);
-  const following = moveDays(note.date, today);
+  const days = moveDays(note.date, today);
   const start = moveStartDay(note.date, today);
-  const [day, setDay] = useState<IsoDate>(rest ? following[0] : start);
+  const [day, setDay] = useState<IsoDate>(rest ? nextMoveDay(note.date, today) : start);
   const [shop, setShop] = useState<string | undefined>(here?.id);
   const [all, setAll] = useState(false);
   const picked = choices.find((choice) => choice.id === shop);
-  const quick = [...new Set([start, ...following.slice(0, 2)])];
-  const later = following.filter((each) => !quick.includes(each));
+  const quick = quickDays(days, note.date, today);
+  const later = days.filter((each) => !quick.includes(each));
   const offered = line.suggested.flatMap((id) => choices.find((choice) => choice.id === id) ?? []);
   const others = line.others.flatMap((id) => choices.find((choice) => choice.id === id) ?? []);
   const same = day === note.date && shop === here?.id;
 
   const target = picked && { date: day, place: picked.place };
+  // Said, not stopped: the salad for Sunday may well be bought on Wednesday.
+  const warning =
+    target && noteId(target) !== noteId(note)
+      ? windowProblems(line.window, target, "too-late")[0]
+      : undefined;
   const words = [
     day !== note.date ? `auf ${dayName(day)}` : null,
     shop !== here?.id && picked ? `bei ${picked.name}` : null,
@@ -1210,6 +1234,7 @@ function MoveForm({
             </select>
           </label>
         </div>
+        {warning && <p className="mt-2 text-sm text-warn">{problemText(warning)}</p>}
       </fieldset>
       <fieldset>
         <legend className="font-semibold">Geschäft</legend>

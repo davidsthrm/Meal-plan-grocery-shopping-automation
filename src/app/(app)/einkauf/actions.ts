@@ -7,7 +7,7 @@ import { PLACES } from "@/domain/catalog";
 import { isIsoDate, mondayOf } from "@/domain/dates";
 import { noteToBuyOn } from "@/domain/shopping-list/at-home";
 import { originsOf } from "@/domain/shopping-list/build";
-import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
+import { blocks, dayProblems, noteDays } from "@/domain/shopping-list/change-day";
 import { readDrugstoreEntry } from "@/domain/shopping-list/drugstore";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { daysToOpen } from "@/domain/shopping-list/week-notes";
@@ -27,7 +27,6 @@ import {
   putAwayNote,
   setEntryKind,
 } from "@/server/shopping/list";
-import { loadSupermarkets } from "@/server/catalog";
 import { createSessionClient } from "@/server/supabase/server";
 
 /** What a shopping note can be told to do. Each action is the target of a plain form. */
@@ -208,54 +207,6 @@ export async function amountLine(form: FormData): Promise<void> {
   backToList(input);
 }
 
-/**
- * Buys a line of a supermarket note at another of the household's supermarkets this week:
- * "Kaufe ich bei Rewe". The main one is stored by name too: a kind of grocery the household
- * buys at Rewe would otherwise go back there. No shop puts the line back where its kind is
- * bought.
- */
-export async function buyAtSupermarket(form: FormData): Promise<void> {
-  const input = read(line.extend({ shop: z.union([z.guid(), z.literal("")]) }), form);
-  const household = await requireHousehold();
-  const db = await createSessionClient();
-  const trip = noteOf(input.note);
-  const favourites = await loadSupermarkets(db);
-  const shop = favourites.find((each) => each.id === input.shop);
-  if (trip.place !== "supermarket" || (input.shop !== "" && !shop)) backToList(input);
-  await changeLine(db, household, trip, input.key, {
-    shopId: shop?.id ?? null,
-  });
-  backToList(input);
-}
-
-/**
- * Moves a line to another note of the week: it is bought on another errand after all. The
- * page offers only the notes where that is in time (`moveTargets`); this checks it again.
- */
-export async function moveListLine(form: FormData): Promise<void> {
-  const input = read(line.extend({ to: z.string().max(40) }), form);
-  const household = await requireHousehold();
-  const db = await createSessionClient();
-  const { notes, index } = await loadShoppingNotes(db, household, input.week);
-  const here = notes.find((entry) => entry.id === input.note);
-  const view = here?.view.groups
-    .flatMap((group) => group.lines)
-    .find((entry) => entry.line.key === input.key);
-  if (!here || !view) backToList(input);
-  const trips = notes.map((entry) => entry.trip);
-  const target = moveTargets(view.line, here.trip, trips, today(), index).find(
-    (trip) => noteId(trip) === input.to,
-  );
-  if (!target) backToList(input);
-  await moveLines(
-    db,
-    household,
-    [{ key: view.line.key, origins: originsOf(view.line, here.trip) }],
-    target,
-  );
-  backToList(input);
-}
-
 /** Says that an errand is done: everything still open on its note is ticked. */
 export async function completeListNote(form: FormData): Promise<void> {
   const input = read(place, form);
@@ -275,9 +226,10 @@ export async function completeListNote(form: FormData): Promise<void> {
 }
 
 /**
- * Does an errand on another day: every line of its note moves to the note of that day at
- * the same place. Refused when something on the note would be too late or would not keep;
- * the page says so before the button is offered, and this checks it again.
+ * Does an errand on another day, earlier or later: every line of its note moves to the note
+ * of that day at the same place. Refused when something on the note would be too late; that
+ * something would not keep so long is only said. The page offers only the days that work,
+ * and this checks it again.
  */
 export async function changeNoteDay(form: FormData): Promise<void> {
   const input = read(place.extend({ day: z.string().refine(isIsoDate) }), form);
@@ -288,7 +240,13 @@ export async function changeNoteDay(form: FormData): Promise<void> {
   if (!note) backToList(input);
   const lines = note.view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
   const target = { date: input.day, place: note.trip.place };
-  if (dayProblems(lines, target, today(), index).length > 0) backToList(input);
+  const now = today();
+  if (
+    !noteDays(note.trip.date, now).includes(input.day) ||
+    dayProblems(lines, target, now, index).some(blocks)
+  ) {
+    backToList(input);
+  }
   // The lines go, and so does the errand: what the plan needs later is bought on the new day
   // by itself, and what keeps from there, such as milk for Sunday, needs no errand of its own.
   await moveLines(

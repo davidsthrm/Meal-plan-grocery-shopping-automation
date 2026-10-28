@@ -21,7 +21,7 @@ import {
 import type { AisleGroup, CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { quantityText } from "@/domain/quantity";
-import { dayProblems, moveTargets } from "@/domain/shopping-list/change-day";
+import { blocks, dayProblems, lineWindow, noteDays } from "@/domain/shopping-list/change-day";
 import { decisionOf, plannedOf } from "@/domain/shopping-list/decisions";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
 import { formatAmount, formatPurchase } from "@/domain/shopping-list/format";
@@ -59,10 +59,8 @@ import {
   addDrugstoreEntry,
   addListEntry,
   amountLine,
-  buyAtSupermarket,
   changeNoteDay,
   markAtHome,
-  moveListLine,
   noteLine,
   kindOfEntry,
   putAwayListNote,
@@ -154,6 +152,7 @@ export function actionLineOf(view: ViewLine, context: RowContext): ActionLine {
     suggested: suggested.map((choice) => choice.id),
     others: others.map((choice) => choice.id),
     movable: trip.place !== "drugstore",
+    window: lineWindow(view.line, index),
     hint: chosenShop(index, view),
   };
 }
@@ -163,7 +162,6 @@ export function NoteSheet({
   note,
   week,
   index,
-  others,
   today: now,
   members,
   supermarkets,
@@ -177,8 +175,6 @@ export function NoteSheet({
   /** Every shop a line can be moved to, and where the household bought what before. */
   choices: ShopChoice[];
   history: ReadonlyMap<string, PastChoice[]>;
-  /** The notes a line can be moved to. */
-  others: ShoppingTrip[];
   today: IsoDate;
   /** Whom a line on the drugstore's note can be for. */
   members: string[];
@@ -196,15 +192,17 @@ export function NoteSheet({
   const covers = coversText(view);
   // The kinds of grocery a typed line the catalog does not know can be put under.
   const kinds = [...index.aisleGroupById.values()].sort((a, b) => a.sortOrder - b.sortOrder);
-  // The errand on another day: which of the days around it would work, and why the others
-  // would not.
+  // The errand on another day, earlier or later: which days work, which would leave
+  // something too long before its meal (said, not stopped), and why the others do not.
   const lines = view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
-  const days = [-3, -2, -1, 1, 2, 3]
-    .map((offset) => addDays(trip.date, offset))
-    .map((day) => ({
+  const days = noteDays(trip.date, now).map((day) => {
+    const problems = dayProblems(lines, { date: day, place: trip.place }, now, index);
+    return {
       day,
-      problems: dayProblems(lines, { date: day, place: trip.place }, now, index),
-    }));
+      blocked: problems.filter(blocks),
+      warned: problems.filter((problem) => !blocks(problem)),
+    };
+  });
   // A supermarket note has a section per supermarket where the household moved something
   // to another one. Everything else is one walk through one shop.
   const favourites = trip.place === "supermarket" ? supermarkets : [];
@@ -349,9 +347,7 @@ export function NoteSheet({
                           week={week}
                           note={trip}
                           shop={chosenShop(index, line)}
-                          others={moveTargets(line.line, trip, others, now, index)}
                           drugstore={drugstore}
-                          supermarkets={favourites}
                           kinds={kinds}
                         />
                       ))}
@@ -426,7 +422,7 @@ export function NoteSheet({
                 aria-label="Geht an diesen Tagen"
               >
                 {days
-                  .filter((option) => option.problems.length === 0)
+                  .filter((option) => option.blocked.length === 0)
                   .map(({ day }) => (
                     <form key={day} action={changeNoteDay}>
                       <Where week={week} note={note.id} />
@@ -435,24 +431,27 @@ export function NoteSheet({
                         className="chip"
                         label={`Einkauf verlegen auf ${dayTitle({ date: day })}`}
                       >
-                        {dayName(day)}
+                        {dayWord(day, now)}
                       </SubmitButton>
                     </form>
                   ))}
               </div>
               <ul className="mt-2 space-y-1 text-sm text-muted">
-                {days
-                  .filter((option) => option.problems.length > 0)
-                  .map(({ day, problems }) => (
+                {days.map(({ day, blocked, warned }) =>
+                  blocked.length > 0 ? (
                     <li key={day}>
                       <span className="font-semibold text-ink">{dayName(day)} geht nicht:</span>{" "}
-                      {problemText(problems[0])}
-                      {problems.length > 1 &&
-                        ` Dasselbe gilt für ${problems.length - 1} ${
-                          problems.length === 2 ? "weitere Zeile" : "weitere Zeilen"
-                        }.`}
+                      {problemText(blocked[0])}
+                      {moreText(blocked.length)}
                     </li>
-                  ))}
+                  ) : warned.length > 0 ? (
+                    <li key={day} className="text-warn">
+                      <span className="font-semibold">{dayName(day)}:</span>{" "}
+                      {problemText(warned[0])}
+                      {moreText(warned.length)}
+                    </li>
+                  ) : null,
+                )}
               </ul>
             </details>
           )}
@@ -460,6 +459,19 @@ export function NoteSheet({
       </LineActions>
     </section>
   );
+}
+
+/** " Dasselbe gilt für 2 weitere Zeilen.", after the first of `count` problems of a day. */
+function moreText(count: number): string {
+  if (count < 2) return "";
+  return ` Dasselbe gilt für ${count - 1} ${count === 2 ? "weitere Zeile" : "weitere Zeilen"}.`;
+}
+
+/** "Heute", "Morgen", or the day: a chip for doing the errand on another day. */
+function dayWord(day: IsoDate, today: IsoDate): string {
+  if (day === today) return "Heute";
+  if (day === addDays(today, 1)) return "Morgen";
+  return dayName(day);
 }
 
 /** "2 Einträge nicht gekauft". */
@@ -536,30 +548,30 @@ function DrugstoreForm({
   );
 }
 
-/** One line of a note: a box to tick, the text, and behind it where it comes from. */
+/**
+ * One line of a note: a box to tick, the text, and behind it what it is for and what can be
+ * changed about it. Moving it and "Haben wir schon" are the arrow and the shelf at the end
+ * of the line, and only there: the same buttons once more in the opened line made it a wall
+ * of buttons (October 2026).
+ */
 function Line({
   view,
   action,
   week,
   note,
   shop,
-  others,
   drugstore,
-  supermarkets,
   kinds,
 }: {
   view: ViewLine;
-  /** The line as its actions know it: bin, pen and arrow, swipe and the menu. */
+  /** The line as its actions know it: shelf or bin, pen and arrow, swipe and the menu. */
   action: ActionLine;
   week: IsoDate;
   note: ShoppingTrip;
   /** The shop, where the line names one on purpose. */
   shop: string | null;
-  others: ShoppingTrip[];
   /** A line of the drugstore's note: written by hand, nothing to add to it but its removal. */
   drugstore: boolean;
-  /** The supermarkets the line can be bought at, the main one first. Empty elsewhere. */
-  supermarkets: Shop[];
   /** The kinds of grocery, in the order of a walk through the shop. */
   kinds: AisleGroup[];
 }) {
@@ -582,7 +594,6 @@ function Line({
   const origin = written ? "Geschrieben" : "Plan";
   // The amount can be written in the line's own unit and a few common ones.
   const units = [...new Set([...(view.purchase ? [view.purchase.unit] : []), ...AMOUNT_UNITS])];
-  const boughtAt = supermarketOf(view, supermarkets);
 
   return (
     <ActionRow
@@ -607,52 +618,59 @@ function Line({
             )}
           </span>
         </summary>
-        <div className="mt-1 mb-2 grid gap-x-6 gap-y-3 rounded-lg bg-accent-soft/50 p-3 text-sm sm:grid-cols-2 print:hidden">
-          <div className="space-y-1">
-            {/* The day is said here, not on the line: on every line it was too much. */}
-            {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
-            {exact !== "" && <p>Genau: {exact}</p>}
-            <ul className="text-muted">
-              {line.contributions.map((entry, at) => (
-                <li key={at}>
-                  {sourceText(entry)}
-                  {entry.origin && noteId(entry.origin) !== here && (
-                    <> · verschoben von {noteName(entry.origin)}</>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="line-details mt-1 mb-2 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
+          {(line.contributions.length > 0 || needed !== "" || exact !== "") && (
+            <section aria-label="Wofür" className="space-y-1">
+              {/* The day is said here, not on the line: on every line it was too much. */}
+              {needed !== "" && <p className="font-semibold">Gebraucht {needed}</p>}
+              <ul>
+                {line.contributions.map((entry, at) => (
+                  <li key={at}>
+                    {sourceText(entry)}
+                    {entry.origin && noteId(entry.origin) !== here && (
+                      <span className="text-muted"> · verschoben von {noteName(entry.origin)}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {exact !== "" && <p className="text-muted">Genau: {exact}</p>}
+            </section>
+          )}
           {!drugstore && (
-            <div className="space-y-2">
-              <form action={amountLine} className="flex flex-wrap items-center gap-2">
+            <div className="line-details-forms space-y-2">
+              <form action={amountLine} className="detail-row">
                 {where}
-                <input
-                  name="quantity"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  maxLength={8}
-                  defaultValue={quantityText(view.purchase?.quantity ?? null)}
-                  className="field w-20"
-                  aria-label={`Menge von ${line.label}`}
-                  placeholder="Menge"
-                />
-                <select
-                  name="unit"
-                  defaultValue={view.purchase?.unit ?? "Stück"}
-                  className="field w-28"
-                  aria-label={`Einheit von ${line.label}`}
-                >
-                  {units.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
-                  ))}
-                </select>
-                <SubmitButton className="btn btn-small">Menge ändern</SubmitButton>
+                <span className="detail-label">Menge</span>
+                {/* Where the button does not fit beside them, it goes below. */}
+                <span className="flex min-w-[10.5rem] flex-1 gap-2">
+                  <input
+                    name="quantity"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    maxLength={8}
+                    defaultValue={quantityText(view.purchase?.quantity ?? null)}
+                    className="field w-16 shrink-0"
+                    aria-label={`Menge von ${line.label}`}
+                  />
+                  <select
+                    name="unit"
+                    defaultValue={view.purchase?.unit ?? "Stück"}
+                    className="field min-w-0 flex-1"
+                    aria-label={`Einheit von ${line.label}`}
+                  >
+                    {units.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+                <SubmitButton className="btn btn-small" label="Menge ändern">
+                  Ändern
+                </SubmitButton>
               </form>
               {view.edited && (
-                <form action={amountLine}>
+                <form action={amountLine} className="detail-row">
                   {where}
                   <input type="hidden" name="reset" value="1" />
                   <SubmitButton className="link min-h-11">
@@ -660,17 +678,18 @@ function Line({
                   </SubmitButton>
                 </form>
               )}
-              <form action={noteLine} className="flex gap-2">
+              <form action={noteLine} className="detail-row">
                 {where}
-                <label className="flex-1">
-                  <span className="sr-only">Notiz zu {line.label}</span>
+                <label className="contents">
+                  <span className="detail-label">Notiz</span>
                   {/* Not "note": that field names the shopping note the form belongs to. */}
                   <input
                     name="text"
                     defaultValue={view.note ?? ""}
                     maxLength={80}
-                    className="field"
-                    placeholder="Notiz, z. B. Marke oder Angebot"
+                    className="field min-w-0 flex-1"
+                    placeholder="z. B. Marke"
+                    aria-label={`Notiz zu ${line.label}`}
                   />
                 </label>
                 <SubmitButton className="btn btn-small">Merken</SubmitButton>
@@ -678,12 +697,16 @@ function Line({
               {/* Typed, and unknown to the catalog: it stood under "Sonstiges" until the
                     household said what it is. The same text written again goes there too. */}
               {line.ingredientId === null && typed.length > 0 && (
-                <form action={kindOfEntry} className="flex gap-2">
+                <form action={kindOfEntry} className="detail-row">
                   {where}
                   <input type="hidden" name="entry" value={typed[0].id} />
-                  <label className="flex flex-1 items-center gap-2">
-                    <span className="shrink-0 text-muted">Gehört zu</span>
-                    <select name="kind" defaultValue={line.aisleGroupId} className="field">
+                  <label className="contents">
+                    <span className="detail-label">Gehört zu</span>
+                    <select
+                      name="kind"
+                      defaultValue={line.aisleGroupId}
+                      className="field min-w-0 flex-1"
+                    >
                       {kinds.map((kind) => (
                         <option key={kind.id} value={kind.id}>
                           {kind.name}
@@ -694,48 +717,6 @@ function Line({
                   <SubmitButton className="btn btn-small">Einordnen</SubmitButton>
                 </form>
               )}
-            </div>
-          )}
-          {/* Another of the household's supermarkets for this week: a button with the
-                market's logo. "Haben wir schon" is the shelf at the end of the line. */}
-          {supermarkets.length > 1 && (
-            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-              {supermarkets
-                .filter((market) => market.id !== boughtAt?.id)
-                .map((market) => (
-                  <form key={market.id} action={buyAtSupermarket}>
-                    {where}
-                    <input type="hidden" name="shop" value={market.id} />
-                    <SubmitButton
-                      className="btn btn-small gap-2 pl-2"
-                      label={`${line.label} bei ${market.name} kaufen`}
-                    >
-                      <ShopLogo shop={market} size={22} />
-                      Bei {market.name} kaufen
-                    </SubmitButton>
-                  </form>
-                ))}
-            </div>
-          )}
-          {others.length > 0 && (
-            <div
-              role="group"
-              aria-label={`${line.label} verschieben`}
-              className="flex flex-wrap items-center gap-2 sm:col-span-2"
-            >
-              <span className="text-muted">Lieber woanders kaufen:</span>
-              {others.map((other) => (
-                <form key={noteId(other)} action={moveListLine}>
-                  {where}
-                  <input type="hidden" name="to" value={noteId(other)} />
-                  <SubmitButton
-                    className="chip min-h-11 text-sm"
-                    label={`${line.label} verschieben: ${noteName(other)}`}
-                  >
-                    {noteName(other)}
-                  </SubmitButton>
-                </form>
-              ))}
             </div>
           )}
         </div>
