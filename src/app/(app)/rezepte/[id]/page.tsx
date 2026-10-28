@@ -200,20 +200,24 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
             </ul>
           )}
           {recipe.status === "approved" && (
+            // As small as a tag beside the tags: it was a pill of its own row (October 2026).
             <Link
               href={editTagsHref}
-              className="link inline-flex min-h-11 items-center gap-1 px-1 text-sm"
+              aria-label={described.length > 0 ? "Stichworte ändern" : "Stichworte vergeben"}
+              className="group inline-flex min-h-11 items-center"
               scroll={false}
             >
-              <TagIcon />
-              {described.length > 0 ? "Stichworte ändern" : "Stichworte vergeben"}
+              <span className="tag-edit">
+                <TagIcon />
+                {described.length > 0 ? "Ändern" : "Stichworte vergeben"}
+              </span>
             </Link>
           )}
         </div>
       )}
 
       {recipe.status === "approved" && (
-        // Einplanen, Kochen and the wish in one row, also on a phone: three equal parts.
+        // Einplanen, the wish and Kochen in one row, also on a phone: three equal parts.
         <div className="mt-3 grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
           {planned ? (
             // On this week's plan already: the button says so and leads to where it stands.
@@ -238,6 +242,21 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
               Einplanen
             </Link>
           )}
+          <form action={setWanted} className="contents">
+            <input type="hidden" name="recipe" value={recipe.id} />
+            <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
+            <SubmitButton
+              className={`btn px-2 sm:px-4 ${wanted ? "border-accent text-accent" : ""}`}
+              label={wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
+            >
+              <WishIcon filled={wanted} />
+              {/* Short on a phone, so that the three share one row. */}
+              <span className="sm:hidden">{wanted ? "Vorgemerkt" : "Vormerken"}</span>
+              <span className="max-sm:hidden">
+                {wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
+              </span>
+            </SubmitButton>
+          </form>
           <CookView
             title={recipe.title}
             facts={facts}
@@ -256,21 +275,6 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
             }))}
             steps={steps}
           />
-          <form action={setWanted} className="contents">
-            <input type="hidden" name="recipe" value={recipe.id} />
-            <input type="hidden" name="wanted" value={wanted ? "0" : "1"} />
-            <SubmitButton
-              className={`btn px-2 sm:px-4 ${wanted ? "border-accent text-accent" : ""}`}
-              label={wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
-            >
-              <WishIcon filled={wanted} />
-              {/* Short on a phone, so that the three share one row. */}
-              <span className="sm:hidden">{wanted ? "Vorgemerkt" : "Vormerken"}</span>
-              <span className="max-sm:hidden">
-                {wanted ? "Steht auf der Wunschliste" : "Möchte ich kochen"}
-              </span>
-            </SubmitButton>
-          </form>
         </div>
       )}
 
