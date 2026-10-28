@@ -8,9 +8,9 @@ import { BACK } from "@/lib/transitions";
  */
 export function BackLink({ href, children }: { href: string; children: ReactNode }) {
   return (
+    // The arrow is part of its words: "← Wochenplan" is what a screen reader names it.
     <Link href={href} transitionTypes={[BACK]} className="back-link">
-      <span aria-hidden>←</span>
-      {children}
+      ← {children}
     </Link>
   );
 }
