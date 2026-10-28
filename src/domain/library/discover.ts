@@ -272,7 +272,7 @@ function likeFavorites(
 }
 
 /** A cookbook to leaf through today, among those with enough recipes nobody marked. */
-function bookOfTheDay(recipes: readonly RecipeSummary[], today: IsoDate): string | null {
+export function bookOfTheDay(recipes: readonly RecipeSummary[], today: IsoDate): string | null {
   const counts = new Map<string, number>();
   for (const recipe of recipes) {
     if (recipe.sourceBook && !isMarked(recipe)) {

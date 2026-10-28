@@ -2509,14 +2509,127 @@ summary,
     border-radius: 1.1rem;
     background: var(--color-surface);
   }
+  /*
+   * The Regal: the cookbooks as spines standing on a board, each as tall as it is thick, its
+   * name along it and a bar at its foot for how much of it was cooked. The open one stands a
+   * little forward, outlined in the green.
+   */
+  .bookshelf {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    margin-inline: -1rem;
+    padding: 0.75rem 1rem 0;
+    scroll-padding-inline: 1rem;
+    border-bottom: 0.6rem solid color-mix(in srgb, var(--color-line) 70%, #b9a37e);
+  }
+  .spine {
+    position: relative;
+    display: flex;
+    width: 3.1rem;
+    height: var(--spine-height);
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0 0.55rem;
+    scroll-snap-align: start;
+    border-radius: 0.35rem 0.35rem 0 0;
+    background: var(--spine);
+    color: var(--spine-ink);
+    box-shadow: inset -0.25rem 0 0 rgb(0 0 0 / 0.05);
+    transition: transform 160ms var(--ease-out);
+  }
+  .spine[aria-current] {
+    transform: translateY(-0.5rem);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .spine:active {
+    transform: scale(0.97);
+  }
+  /* A long name takes two lines along the spine rather than losing its end. */
+  .spine-name {
+    display: -webkit-box;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-wrap: balance;
+    writing-mode: vertical-rl;
+    rotate: 180deg;
+    -webkit-box-orient: horizontal;
+    -webkit-line-clamp: 2;
+  }
+  .spine-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .spine-bar {
+    display: flex;
+    width: 0.4rem;
+    height: 2.2rem;
+    flex: none;
+    flex-direction: column-reverse;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.65);
+  }
+  .spine-bar > i {
+    display: block;
+    background: var(--color-accent);
+  }
+  .cooked-bar {
+    display: block;
+    width: 12rem;
+    max-width: 100%;
+    height: 0.4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+  .cooked-bar > i {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+  }
+  /* A row of choices that scrolls sideways: a magazine's editions, the tabs of Entdecken. */
+  .tab-row {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    margin-inline: -1rem;
+    padding: 0.1rem 1rem 0.3rem;
+    scroll-padding-inline: 1rem;
+  }
+  .tab-row > * {
+    flex: none;
+  }
+  .tab-row > [aria-current] {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spine[aria-current] {
+      transform: none;
+    }
+  }
   /* On a touch screen the rows scroll under the finger; a bar under each says nothing. */
   @media (pointer: coarse) {
     .shelf,
-    .shelf-list {
+    .shelf-list,
+    .bookshelf,
+    .tab-row {
       scrollbar-width: none;
     }
     .shelf::-webkit-scrollbar,
-    .shelf-list::-webkit-scrollbar {
+    .shelf-list::-webkit-scrollbar,
+    .bookshelf::-webkit-scrollbar,
+    .tab-row::-webkit-scrollbar {
       display: none;
     }
   }

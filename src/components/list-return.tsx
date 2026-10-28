@@ -20,7 +20,12 @@ function read(): LeftList | null {
 }
 
 const here = () => `${location.pathname}${location.search}`;
-const shelvesOf = () => [...document.querySelectorAll<HTMLElement>("main .shelf")];
+/** Every row that scrolls sideways: the shelves, the rows of three, the cookbooks, the tabs. */
+const shelvesOf = () => [
+  ...document.querySelectorAll<HTMLElement>(
+    "main .shelf, main .shelf-list, main .bookshelf, main .tab-row",
+  ),
+];
 
 /**
  * On a list of recipes or the week plan: remembers, as a recipe is opened, where the page

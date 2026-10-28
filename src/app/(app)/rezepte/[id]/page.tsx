@@ -48,6 +48,9 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     recipeId: id,
     field: one(query.feld),
     day: one(query.tag),
+    book: one(query.buch),
+    edition: one(query.ausgabe),
+    category: one(query.art),
   });
   const db = await createSessionClient();
   // Row level security decides whether this recipe exists for the person asking.
@@ -163,10 +166,12 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   // The address this page was opened with, so that changing the steps keeps the way back.
   const pageQuery = (extra: Record<string, string> = {}) => {
     const kept = Object.fromEntries(
-      (["von", "w", "tag", "feld", "portionen"] as const).flatMap((key) => {
-        const value = one(query[key]);
-        return value ? [[key, value]] : [];
-      }),
+      (["von", "w", "tag", "feld", "buch", "ausgabe", "art", "portionen"] as const).flatMap(
+        (key) => {
+          const value = one(query[key]);
+          return value ? [[key, value]] : [];
+        },
+      ),
     );
     const search = new URLSearchParams({ ...kept, ...extra }).toString();
     return search ? `?${search}` : "";

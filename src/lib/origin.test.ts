@@ -4,6 +4,11 @@ import {
   FROM_STEP_CHECKS,
   FROM_FAVORITES,
   FROM_ALL_RECIPES,
+  FROM_FRIDGE,
+  FROM_ROULETTE,
+  FROM_STACK,
+  fromBookshelf,
+  fromDiscover,
   FROM_STATISTICS,
   fromFieldChecks,
   fromPlan,
@@ -18,6 +23,9 @@ const read = (query: string, recipeId?: string) => {
     recipeId,
     field: params.get("feld") ?? undefined,
     day: params.get("tag") ?? undefined,
+    book: params.get("buch") ?? undefined,
+    edition: params.get("ausgabe") ?? undefined,
+    category: params.get("art") ?? undefined,
   });
 };
 
@@ -68,6 +76,32 @@ describe("where a recipe was opened from", () => {
       label: "Alle Rezepte",
     });
     expect(read(FROM_ALL_RECIPES, "x#y").href).toBe("/import/rezepte");
+  });
+
+  it("leads back to the shelf of cookbooks with the book and edition that were open", () => {
+    expect(read(fromBookshelf("Einfach Hausgemacht", "06/2020"))).toEqual({
+      href: "/rezepte/regal?buch=Einfach+Hausgemacht&ausgabe=06%2F2020",
+      label: "Regal",
+    });
+    expect(read(fromBookshelf("Omas Küche & mehr")).href).toBe(
+      "/rezepte/regal?buch=Omas+K%C3%BCche+%26+mehr",
+    );
+    expect(read("?von=regal").href).toBe("/rezepte/regal");
+  });
+
+  it("leads back to the category tab of Entdecken", () => {
+    expect(read(fromDiscover("suppe-eintopf"))).toEqual({
+      href: "/rezepte?art=suppe-eintopf",
+      label: "Entdecken",
+    });
+    expect(fromDiscover(null)).toBe("");
+    expect(read("?von=entdecken&art=//boese").href).toBe("/rezepte");
+  });
+
+  it("leads back to the stack, the fridge and the roulette", () => {
+    expect(read(FROM_STACK)).toEqual({ href: "/rezepte/stapel", label: "Rezept-Stapel" });
+    expect(read(FROM_FRIDGE)).toEqual({ href: "/rezepte/zutaten", label: "Was ist noch da?" });
+    expect(read(FROM_ROULETTE)).toEqual({ href: "/rezepte/roulette", label: "Roulette" });
   });
 
   it("leads back to the duplicates", () => {

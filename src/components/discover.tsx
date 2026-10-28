@@ -110,10 +110,27 @@ function kindOf(recipe: Pick<RecipeSummary, "proteinType" | "category">): string
 }
 
 /** A recipe as a row of a shelf that shows three to a column: sign, title, time. */
-function RecipeListRow({ recipe, category }: { recipe: RecipeSummary; category: string | null }) {
+function RecipeListRow({
+  recipe,
+  category,
+  note,
+  from,
+}: {
+  recipe: RecipeSummary;
+  category: string | null;
+  /** Instead of the category: "Zuletzt am 1. Oktober". */
+  note?: string;
+  from: string;
+}) {
   const time = timeText(recipe);
+  const said = note ?? category;
   return (
-    <Link href={`/rezepte/${recipe.id}`} prefetch transitionTypes={[FORWARD]} className="list-row">
+    <Link
+      href={`/rezepte/${recipe.id}${from}`}
+      prefetch
+      transitionTypes={[FORWARD]}
+      className="list-row"
+    >
       <RecipeBadge recipe={recipe} className="size-12 rounded-xl" />
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 leading-snug font-semibold">{recipe.title}</span>
@@ -122,10 +139,10 @@ function RecipeListRow({ recipe, category }: { recipe: RecipeSummary; category: 
             <>
               <ClockIcon />
               {time}
-              {category && " · "}
+              {said && " · "}
             </>
           )}
-          {category && <span className="truncate">{category}</span>}
+          {said && <span className="truncate">{said}</span>}
         </span>
       </span>
     </Link>
@@ -137,10 +154,13 @@ export function ShelfRow({
   shelf,
   all,
   nameOf,
+  from = "",
 }: {
   shelf: Shelf;
   all: string | null;
   nameOf: (key: string | null) => string | null;
+  /** What says where the recipes stand, for the way back: see `lib/origin.ts`. */
+  from?: string;
 }) {
   return (
     <section className="mt-9" aria-label={shelf.title}>
@@ -160,7 +180,13 @@ export function ShelfRow({
       {shelf.look === "list" ? (
         <div className="shelf-list mt-1">
           {shelf.recipes.map((recipe) => (
-            <RecipeListRow key={recipe.id} recipe={recipe} category={nameOf(recipe.category)} />
+            <RecipeListRow
+              key={recipe.id}
+              recipe={recipe}
+              category={nameOf(recipe.category)}
+              note={shelf.why?.[recipe.id]}
+              from={from}
+            />
           ))}
         </div>
       ) : (
@@ -172,6 +198,7 @@ export function ShelfRow({
               recipe={recipe}
               category={nameOf(recipe.category)}
               note={shelf.why?.[recipe.id]}
+              from={from}
               className={shelf.look === "large" ? "w-72" : "w-60"}
             />
           ))}

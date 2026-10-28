@@ -38,12 +38,29 @@ export const FROM_STEP_CHECKS = "?von=schritte";
 /** What a link to a recipe adds to its address when it stands in "Alle Rezepte". */
 export const FROM_ALL_RECIPES = "?von=alle";
 
+/** What a link to a recipe adds to its address on the shelf of cookbooks, with the open book. */
+export function fromBookshelf(book: string, edition?: string | null): string {
+  return `?${new URLSearchParams({ von: "regal", buch: book, ...(edition ? { ausgabe: edition } : {}) })}`;
+}
+
+/** What a link to a recipe adds to its address on Entdecken, with the open category tab. */
+export function fromDiscover(category: string | null): string {
+  return category ? `?von=entdecken&art=${category}` : "";
+}
+
+/** What a link to a recipe adds to its address in the stack, the fridge and the roulette. */
+export const FROM_STACK = "?von=stapel";
+export const FROM_FRIDGE = "?von=zutaten";
+export const FROM_ROULETTE = "?von=roulette";
+
 /** What a link to a recipe adds to its address when it stands in the statistics. */
 export const FROM_STATISTICS = "?von=statistik";
 
 /** What a link to a recipe adds to its address when it stands among the duplicates. */
 export const FROM_DUPLICATES = "?von=doppelt";
 
+const CATEGORY_KEY = /^[a-z][a-z-]{0,40}$/;
+const NAME_MAX = 120;
 const RECIPE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -55,7 +72,21 @@ const RECIPE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 export function readOrigin(
   von: string | undefined,
   week: string | undefined,
-  { recipeId, field, day }: { recipeId?: string; field?: string; day?: string } = {},
+  {
+    recipeId,
+    field,
+    day,
+    book,
+    edition,
+    category,
+  }: {
+    recipeId?: string;
+    field?: string;
+    day?: string;
+    book?: string;
+    edition?: string;
+    category?: string;
+  } = {},
 ): Origin {
   if (von === "favoriten") return { href: "/favoriten", label: "Favoriten" };
   if (von === "angaben") {
@@ -67,6 +98,25 @@ export function readOrigin(
     const anchor = recipeId && RECIPE_ID.test(recipeId) ? `#r-${recipeId}` : "";
     return { href: `/import/rezepte${anchor}`, label: "Alle Rezepte" };
   }
+  if (von === "regal") {
+    // A name of a cookbook goes back into an address of the shelf, encoded, nothing else.
+    const open = book && book.length <= NAME_MAX ? { buch: book } : null;
+    const issue: Record<string, string> =
+      open && edition && edition.length <= NAME_MAX ? { ausgabe: edition } : {};
+    return {
+      href: open
+        ? `/rezepte/regal?${new URLSearchParams({ ...open, ...issue })}`
+        : "/rezepte/regal",
+      label: "Regal",
+    };
+  }
+  if (von === "entdecken") {
+    const tab = category && CATEGORY_KEY.test(category) ? `?art=${category}` : "";
+    return { href: `/rezepte${tab}`, label: "Entdecken" };
+  }
+  if (von === "stapel") return { href: "/rezepte/stapel", label: "Rezept-Stapel" };
+  if (von === "zutaten") return { href: "/rezepte/zutaten", label: "Was ist noch da?" };
+  if (von === "roulette") return { href: "/rezepte/roulette", label: "Roulette" };
   if (von === "statistik") return { href: "/woche/statistik", label: "Statistik" };
   if (von === "doppelt") return { href: "/import/pruefen/doppelt", label: "Doppelte Rezepte" };
   if (von === "schritte") {
