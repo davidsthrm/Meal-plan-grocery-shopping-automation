@@ -5,6 +5,11 @@ export function today(): IsoDate {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
 }
 
+/** The day of a stored moment where the household lives: "2026-10-28". */
+export function dayOf(moment: string | Date): IsoDate {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date(moment));
+}
+
 /** This moment, in milliseconds since 1970, as ticks are timed. */
 export function momentNow(): number {
   return Date.now();

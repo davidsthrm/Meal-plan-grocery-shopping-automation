@@ -2644,6 +2644,185 @@ summary,
       transform: none;
     }
   }
+  /*
+   * The recipe stack: one card on the next two, in the pastel of its kind, its pictogram
+   * large and pale behind the words, and a stamp for where it is going that grows as it
+   * goes there (`--keep`, `--skip`, `--plan`, set while it is dragged).
+   */
+  .stack {
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+  .stack-deck {
+    position: relative;
+    width: min(100%, 26rem);
+    height: clamp(19rem, 46dvh, 24rem);
+  }
+  .stack-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 1.4rem 1.4rem 1.2rem;
+    border: 1px solid color-mix(in srgb, var(--kind) 70%, var(--color-line));
+    border-radius: 1.5rem;
+    background: color-mix(in srgb, var(--kind) 50%, var(--color-surface));
+    box-shadow: 0 1.2rem 2.4rem -1.6rem rgb(35 33 29 / 0.45);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition:
+      transform 240ms var(--ease-out),
+      opacity 240ms ease;
+  }
+  .stack-card:active {
+    cursor: grabbing;
+  }
+  /* The cards underneath wait a little smaller, and come forward as the top one goes. */
+  .stack-card[data-depth="1"] {
+    transform: translateY(0.7rem) scale(0.955);
+  }
+  .stack-card[data-depth="2"] {
+    transform: translateY(1.4rem) scale(0.91);
+    opacity: 0.7;
+  }
+  .stack-card[data-depth="1"],
+  .stack-card[data-depth="2"] {
+    pointer-events: none;
+  }
+  .stack-card .badge,
+  .stack-card .tag {
+    background: var(--color-surface);
+  }
+  .stack-picture {
+    position: absolute;
+    right: -1.5rem;
+    bottom: -1.5rem;
+    width: 11rem;
+    height: 11rem;
+    color: var(--kind-ink, var(--color-muted));
+    opacity: 0.16;
+    rotate: -8deg;
+    stroke-width: 1.4;
+    pointer-events: none;
+  }
+  .stack-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .stack-ingredients {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+  }
+  .stack-stamp {
+    position: absolute;
+    z-index: 1;
+    top: 1.1rem;
+    padding: 0.2rem 0.7rem;
+    border: 0.18rem solid currentColor;
+    border-radius: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .stack-stamp-keep {
+    left: 1.1rem;
+    color: var(--color-accent);
+    opacity: var(--keep, 0);
+    rotate: -10deg;
+  }
+  .stack-stamp-skip {
+    right: 1.1rem;
+    color: #86423a;
+    opacity: var(--skip, 0);
+    rotate: 10deg;
+  }
+  .stack-stamp-plan {
+    left: 50%;
+    translate: -50% 0;
+    color: #7f5318;
+    opacity: var(--plan, 0);
+  }
+  .stack-empty {
+    display: grid;
+    height: 100%;
+    place-content: center;
+    justify-items: center;
+    padding: 1.5rem;
+    border: 1.5px dashed var(--color-line);
+    border-radius: 1.5rem;
+    text-align: center;
+  }
+  /* Three round buttons, as large as the thumb: the same three decisions as the swipes. */
+  .stack-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1.75rem;
+  }
+  .stack-button {
+    display: grid;
+    justify-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+  .stack-button > span {
+    display: grid;
+    width: 3.6rem;
+    height: 3.6rem;
+    place-items: center;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: var(--color-surface);
+    font-size: 1.35rem;
+    font-weight: 700;
+    box-shadow: 0 0.5rem 1rem -0.8rem rgb(35 33 29 / 0.4);
+    transition: transform 120ms var(--ease-out);
+  }
+  .stack-button:active > span {
+    transform: scale(0.92);
+  }
+  .stack-button:disabled {
+    opacity: 0.4;
+  }
+  .stack-button-skip > span {
+    color: #86423a;
+  }
+  .stack-button-plan > span {
+    color: #7f5318;
+  }
+  .stack-button-keep > span {
+    color: var(--color-accent);
+  }
+  .stack-button:focus-visible > span {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .stack-foot {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stack-card {
+      transition: opacity 120ms ease;
+    }
+  }
+
   /* On a touch screen the rows scroll under the finger; a bar under each says nothing. */
   @media (pointer: coarse) {
     .shelf,
