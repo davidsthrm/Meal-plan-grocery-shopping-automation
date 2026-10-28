@@ -232,6 +232,32 @@ summary,
       busy-show 120ms ease 150ms forwards,
       busy-turn 700ms linear infinite;
   }
+  /*
+   * A line of a note opened: what it is for, then what can be changed about it, each row
+   * with its name in front. A hairline between the two parts, nothing more.
+   */
+  .line-details {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .line-details > * + * {
+    border-top: 1px solid rgb(35 33 29 / 0.08);
+    padding-top: 0.75rem;
+  }
+  /* Its name above, then field and button: beside them it pushed the button off a phone. */
+  .detail-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+  }
+  .detail-label {
+    flex-basis: 100%;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+
   /* The line whose form it is pales with it: the tap was taken, the line is going. */
   .swipe-row:has([data-pending]) .swipe-face > :not(.row-actions) {
     opacity: 0.45;

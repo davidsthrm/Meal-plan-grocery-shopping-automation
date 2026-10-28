@@ -1143,8 +1143,8 @@ Shopping list
   wherever a supermarket is named (`ShopLogo`, the name's first letter without one): the
   supermarket note is named after the markets it is taken to, the main one first, and shows
   their logos in place of the cart: "Aldi & Rewe", "Aldi, Rewe & Botzenhardt"
-  (`marketsOfNote`, `namesText`), its PDF too; each further one has its logo at its section and on its button "Bei EDEKA kaufen", a button like "Haben wir
-  schon". A logo's size is set in pixels on the element, never by a class: with a size class
+  (`marketsOfNote`, `namesText`), its PDF too; each further one has its logo at its
+  section. A line goes to another supermarket with the arrow. A logo's size is set in pixels on the element, never by a class: with a size class
   the stylesheet lacked, the 128-pixel picture filled half the note.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
@@ -1240,11 +1240,8 @@ Shopping list
   it is not shown: Monday's empty dm note said nothing on a Tuesday (October 2026). Nor is
   an empty note while another one of the week has something on it, unless it is there to be
   written on: the drugstore's, or one opened by hand.
-- A line can be moved to another note: the household decided to buy it on another errand
-  ("Lieber woanders kaufen", `moveListLine`). It is offered only the notes of the week where
-  it is in time, keeps, and is sold (`placeSells`: no lemon on the Bäcker's note) (`moveTargets`, `moveProblems`: as for a whole errand, and a line
-  bought shortly before its meal not after it either), and the server checks the move
-  again. The move is stored with the note the line would be on by itself
+- A line moved to another note (the arrow, above) is offered only shops that sell it
+  (`placeSells`: no lemon at the Bäcker). The move is stored with the note the line would be on by itself
   (`shopping_line_state.moved_date`, `moved_place`) and applied before the lines are summed,
   so a moved line adds up with what its new note needs anyway. Every part of a line knows
   the note it came from (`Contribution.origin`, `originsOf`). The lines of one thing split
@@ -1365,12 +1362,21 @@ Shopping list
   to buy, and its own note says where it went ("Eier → Di", `movedAway`). A finished note
   lies green among the others and says how much was not bought. A removed dm entry does
   not come along to the next dm note.
-- A line can be moved to any day from the day after its note (or from tomorrow where that
-  day is over) up to a week after it (`moveDays`, `canMoveTo`), also where the plan needs
-  it earlier: the decision is made in the shop. "An einem anderen Tag einkaufen" for a
-  whole errand and "Lieber woanders kaufen" keep their checks. The form starts on the note's
-  own day, or on today where that is over (`moveStartDay`): started on a day that was over,
-  the server refused the move and the Wiener stayed at the butcher. A decision the server
+- The arrow moves a line to any day from today, up to a week before its note and a week
+  after it (`moveDays`, `canMoveTo`): bought earlier (the salad for Sunday on Wednesday,
+  toilet paper on the main errand) or later, also where the plan needs it earlier: the
+  decision is the household's. The form says what would come too late or not keep
+  (`lineWindow`, `windowProblems`), and stops nothing. It starts on the note's own day, or
+  on today where that is over (`moveStartDay`): started on a day that was over, the server
+  refused the move and the Wiener stayed at the butcher. The arrow is the one way to move a
+  line, and the shelf the one way to say it is at home: "Lieber woanders kaufen" and "Bei
+  EDEKA kaufen" in the opened line said the same once more (October 2026). An opened line
+  says what it is for, then Menge, Notiz and Gehört zu, each with its name above.
+- "An einem anderen Tag einkaufen" does a whole errand on another day, earlier or later:
+  from today, or six days before it, to three days after it (`noteDays`). A day is ruled
+  out only when it is over or something on the note is needed before it (`blocks`); that
+  something would not keep so long is said beside the day and stops nothing: the catalog's
+  shelf lives are estimates. A decision the server
   refuses says so at the foot ("nicht gespeichert"), and another shop on the same note keeps
   the line on it while it is stored (`leavesNote`), not "→ Di".
 - The shops offered for a line (`suggestShops`, `shop-choice.ts`): where it was bought

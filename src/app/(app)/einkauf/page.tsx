@@ -69,8 +69,6 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     );
 
   if (picked) {
-    // The notes of the week a line can be moved to, where it is in time (`moveTargets`).
-    const others = notes.map((note) => note.trip);
     return (
       <div className="mx-auto max-w-5xl">
         {/* Printed, the note has the size and the layout of its PDF. */}
@@ -90,7 +88,6 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           note={picked}
           week={week}
           index={index}
-          others={others}
           today={now}
           members={members}
           supermarkets={supermarkets}
