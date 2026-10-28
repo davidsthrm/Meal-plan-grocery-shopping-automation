@@ -125,6 +125,10 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   pastel per section, the weekend as two cards, pictures for meals without a recipe, a
   stamp for a week planned to its last meal, explanations behind a "?", tighter pages that
   keep buttons of one kind in one row, remembered tabs and a start screen on the iPhone.
+  Then, from the household's first look on the iPhone (branch `phase-17b-fixes`): the bar
+  of the sections above a page on its way, a line at the top while a page loads, loading
+  shapes that breathe, a recipe's buttons in the order Einplanen, Vormerken, Kochen, and a
+  tighter Regal on a phone.
 - Merging into `main` deploys migrations to the Supabase project (GitHub integration). A
   migration that is needed to test a branch is applied earlier with `npx supabase db push`;
   the merge then finds it already applied. Keep such migrations additive.
@@ -325,11 +329,19 @@ Docker is not required for tests. Migrations, seed and RLS run against an embedd
   `searchRecipes` the server uses, so a list unfolds with the first letter and changes with
   every further one. Sending the search still goes to the server and works without scripts.
 - Every main section has a `loading.tsx` (`PageLoading`: its name and the pale shape of a
-  sheet or of cards, faded in at once: after a delay of 150ms nothing answered a tap, and
-  the household tapped again). Without one a dynamic route is not prefetched,
+  sheet or of cards, there at once and breathing after 250ms: after a delay of 150ms
+  nothing answered a tap, and the household tapped again; a shape that stood still read as
+  an empty page). So do the pages opened most from inside one: a recipe, the Regal, the
+  meal chooser, all weeks and the settings. Without one a dynamic route is not prefetched,
   and a tap on a tab waited half a second for the whole page with nothing to show for it.
   A change of the search part of the address and the redirect after a form do not show
   it; a full load streams it first, so it carries no status role.
+- A loading shape shows only once the browser has fetched it ahead, which Safari does for
+  the links on the screen a moment after they appear: a recipe tapped right after
+  scrolling showed an empty page for half a second (October 2026). So every tap on a link
+  of the app also starts a thin green line at the top (`NavigationProgress`,
+  `data-navigating` on `html`), from 60ms on until the address is the link's and the page
+  shows something other than its loading shape; ten seconds at most.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - The API returns at most 1000 rows per request and cuts a longer answer off without saying
@@ -467,7 +479,10 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   glass that floats above the bottom of the screen (`.tabbar`, `GlassSurface` from
   `src/components/ui/glass.tsx`: blur, a white tint, a sheen and a bright rim; Safari cannot
   bend the page through it as Chrome can and keeps it frosted), the page visible under it,
-  with a sign above each name and the open section on the green's pastel. A tapped section
+  with a sign above each name and the open section on the green's pastel. It has a layer
+  of its own (`translateZ(0)`), and every entrance of a page lets go of its transform when
+  it ends (`backwards`, not `both`): on the iPhone, content left on a layer by its
+  animation was drawn over the glass (October 2026). A tapped section
   is the current one the moment the finger lands, before its page has come (`AppNav`).
 - Each section has a pastel of its own at the top of its pages, fading into the paper
   (`.app-shell`, `--section-tint`): Woche sage, Einkauf a misty blue, Rezepte peach,
@@ -477,12 +492,18 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   the `<ViewTransition>` around the page in the layout): from the right going in, to a
   section further right or to the next week; from the left going back; cross-faded for
   another view of the same page (Mahlzeiten and Außerdem, Entdecken and Regal). Going in or
-  back takes 240ms with a light blur at the start that joins old and new into one movement;
-  another section of the bar, changed dozens of times a day, 200ms over a shorter way. The
+  back takes 240ms; another section of the bar, changed dozens of times a day, 200ms over a
+  shorter way. A blur at the start stuttered on the iPhone and was taken out. The old page
+  is not drawn at all: Safari draws the picture of an old page over everything, the bar of
+  the sections included, whatever its z-index, and one picture less is what the iPhone
+  needed to move smoothly. The header and the bar are views of their own above the page
+  (`app-header`, `app-tabbar`), shown at once in their new state, frosted paper instead of
+  glass for that moment (a view sees nothing behind it to blur). The
   pastel of a section is not faded: a change of an inherited value recalculated every
   element of the page in every frame while the tap loaded the next page. The raised pill of
   a segmented control is an element of its own (`SegmentPill`, named per control) that
-  slides to the other view, under the words. Only a link
+  slides to the other view, under the words; a pill whose page goes without one on the next
+  goes with it (`:only-child`). Only a link
   that names one moves the page: a live refresh and the answer to a form change it in place,
   or every tick in the shop would make the note flicker. A step back in the history
   (`BackToList`) names none and marks the page (`data-going`) instead. Asked for less
@@ -1059,8 +1080,10 @@ Library
   (`?sortierung=`, `&richtung=ab`); a recipe without a value stands last either way. With
   words searched and no column chosen, the best fit comes first. Fifty recipes a page
   (`?seite=`, `pageOf`). All of it is in `src/domain/library/recipe-table.ts`. Columns give
-  way with the width: a phone shows title, book, page, category and effort as one row with
-  "Mehr" to open the rest and the actions; an iPad drops book, servings and tags into the
+  way with the width: a phone shows title, book, page, category and effort as one row whose
+  line of facts opens the rest and the actions (a small arrow beside it; "Mehr" took a row
+  under every recipe), and above the list one row each for the views with the tags as a
+  sign, the count with "Alle wählen", and the four ways to sort without "Sortiert nach"; an iPad drops book, servings and tags into the
   title cell; a large screen shows every column.
 - Ticked recipes (or "Alle auf dieser Seite") are changed together: a tag added (typed, as
   above) or taken away, a category or an effort set (`changeSeveral`). A tag added in a
@@ -1110,7 +1133,10 @@ Library
   favourite or takes the mark away, without opening it. The heart is a form next to the
   card's link, not inside it, and both lie in the card that lifts. A recipe made a favourite
   on "Entdecken" leaves its shelves.
-- A recipe's page offers "Einplanen" and "Möchte ich kochen"; the favourite is the same heart
+- A recipe's page offers "Einplanen", "Möchte ich kochen" and "Kochen", in that order and in
+  one row on a phone ("Vormerken" there); a sign in a narrow button keeps its size
+  (`flex-shrink: 0`). Its tags are changed from a dashed pill as small as a tag
+  (`.tag-edit`, "Ändern"), not a button of its own row. The favourite is the same heart
   as on a card, next to its title, and a pen next to "Zutaten" opens the form to change it
   ("Rezept ändern"). Under its facts it
   says when it was last cooked (`lastCooked`: the latest meal before today it was on, from
