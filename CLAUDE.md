@@ -699,7 +699,8 @@ Recipes
   a form or tray, or a number written as "ein". Where singular and plural would change and
   the other word is not known, or an adjective would have to change its ending, the step
   stays as printed. Measured on the household's 4,724 steps at 6 instead of 4 persons
-  (October 2026): 1,273 amounts scaled, a sample of 120 read by eye without a wrong one.
+  (October 2026): 1,273 amounts scaled; of about 100 read by eye all were amounts or things that grow
+  with the meal ("8 Holzspieße", "4 Teigstücke"), none a size, time or share.
 - A quantity range ("2-3") counts with its upper bound for shopping.
 - An alternative ingredient ("oder Petersilie") never reaches the list.
 - A recipe has at most one category: Hauptgericht, Suppe & Eintopf, Salat, Beilage, Vesper,
