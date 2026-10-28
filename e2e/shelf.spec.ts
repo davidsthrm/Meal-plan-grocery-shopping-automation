@@ -45,7 +45,8 @@ test("the Regal lists every recipe and changes the ticked ones together", async 
   await page.goto("/rezepte/regal?ohne=aufwand");
   const before = await page.getByRole("status").first().innerText();
   expect(before).not.toBe("0 Rezepte");
-  await page.getByText("Alle auf dieser Seite").click();
+  // "Alle auf dieser Seite", on a phone "Alle wählen".
+  await page.locator("label", { has: page.locator('input[name="alle"]') }).click();
   const count = Number(before.split(" ")[0]);
   bar = await openSelection(
     page,

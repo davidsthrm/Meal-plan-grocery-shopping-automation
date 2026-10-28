@@ -3,7 +3,7 @@ import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FavoriteHeart } from "@/components/favorite-heart";
-import { PenIcon, TagIcon, TrashIcon, WishIcon } from "@/components/icons";
+import { ChevronIcon, PenIcon, TagIcon, TrashIcon, WishIcon } from "@/components/icons";
 import { RecipeBadge } from "@/components/recipe-card";
 import {
   activeChips,
@@ -161,11 +161,19 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
       {/* The switch below says which view is open: the same word as a large title above it
           only took the first screen. */}
       <h1 className="sr-only">Regal</h1>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <RecipeViews current="regal" />
-        <Link href="/rezepte/stichworte" className="btn btn-small">
+      {/* One row, also on a phone: there the way to the tags is its sign alone. */}
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1 sm:flex-none">
+          <RecipeViews current="regal" />
+        </div>
+        <Link
+          href="/rezepte/stichworte"
+          className="btn btn-small max-sm:size-11 max-sm:px-0"
+          aria-label="Stichworte verwalten"
+          title="Stichworte verwalten"
+        >
           <TagIcon />
-          Stichworte verwalten
+          <span className="max-sm:hidden">Stichworte verwalten</span>
         </Link>
       </div>
 
@@ -194,28 +202,26 @@ export default async function ShelfPage(props: PageProps<"/rezepte/regal">) {
             reset={reset}
           />
 
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-muted" role="status">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <p className="text-sm text-muted" role="status">
               {shown.total === 1 ? "1 Rezept" : `${shown.total} Rezepte`}
               {shown.pages > 1 && ` · Seite ${shown.page} von ${shown.pages}`}
             </p>
             {shown.rows.length > 0 && (
               <label className="chip cursor-pointer">
                 <input type="checkbox" form={SELECTION} name="alle" value="1" className="sr-only" />
-                Alle auf dieser Seite
+                <span className="sm:hidden">Alle wählen</span>
+                <span className="max-sm:hidden">Alle auf dieser Seite</span>
               </label>
             )}
           </div>
 
           {/* On a phone the columns' headings are not shown: it is sorted here instead. */}
-          <nav
-            aria-label="Sortieren"
-            className="mt-3 flex flex-wrap items-center gap-1.5 sm:hidden"
-          >
-            <span className="text-sm text-muted">Sortiert nach</span>
+          <nav aria-label="Sortieren" className="mt-2 flex items-center gap-1.5 sm:hidden">
+            {/* One row: the word for "sorted by" is the heading of the column it stands for. */}
             {(["titel", "aufwand", "gekocht", "neu"] as const).map((sort) => (
               <SortLink key={sort} sort={sort} view={view} href={withView} chip>
-                {SORT_NAME[sort]}
+                {sort === "gekocht" ? "Gekocht" : SORT_NAME[sort]}
               </SortLink>
             ))}
           </nav>
@@ -566,7 +572,7 @@ function ShelfRow({
                 {recipe.title}
               </Link>
               {/* What has no column of its own at this width stands under the title. */}
-              <p className="mt-0.5 text-sm text-muted">
+              <p className="mt-0.5 text-sm text-muted max-sm:hidden">
                 {source && <span className="xl:hidden">{source}</span>}
                 {category && (
                   <span className="lg:hidden">
@@ -577,10 +583,20 @@ function ShelfRow({
                 {effort && <span className="sm:hidden"> · {effort}</span>}
               </p>
               {tagList && <div className="mt-1 hidden sm:block xl:hidden">{tagList}</div>}
-              <details className="group mt-1 sm:hidden">
-                <summary className="link inline-flex min-h-11 cursor-pointer list-none items-center text-sm [&::-webkit-details-marker]:hidden">
-                  <span className="group-open:hidden">Mehr</span>
-                  <span className="hidden group-open:inline">Weniger</span>
+              {/* On a phone the line of facts opens the rest: "Mehr" took a row of its own
+                  under every recipe (October 2026). */}
+              <details className="group sm:hidden">
+                <summary className="flex min-h-9 cursor-pointer list-none items-start gap-1 text-sm text-muted [&::-webkit-details-marker]:hidden">
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    {[source, category, effort].filter(Boolean).join(" · ")}
+                  </span>
+                  <span className="flex size-6 shrink-0 items-center justify-center text-accent transition-transform group-open:rotate-180">
+                    <ChevronIcon />
+                  </span>
+                  <span className="sr-only">
+                    <span className="group-open:hidden">Mehr</span>
+                    <span className="hidden group-open:inline">Weniger</span>
+                  </span>
                 </summary>
                 <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                   <dt className="text-muted">Art</dt>
