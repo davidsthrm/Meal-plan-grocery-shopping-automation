@@ -1,7 +1,6 @@
 import type { CatalogIndex } from "../catalog";
 import { addDays, daysBetween, isoWeekday, type IsoDate } from "../dates";
-import { placeSells } from "./shop-choice";
-import { AFTERNOON_WEEKDAYS, BUTCHER_REACH_DAYS, noteId, type ShoppingTrip } from "./trips";
+import { AFTERNOON_WEEKDAYS, BUTCHER_REACH_DAYS, type ShoppingTrip } from "./trips";
 import type { Contribution, ShoppingLine } from "./types";
 
 /**
@@ -39,40 +38,67 @@ function useOf({ source }: Contribution): Use | null {
 }
 
 /**
- * How long something bought on an errand is fine until its meal: its shelf life, or for the
- * butcher the days a visit reaches. The household buys there for those days on purpose and
- * keeps the meat cold, as the butcher's days are worked out (`butcherDay`). Null: it keeps.
+ * When one line can be bought, as far as its meals say: what buying it on another day is
+ * held against. Null for a line that belongs to no meal: toilet paper can be bought any day.
  */
-function keepsFor(line: ShoppingLine, target: ShoppingTrip, index: CatalogIndex): number | null {
-  if (target.place === "butcher") return BUTCHER_REACH_DAYS;
-  return line.ingredientId
-    ? (index.ingredientById.get(line.ingredientId)?.shelfLifeDays ?? null)
-    : null;
+export interface LineWindow {
+  label: string;
+  /** The first meal it is for: its day, whether at lunch, and the last errand in time. */
+  first: Use;
+  /** The last day it is needed. */
+  lastUse: IsoDate;
+  /** Days it stays good after buying, by the catalog. Null: it keeps. */
+  shelfLifeDays: number | null;
+  /** Bought shortly before its meal anyway. */
+  later: boolean;
+}
+
+export function lineWindow(line: ShoppingLine, index: CatalogIndex): LineWindow | null {
+  const uses = line.contributions.flatMap((part) => useOf(part) ?? []);
+  if (uses.length === 0) return null;
+  return {
+    label: line.label,
+    first: uses.reduce((a, b) => (b.lastErrand < a.lastErrand ? b : a)),
+    lastUse: uses.reduce((a, b) => (b.date > a.date ? b : a)).date,
+    shelfLifeDays: line.ingredientId
+      ? (index.ingredientById.get(line.ingredientId)?.shelfLifeDays ?? null)
+      : null,
+    later: line.trip === "later",
+  };
 }
 
 /**
- * What stands in the way of buying one line on `target`. `later`: a line bought shortly
- * before its meal is only asked whether that errand comes too late; "skip" asks nothing.
+ * What stands in the way of buying one line on `target`: an errand after it is needed, or
+ * one so early that it would not keep. For the butcher a visit's reach stands for the shelf
+ * life: the household buys there for those days on purpose and keeps the meat cold, as the
+ * butcher's days are worked out (`butcherDay`). `later`: a line bought shortly before its
+ * meal is only asked whether that errand comes too late; "skip" asks nothing.
  */
-function lineProblems(
-  line: ShoppingLine,
+export function windowProblems(
+  window: LineWindow | null,
   target: ShoppingTrip,
-  index: CatalogIndex,
   later: "too-late" | "skip",
 ): DayProblem[] {
-  const uses = line.contributions.flatMap((part) => useOf(part) ?? []);
-  if (uses.length === 0 || (line.trip === "later" && later === "skip")) return [];
-  const first = uses.reduce((a, b) => (b.lastErrand < a.lastErrand ? b : a));
+  if (!window || (window.later && later === "skip")) return [];
+  const { first, label } = window;
   if (target.date > first.lastErrand) {
-    return [{ kind: "too-late", label: line.label, neededOn: first.date, lunch: first.lunch }];
+    return [{ kind: "too-late", label, neededOn: first.date, lunch: first.lunch }];
   }
-  if (line.trip === "later") return [];
-  const last = uses.reduce((a, b) => (b.date > a.date ? b : a)).date;
-  const keeps = keepsFor(line, target, index);
-  if (keeps !== null && daysBetween(target.date, last) > keeps) {
-    return [{ kind: "does-not-keep", label: line.label, neededOn: last, shelfLifeDays: keeps }];
+  if (window.later) return [];
+  const keeps = target.place === "butcher" ? BUTCHER_REACH_DAYS : window.shelfLifeDays;
+  if (keeps !== null && daysBetween(target.date, window.lastUse) > keeps) {
+    return [{ kind: "does-not-keep", label, neededOn: window.lastUse, shelfLifeDays: keeps }];
   }
   return [];
+}
+
+/**
+ * Whether a problem rules a day out: it is over, or something is needed before it. That
+ * something would not keep so long only warns: the catalog's shelf lives are estimates, and
+ * the household knows whether its salad lasts from Wednesday to Sunday (October 2026).
+ */
+export function blocks(problem: DayProblem): boolean {
+  return problem.kind !== "does-not-keep";
 }
 
 /**
@@ -87,42 +113,19 @@ export function dayProblems(
   index: CatalogIndex,
 ): DayProblem[] {
   if (target.date < today) return [{ kind: "past" }];
-  return lines.flatMap((line) => lineProblems(line, target, index, "skip"));
+  return lines.flatMap((line) => windowProblems(lineWindow(line, index), target, "skip"));
 }
 
 /**
- * What stands in the way of buying one line on another note. As for a whole errand, and a
- * line bought shortly before its meal may still not go to an errand after that meal.
+ * The days a whole errand is offered on instead of its own: from today, or a week before
+ * it, up to three days after it. Earlier is as much a choice as later: Friday's errand done
+ * on Wednesday (October 2026).
  */
-export function moveProblems(
-  line: ShoppingLine,
-  target: ShoppingTrip,
-  today: IsoDate,
-  index: CatalogIndex,
-): DayProblem[] {
-  if (target.date < today) return [{ kind: "past" }];
-  return lineProblems(line, target, index, "too-late");
-}
-
-/**
- * The other notes one line can be bought on instead: those of food errands where it is in
- * time and keeps, and that sell it: a lemon goes on no note for the Bäcker (`placeSells`),
- * though a line of the bakery's note may go to the bakery on another day. The drugstore's
- * note is written by hand and takes no food.
- */
-export function moveTargets(
-  line: ShoppingLine,
-  here: ShoppingTrip,
-  notes: readonly ShoppingTrip[],
-  today: IsoDate,
-  index: CatalogIndex,
-): ShoppingTrip[] {
-  if (here.place === "drugstore") return [];
-  return notes.filter(
-    (trip) =>
-      noteId(trip) !== noteId(here) &&
-      trip.place !== "drugstore" &&
-      (trip.place === here.place || placeSells(trip.place, line.aisleGroupId, index)) &&
-      moveProblems(line, trip, today, index).length === 0,
-  );
+export function noteDays(noteDate: IsoDate, today: IsoDate): IsoDate[] {
+  const days: IsoDate[] = [];
+  const from = addDays(noteDate, -6) > today ? addDays(noteDate, -6) : today;
+  for (let day = from; day <= addDays(noteDate, 3); day = addDays(day, 1)) {
+    if (day !== noteDate) days.push(day);
+  }
+  return days;
 }

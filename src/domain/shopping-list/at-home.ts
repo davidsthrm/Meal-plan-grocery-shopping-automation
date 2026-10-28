@@ -1,6 +1,6 @@
 import { normalizeName, type AisleGroup, type CatalogIndex } from "../catalog";
 import { addDays, type IsoDate } from "../dates";
-import { moveProblems } from "./change-day";
+import { lineWindow, windowProblems } from "./change-day";
 import type { ViewLine } from "./present";
 import { tripsBetween, type ShoppingDay, type ShoppingTrip } from "./trips";
 import type { ShoppingLine } from "./types";
@@ -53,7 +53,7 @@ export function groupAtHome(lines: readonly AtHomeLine[], index: CatalogIndex): 
 /**
  * The note something goes on when it is bought after all: its own note while that errand is
  * still to come. Otherwise the next errand from today on that sells it and is in time for
- * its meal (`moveProblems`), and where none is, a note at the supermarket today: nobody goes
+ * its meal and from which it keeps (`windowProblems`), and where none is, a note at the supermarket today: nobody goes
  * on an errand whose day is over, nor buys for a meal after it.
  */
 export function noteToBuyOn(
@@ -68,7 +68,7 @@ export function noteToBuyOn(
   const inTime = tripsBetween(days, today, addDays(today, 13)).find(
     (next) =>
       (next.place === "supermarket" || next.place === fresh) &&
-      moveProblems(line, next, today, index).length === 0,
+      windowProblems(lineWindow(line, index), next, "too-late").length === 0,
   );
   return inTime ?? { date: today, place: "supermarket" };
 }

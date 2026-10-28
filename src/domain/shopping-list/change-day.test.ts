@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlanSlot } from "../plan";
 import type { Recipe } from "../recipe";
 import { buildShoppingList } from "./build";
-import { dayProblems, moveProblems, moveTargets } from "./change-day";
+import { blocks, dayProblems, lineWindow, noteDays, windowProblems } from "./change-day";
 import { line, testIndex } from "./test-catalog";
 import { DEFAULT_SHOPPING_DAYS, tripsBetween, type ShoppingTrip } from "./trips";
 
@@ -141,7 +141,7 @@ describe("the butcher's note", () => {
   });
 
   it("asks the shelf life again where the meat would come from the supermarket", () => {
-    expect(moveProblems(steaks[0], shop(MONDAY), TODAY, testIndex)).toEqual([
+    expect(windowProblems(lineWindow(steaks[0], testIndex), shop(MONDAY), "too-late")).toEqual([
       { kind: "does-not-keep", label: "Rindersteaks", neededOn: THURSDAY, shelfLifeDays: 2 },
     ]);
   });
@@ -175,68 +175,57 @@ describe("a lunch on a working day", () => {
   });
 });
 
-describe("moveProblems", () => {
+describe("one line on another day", () => {
   const cream = monday.find((entry) => entry.key === "sahne@main")!;
   const later = { ...cream, trip: "later" as const };
+  const at = (entry: typeof cream, date: string) =>
+    windowProblems(lineWindow(entry, testIndex), shop(date), "too-late");
 
   it("asks of one line what a whole errand is asked", () => {
-    expect(moveProblems(cream, shop(TUESDAY), TODAY, testIndex)).toEqual([
+    expect(at(cream, TUESDAY)).toEqual([
       { kind: "too-late", label: "Sahne", neededOn: MONDAY, lunch: false },
     ]);
-    expect(moveProblems(cream, shop("2026-10-07"), TODAY, testIndex)).toEqual([{ kind: "past" }]);
   });
 
   it("does not put what is bought shortly before its meal on an errand after the meal", () => {
-    expect(moveProblems(later, shop(TUESDAY), TODAY, testIndex)).toEqual([
+    expect(at(later, TUESDAY)).toEqual([
       { kind: "too-late", label: "Sahne", neededOn: MONDAY, lunch: false },
     ]);
     // Bought shortly before anyway: how long it keeps is no question.
-    expect(moveProblems(later, shop("2026-10-09"), TODAY, testIndex)).toEqual([]);
+    expect(at(later, "2026-10-09")).toEqual([]);
+  });
+
+  it("can be bought on any day when it belongs to no meal", () => {
+    const paper = monday.find((entry) => entry.label === "Geschenkpapier")!;
+    expect(lineWindow(paper, testIndex)).toBeNull();
+    expect(windowProblems(null, shop("2026-10-20"), "too-late")).toEqual([]);
   });
 });
 
-describe("moveTargets", () => {
-  const cream = monday.find((entry) => entry.key === "sahne@main")!;
-  const notes: ShoppingTrip[] = [
-    { date: SATURDAY, place: "market" },
-    { date: SUNDAY, place: "bakery" },
-    shop(MONDAY),
-    { date: MONDAY, place: "drugstore" },
-    shop("2026-10-16"),
-  ];
+describe("blocks", () => {
+  it("rules out a day that is over or too late, and only warns what would not keep", () => {
+    expect(blocks({ kind: "past" })).toBe(true);
+    expect(blocks({ kind: "too-late", label: "Sahne", neededOn: MONDAY, lunch: false })).toBe(true);
+    // Steaks bought on Sunday for Wednesday: the household is told, and decides.
+    const early = check(SUNDAY);
+    expect(early).toHaveLength(1);
+    expect(early.filter(blocks)).toEqual([]);
+  });
+});
 
-  it("offers the other food notes where a line is in time, keeps and is sold", () => {
-    // Cream is no bread: the Bäcker's note is not offered for it.
-    expect(moveTargets(cream, shop(MONDAY), notes, TODAY, testIndex)).toEqual([
-      { date: SATURDAY, place: "market" },
+describe("noteDays", () => {
+  it("offers earlier days from today and three days after", () => {
+    // Friday's errand looked at on Wednesday: today, Thursday, and Saturday to Monday.
+    expect(noteDays("2026-10-16", WEDNESDAY)).toEqual([
+      WEDNESDAY,
+      "2026-10-15",
+      "2026-10-17",
+      "2026-10-18",
+      "2026-10-19",
     ]);
-  });
-
-  it("offers the Bäcker for bread, and its own place on another day for any of its lines", () => {
-    const bread = { ...cream, key: "brot@main", ingredientId: "brot", aisleGroupId: "brot" };
-    const bakery = {
-      ...testIndex,
-      aisleGroupById: new Map([
-        ...testIndex.aisleGroupById,
-        ["brot", { ...testIndex.aisleGroupById.get("brot")!, freshPlace: "bakery" as const }],
-      ]),
-    };
-    expect(moveTargets(bread, shop(MONDAY), notes, TODAY, bakery)).toContainEqual({
-      date: SUNDAY,
-      place: "bakery",
-    });
-    // Typed onto the Bäcker's note, it may go to the Bäcker on another day.
-    const typed = { ...cream, aisleGroupId: "sonstiges" };
-    const saturday = { date: SATURDAY, place: "bakery" as const };
-    expect(moveTargets(typed, saturday, notes, TODAY, testIndex)).toContainEqual({
-      date: SUNDAY,
-      place: "bakery",
-    });
-  });
-
-  it("offers nothing on the drugstore's note", () => {
-    expect(
-      moveTargets(cream, { date: MONDAY, place: "drugstore" }, notes, TODAY, testIndex),
-    ).toEqual([]);
+    // A week ahead: from six days before it.
+    expect(noteDays("2026-10-23", TODAY)[0]).toBe("2026-10-17");
+    // Its day over: from today on.
+    expect(noteDays("2026-10-06", TODAY)).toEqual(["2026-10-08", "2026-10-09"]);
   });
 });
