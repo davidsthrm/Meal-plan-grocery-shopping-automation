@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BACK, FORWARD, SWAP } from "@/lib/transitions";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { planningWeek, weekRange } from "@/domain/dates";
 import {
@@ -90,12 +92,11 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
 
   return (
     <div className="mx-auto max-w-5xl">
-      <Link
+      <BackLink
         href={period.kind === "week" ? `/woche?w=${period.key}` : `/woche?w=${planningWeek(now)}`}
-        className="link text-sm"
       >
-        ← Wochenplan
-      </Link>
+        Wochenplan
+      </BackLink>
       <h1 className="title mt-3">Statistik</h1>
 
       {/* What is counted: the meals or the shopping. */}
@@ -109,6 +110,7 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
           <Link
             key={key}
             href={href(period, key)}
+            transitionTypes={[SWAP]}
             className="segment gap-2"
             aria-current={area === key ? "page" : undefined}
           >
@@ -125,6 +127,7 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
             <Link
               key={kind}
               href={href(periodOf(kind, pick(period, now)))}
+              transitionTypes={[SWAP]}
               className="segment"
               aria-current={period.kind === kind ? "page" : undefined}
             >
@@ -134,7 +137,11 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
         </nav>
         <nav aria-label="Zeitraum wechseln" className="capsule">
           {hasPeriodBefore(period, first) ? (
-            <Link href={href(shiftPeriod(period, -1))} aria-label={BEFORE[period.kind]}>
+            <Link
+              href={href(shiftPeriod(period, -1))}
+              transitionTypes={[BACK]}
+              aria-label={BEFORE[period.kind]}
+            >
               <ArrowIcon back />
             </Link>
           ) : (
@@ -142,9 +149,17 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
               <ArrowIcon back />
             </a>
           )}
-          {period.key !== current.key && <Link href={href(current)}>Aktuell</Link>}
+          {period.key !== current.key && (
+            <Link href={href(current)} transitionTypes={[FORWARD]}>
+              Aktuell
+            </Link>
+          )}
           {hasPeriodAfter(period, now) ? (
-            <Link href={href(shiftPeriod(period, 1))} aria-label={AFTER[period.kind]}>
+            <Link
+              href={href(shiftPeriod(period, 1))}
+              transitionTypes={[FORWARD]}
+              aria-label={AFTER[period.kind]}
+            >
               <ArrowIcon />
             </Link>
           ) : (

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { notFound } from "next/navigation";
 import { RecipeEditForm } from "@/components/recipe-edit-form";
 import { normalizeName } from "@/domain/catalog";
@@ -24,9 +24,7 @@ export default async function EditRecipePage(props: PageProps<"/rezepte/[id]/bea
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href={`/rezepte/${id}`} className="link text-sm">
-        ← Zum Rezept
-      </Link>
+      <BackLink href={`/rezepte/${id}`}>Zum Rezept</BackLink>
       <h1 className="title mt-3 mb-5">Rezept ändern</h1>
       <RecipeEditForm
         recipeId={id}

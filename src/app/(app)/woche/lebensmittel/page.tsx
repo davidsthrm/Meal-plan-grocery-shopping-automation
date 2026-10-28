@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
@@ -70,9 +71,7 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href={`/woche?w=${week}#tag-${date}`} className="link text-sm">
-        ← Wochenplan
-      </Link>
+      <BackLink href={`/woche?w=${week}#tag-${date}`}>Wochenplan</BackLink>
       <p className="eyebrow mt-3">
         {weekdayLong(date)}, {dayAndMonth(date)} · {MEAL_NAME[meal]}
       </p>

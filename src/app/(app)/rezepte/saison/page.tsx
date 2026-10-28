@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BACK, FORWARD } from "@/lib/transitions";
 import Link from "next/link";
 import { ArrowIcon } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
@@ -132,13 +133,21 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
 
       <nav aria-label="Monat" className="mt-4 flex flex-wrap items-center gap-3">
         <span className="capsule">
-          <Link href={link(nextMonth(month, -1))} aria-label={MONTH_NAME[nextMonth(month, -1)]}>
+          <Link
+            href={link(nextMonth(month, -1))}
+            transitionTypes={[BACK]}
+            aria-label={MONTH_NAME[nextMonth(month, -1)]}
+          >
             <ArrowIcon back />
           </Link>
           <Link href={link(month)} aria-current="page">
             {MONTH_NAME[month]}
           </Link>
-          <Link href={link(nextMonth(month))} aria-label={MONTH_NAME[nextMonth(month)]}>
+          <Link
+            href={link(nextMonth(month))}
+            transitionTypes={[FORWARD]}
+            aria-label={MONTH_NAME[nextMonth(month)]}
+          >
             <ArrowIcon />
           </Link>
         </span>

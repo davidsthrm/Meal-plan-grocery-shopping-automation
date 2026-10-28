@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SWAP } from "@/lib/transitions";
 
 /**
  * The two views of the recipes, as the week has "Mahlzeiten" and "Außerdem": "Entdecken" to
@@ -6,7 +7,12 @@ import Link from "next/link";
  */
 export function RecipeViews({ current }: { current: "entdecken" | "regal" }) {
   const view = (key: typeof current, href: string, label: string) => (
-    <Link href={href} className="segment" aria-current={current === key ? "page" : undefined}>
+    <Link
+      href={href}
+      transitionTypes={[SWAP]}
+      className="segment"
+      aria-current={current === key ? "page" : undefined}
+    >
       {label}
     </Link>
   );

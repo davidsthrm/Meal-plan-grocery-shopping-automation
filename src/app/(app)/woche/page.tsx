@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BACK, FORWARD, SWAP } from "@/lib/transitions";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -322,7 +323,11 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       <span className="capsule">
         {/* Not before the week the household started with the app. */}
         {hasWeekBefore(week, household.firstWeek) ? (
-          <Link href={weekLink(addDays(week, -7))} aria-label="Vorige Woche">
+          <Link
+            href={weekLink(addDays(week, -7))}
+            transitionTypes={[BACK]}
+            aria-label="Vorige Woche"
+          >
             <ArrowIcon back />
           </Link>
         ) : (
@@ -330,15 +335,31 @@ export default async function WeekPage(props: PageProps<"/woche">) {
             <ArrowIcon back />
           </a>
         )}
-        {week !== thisWeek && <Link href={weekLink(thisWeek)}>Aktuelle</Link>}
-        <Link href={weekLink(addDays(week, 7))} aria-label="Nächste Woche">
+        {week !== thisWeek && (
+          <Link href={weekLink(thisWeek)} transitionTypes={[thisWeek > week ? FORWARD : BACK]}>
+            Aktuelle
+          </Link>
+        )}
+        <Link
+          href={weekLink(addDays(week, 7))}
+          transitionTypes={[FORWARD]}
+          aria-label="Nächste Woche"
+        >
           <ArrowIcon />
         </Link>
       </span>
-      <Link href={`/woche/verlauf?w=${week}`} className="link inline-flex min-h-11 items-center">
+      <Link
+        href={`/woche/verlauf?w=${week}`}
+        transitionTypes={[FORWARD]}
+        className="link inline-flex min-h-11 items-center"
+      >
         Alle Wochen
       </Link>
-      <Link href="/woche/statistik" className="link inline-flex min-h-11 items-center gap-1.5">
+      <Link
+        href="/woche/statistik"
+        transitionTypes={[FORWARD]}
+        className="link inline-flex min-h-11 items-center gap-1.5"
+      >
         <ChartIcon />
         Statistik
       </Link>
@@ -395,6 +416,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           <nav aria-label="Ansicht" className="segmented">
             <Link
               href={`/woche?w=${week}`}
+              transitionTypes={[SWAP]}
               className="segment"
               aria-current={showExtras ? undefined : "page"}
             >
@@ -402,6 +424,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
             </Link>
             <Link
               href={`/woche?w=${week}&t=extra`}
+              transitionTypes={[SWAP]}
               className="segment"
               aria-current={showExtras ? "page" : undefined}
             >
@@ -757,6 +780,7 @@ function KindTitle({
       {recipe && <RecipeBadge recipe={recipe} className="h-8 w-8" />}
       <Link
         href={`/rezepte/${id}${fromPlan(week, day)}`}
+        transitionTypes={[FORWARD]}
         className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
@@ -841,6 +865,7 @@ function Extras({
                 <p>
                   <Link
                     href={`/rezepte/${extra.recipeId}${fromPlan(week)}`}
+                    transitionTypes={[FORWARD]}
                     className="font-semibold decoration-line underline-offset-4 hover:underline"
                   >
                     {title}

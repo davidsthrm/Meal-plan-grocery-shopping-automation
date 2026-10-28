@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/back-link";
 import { sourceLabel } from "@/domain/library/source";
 import Link from "next/link";
 import { RecipeBadge, RecipeFacts } from "@/components/recipe-card";
@@ -83,9 +84,7 @@ export default async function FieldChecksPage(props: PageProps<"/import/pruefen/
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/import" className="link text-sm">
-        ← Import
-      </Link>
+      <BackLink href="/import">Import</BackLink>
       <h1 className="title mt-2">Angaben prüfen</h1>
       <p className="mt-1 text-muted">
         Art, Kategorie, Zeit und Portionen hat beim Einlesen das Modell eingetragen. Wie sicher es

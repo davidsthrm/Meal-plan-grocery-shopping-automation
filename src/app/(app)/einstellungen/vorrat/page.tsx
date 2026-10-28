@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { pantryByAisle, searchCatalog } from "@/domain/pantry";
 import { requireHousehold } from "@/server/auth";
 import { loadCatalogIndex } from "@/server/catalog";
@@ -29,9 +29,7 @@ export default async function PantryPage(props: PageProps<"/einstellungen/vorrat
 
   return (
     <div className="mx-auto max-w-5xl">
-      <Link href="/einstellungen#vorrat" className="link text-sm">
-        ← Einstellungen
-      </Link>
+      <BackLink href="/einstellungen#vorrat">Einstellungen</BackLink>
       <h1 className="title mt-2">Vorrat</h1>
       <p className="mt-1 text-muted">
         {count === 1 ? "1 Zutat" : `${count} Zutaten`}, die meistens da sind. Brauchen Rezepte sie,

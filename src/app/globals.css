@@ -148,7 +148,7 @@ summary,
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border-radius: 0.8rem;
+    border-radius: 999px;
     border: 1px solid transparent;
     background: rgb(35 33 29 / 0.065);
     padding: 0 1rem;
@@ -577,17 +577,14 @@ summary,
     z-index: 10;
     max-width: 30rem;
     margin: 0 auto;
+    border-radius: 999px;
+  }
+  /*
+   * Liquid glass (`GlassSurface`): blur, a white tint, a sheen across it and light catching
+   * its rim. Safari cannot bend the page through it as Chrome can; it stays frosted there.
+   */
+  .tabbar-glass > :last-child {
     padding: 0.3rem;
-    /* Frosted glass, with light catching its upper edge: the page shows through. */
-    border: 1px solid rgb(255 255 255 / 0.65);
-    border-radius: 1.4rem;
-    background: color-mix(in srgb, var(--color-surface) 58%, transparent);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.8),
-      0 1px 2px rgb(35 33 29 / 0.08),
-      0 18px 36px -16px rgb(35 33 29 / 0.4);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-    backdrop-filter: blur(22px) saturate(180%);
   }
   .tab {
     display: flex;
@@ -596,7 +593,7 @@ summary,
     align-items: center;
     justify-content: center;
     gap: 0.15rem;
-    border-radius: 1.1rem;
+    border-radius: 999px;
     /* Darker than muted: on glass the page behind takes contrast away. */
     color: color-mix(in srgb, var(--color-ink) 72%, transparent);
     font-size: 0.7rem;
@@ -642,10 +639,11 @@ summary,
   /* Glass only for whoever wants it: asked for less transparency, the bars are solid. */
   @media (prefers-reduced-transparency: reduce) {
     .app-header::before,
-    .tabbar {
-      background: var(--color-surface);
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
+    .tabbar-glass > [aria-hidden] {
+      /* The glass draws its layers inline: only this outweighs them. */
+      background: var(--color-surface) !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
     }
     .app-header::before {
       background: var(--color-paper);
@@ -1195,6 +1193,51 @@ summary,
     min-height: 2.6rem;
     padding: 0 0.8rem;
     font-size: 0.92rem;
+  }
+
+  /*
+   * Every button is a pill on a soft tint, and so is an action written as a link: the way
+   * back ("← Wochenplan", `BackLink`) and a standalone link the size of a finger
+   * ("Alle Wochen", "An einem anderen Tag einkaufen"). Their words in the green say they
+   * lead somewhere; the tint says they can be tapped (October 2026).
+   */
+  .back-link,
+  .link.min-h-11 {
+    display: inline-flex;
+    min-height: 2.6rem;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    background: var(--color-accent-soft);
+    padding: 0 0.95rem;
+    color: var(--color-accent);
+    font-weight: 600;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 120ms var(--ease-out),
+      background-color 120ms ease;
+  }
+  .back-link {
+    padding-left: 0.75rem;
+    font-size: 0.92rem;
+  }
+  .back-link:active,
+  .link.min-h-11:active {
+    transform: scale(0.96);
+    transition-duration: 60ms;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .back-link:hover,
+    .link.min-h-11:hover {
+      background: color-mix(in srgb, var(--color-accent-soft) 70%, var(--color-accent) 12%);
+      text-decoration: none;
+    }
+  }
+  .back-link:focus-visible,
+  .link.min-h-11:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 
   /* An action that should not compete with the content next to it. */
@@ -2516,7 +2559,7 @@ summary,
   .undo-button {
     min-height: 2.75rem;
     padding: 0 0.85rem;
-    border-radius: 0.7rem;
+    border-radius: 999px;
     color: #cfe3dc;
     font-weight: 700;
   }
@@ -2687,8 +2730,57 @@ summary,
 details[open] > :not(summary) {
   animation: unfold 200ms var(--ease-out);
 }
-main > * {
+main > *,
+.page > * {
   animation: page-in 220ms var(--ease-out) both;
+}
+main > .page {
+  animation: none;
+}
+/* Stepped back in the history (`BackToList`), which names no transition: from the left. */
+html[data-going="back"] .page > * {
+  animation-name: page-from-left;
+}
+/* Led there by a link that names how (`transitionTypes`): the transition moves it instead. */
+:root:active-view-transition .page > * {
+  animation: none;
+}
+/*
+ * From one page to the next. The old one fades away at once, the new one comes in from the
+ * side the link points to: from the right going in or to a section further right, from
+ * the left going back. Another view of the same page cross-fades. The box itself does not
+ * morph between two heights: the new page simply stands where it will stay.
+ */
+::view-transition-group(.nav-forward),
+::view-transition-group(.nav-back),
+::view-transition-group(.nav-swap) {
+  animation: none;
+}
+::view-transition-old(.nav-forward),
+::view-transition-old(.nav-back),
+::view-transition-old(.nav-swap) {
+  animation: fade-out 120ms ease both;
+}
+::view-transition-new(.nav-forward) {
+  animation: page-from-right 260ms var(--ease-out) both;
+}
+::view-transition-new(.nav-back) {
+  animation: page-from-left 260ms var(--ease-out) both;
+}
+::view-transition-new(.nav-swap) {
+  animation: fade-in 200ms ease both;
+}
+@keyframes page-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(1.5rem);
+  }
+}
+@keyframes page-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
 }
 /*
  * On to the next meal: the meal's page is torn off like a sheet of a pad. It stays on top,
@@ -2788,7 +2880,19 @@ main > * {
   ::view-transition-group(*) {
     animation: none !important;
   }
+  /* From page to page it still fades: less motion is not none. */
+  ::view-transition-old(.nav-forward),
+  ::view-transition-old(.nav-back),
+  ::view-transition-old(.nav-swap) {
+    animation: fade-out 120ms ease both !important;
+  }
+  ::view-transition-new(.nav-forward),
+  ::view-transition-new(.nav-back),
+  ::view-transition-new(.nav-swap) {
+    animation: fade-in 180ms ease both !important;
+  }
   main > *,
+  .page > *,
   .zoom-in,
   .note-drawer[open],
   .note-drawer[open]::backdrop,

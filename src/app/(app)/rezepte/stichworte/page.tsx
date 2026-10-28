@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -55,9 +56,7 @@ export default async function TagsPage(props: PageProps<"/rezepte/stichworte">) 
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/rezepte/regal" className="link text-sm">
-        ← Regal
-      </Link>
+      <BackLink href="/rezepte/regal">Regal</BackLink>
       <h1 className="title mt-3">Stichworte</h1>
       <p className="mt-2 text-muted">
         Umbenennen lässt sich jedes Stichwort: Die App erkennt ihre eigenen auch unter einem neuen

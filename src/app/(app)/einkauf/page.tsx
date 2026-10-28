@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BACK, FORWARD } from "@/lib/transitions";
+import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { NoteIcon, TickIcon } from "@/components/icons";
 import { PrintButton } from "@/components/print-button";
@@ -74,9 +76,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         {/* Printed, the note has the size and the layout of its PDF. */}
         <style>{printRules()}</style>
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-          <Link href={`/einkauf?w=${week}`} className="link">
-            ← Alle Zettel
-          </Link>
+          <BackLink href={`/einkauf?w=${week}`}>Alle Zettel</BackLink>
           <span className="flex gap-2">
             {picked.open > 0 && <PrintButton />}
             <a href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`} className="btn btn-small">
@@ -143,7 +143,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           <span className="capsule">
             {/* Not before the week the household started with the app. */}
             {hasWeekBefore(week, household.firstWeek) ? (
-              <Link href={`/einkauf?w=${addDays(week, -7)}`}>
+              <Link href={`/einkauf?w=${addDays(week, -7)}`} transitionTypes={[BACK]}>
                 <span aria-hidden>←</span> Vorige
               </Link>
             ) : (
@@ -151,8 +151,15 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
                 <span aria-hidden>←</span> Vorige
               </a>
             )}
-            {week !== thisWeek && <Link href={`/einkauf?w=${thisWeek}`}>Aktuelle</Link>}
-            <Link href={`/einkauf?w=${addDays(week, 7)}`}>
+            {week !== thisWeek && (
+              <Link
+                href={`/einkauf?w=${thisWeek}`}
+                transitionTypes={[thisWeek > week ? FORWARD : BACK]}
+              >
+                Aktuelle
+              </Link>
+            )}
+            <Link href={`/einkauf?w=${addDays(week, 7)}`} transitionTypes={[FORWARD]}>
               Nächste <span aria-hidden>→</span>
             </Link>
           </span>
