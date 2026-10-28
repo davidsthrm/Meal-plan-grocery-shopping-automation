@@ -3217,10 +3217,15 @@ html[data-going="back"] .page > * {
  * left in the picture of the whole screen, they lay under the page while it moved. Their
  * new state shows at once, the tapped section already marked.
  */
-.app-header {
+/*
+ * Named only while a page moves: a named element is a backdrop root, so the glass of the
+ * bar and the frosted strip of the header saw nothing behind them to blur, and the bar
+ * stood clear as glass on the phone (October 2026).
+ */
+:root:active-view-transition .app-header {
   view-transition-name: app-header;
 }
-.tabbar {
+:root:active-view-transition .tabbar {
   view-transition-name: app-tabbar;
 }
 ::view-transition-group(app-header),
