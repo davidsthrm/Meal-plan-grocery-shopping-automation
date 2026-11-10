@@ -100,13 +100,15 @@ export function filterTone(filter: { diet: Diet | null; category: string | null 
   return filter.category !== null && SWEET.has(filter.category) ? "kind-sweet" : "";
 }
 
-export const DIET_NAME: Record<Diet, string> = {
-  vegetarisch: "Vegetarisch",
-  vegan: "Vegan",
-  fisch: "Fisch",
-  gefluegel: "Geflügel",
-  fleisch: "Fleisch",
-};
+/** The kinds of meal a recipe's form offers, "keine Angabe" first. */
+export const PROTEIN_OPTIONS: readonly { value: ProteinType | ""; label: string }[] = [
+  { value: "", label: "keine Angabe" },
+  { value: "vegetarian", label: "Vegetarisch" },
+  { value: "vegan", label: "Vegan" },
+  { value: "fish", label: "Fisch" },
+  { value: "poultry", label: "Geflügel" },
+  { value: "red_meat", label: "Fleisch" },
+];
 
 /** What a week aims for in a group: "mind. 3", "max. 2", short enough for a small tile. */
 /**

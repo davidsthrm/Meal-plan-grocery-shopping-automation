@@ -1,4 +1,5 @@
 import { normalizeName, type AisleGroup, type Shop } from "../catalog";
+import { SUPERMARKETS_SHOWN } from "../supermarket-search";
 import type { AisleView, ViewLine } from "./present";
 
 /**
@@ -54,7 +55,7 @@ function popularity(shop: Shop): number {
 export function offeredSupermarkets(
   found: readonly Shop[],
   chosen: readonly Shop[],
-  count = 5,
+  count = SUPERMARKETS_SHOWN,
 ): { shown: Shop[]; more: Shop[] } {
   const rest = found
     .filter((shop) => !chosen.some((each) => each.id === shop.id))

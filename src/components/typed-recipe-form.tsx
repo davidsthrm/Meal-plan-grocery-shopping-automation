@@ -4,15 +4,7 @@ import { useActionState } from "react";
 import type { Category } from "@/domain/library/summary";
 import type { TypedRecipeInput } from "@/domain/library/typed-recipe";
 import { saveTypedRecipe, type TypedRecipeState } from "@/app/(app)/rezepte/actions";
-
-const PROTEINS = [
-  { value: "", label: "keine Angabe" },
-  { value: "vegetarian", label: "Vegetarisch" },
-  { value: "vegan", label: "Vegan" },
-  { value: "fish", label: "Fisch" },
-  { value: "poultry", label: "Geflügel" },
-  { value: "red_meat", label: "Fleisch" },
-];
+import { PROTEIN_OPTIONS } from "@/lib/plan-text";
 
 interface Props {
   /** What the form starts with. `lines` null leaves the ingredients out of the form. */
@@ -78,7 +70,7 @@ export function TypedRecipeForm({ initial, categories, extra = {}, submitLabel }
             Zählt in der Woche als
           </label>
           <select id="protein" name="protein" className="field" defaultValue={values.protein}>
-            {PROTEINS.map((option) => (
+            {PROTEIN_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
