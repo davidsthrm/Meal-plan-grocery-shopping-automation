@@ -3,8 +3,6 @@
 
 # next.js
 /.next/
-/out/
-/build
 next-env.d.ts
 *.tsbuildinfo
 
@@ -15,7 +13,7 @@ next-env.d.ts
 # vercel
 .vercel
 
-# supabase local state
+# supabase CLI state (also in supabase/.gitignore; Prettier reads only this file)
 /supabase/.branches
 /supabase/.temp
 
@@ -24,7 +22,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
-/playwright/.cache/
 
 # misc
 .DS_Store
@@ -33,3 +30,11 @@ npm-debug.log*
 
 # Family sample photos (private, never commit)
 samples/
+
+# Backups of the hosted database and photos (docs/DEPLOYMENT.md): the family's data
+/backup/
+*.dump
+
+# Agent skills installed locally (skills CLI); skills-lock.json says where they come from
+/.claude/
+/skills-lock.json

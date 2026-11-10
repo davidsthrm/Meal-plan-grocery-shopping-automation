@@ -24,6 +24,8 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // No AGENTS.md written by `next dev`: its one rule is in CLAUDE.md ("Next.js 16").
+  agentRules: false,
   // Every page of this app is private and reads the signed-in household's data on each
   // request, so there is nothing to prerender or cache. Cache Components would only add
   // Suspense boundaries around everything.

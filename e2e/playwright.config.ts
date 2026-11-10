@@ -1,7 +1,8 @@
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // The test login lives in .env.local (created by `npm run e2e:setup`).
-process.loadEnvFile(".env.local");
+process.loadEnvFile(path.join(__dirname, "..", ".env.local"));
 
 // Next.js allows only one dev server per project. If `npm run dev` is already running, point
 // the tests at it: `E2E_PORT=3000 npm run e2e`.
@@ -11,9 +12,9 @@ const PORT = Number(process.env.E2E_PORT ?? 3100);
 const DEPLOYED = process.env.E2E_BASE_URL;
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: ".",
   // The made-up cookbook of the tests is removed from the test household after every run.
-  globalTeardown: "./e2e/teardown.ts",
+  globalTeardown: "./teardown.ts",
   // The tests share one test household, so they must not run side by side.
   workers: 1,
   fullyParallel: false,
@@ -47,6 +48,8 @@ export default defineConfig({
         command: process.env.E2E_PROD
           ? `npx next build && npx next start --port ${PORT}`
           : `npx next dev --port ${PORT}`,
+        // The app lives one folder up; Playwright starts commands in the config's folder.
+        cwd: "..",
         url: `http://localhost:${PORT}/login`,
         reuseExistingServer: true,
         timeout: process.env.E2E_PROD ? 600_000 : 120_000,
