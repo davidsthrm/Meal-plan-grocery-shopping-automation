@@ -5,6 +5,7 @@ import { must } from "@/server/catalog";
 import { addPages, batchProgress, createBatch, processNext } from "@/server/import/batch";
 import { PHOTO_BUCKET } from "@/server/import/storage";
 import type { Database } from "@/server/supabase/database.types";
+import { costOf } from "./lib/prices";
 
 /**
  * Runs a whole batch import as the test household's user, against the real database, storage
@@ -112,7 +113,9 @@ async function main() {
   );
   for (const job of jobs) {
     const recipe = recipes.find((r) => r.id === job.recipe_id);
-    const cents = (((job.input_tokens ?? 0) * 0.1 + (job.output_tokens ?? 0) * 0.5) / 1e6) * 100;
+    // Both passes priced at the reading model's rates.
+    const usage = { inputTokens: job.input_tokens ?? 0, outputTokens: job.output_tokens ?? 0 };
+    const cents = (costOf(process.env.ANTHROPIC_EXTRACT_MODEL ?? "", usage) ?? 0) * 100;
     const issues = (job.issues as { code: string }[]).map((issue) => issue.code).join(", ");
     console.log(
       `  recipe ${job.position} ${job.status.padEnd(12)} "${recipe?.title}" ${recipe?.source_book} S. ${recipe?.source_page}` +

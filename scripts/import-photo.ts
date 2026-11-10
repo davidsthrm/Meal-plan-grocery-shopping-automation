@@ -13,6 +13,8 @@ import { importRecipe, type ImportResult } from "@/server/import/import-recipe";
 import { seedCatalog } from "../supabase/seed/catalog";
 import { seedRecipes } from "../supabase/seed/recipes";
 import fixtures from "../tests/fixtures/sample-week/recipes.json";
+import { option } from "./lib/cli";
+import { costOf } from "./lib/prices";
 
 /**
  * Runs the complete import on recipe photos and prints what the app would do with them.
@@ -25,19 +27,7 @@ import fixtures from "../tests/fixtures/sample-week/recipes.json";
  * Every recipe calls the API twice (reading and checking) and costs money.
  */
 
-/** US dollars per million tokens, input and output, as of October 2026. For estimates only. */
-const PRICES: Record<string, [number, number]> = {
-  "claude-haiku-5-5": [0.1, 0.5],
-  "claude-sonnet-5-5": [2, 10],
-  "claude-opus-5-5": [4, 20],
-  "claude-fable-5-1": [10, 50],
-};
-
 const args = process.argv.slice(2);
-function option(name: string): string | undefined {
-  const at = args.indexOf(`--${name}`);
-  return at === -1 ? undefined : args[at + 1];
-}
 const OPTIONS_WITH_VALUE = ["title", "book", "page"];
 const files = args.filter(
   (arg, i) => !arg.startsWith("--") && !OPTIONS_WITH_VALUE.includes(args[i - 1]?.slice(2)),
@@ -62,11 +52,8 @@ const suggest = createAnthropicSuggester({ model: readModel });
 
 function cents(result: ImportResult): string {
   // Both passes are priced with the reading model's rates; exact when both models are the same.
-  const price = PRICES[readModel];
-  if (!price) return "price unknown";
-  const dollars =
-    (result.usage.inputTokens * price[0] + result.usage.outputTokens * price[1]) / 1e6;
-  return `${(dollars * 100).toFixed(2)} ct`;
+  const dollars = costOf(readModel, result.usage);
+  return dollars === null ? "price unknown" : `${(dollars * 100).toFixed(2)} ct`;
 }
 
 async function show(label: string, result: ImportResult) {

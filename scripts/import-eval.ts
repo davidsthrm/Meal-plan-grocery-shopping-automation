@@ -11,6 +11,8 @@ import { createAnthropicReader } from "@/server/import/anthropic-reader";
 import { normalizeImage, prepareForModel } from "@/server/import/normalize-image";
 import { RecipeReadError } from "@/server/import/read-recipe";
 import fixtures from "../tests/fixtures/sample-week/recipes.json";
+import { option } from "./lib/cli";
+import { costOf } from "./lib/prices";
 
 /**
  * Measures how well a model reads the five sample recipe photos, against the hand-verified
@@ -25,25 +27,12 @@ import fixtures from "../tests/fixtures/sample-week/recipes.json";
  * possibly fewer misread fractions. Every run calls the API and costs money.
  */
 
-/** US dollars per million tokens, input and output, as of October 2026. For estimates only. */
-const PRICES: Record<string, [number, number]> = {
-  "claude-haiku-5-5": [0.1, 0.5],
-  "claude-sonnet-5-5": [2, 10],
-  "claude-opus-5-5": [4, 20],
-  "claude-fable-5-1": [10, 50],
-};
-
-function argument(name: string): string | undefined {
-  const at = process.argv.indexOf(`--${name}`);
-  return at === -1 ? undefined : process.argv[at + 1];
-}
-
-const models = (argument("model") ?? process.env.ANTHROPIC_EXTRACT_MODEL ?? "")
+const models = (option("model") ?? process.env.ANTHROPIC_EXTRACT_MODEL ?? "")
   .split(",")
   .filter(Boolean);
 const useTiles = process.argv.includes("--tiles");
-const effort = (argument("effort") ?? "medium") as "low" | "medium" | "high";
-const repetitions = Number(argument("runs") ?? 1);
+const effort = (option("effort") ?? "medium") as "low" | "medium" | "high";
+const repetitions = Number(option("runs") ?? 1);
 const recipes = fixtures.recipes as (ExpectedRecipe & { photo: string })[];
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -71,11 +60,6 @@ interface Run {
   inputTokens: number;
   outputTokens: number;
   seconds: number;
-}
-
-function costOf(model: string, inputTokens: number, outputTokens: number): number | null {
-  const price = PRICES[model];
-  return price ? (inputTokens * price[0] + outputTokens * price[1]) / 1e6 : null;
 }
 
 async function evaluate(model: string): Promise<Run[]> {
@@ -126,7 +110,7 @@ function report(model: string, runs: Run[]) {
   );
   console.log("-".repeat(72));
   for (const run of runs) {
-    const cost = costOf(model, run.inputTokens, run.outputTokens);
+    const cost = costOf(model, run);
     const money = cost === null ? "price unknown" : `${(cost * 100).toFixed(2)} ct`;
     if (!run.score) {
       console.log(`${run.id}  FAILED  ${run.error}`);
@@ -152,10 +136,7 @@ function report(model: string, runs: Run[]) {
   }
   const scored = runs.filter((r) => r.score);
   const perfect = scored.filter((r) => r.score!.perfect).length;
-  const total = runs.reduce(
-    (sum, r) => sum + (costOf(model, r.inputTokens, r.outputTokens) ?? 0),
-    0,
-  );
+  const total = runs.reduce((sum, r) => sum + (costOf(model, r) ?? 0), 0);
   const unsure = runs.filter((r) => r.uncertain.length > 0).length;
   console.log(
     `=> ${perfect} of ${runs.length} recipes read without a mistake, ${unsure} sent to review by the model, ` +

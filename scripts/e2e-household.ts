@@ -1,10 +1,9 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/server/supabase/database.types";
 import { seedId } from "../supabase/seed/build-seed-sql";
 import { seedCatalog } from "../supabase/seed/catalog";
 import { tags } from "../supabase/seed/recipes";
+import { adminDb } from "./lib/db";
 
 /**
  * Creates or removes a separate test household with its own login, for automated tests.
@@ -18,13 +17,7 @@ import { tags } from "../supabase/seed/recipes";
 const HOUSEHOLD_NAME = "E2E-Test (automatisch)";
 const EMAIL = "e2e-test@essensplan.example";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const secret = process.env.SUPABASE_SECRET_KEY;
-if (!url || !secret) {
-  console.error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set in .env.local.");
-  process.exit(1);
-}
-const db = createClient<Database>(url, secret, { auth: { persistSession: false } });
+const db = adminDb();
 const id = (kind: string, slug: string) => seedId(`e2e:${kind}`, slug);
 
 function fail(what: string, error: { message: string } | null): void {

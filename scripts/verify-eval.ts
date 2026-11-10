@@ -6,6 +6,8 @@ import type { Verification } from "@/domain/import/verification";
 import { createAnthropicVerifier } from "@/server/import/anthropic-reader";
 import { normalizeImage } from "@/server/import/normalize-image";
 import fixtures from "../tests/fixtures/sample-week/recipes.json";
+import { option } from "./lib/cli";
+import { costOf } from "./lib/prices";
 
 /**
  * Measures the second check pass: does it catch a mistake in a transcription, and does it
@@ -21,19 +23,7 @@ import fixtures from "../tests/fixtures/sample-week/recipes.json";
  * Every run calls the API about 45 times and costs money.
  */
 
-const PRICES: Record<string, [number, number]> = {
-  "claude-haiku-5-5": [0.1, 0.5],
-  "claude-sonnet-5-5": [2, 10],
-  "claude-opus-5-5": [4, 20],
-  "claude-fable-5-1": [10, 50],
-};
-
-function argument(name: string): string | undefined {
-  const at = process.argv.indexOf(`--${name}`);
-  return at === -1 ? undefined : process.argv[at + 1];
-}
-
-const model = argument("model") ?? process.env.ANTHROPIC_VERIFY_MODEL ?? "";
+const model = option("model") ?? process.env.ANTHROPIC_VERIFY_MODEL ?? "";
 const recipes = fixtures.recipes as (ExpectedRecipe & { photo: string })[];
 
 if (!process.env.ANTHROPIC_API_KEY) {
@@ -195,8 +185,7 @@ async function main() {
     console.log(expected.id);
     for (const test of cases(flawless(expected))) {
       const { verification, usage } = await verify(images, test.recipe);
-      const price = PRICES[model];
-      if (price) cost += (usage.inputTokens * price[0] + usage.outputTokens * price[1]) / 1e6;
+      cost += costOf(model, usage) ?? 0;
       calls++;
       const problems = verification.problems;
       const describe = (p: Problems[number]) =>

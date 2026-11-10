@@ -1,9 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import { ALL_SUGGESTED } from "@/domain/library/tagging";
 import { EFFORTS, TAG_GROUPS } from "@/domain/library/tags";
-import type { Db } from "@/server/catalog";
 import { createAnthropicTagger } from "@/server/import/anthropic-reader";
 import { TAG_BATCH, tagRecipes } from "@/server/tagging";
+import { flag, option } from "./lib/cli";
+import { adminDb, allRows, householdFromArgs } from "./lib/db";
+import { costOf } from "./lib/prices";
 
 /**
  * Gives the recipes of a household the tags that describe them: effort, kind of dish,
@@ -20,37 +21,26 @@ import { TAG_BATCH, tagRecipes } from "@/server/tagging";
  *                                                        Run library:main-ingredients first.
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const secret = process.env.SUPABASE_SECRET_KEY;
-const model = process.env.ANTHROPIC_EXTRACT_MODEL;
-if (!url || !secret || !model) {
-  console.error("Supabase and model settings must be set in .env.local. See .env.example.");
+const SETTINGS_MISSING = "Supabase and model settings must be set in .env.local. See .env.example.";
+const model = process.env.ANTHROPIC_EXTRACT_MODEL ?? "";
+if (!model) {
+  console.error(SETTINGS_MISSING);
   process.exit(1);
 }
-const db = createClient(url, secret, { auth: { persistSession: false } }) as unknown as Db;
+const db = adminDb(SETTINGS_MISSING);
 const tag = createAnthropicTagger({ model });
 
 /** Requests side by side. More would only run into the model's rate limits. */
 const WORKERS = 4;
 
 async function main() {
-  const [name, ...flags] = process.argv.slice(2);
-  if (!name || name.startsWith("--")) {
-    console.error(
-      'Usage: npm run import:tag-recipes -- "<household name>" [--limit N] [--verbose]',
-    );
-    process.exit(1);
-  }
-  const household = await db.from("household").select("id").eq("name", name).maybeSingle();
-  if (!household.data) {
-    console.error(`No household named "${name}".`);
-    process.exit(1);
-  }
-  const householdId = household.data.id;
-  const limitAt = flags.indexOf("--limit");
-  const limit = limitAt === -1 ? Infinity : Number(flags[limitAt + 1]) || Infinity;
-  const verbose = flags.includes("--verbose");
-  const more = flags.includes("--more");
+  const { householdId } = await householdFromArgs(
+    db,
+    'Usage: npm run import:tag-recipes -- "<household name>" [--limit N] [--verbose]',
+  );
+  const limit = Number(option("limit")) || Infinity;
+  const verbose = flag("verbose");
+  const more = flag("more");
 
   const tags = await db
     .from("tag")
@@ -59,7 +49,7 @@ async function main() {
   if (tags.error) throw new Error(tags.error.message);
   const suggested = tags.data.filter((row) => row.key !== null && ALL_SUGGESTED.includes(row.key));
   const nameOf = new Map(suggested.map((row) => [row.id, row.name]));
-  if (flags.includes("--again")) {
+  if (flag("again")) {
     const removed = await db
       .from("recipe_tag")
       .delete()
@@ -68,19 +58,19 @@ async function main() {
     if (removed.error) throw new Error(`take suggested tags away: ${removed.error.message}`);
   }
 
-  const ids: string[] = [];
-  for (let from = 0; ; from += 1000) {
-    const page = await db
-      .from("recipe")
-      .select("id")
-      .eq("household_id", householdId)
-      .eq("status", "approved")
-      .order("id")
-      .range(from, from + 999);
-    if (page.error) throw new Error(page.error.message);
-    ids.push(...page.data.map((row) => row.id));
-    if (page.data.length < 1000) break;
-  }
+  const ids = (
+    await allRows(
+      (from, to) =>
+        db
+          .from("recipe")
+          .select("id")
+          .eq("household_id", householdId)
+          .eq("status", "approved")
+          .order("id")
+          .range(from, to),
+      "load recipes",
+    )
+  ).map((row) => row.id);
 
   // Which of them say how much work they are: those are described and left alone.
   const efforts = suggested
@@ -93,20 +83,22 @@ async function main() {
         (TAG_GROUPS as readonly string[]).includes(row.group_name) && row.group_name !== "Aufwand",
     )
     .map((row) => row.id);
-  const described = new Set<string>();
-  for (let from = 0; ; from += 1000) {
-    const page = await db
-      .from("recipe_tag")
-      .select("recipe_id")
-      .eq("household_id", householdId)
-      .in("tag_id", more ? others : efforts)
-      .order("recipe_id")
-      .order("tag_id")
-      .range(from, from + 999);
-    if (page.error) throw new Error(page.error.message);
-    for (const row of page.data) described.add(row.recipe_id);
-    if (page.data.length < 1000) break;
-  }
+  const described = new Set(
+    (
+      await allRows(
+        (from, to) =>
+          db
+            .from("recipe_tag")
+            .select("recipe_id")
+            .eq("household_id", householdId)
+            .in("tag_id", more ? others : efforts)
+            .order("recipe_id")
+            .order("tag_id")
+            .range(from, to),
+        "load recipe tags",
+      )
+    ).map((row) => row.recipe_id),
+  );
   const waiting = ids.filter((id) => !described.has(id)).slice(0, limit);
   console.log(
     `${ids.length} recipes, ${described.size} described already, ${waiting.length} to do.`,
@@ -123,8 +115,7 @@ async function main() {
       try {
         const done = await tagRecipes(db, householdId, tag, chunk, { alsoDescribed: more });
         tagged += done.tagged;
-        // $0.10 and $0.50 per million tokens in and out.
-        cost += (done.usage.inputTokens * 0.1 + done.usage.outputTokens * 0.5) / 1e6;
+        cost += costOf(model, done.usage) ?? 0;
         if (verbose) {
           const [recipes, links] = await Promise.all([
             db.from("recipe").select("id, title, prep_minutes").in("id", chunk),
