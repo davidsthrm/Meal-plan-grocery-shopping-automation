@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { startBatch } from "@/app/(app)/import/actions";
 import { sourceLabel, type KnownSource } from "@/domain/library/source";
-import { createBrowserSupabase } from "@/lib/supabase-browser";
+import { uploadPhotos } from "@/lib/upload-photos";
 import { CameraIcon, CloseIcon, NoteIcon, PenIcon, PhotosIcon, PlusIcon, TickIcon } from "./icons";
 import { SourcePlacement } from "./source-placement";
 
@@ -21,12 +21,6 @@ export interface AddForMeal {
 interface Photo {
   file: File;
   url: string;
-}
-
-/** Browsers often do not know the type of HEIC files. Storage needs one. */
-function contentType(file: File): string {
-  if (file.type) return file.type;
-  return /\.hei[cf]$/i.test(file.name) ? "image/heic" : "image/jpeg";
 }
 
 /**
@@ -90,23 +84,12 @@ export function AddRecipe({
         forMeal && { date: forMeal.date, meal: forMeal.meal },
       );
       if ("error" in started) throw new Error(started.error);
-      const bucket = createBrowserSupabase().storage.from("recipe-photos");
-      let next = 0;
-      let count = 0;
-      // Three at a time: fast, without choking a phone's connection with a whole gallery.
-      const worker = async () => {
-        while (next < photos.length) {
-          const at = next++;
-          const target = started.targets[at];
-          const photo = photos[at].file;
-          const result = await bucket.uploadToSignedUrl(target.path, target.token, photo, {
-            contentType: contentType(photo),
-          });
-          if (result.error) throw new Error(`Foto ${at + 1}: ${result.error.message}`);
-          setSent(++count);
-        }
-      };
-      await Promise.all([worker(), worker(), worker()]);
+      await uploadPhotos(
+        started.targets,
+        photos.map((photo) => photo.file),
+        setSent,
+        (_, at) => `Foto ${at + 1}`,
+      );
       // Read on the server from here on: the answer comes at once, the reading after it.
       const run = await fetch(`/api/import/${started.batchId}/run`, {
         method: "POST",
