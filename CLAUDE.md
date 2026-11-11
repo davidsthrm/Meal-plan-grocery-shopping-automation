@@ -147,9 +147,9 @@ quality. The agents are defined in `.claude/agents/`:
 
 | Agent         | Model       | For                                                                       |
 | ------------- | ----------- | ------------------------------------------------------------------------- |
-| `scout`       | Haiku       | Finding code and answering "where is …, what calls …" (read only)         |
-| `test-runner` | Haiku       | Running tests and reporting failures, telling a flake from a real failure |
-| `builder`     | Sonnet      | A change that is already specified: code and its tests, in one area       |
+| `scout`       | Sonnet      | Finding code and answering "where is …, what calls …" (read only)         |
+| `test-runner` | Sonnet      | Running tests and reporting failures, telling a flake from a real failure |
+| `builder`     | Opus        | A change that is already specified: code and its tests, in one area       |
 | `reviewer`    | Sonnet      | Reviewing a diff against these docs before it is merged                   |
 | main session  | (as chosen) | Planning, design decisions, anything the household has to decide, merging |
 
