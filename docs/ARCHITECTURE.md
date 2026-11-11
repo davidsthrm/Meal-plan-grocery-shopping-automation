@@ -49,6 +49,14 @@ decisions, code layout, routes, data access and tests of Essensplan.
 - Two Supabase clients on the server: `createSessionClient()` acts as the signed-in user and
   is bound by row level security; use it for all table access. `createAdminClient()` bypasses
   it and exists only for storage. Never use it for a table without checking access first.
+- A policy compares the row's household with the member's households, looked up once per
+  query: `household_id = any ((select private.my_household_ids())::uuid[])`. The first form,
+  `private.is_household_member(household_id)`, ran once for every row scanned, because
+  Postgres cannot inline a `security definer` function, and wrapping it in `(select ...)`
+  changes nothing while it takes a column: the last page of the 15,982 ingredient lines
+  took 249 ms in the database, 11 ms with the lookup done once (November 2026).
+  `supabase/tests/schema.test.ts` fails for a policy written the first way.
+  `is_household_member` stays for functions that ask about one household.
 - Every photo path a row names lies in its household's folder of the bucket
   (`private.in_household_folder`): the server signs and removes whatever path a row says,
   with the secret key, and a member can write those rows.
@@ -142,6 +150,21 @@ decisions, code layout, routes, data access and tests of Essensplan.
   depend on its week before it finds the week (the library on `/woche`), and reads that do
   not depend on each other go side by side: a week's recipes and foods, the library's
   recipes, tags and links, and the earlier dm entries with everything else of the notes.
+- A read that needs rows of a related table filters on it in the same request
+  (`week_plan!inner(week_start)`, `plan_slot!inner(date)`, `ingredient(name, synonyms)`),
+  instead of looking up ids first and asking again per hundred of them. Until November 2026
+  every read of a week looked up the week's id first, the history of meals and a recipe's
+  last day asked per hundred meals one request after the other, and a recipe's page read
+  the whole catalog, 1,366 ingredients in five requests, to name its ten lines, for each
+  of up to sixty recipes a list fetches ahead. "Auf den Einkaufszettel" reads the catalog
+  once for all entries of the Merkzettel it moves, and only if a kind has to be guessed.
+- What was measured in November 2026, with 1,427 recipes: the week plan, the chooser of a
+  meal, Entdecken and the favourites each read the whole library for every render (about
+  32 requests and 1.7 MB: the recipes, 5,795 tag links, the catalog's names and the lines
+  of what has a season), and so does every page fetched ahead and every answer to a button.
+  In the database, most of the time of these reads went into the household check per row
+  (see "Login, accounts and security"). `/api/suche` reads all 15,982 ingredient lines, 17
+  pages.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - Server actions of one browser tab run one after the other. Work that should run side by side

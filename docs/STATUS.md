@@ -4,7 +4,7 @@ Update this file in the same pull request that changes what it says.
 
 ## Where the app stands
 
-The app is live at https://familyessensplan.vercel.app for the family since 19 October 2026. The latest feature work is phase 18 (Entdecken with tabs, the Regal as a shelf, the recipe stack, "Was ist noch da?", the roulette, "Alle Rezepte", discoveries in the statistics); see [HISTORY.md](HISTORY.md). A repo tidy-up followed in November 2026. A code audit on 10 November 2026 added several items below.
+The app is live at https://familyessensplan.vercel.app for the family since 19 October 2026. The latest feature work is phase 18 (Entdecken with tabs, the Regal as a shelf, the recipe stack, "Was ist noch da?", the roulette, "Alle Rezepte", discoveries in the statistics); see [HISTORY.md](HISTORY.md). A repo tidy-up followed in November 2026. A code audit on 10 November 2026 added several items below. On 11 November 2026 the slow pages were measured and the database's household check, the reads of a week and a recipe's page were made cheaper; what is still open stands under "Questions for David".
 
 ## Known bugs and risks
 
@@ -50,7 +50,26 @@ Conventions and anything where two topics disagree are decided by David. A quest
 has to wait stands here, with a recommendation; once answered, the answer goes into the doc
 it belongs to and the question goes.
 
-- None open.
+- Speed, next step (11 November 2026). After the household check per query, a render of the
+  week plan, the chooser, Entdecken or the favourites still reads the whole library, about
+  32 requests and 1.7 MB, and every button and every page fetched ahead renders again.
+  Recommendation: keep the library in the server's memory per household and read it again
+  only when it changed, known from a counter that triggers on `recipe`, `recipe_tag`,
+  `tag`, `recipe_ingredient` and `ingredient` raise (a small table of its own, not in the
+  Realtime publication). The pages stay private and never show an older state; it adds a
+  table and five triggers on what an import writes. To decide after the first step is live
+  and felt on the phones.
+- Speed, the echo (11 November 2026). A page reads itself again three seconds after the
+  device's own button or tick (`OWN_MS`), because Realtime cannot say whose change it was.
+  That is one more full render per burst of taps, and it empties the pages fetched ahead.
+  Recommendation: take a change within three seconds of the device's own for its own and
+  do not read again; a change of someone else in those seconds then shows with the next
+  change or when the page comes back into view.
+- Speed, buttons of the week plan (11 November 2026). Each is a form the server answers
+  with the whole page ("They work before any script has loaded and need no client state",
+  ARCHITECTURE.md). Showing the change at once and sending it behind would make planning
+  feel instant, at the price of client state on the plan. Recommendation: decide after the
+  two steps above; they may be enough.
 
 ## Open questions and things to check by hand
 
@@ -59,7 +78,8 @@ it belongs to and the question goes.
 - The checks of assigned fields and the duplicate rules were tried on made-up recipes and the seed only, not on the household's 880 recipes. Watch for false alarms (a word list decides what is meat or fish) and tune the lists in `quality.ts`.
 - The steps of the 875 recipes with a photo were filled in on 18 October 2026: 810 read without doubt, 57 with doubts to check (46 of them from the handwritten "bunter Ordner"), 7 without steps on the photo, 1 not read.
 - Picking photos on an iPhone from the batch form did not get as far as the upload for the household (October 2026), which could not be reproduced in WebKit. The folder button is off on touch screens now (`pointer-coarse`), and one recipe is added through `/rezepte/hinzufuegen`. Check a batch from an iPhone once more.
-- The live search loads the whole library into the browser, about 880 recipes today. Watch how long that takes as the library grows.
+- The live search loads the whole library into the browser, 1,427 recipes on 11 November 2026 (about 880 in October). Watch how long that takes as the library grows.
+- Speed on the phones after the migration `household_check_once` is live: open the app cold, switch between Woche, Rezepte and Einkauf, plan and remove a meal, type the first letter into the search. Before it, the database took up to 249 ms for one page of ingredient lines; the search index reads 17 of them.
 - The cookbooks were framed with the first way of asking, and only their turned pages and an overview of all pages were checked by eye. A page that still lies wrongly is framed again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The season calendar's months come from general German calendars, not from the region around Laupheim, and were not checked against the household's market.
 - The offline flow was tested in Chromium (Playwright). On an iPhone, check once by hand: installed from Safari, open a note, airplane mode, tick, reopen the app, back online.
