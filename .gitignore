@@ -35,6 +35,5 @@ samples/
 /backup/
 *.dump
 
-# Agent skills installed locally (skills CLI); skills-lock.json says where they come from
-/.claude/
-/skills-lock.json
+# Claude Code settings of this machine (the skills and agents in .claude/ are committed)
+/.claude/settings.local.json
