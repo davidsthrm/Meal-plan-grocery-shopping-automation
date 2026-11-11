@@ -16,6 +16,7 @@ import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/pl
 import { asSide } from "@/domain/vesper";
 import { today } from "@/lib/today";
 import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
+import type { Tables } from "../supabase/database.types";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned
@@ -23,10 +24,23 @@ import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
  */
 
 export async function loadWeek(db: Db, weekStart: IsoDate): Promise<PlanSlot[]> {
-  const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
-  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
-  if (!plan.data) return [];
-  return loadSlots(db, [plan.data.id]);
+  // The meals are found through their week in the same request: looking up the week's id
+  // first made every read of a week, several per page of the plan, a round trip longer
+  // (November 2026). A week without a plan has no meals.
+  const slots = await allRows(
+    (from, to) =>
+      db
+        .from("plan_slot")
+        .select(
+          "id, date, meal, kind, label, leftovers_of_slot_id, extra_servings, week_plan!inner(week_start)",
+        )
+        .eq("week_plan.week_start", weekStart)
+        .order("date")
+        .order("id")
+        .range(from, to),
+    "load meals",
+  );
+  return withContents(db, slots);
 }
 
 /**
@@ -110,6 +124,16 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
         .range(from, to),
     "load meals",
   );
+  return withContents(db, slots);
+}
+
+type SlotRow = Pick<
+  Tables<"plan_slot">,
+  "id" | "date" | "meal" | "kind" | "label" | "leftovers_of_slot_id" | "extra_servings"
+>;
+
+/** Meals as they are read, with their recipes and foods. */
+async function withContents(db: Db, slots: SlotRow[]): Promise<PlanSlot[]> {
   const withRecipes = slots.filter((slot) => slot.kind === "recipes").map((slot) => slot.id);
   // Foods go with a meal without a recipe, and with recipes as what they do not cover.
   const withFoods = slots
@@ -514,35 +538,26 @@ const HISTORY_DAYS = 182;
 
 /** The last day each recipe was on a plan before `before`. */
 export async function loadHistory(db: Db, before: IsoDate): Promise<Map<string, IsoDate>> {
-  const slots = await allRows(
+  // The recipes are read with the day of their meal, filtered on it, in one request: the
+  // meals first and then their recipes, a hundred meals per request one after the other,
+  // kept the plan waiting a round trip and more (November 2026).
+  const items = await allRows(
     (from, to) =>
       db
-        .from("plan_slot")
-        .select("id, date")
-        .eq("kind", "recipes")
-        .lt("date", before)
-        .gte("date", addDays(before, -HISTORY_DAYS))
+        .from("plan_slot_item")
+        .select("recipe_id, plan_slot!inner(date, kind)")
+        .eq("plan_slot.kind", "recipes")
+        .lt("plan_slot.date", before)
+        .gte("plan_slot.date", addDays(before, -HISTORY_DAYS))
         .order("id")
         .range(from, to),
-    "load earlier meals",
+    "load earlier recipes",
   );
-  const dateOf = new Map(slots.map((slot) => [slot.id, slot.date]));
   const history = new Map<string, IsoDate>();
-  const ids = [...dateOf.keys()];
-  // In portions, so the list of meals fits into the address of one request.
-  for (let at = 0; at < ids.length; at += 100) {
-    const items = must(
-      await db
-        .from("plan_slot_item")
-        .select("plan_slot_id, recipe_id")
-        .in("plan_slot_id", ids.slice(at, at + 100)),
-      "load earlier recipes",
-    );
-    for (const item of items) {
-      const date = dateOf.get(item.plan_slot_id) as IsoDate;
-      const known = history.get(item.recipe_id);
-      if (known === undefined || date > known) history.set(item.recipe_id, date);
-    }
+  for (const item of items) {
+    const date = item.plan_slot.date;
+    const known = history.get(item.recipe_id);
+    if (known === undefined || date > known) history.set(item.recipe_id, date);
   }
   return history;
 }
@@ -556,31 +571,22 @@ export async function loadLastCooked(
   recipeId: string,
   today: IsoDate,
 ): Promise<IsoDate | null> {
+  // One request, the day of each meal read with it: as for `loadHistory` (November 2026).
   const items = await allRows(
     (from, to) =>
       db
         .from("plan_slot_item")
-        .select("id, plan_slot_id")
+        .select("plan_slot!inner(date)")
         .eq("recipe_id", recipeId)
+        .lt("plan_slot.date", today)
         .order("id")
         .range(from, to),
-    "load meals of recipe",
+    "load days of recipe",
   );
-  const ids = [...new Set(items.map((item) => item.plan_slot_id))];
-  const days: IsoDate[] = [];
-  // In portions, so the list of meals fits into the address of one request.
-  for (let at = 0; at < ids.length; at += SLOTS_PER_REQUEST) {
-    const slots = must(
-      await db
-        .from("plan_slot")
-        .select("date")
-        .in("id", ids.slice(at, at + SLOTS_PER_REQUEST))
-        .lt("date", today),
-      "load days of recipe",
-    );
-    days.push(...slots.map((slot) => slot.date));
-  }
-  return lastCooked(days, today);
+  return lastCooked(
+    items.map((item) => item.plan_slot.date),
+    today,
+  );
 }
 
 /**
@@ -752,14 +758,14 @@ export async function loadPlannedAt(
 
 /** The recipes a week needs outside its meals, oldest first. */
 export async function loadExtras(db: Db, weekStart: IsoDate): Promise<PlanExtra[]> {
-  const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
-  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
-  if (!plan.data) return [];
+  // Found through their week in the same request, as the meals are (`loadWeek`).
   const rows = must(
     await db
       .from("plan_extra")
-      .select("recipe_id, servings, note, needed_on, planned_on, created_at")
-      .eq("week_plan_id", plan.data.id)
+      .select(
+        "recipe_id, servings, note, needed_on, planned_on, created_at, week_plan!inner(week_start)",
+      )
+      .eq("week_plan.week_start", weekStart)
       .order("created_at"),
     "load extras of week",
   );
