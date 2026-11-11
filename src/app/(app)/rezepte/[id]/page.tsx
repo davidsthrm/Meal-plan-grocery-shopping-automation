@@ -27,7 +27,7 @@ import { STEP_MAX_LENGTH, STEPS_MAX, typedSteps } from "@/domain/import/steps";
 import { groupTags, TAG_GROUPS } from "@/domain/library/tags";
 import { lastCookedText, servingsText, sourceText } from "@/lib/recipe-text";
 import { requireHousehold } from "@/server/auth";
-import { loadIngredientNames, must } from "@/server/catalog";
+import { must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { readOrigin } from "@/lib/origin";
 import { BackToList } from "@/components/list-return";
@@ -64,27 +64,28 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   if (!recipe) notFound();
 
   const now = today();
-  const [lines, photos, ingredients, tagLinks, categories, planned, cooked, household] =
-    await Promise.all([
-      db
-        .from("recipe_ingredient")
-        .select(
-          "id, position, ingredient_id, quantity, quantity_max, unit, is_optional, alternative_to, original_text, note",
-        )
-        .eq("recipe_id", id)
-        .order("position"),
-      db
-        .from("recipe_photo")
-        .select("storage_path, crop_path, sort_order")
-        .eq("recipe_id", id)
-        .order("sort_order"),
-      loadIngredientNames(db),
-      db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
-      db.from("tag").select("id, key, name, group_name").order("sort_order"),
-      loadPlannedAt(db, id, now),
-      loadLastCooked(db, id, now),
-      requireHousehold(),
-    ]);
+  const [lines, photos, tagLinks, categories, planned, cooked, household] = await Promise.all([
+    // Each line brings the name of its ingredient along. The whole catalog was read here
+    // to name some ten lines: 1,366 ingredients in five requests for every recipe opened,
+    // and a list fetches up to sixty recipes ahead (November 2026).
+    db
+      .from("recipe_ingredient")
+      .select(
+        "id, position, ingredient_id, quantity, quantity_max, unit, is_optional, alternative_to, original_text, note, ingredient(name, synonyms)",
+      )
+      .eq("recipe_id", id)
+      .order("position"),
+    db
+      .from("recipe_photo")
+      .select("storage_path, crop_path, sort_order")
+      .eq("recipe_id", id)
+      .order("sort_order"),
+    db.from("recipe_tag").select("tag_id").eq("recipe_id", id),
+    db.from("tag").select("id, key, name, group_name").order("sort_order"),
+    loadPlannedAt(db, id, now),
+    loadLastCooked(db, id, now),
+    requireHousehold(),
+  ]);
   const ownIds = new Set(must(tagLinks, "load recipe tags").map((link) => link.tag_id));
   const allTags = must(categories, "load tags");
   const ownTags = allTags.filter((tag) => ownIds.has(tag.id));
@@ -98,7 +99,6 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     ownTags.filter((tag) => tag.group_name === group),
   ).map((tag) => ({ ref: tag.key ?? tag.id, name: tag.name }));
   const wanted = recipe.wanted_at !== null;
-  const catalog = new Map(ingredients.map((i) => [i.id, i]));
   const photoRows = must(photos, "load photos");
   const urls = await viewUrls(
     photoRows.flatMap((photo) => [
@@ -114,7 +114,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
   const lineRows = must(lines, "load lines");
   // What a line says: the household's word for a known ingredient, or the printed text.
   const recipeLines: RecipeLine[] = lineRows.map((line) => {
-    const known = line.ingredient_id ? catalog.get(line.ingredient_id) : undefined;
+    const known = line.ingredient ?? undefined;
     const one = known ? nameForOne(known) : null;
     return {
       id: line.id,
@@ -146,7 +146,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
         : 1;
   const scaleIngredients = stepIngredients(
     lineRows.map((line) => {
-      const known = line.ingredient_id ? catalog.get(line.ingredient_id) : undefined;
+      const known = line.ingredient ?? undefined;
       return {
         known: known
           ? { name: known.name, synonyms: known.synonyms, one: nameForOne(known) }
