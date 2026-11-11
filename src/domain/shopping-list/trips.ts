@@ -40,7 +40,6 @@ export const DEFAULT_SHOPPING_DAYS: readonly ShoppingDay[] = [
 
 /** The places a household gives weekdays to, in the order their notes lie. */
 export const DAY_PLACES = ["supermarket", "market"] as const;
-export type DayPlace = (typeof DAY_PLACES)[number];
 
 /**
  * The places with a row of weekdays in the settings. The butcher's days are no errands of

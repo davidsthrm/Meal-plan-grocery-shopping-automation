@@ -1,13 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { meal, plan } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await resetHousehold();
   await resetLibrary();
   await signIn(page);
 });
-
-const meal = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 
 /**
  * Ticks or unticks a weekday chip the way a finger does, on its visible label. The box itself
@@ -31,17 +30,6 @@ function today(): { date: string; weekday: string; monday: string } {
   );
   const monday = new Date(day.getTime() - ((day.getUTCDay() || 7) - 1) * 86_400_000);
   return { date, weekday, monday: monday.toISOString().slice(0, 10) };
-}
-
-async function plan(page: Page, name: string, recipe: string) {
-  await page.getByRole("link", { name: `${name} planen` }).click();
-  await page.getByPlaceholder("Titel oder Zutat").fill(recipe);
-  await page
-    .getByRole("region", { name: "Treffer beim Tippen" })
-    .getByRole("button", { name: `${recipe} einplanen` })
-    .click();
-  await page.getByRole("link", { name: "← Wochenplan" }).click();
-  await expect(meal(page, name)).toContainText(recipe);
 }
 
 test("a saved plan is read, with what there is today on top and a pen for a change", async ({

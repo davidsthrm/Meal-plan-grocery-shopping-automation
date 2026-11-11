@@ -25,6 +25,36 @@ preview deployment that only the test household can sign in to.
   none: stay on Pro before any public beta. The backup does **not** include the photos in
   Storage (see "Backup and restore").
 
+## First setup of the Supabase project
+
+Once, for a new project (region Central EU, Frankfurt):
+
+```bash
+npx supabase login
+npx supabase link --project-ref <project-ref>      # asks for the database password
+npx supabase db push --include-seed --dry-run      # preview
+npx supabase db push --include-seed                # schema, catalog and seed recipes
+```
+
+In the dashboard, turn off "Allow new users to sign up" (see "Supabase Auth"), create the
+first user, then give that user the household in the SQL editor:
+
+```sql
+insert into public.household_member (household_id, user_id, role)
+select h.id, u.id, 'admin'
+from public.household h, auth.users u
+where u.email = 'you@example.com'
+returning household_id, user_id, role;
+```
+
+The statement must return one row. No row means the email does not match the user you
+created. Everyone else joins through an invitation from the app.
+
+Put the project URL (`https://<project-ref>.supabase.co`, without the `/rest/v1/` the
+dashboard shows), the publishable key and the secret key into `.env.local`, then check it
+with `npm run db:check`. Later schema changes are applied with `npx supabase db push`
+(without `--include-seed`).
+
 ## Environment variables
 
 Set under Vercel → Project → Settings → Environment Variables. Mark the secret ones as
@@ -95,11 +125,12 @@ Supabase → Authentication → Sign In / Providers → Email:
 
 Hobby cuts a function off after 300 seconds. The long requests and what keeps them inside:
 
-| Request                                        | Worst case                                                                        | What keeps it inside                                                                                                                                                                                                 |
-| ---------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| One import step (`/api/import/[batchId]/step`) | Two or three model requests for one recipe                                        | One step per request, driven by the batch page; `maxDuration = 300`; each model request gives up after 90 s and is retried once only when the service is busy. A timeout answers "throttled" and the page carries on |
-| Supermarket search (settings)                  | Nominatim, up to four Overpass servers, Wikidata, then a street lookup per market | One deadline of 240 s for all of it (`SEARCH_BUDGET_MS`). Streets still waiting are placed on the next search                                                                                                        |
-| Recipe pasted as text                          | One reading and its tags                                                          | The same 90 s per model request                                                                                                                                                                                      |
+| Request                                                  | Worst case                                                                        | What keeps it inside                                                                                                                                                                                                 |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One import step (`/api/import/[batchId]/step`)           | Two or three model requests for one recipe                                        | One step per request, driven by the batch page; `maxDuration = 300`; each model request gives up after 90 s and is retried once only when the service is busy. A timeout answers "throttled" and the page carries on |
+| A batch read on the server (`/api/import/[batchId]/run`) | Every photo of a batch, read after the answer (`after`)                           | `maxDuration = 300`; one run reads for about four minutes (`afterStep`), then hands the batch on to a new run (`handOn`), thirty runs at most                                                                        |
+| Supermarket search (settings)                            | Nominatim, up to four Overpass servers, Wikidata, then a street lookup per market | One deadline of 240 s for all of it (`SEARCH_BUDGET_MS`). Streets still waiting are placed on the next search                                                                                                        |
+| Recipe pasted as text                                    | One reading and its tags                                                          | The same 90 s per model request                                                                                                                                                                                      |
 
 ## Rollback
 

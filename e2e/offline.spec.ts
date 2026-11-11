@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { keptWith } from "./helpers";
 
 // The notes of the running week are what a phone keeps for the shop, so this test works on
 // the running week, whatever day it is, and on lines it writes itself.
@@ -13,18 +14,6 @@ test.beforeEach(async ({ page }) => {
   await resetLibrary();
   await signIn(page);
 });
-
-/** Whether the service worker has kept the page shown, with `text` on it. */
-async function keptWith(page: Page, text: string): Promise<boolean> {
-  const url = new URL(page.url());
-  return page.evaluate(
-    async ({ key, text }) => {
-      const kept = await caches.match(key);
-      return kept ? (await kept.text()).includes(text) : false;
-    },
-    { key: url.origin + url.pathname + url.search, text },
-  );
-}
 
 test("a note works in the shop without a connection, and its ticks arrive later", async ({
   page,

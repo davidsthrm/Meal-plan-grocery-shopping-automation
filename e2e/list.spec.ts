@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { plan, sheet, tile } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -10,23 +11,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-/** Plans a recipe for a meal by searching for it. */
-async function plan(page: Page, meal: string, recipe: string) {
-  await page.getByRole("link", { name: `${meal} planen` }).click();
-  await page.getByPlaceholder("Titel oder Zutat").fill(recipe);
-  await page
-    .getByRole("region", { name: "Treffer beim Tippen" })
-    .getByRole("button", { name: `${recipe} einplanen` })
-    .click();
-  await page.getByRole("link", { name: "← Wochenplan" }).click();
-  await expect(page.getByRole("region", { name: meal, exact: true })).toContainText(recipe);
-}
-
-/** A note among the others, the note picked up, and one kind of grocery on it. */
-const tile = (page: Page, note: string) =>
-  // The notes still to do, or those done at the foot.
-  page.getByRole("list", { name: /Zettel$/ }).getByRole("link", { name: new RegExp(`^${note}`) });
-const sheet = (page: Page, note: string) => page.getByRole("region", { name: note, exact: true });
+/** One kind of grocery on a note picked up. */
 const group = (page: Page, note: string, name: string) =>
   sheet(page, note).getByRole("region", { name, exact: true });
 const all = (page: Page) => page.getByRole("link", { name: "← Alle Zettel" });

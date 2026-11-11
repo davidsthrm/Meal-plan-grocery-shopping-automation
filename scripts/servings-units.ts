@@ -1,8 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
 import type { ExtractedRecipe } from "@/domain/import/extraction";
 import { readServingsLine, resolveServings } from "@/domain/import/servings";
 import { servingsText } from "@/lib/recipe-text";
-import type { Database } from "@/server/supabase/database.types";
+import { adminDb, allRows, householdFromArgs } from "./lib/db";
 
 /**
  * Brings recipes that were imported before the app knew servings units in line with what is
@@ -15,60 +14,36 @@ import type { Database } from "@/server/supabase/database.types";
  *   npm run import:servings-units -- "Zuhause" --apply    change it
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const secret = process.env.SUPABASE_SECRET_KEY;
-if (!url || !secret) {
-  console.error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY must be set in .env.local.");
-  process.exit(1);
-}
-const db = createClient<Database>(url, secret, { auth: { persistSession: false } });
-
-const PAGE = 500;
-
-/** PostgREST returns at most a thousand rows per request. */
-async function all<T>(
-  load: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await load(from, from + PAGE - 1);
-    if (error || !data) throw new Error(`load rows: ${JSON.stringify(error)}`);
-    rows.push(...data);
-    if (data.length < PAGE) return rows;
-  }
-}
+const db = adminDb();
 
 async function main() {
-  const [name, ...flags] = process.argv.slice(2);
-  const apply = flags.includes("--apply");
-  if (!name || name.startsWith("--")) {
-    console.error('Usage: npm run import:servings-units -- "<household name>" [--apply]');
-    process.exit(1);
-  }
-  const household = await db.from("household").select("id").eq("name", name).maybeSingle();
-  if (!household.data) {
-    console.error(`No household named "${name}".`);
-    process.exit(1);
-  }
-  const householdId = household.data.id;
-
-  const jobs = await all((from, to) =>
-    db
-      .from("import_job")
-      .select("recipe_id, extraction")
-      .eq("household_id", householdId)
-      .not("recipe_id", "is", null)
-      .not("extraction", "is", null)
-      .order("id")
-      .range(from, to),
+  const { householdId, flags } = await householdFromArgs(
+    db,
+    'Usage: npm run import:servings-units -- "<household name>" [--apply]',
   );
-  const recipes = await all((from, to) =>
-    db
-      .from("recipe")
-      .select("id, title, source_book, servings_min, servings_max, servings_unit")
-      .eq("household_id", householdId)
-      .order("id")
-      .range(from, to),
+  const apply = flags.includes("--apply");
+
+  const jobs = await allRows(
+    (from, to) =>
+      db
+        .from("import_job")
+        .select("recipe_id, extraction")
+        .eq("household_id", householdId)
+        .not("recipe_id", "is", null)
+        .not("extraction", "is", null)
+        .order("id")
+        .range(from, to),
+    "load import jobs",
+  );
+  const recipes = await allRows(
+    (from, to) =>
+      db
+        .from("recipe")
+        .select("id, title, source_book, servings_min, servings_max, servings_unit")
+        .eq("household_id", householdId)
+        .order("id")
+        .range(from, to),
+    "load recipes",
   );
   const recipeOf = new Map(recipes.map((recipe) => [recipe.id, recipe]));
 

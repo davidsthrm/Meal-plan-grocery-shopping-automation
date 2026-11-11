@@ -1,10 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
 import {
   createAnthropicFramer,
   createAnthropicUprightFinder,
 } from "@/server/import/anthropic-reader";
-import type { Db } from "@/server/catalog";
 import { frameNextPage } from "@/server/import/frame-stored";
+import { flag, option } from "./lib/cli";
+import { adminDb, householdFromArgs } from "./lib/db";
+import { costOf } from "./lib/prices";
 
 /**
  * Frames the page photos of recipes that were imported before the app did this by itself:
@@ -17,14 +18,13 @@ import { frameNextPage } from "@/server/import/frame-stored";
  *   npm run import:frame-photos -- "Stührmann" --path <storage path> --again   frame them anew
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const secret = process.env.SUPABASE_SECRET_KEY;
-const model = process.env.ANTHROPIC_EXTRACT_MODEL;
-if (!url || !secret || !model) {
-  console.error("Supabase and model settings must be set in .env.local. See .env.example.");
+const SETTINGS_MISSING = "Supabase and model settings must be set in .env.local. See .env.example.";
+const model = process.env.ANTHROPIC_EXTRACT_MODEL ?? "";
+if (!model) {
+  console.error(SETTINGS_MISSING);
   process.exit(1);
 }
-const db = createClient(url, secret, { auth: { persistSession: false } }) as unknown as Db;
+const db = adminDb(SETTINGS_MISSING);
 const models = {
   upright: createAnthropicUprightFinder({ model }),
   frame: createAnthropicFramer({ model }),
@@ -36,25 +36,14 @@ const WORKERS = 4;
 const MAX_FAILURES_IN_A_ROW = 5;
 
 async function main() {
-  const [name, ...flags] = process.argv.slice(2);
-  const option = (flag: string) => {
-    const at = flags.indexOf(flag);
-    return at === -1 ? null : (flags[at + 1] ?? null);
-  };
-  if (!name || name.startsWith("--")) {
-    console.error('Usage: npm run import:frame-photos -- "<household name>" [--limit N]');
-    process.exit(1);
-  }
-  const household = await db.from("household").select("id").eq("name", name).maybeSingle();
-  if (!household.data) {
-    console.error(`No household named "${name}".`);
-    process.exit(1);
-  }
-  const householdId = household.data.id;
-  const limit = Number(option("--limit")) || Infinity;
-  const prefix = option("--path") ?? `${householdId}/`;
+  const { householdId } = await householdFromArgs(
+    db,
+    'Usage: npm run import:frame-photos -- "<household name>" [--limit N]',
+  );
+  const limit = Number(option("limit")) || Infinity;
+  const prefix = option("path") ?? `${householdId}/`;
 
-  if (flags.includes("--again")) {
+  if (flag("again")) {
     // Pages that were framed before are looked at once more, as if they were new.
     const reset = await db
       .from("recipe_photo")
@@ -82,9 +71,8 @@ async function main() {
         if (done.turned !== 0) turned++;
         if (!done.certain) unclear++;
         cropped += done.cropped;
-        // $0.10 and $0.50 per million tokens in and out.
-        cost += (done.usage.inputTokens * 0.1 + done.usage.outputTokens * 0.5) / 1e6;
-        if (done.turned !== 0 || !done.certain || process.argv.includes("--verbose")) {
+        cost += costOf(model, done.usage) ?? 0;
+        if (done.turned !== 0 || !done.certain || flag("verbose")) {
           console.log(
             `${done.path.split("/").slice(1).join("/")}  ` +
               (done.certain

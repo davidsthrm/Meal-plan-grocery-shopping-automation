@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import {
   MAIN_INGREDIENT_NAME,
   MAIN_INGREDIENTS,
@@ -6,7 +5,7 @@ import {
   type MainIngredient,
 } from "@/domain/library/main-ingredient";
 import { TAG_GROUPS } from "@/domain/library/tags";
-import type { Db } from "@/server/catalog";
+import { adminDb, allRows, householdFromArgs } from "./lib/db";
 
 /**
  * Gives a household's recipes the tags of "Hauptzutat": what each dish is made of, read from
@@ -21,82 +20,67 @@ import type { Db } from "@/server/catalog";
  * model with `npm run import:tag-recipes -- "<name>" --more`.
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const secret = process.env.SUPABASE_SECRET_KEY;
-if (!url || !secret) {
-  console.error("Supabase settings must be set in .env.local. See .env.example.");
-  process.exit(1);
-}
-const db = createClient(url, secret, { auth: { persistSession: false } }) as unknown as Db;
-
-async function all<T>(
-  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await page(from, from + 999);
-    if (error) throw new Error(JSON.stringify(error));
-    rows.push(...(data ?? []));
-    if ((data ?? []).length < 1000) return rows;
-  }
-}
+const db = adminDb("Supabase settings must be set in .env.local. See .env.example.");
 
 async function main() {
-  const [name, ...flags] = process.argv.slice(2);
-  if (!name || name.startsWith("--")) {
-    console.error('Usage: npm run library:main-ingredients -- "<household name>" [--apply]');
-    process.exit(1);
-  }
+  const { householdId, name, flags } = await householdFromArgs(
+    db,
+    'Usage: npm run library:main-ingredients -- "<household name>" [--apply]',
+  );
   const apply = flags.includes("--apply");
-  const household = await db.from("household").select("id").eq("name", name).maybeSingle();
-  if (!household.data) {
-    console.error(`No household named "${name}".`);
-    process.exit(1);
-  }
-  const householdId = household.data.id;
 
   const [tags, recipes, links, catalog, lines] = await Promise.all([
-    all((from, to) =>
-      db
-        .from("tag")
-        .select("id, key, group_name")
-        .eq("household_id", householdId)
-        .order("id")
-        .range(from, to),
+    allRows(
+      (from, to) =>
+        db
+          .from("tag")
+          .select("id, key, group_name")
+          .eq("household_id", householdId)
+          .order("id")
+          .range(from, to),
+      "load tags",
     ),
-    all((from, to) =>
-      db
-        .from("recipe")
-        .select("id, title")
-        .eq("household_id", householdId)
-        .eq("status", "approved")
-        .order("id")
-        .range(from, to),
+    allRows(
+      (from, to) =>
+        db
+          .from("recipe")
+          .select("id, title")
+          .eq("household_id", householdId)
+          .eq("status", "approved")
+          .order("id")
+          .range(from, to),
+      "load recipes",
     ),
-    all((from, to) =>
-      db
-        .from("recipe_tag")
-        .select("recipe_id, tag_id")
-        .eq("household_id", householdId)
-        .order("recipe_id")
-        .order("tag_id")
-        .range(from, to),
+    allRows(
+      (from, to) =>
+        db
+          .from("recipe_tag")
+          .select("recipe_id, tag_id")
+          .eq("household_id", householdId)
+          .order("recipe_id")
+          .order("tag_id")
+          .range(from, to),
+      "load recipe tags",
     ),
-    all((from, to) =>
-      db
-        .from("ingredient")
-        .select("id, name")
-        .eq("household_id", householdId)
-        .order("id")
-        .range(from, to),
+    allRows(
+      (from, to) =>
+        db
+          .from("ingredient")
+          .select("id, name")
+          .eq("household_id", householdId)
+          .order("id")
+          .range(from, to),
+      "load ingredients",
     ),
-    all((from, to) =>
-      db
-        .from("recipe_ingredient")
-        .select("id, recipe_id, ingredient_id, original_text")
-        .eq("household_id", householdId)
-        .order("id")
-        .range(from, to),
+    allRows(
+      (from, to) =>
+        db
+          .from("recipe_ingredient")
+          .select("id, recipe_id, ingredient_id, original_text")
+          .eq("household_id", householdId)
+          .order("id")
+          .range(from, to),
+      "load ingredient lines",
     ),
   ]);
 

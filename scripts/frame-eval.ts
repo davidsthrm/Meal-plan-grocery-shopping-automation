@@ -5,6 +5,7 @@ import {
 } from "@/server/import/anthropic-reader";
 import { framePage } from "@/server/import/frame";
 import { normalizeImage, turnImage } from "@/server/import/normalize-image";
+import { costOf } from "./lib/prices";
 
 /**
  * Measures whether pages are turned upright: every sample photo is laid on each of its four
@@ -13,7 +14,7 @@ import { normalizeImage, turnImage } from "@/server/import/normalize-image";
  *   npm run import:eval-frame                      the sample recipes
  *   npm run import:eval-frame -- <folder>          upright photos of your own
  */
-const model = process.env.ANTHROPIC_EXTRACT_MODEL;
+const model = process.env.ANTHROPIC_EXTRACT_MODEL ?? "";
 if (!model) throw new Error("ANTHROPIC_EXTRACT_MODEL is not set. See .env.example.");
 const models = {
   upright: createAnthropicUprightFinder({ model }),
@@ -40,8 +41,7 @@ async function main() {
       total++;
       if (ok) right++;
       else if (!result.certain) unclear++;
-      // $0.10 and $0.50 per million tokens in and out.
-      cost += (result.usage.inputTokens * 0.1 + result.usage.outputTokens * 0.5) / 1e6;
+      cost += costOf(model, result.usage) ?? 0;
       row.push(
         `${laid}°: ${ok ? "upright" : result.certain ? `WRONG (turned ${result.turned}°)` : "left as it was"}`,
       );

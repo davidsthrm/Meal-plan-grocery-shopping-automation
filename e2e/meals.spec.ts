@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { resetLibrary, signIn } from "./fixtures";
+import { meal } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -7,8 +8,6 @@ const WEEK = "2027-03-01";
 test.beforeEach(async () => {
   await resetLibrary();
 });
-
-const meal = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 
 test("the first visit on a device asks what a week should contain", async ({ page }) => {
   await signIn(page, "first");

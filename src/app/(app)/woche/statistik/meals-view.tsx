@@ -2,9 +2,14 @@ import Link from "next/link";
 import { dayAndMonth, daysBetween, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { EFFORT_NAME } from "@/domain/library/tags";
-import { BALANCE_GROUPS } from "@/domain/recommend/balance";
 import type { DiscoveryStats } from "@/domain/stats/discovery";
-import type { EffortCounts, MealKind, MealStats, RankedRecipe } from "@/domain/stats/meals";
+import {
+  MEAL_KINDS,
+  type EffortCounts,
+  type MealKind,
+  type MealStats,
+  type RankedRecipe,
+} from "@/domain/stats/meals";
 import type { Bucket, Period } from "@/domain/stats/period";
 import { StarIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
@@ -38,8 +43,6 @@ const KIND_TONE: Record<MealKind, string> = {
   sweet: "kind-sweet",
   other: "kind-other",
 };
-
-const MEAL_KINDS: readonly MealKind[] = [...BALANCE_GROUPS, "sweet", "other"];
 
 function kindParts(counts: Record<MealKind, number>): Part[] {
   return MEAL_KINDS.map((kind) => ({

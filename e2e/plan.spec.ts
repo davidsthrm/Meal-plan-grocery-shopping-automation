@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openFilters, resetLibrary, signIn } from "./fixtures";
+import { meal } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -9,7 +10,6 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-const meal = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 const count = async (page: Page, group: string) => {
   const line = page
     .getByRole("list", { name: "Ausgewogenheit der Woche" })

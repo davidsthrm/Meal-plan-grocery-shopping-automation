@@ -1,11 +1,12 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Db } from "@/server/catalog";
 import {
   createAnthropicStepsReader,
   createAnthropicStepsVerifier,
 } from "@/server/import/anthropic-reader";
 import { fillSteps, loadStepsTargets, type StepsTarget } from "@/server/import/fill-steps";
 import { RecipeReadError } from "@/server/import/read-recipe";
+import { flag, option } from "./lib/cli";
+import { adminDb, householdFromArgs } from "./lib/db";
+import { costOf } from "./lib/prices";
 
 /**
  * Fills in the preparation steps of recipes imported before steps were read, from their page
@@ -24,15 +25,14 @@ import { RecipeReadError } from "@/server/import/read-recipe";
  * Without --try or --write nothing calls the model.
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const secret = process.env.SUPABASE_SECRET_KEY;
+const SETTINGS_MISSING = "Supabase and model settings must be set in .env.local. See .env.example.";
 const readModel = process.env.ANTHROPIC_EXTRACT_MODEL;
 const verifyModel = process.env.ANTHROPIC_VERIFY_MODEL;
-if (!url || !secret || !readModel || !verifyModel) {
-  console.error("Supabase and model settings must be set in .env.local. See .env.example.");
+if (!readModel || !verifyModel) {
+  console.error(SETTINGS_MISSING);
   process.exit(1);
 }
-const db = createClient(url, secret, { auth: { persistSession: false } }) as unknown as Db;
+const db = adminDb(SETTINGS_MISSING);
 const models = {
   readSteps: createAnthropicStepsReader({ model: readModel }),
   verifySteps: createAnthropicStepsVerifier({ model: verifyModel }),
@@ -43,9 +43,9 @@ const WORKERS = 4;
 /** An outage rather than a recipe that cannot be read: stop and run it again later. */
 const MAX_FAILURES_IN_A_ROW = 5;
 
-/** $0.10 and $0.50 per million tokens in and out (claude-haiku-5-5, October 2026). */
+/** Both requests priced at the reading model's rates. */
 const cents = (usage: { inputTokens: number; outputTokens: number }) =>
-  ((usage.inputTokens * 0.1 + usage.outputTokens * 0.5) / 1e6) * 100;
+  (costOf(readModel, usage) ?? 0) * 100;
 
 /**
  * Tokens of both requests together per page, measured with `npm run import:eval-steps` on the
@@ -69,34 +69,22 @@ function estimate(targets: StepsTarget[]): number {
 }
 
 async function main() {
-  const [name, ...flags] = process.argv.slice(2);
-  const option = (flag: string) => {
-    const at = flags.indexOf(flag);
-    return at === -1 ? null : (flags[at + 1] ?? null);
-  };
-  if (!name || name.startsWith("--")) {
-    console.error(
-      'Usage: npm run import:fill-steps -- "<household name>" [--book "<cookbook>"] [--try N | --write] [--again] [--limit N]',
-    );
-    process.exit(1);
-  }
-  const household = await db.from("household").select("id").eq("name", name).maybeSingle();
-  if (!household.data) {
-    console.error(`No household named "${name}".`);
-    process.exit(1);
-  }
-  const book = option("--book");
-  const write = flags.includes("--write");
-  const tryCount = Number(option("--try")) || 0;
-  const limit = Number(option("--limit")) || Infinity;
-  if (write && !book && !flags.includes("--all")) {
+  const { householdId } = await householdFromArgs(
+    db,
+    'Usage: npm run import:fill-steps -- "<household name>" [--book "<cookbook>"] [--try N | --write] [--again] [--limit N]',
+  );
+  const book = option("book") ?? null;
+  const write = flag("write");
+  const tryCount = Number(option("try")) || 0;
+  const limit = Number(option("limit")) || Infinity;
+  if (write && !book && !flag("all")) {
     console.error('Name a cookbook with --book "<cookbook>", or store all with --all.');
     process.exit(1);
   }
 
-  const targets = await loadStepsTargets(db, household.data.id, {
+  const targets = await loadStepsTargets(db, householdId, {
     book,
-    again: flags.includes("--again"),
+    again: flag("again"),
   });
 
   // What there is to do, per cookbook, and what it would cost.
@@ -144,7 +132,7 @@ async function main() {
             `${target.title}  /rezepte/${target.recipeId}\n    ${done.doubts.join("\n    ")}`,
           );
         }
-        if (!write || flags.includes("--verbose")) {
+        if (!write || flag("verbose")) {
           console.log(`${target.title} (${done.outcome}, ${cents(done.usage).toFixed(2)} ct)`);
           done.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
           for (const doubt of done.doubts) console.log(`  ! ${doubt}`);

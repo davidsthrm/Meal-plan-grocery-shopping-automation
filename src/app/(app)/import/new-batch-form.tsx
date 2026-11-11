@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { SourcePlacement } from "@/components/source-placement";
 import { editionFromFolder, sourceLabel, type KnownSource } from "@/domain/library/source";
-import { createBrowserSupabase } from "@/lib/supabase-browser";
+import { uploadPhotos } from "@/lib/upload-photos";
 import { startBatch } from "./actions";
 
 const PHOTO = /\.(heic|heif|jpe?g|png|webp)$/i;
@@ -14,12 +14,6 @@ function inPageOrder(files: File[]): File[] {
   return [...files]
     .filter((file) => file.type.startsWith("image/") || PHOTO.test(file.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-}
-
-/** Browsers often do not know the type of HEIC files. Storage needs one. */
-function contentType(file: File): string {
-  if (file.type) return file.type;
-  return /\.hei[cf]$/i.test(file.name) ? "image/heic" : "image/jpeg";
 }
 
 export function NewBatchForm({
@@ -61,22 +55,7 @@ export function NewBatchForm({
         forMeal,
       );
       if ("error" in started) throw new Error(started.error);
-      const bucket = createBrowserSupabase().storage.from("recipe-photos");
-      let next = 0;
-      let count = 0;
-      // Three uploads side by side: fast without choking a phone connection.
-      const worker = async () => {
-        while (next < files.length) {
-          const at = next++;
-          const target = started.targets[at];
-          const result = await bucket.uploadToSignedUrl(target.path, target.token, files[at], {
-            contentType: contentType(files[at]),
-          });
-          if (result.error) throw new Error(`${files[at].name}: ${result.error.message}`);
-          setUploaded(++count);
-        }
-      };
-      await Promise.all([worker(), worker(), worker()]);
+      await uploadPhotos(started.targets, files, setUploaded, (file) => file.name);
       router.push(`/import/${started.batchId}`);
     } catch (cause) {
       setUploaded(null);

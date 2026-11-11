@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { otherHouseholds, resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { keptWith, plan } from "./helpers";
 
 // The smoke test of a deployment, as the test household: `npm run e2e:production`. It signs
 // in, plans a meal, ticks a line without a connection and sees the tick arrive, and checks
@@ -12,29 +13,6 @@ test.beforeEach(async () => {
   await resetHousehold();
   await resetLibrary();
 });
-
-/** Whether the service worker has kept the page shown, with `text` on it. */
-async function keptWith(page: Page, text: string): Promise<boolean> {
-  const url = new URL(page.url());
-  return page.evaluate(
-    async ({ key, text }) => {
-      const kept = await caches.match(key);
-      return kept ? (await kept.text()).includes(text) : false;
-    },
-    { key: url.origin + url.pathname + url.search, text },
-  );
-}
-
-async function plan(page: Page, meal: string, recipe: string) {
-  await page.getByRole("link", { name: `${meal} planen` }).click();
-  await page.getByPlaceholder("Titel oder Zutat").fill(recipe);
-  await page
-    .getByRole("region", { name: "Treffer beim Tippen" })
-    .getByRole("button", { name: `${recipe} einplanen` })
-    .click();
-  await page.getByRole("link", { name: "← Wochenplan" }).click();
-  await expect(page.getByRole("region", { name: meal, exact: true })).toContainText(recipe);
-}
 
 test("@production sign in, plan a meal, tick offline, and the family's data stays as it was", async ({
   page,

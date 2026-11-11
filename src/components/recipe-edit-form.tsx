@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { saveRecipeEdit } from "@/app/(app)/rezepte/actions";
+import { PROTEIN_OPTIONS } from "@/lib/plan-text";
 import type { ReviewErrors } from "@/domain/import/review-input";
 import type { Category } from "@/domain/library/summary";
 import { suggestTags } from "@/domain/library/tag-admin";
@@ -10,15 +11,6 @@ import type { RecipeFormData } from "@/server/recipes";
 import { typedSteps } from "@/domain/import/steps";
 import { IngredientRows, rowsToLines, toRows } from "./ingredient-rows";
 import { StepsField } from "./steps-field";
-
-const PROTEINS = [
-  { value: "", label: "keine Angabe" },
-  { value: "vegetarian", label: "Vegetarisch" },
-  { value: "vegan", label: "Vegan" },
-  { value: "fish", label: "Fisch" },
-  { value: "poultry", label: "Geflügel" },
-  { value: "red_meat", label: "Fleisch" },
-];
 
 interface Props {
   recipeId: string;
@@ -136,7 +128,7 @@ export function RecipeEditForm({
             value={protein}
             onChange={(event) => setProtein(event.target.value)}
           >
-            {PROTEINS.map((option) => (
+            {PROTEIN_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

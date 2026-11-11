@@ -5,7 +5,12 @@ tablets. It replaces a handwritten weekly meal plan and the shopping list writte
 Success means: planning a week and getting a correct, printable list takes a few minutes and
 is easier than pen and paper.
 
-@AGENTS.md
+## Next.js 16
+
+This version has breaking changes: APIs, conventions and file structure may differ from what
+you know. Read the relevant guide in `node_modules/next/dist/docs/` before writing code, and
+heed deprecation notices. (`next dev` no longer writes this into an AGENTS.md:
+`agentRules: false` in `next.config.ts`.)
 
 ## Language
 
@@ -19,7 +24,7 @@ is easier than pen and paper.
 | ------------------------------------------------------------------------- | ----------------------------------------------- |
 | Dev server                                                                | `npm run dev`                                   |
 | Unit tests (domain, schema, acceptance)                                   | `npm test`                                      |
-| One test file                                                             | `npx vitest run src/domain/units.test.ts`       |
+| One test file                                                             | `npm test -- src/domain/units.test.ts`          |
 | Typecheck                                                                 | `npm run typecheck`                             |
 | Lint                                                                      | `npm run lint`                                  |
 | Format                                                                    | `npm run format`                                |
@@ -40,11 +45,8 @@ is easier than pen and paper.
 | Screenshots of every screen, phone, iPad (both ways) and desktop          | `npm run e2e:look`                              |
 | A whole batch import from the command line, as the test user              | `npm run e2e:batch -- <photos>`                 |
 | Give already imported recipes the servings unit their photo prints        | `npm run import:servings-units -- "<name>"`     |
-| Split sources stored as "Magazine 06/2020" into stack and edition         | `npm run library:split-sources -- "<name>"`     |
-| Merge "Zitronenscheiben" into lemons, "Stiele" to Stängel (dry run first) | `npm run library:tidy-lines -- "<name>"`        |
 | Tags of "Hauptzutat" from the ingredients (dry run, then `--apply`)       | `npm run library:main-ingredients -- "<name>"`  |
 | Describe recipes that have no tag but their effort (calls the API)        | `npm run import:tag-recipes -- "<name>" --more` |
-| File drinks and cookies by their titles (dry run, then `--apply`)         | `npm run library:assign-categories -- "<name>"` |
 | Turn stored page photos upright and cut out each recipe (calls the API)   | `npm run import:frame-photos -- "<name>"`       |
 | Measure whether pages laid on any side come back upright (calls the API)  | `npm run import:eval-frame`                     |
 | Describe recipes with tags: effort, dish, cuisine, season (calls the API) | `npm run import:tag-recipes -- "<name>"`        |
@@ -589,7 +591,7 @@ hover) and (pointer: fine)` for hover. The `tablet` variant (`@custom-variant` i
   vegetarian meal. A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside use it.
   The same colour marks the kind on a recipe card, next to a planned meal, in the week's
   count and in the goals. Keep the palette pastel: the household asked for that.
-- Tailwind runs as a PostCSS plugin (`postcss.config.mjs`), as the Next.js guide sets it up.
+- Tailwind runs as a PostCSS plugin (the `postcss` key in `package.json`), as the Next.js guide sets it up.
   The Turbopack loader `@tailwindcss/turbopack` used before never picked up a change to
   `globals.css` in a running dev server: the household saw a day's worth of new pages
   without their styles. After a change of the look, check it in the running app itself
@@ -1044,8 +1046,8 @@ Library
   before it starts where the photos go and whether stack and edition are new (`placement`).
   Everywhere a source is shown it is one name again (`sourceLabel`). The library lists the
   stack once ("Stöbern", the book chips) and offers its editions as chips once it is
-  chosen. Sources stored before editions existed are split with
-  `npm run library:split-sources`, by the shape of the name alone.
+  chosen. Sources stored before editions existed were split once, by the shape of the
+  name alone.
 - Beyond its category a recipe is described by tags in groups (`src/domain/library/tags.ts`):
   "Aufwand" (Schnell, Alltagsküche, Braucht Zeit), "Gericht" (pasta, rice, potatoes,
   casserole, pizza, pan, oven, burger), "Hauptzutat" (Hackfleisch, Hähnchen & Pute, Rind &
@@ -1603,7 +1605,7 @@ Import
   are lemons in slices, "Zitronenachtel" an eighth of a lemon ("Scheibe", "Achtel",
   "Viertel"). Halves are not: "Pfirsichhälften" come in a tin. A product of its own sold in
   slices ("Toastscheiben", "Käsescheiben") is found by its own name first. The import had
-  made six such cuts ingredients of their own; `npm run library:tidy-lines` merges them.
+  made six such cuts ingredients of their own; they were merged once.
 - A line without an amount that names several ingredients the catalog knows one by one is
   split after reading (`splitJoinedLines`): "Salz und Pfeffer" is salt and pepper. The
   household had "Salz & Pfeffer" as an ingredient in 264 recipe lines before. Typed recipes

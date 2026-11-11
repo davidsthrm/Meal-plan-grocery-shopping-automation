@@ -8,6 +8,8 @@ import {
 import { normalizeImage } from "@/server/import/normalize-image";
 import { RecipeReadError } from "@/server/import/read-recipe";
 import fixtures from "../tests/fixtures/sample-week/recipes.json";
+import { option } from "./lib/cli";
+import { costOf } from "./lib/prices";
 
 /**
  * Measures the reading of steps alone, as `npm run import:fill-steps` does it for recipes in
@@ -20,15 +22,7 @@ import fixtures from "../tests/fixtures/sample-week/recipes.json";
  * Every run calls the API ten times and costs about 3 ct.
  */
 
-const PRICES: Record<string, [number, number]> = {
-  "claude-haiku-5-5": [0.1, 0.5],
-  "claude-sonnet-5-5": [2, 10],
-  "claude-opus-5-5": [4, 20],
-  "claude-fable-5-1": [10, 50],
-};
-
-const at = process.argv.indexOf("--runs");
-const repetitions = at === -1 ? 1 : Number(process.argv[at + 1]) || 1;
+const repetitions = Number(option("runs")) || 1;
 const readModel = process.env.ANTHROPIC_EXTRACT_MODEL ?? "";
 const verifyModel = process.env.ANTHROPIC_VERIFY_MODEL ?? "";
 const recipes = fixtures.recipes as (ExpectedRecipe & { photo: string })[];
@@ -41,11 +35,6 @@ if (recipes.some((r) => !existsSync(r.photo))) {
   console.error("Sample photos not found in samples/recipes/.");
   process.exit(1);
 }
-
-const cost = (model: string, usage: { inputTokens: number; outputTokens: number }) => {
-  const price = PRICES[model];
-  return price ? (usage.inputTokens * price[0] + usage.outputTokens * price[1]) / 1e6 : 0;
-};
 
 async function main() {
   const read = createAnthropicStepsReader({ model: readModel });
@@ -73,7 +62,8 @@ async function main() {
         );
         const score = scoreSteps(expected.steps ?? [], reading.reading.steps);
         const settled = settleSteps(reading.reading, checked.verification.problems);
-        const spent = cost(readModel, reading.usage) + cost(verifyModel, checked.usage);
+        const spent =
+          (costOf(readModel, reading.usage) ?? 0) + (costOf(verifyModel, checked.usage) ?? 0);
         total += spent;
         tokens.read.in += reading.usage.inputTokens;
         tokens.read.out += reading.usage.outputTokens;

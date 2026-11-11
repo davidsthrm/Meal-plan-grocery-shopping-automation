@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { planAsExtra, resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { sheet, tile } from "./helpers";
 
 // A week far enough ahead that every errand of it is still to come.
 const WEEK = "2027-03-01";
@@ -11,11 +12,6 @@ test.beforeEach(async ({ page }) => {
   await resetLibrary();
   await signIn(page);
 });
-
-const tile = (page: Page, note: string) =>
-  // The notes still to do, or those done at the foot.
-  page.getByRole("list", { name: /Zettel$/ }).getByRole("link", { name: new RegExp(`^${note}`) });
-const sheet = (page: Page, note: string) => page.getByRole("region", { name: note, exact: true });
 
 /** Writes lines onto Monday's note, as the household does before it goes. */
 async function write(page: Page, ...lines: string[]) {

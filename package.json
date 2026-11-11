@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --config tests/vitest.config.mts",
+    "test:watch": "vitest --config tests/vitest.config.mts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed:build": "tsx supabase/seed/build-seed-sql.ts",
@@ -25,26 +25,22 @@
     "import:fill-steps": "tsx --conditions=react-server --env-file=.env.local scripts/fill-steps.ts",
     "import:tag-recipes": "tsx --conditions=react-server --env-file=.env.local scripts/tag-recipes.ts",
     "db:types": "supabase gen types typescript --linked --schema public > src/server/supabase/database.types.ts",
-    "library:assign-categories": "tsx --env-file=.env.local scripts/assign-categories.ts",
-    "library:split-sources": "tsx --env-file=.env.local scripts/split-sources.ts",
-    "library:tidy-lines": "tsx --env-file=.env.local scripts/tidy-lines.ts",
     "library:main-ingredients": "tsx --env-file=.env.local scripts/main-ingredients.ts",
     "e2e:setup": "tsx --env-file=.env.local scripts/e2e-household.ts",
     "e2e:teardown": "tsx --env-file=.env.local scripts/e2e-household.ts --teardown",
     "e2e:batch": "tsx --conditions=react-server --env-file=.env.local scripts/batch-smoke.ts",
     "supermarkets:search": "tsx --conditions=react-server scripts/supermarket-search.ts",
-    "e2e": "playwright test --grep-invert \"@look|@api|@production\"",
-    "e2e:production": "E2E_BASE_URL=https://familyessensplan.vercel.app playwright test --grep @production --project phone",
-    "e2e:offline": "E2E_PROD=1 E2E_PORT=3200 playwright test e2e/offline.spec.ts",
-    "e2e:look": "playwright test --grep @look",
-    "e2e:upload": "playwright test --grep @api --project desktop",
+    "e2e": "playwright test -c e2e --grep-invert \"@look|@api|@production\"",
+    "e2e:production": "E2E_BASE_URL=https://familyessensplan.vercel.app playwright test -c e2e --grep @production --project phone",
+    "e2e:offline": "E2E_PROD=1 E2E_PORT=3200 playwright test -c e2e e2e/offline.spec.ts",
+    "e2e:look": "playwright test -c e2e --grep @look",
+    "e2e:upload": "playwright test -c e2e --grep @api --project desktop",
     "icons:build": "tsx scripts/build-icons.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
-    "cn": "^0.5.0",
     "heic-decode": "^2.1.0",
     "leaflet": "^1.9.4",
     "next": "16.4.3",
@@ -71,5 +67,13 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^4.1.11"
+  },
+  "prettier": {
+    "printWidth": 100
+  },
+  "postcss": {
+    "plugins": {
+      "@tailwindcss/postcss": {}
+    }
   }
 }
