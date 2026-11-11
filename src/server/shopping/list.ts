@@ -589,6 +589,8 @@ export async function addEntry(
   trip: ShoppingTrip,
   text: string,
   extra: { quantity: number | null; forWhom: string | null } = { quantity: null, forWhom: null },
+  /** The catalog, where the caller writes several entries and reads it once for all. */
+  catalog: () => Promise<CatalogIndex> = () => loadCatalogIndex(db),
 ): Promise<void> {
   const listId = await ensureList(db, household.id, trip);
   const stored = await db.from("shopping_manual_entry").insert({
@@ -598,7 +600,7 @@ export async function addEntry(
     quantity: extra.quantity,
     for_whom: extra.forWhom,
     created_by: household.userId,
-    aisle_group_id: (await rememberedKind(db, text)) ?? (await guessedKind(db, text)),
+    aisle_group_id: (await rememberedKind(db, text)) ?? (await guessedKind(text, catalog)),
   });
   if (stored.error) throw new Error(`add entry: ${stored.error.message}`);
 }
@@ -627,9 +629,11 @@ async function rememberedKind(db: Db, text: string): Promise<string | null> {
  * it is written (`guessKind`) and stored like one the household chose: "Gehört zu" on the
  * line corrects it. Null where the catalog knows the line, or nothing fits.
  */
-async function guessedKind(db: Db, text: string): Promise<string | null> {
-  const index = await loadCatalogIndex(db);
-  return guessKind(text, index);
+async function guessedKind(
+  text: string,
+  catalog: () => Promise<CatalogIndex>,
+): Promise<string | null> {
+  return guessKind(text, await catalog());
 }
 
 /** A text as a pattern that finds it written the same way, in any case: no wildcards. */

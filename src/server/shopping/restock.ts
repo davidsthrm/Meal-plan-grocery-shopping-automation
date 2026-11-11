@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import type { Place } from "@/domain/catalog";
+import type { CatalogIndex, Place } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { drugstoreEntryFromText } from "@/domain/shopping-list/drugstore";
 import {
@@ -123,17 +123,26 @@ export async function moveToList(
     (item) => only === null || item.id === only,
   );
   const went: ShoppingTrip[] = [];
+  // The catalog is read once for all entries, and only where one needs its kind guessed:
+  // read for every entry, ten entries read all of it ten times (November 2026). The entries
+  // are still written one after the other, in the order they were noted.
+  let index: Promise<CatalogIndex> | undefined;
+  const catalog = () => (index ??= loadCatalogIndex(db));
   for (const item of items) {
     if (!item.trip) continue;
     if (item.trip.place === "drugstore") {
       // On the drugstore's note a number in front is how many: "2 Zahnpasta".
       const entry = drugstoreEntryFromText(item.text);
-      await addEntry(db, household, item.trip, entry.text, {
-        quantity: entry.quantity,
-        forWhom: null,
-      });
+      await addEntry(
+        db,
+        household,
+        item.trip,
+        entry.text,
+        { quantity: entry.quantity, forWhom: null },
+        catalog,
+      );
     } else {
-      await addEntry(db, household, item.trip, item.text);
+      await addEntry(db, household, item.trip, item.text, undefined, catalog);
     }
     await removeRestock(db, item.id);
     const { date, place } = item.trip;
