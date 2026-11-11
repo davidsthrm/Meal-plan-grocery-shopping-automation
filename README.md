@@ -68,8 +68,10 @@ npm run dev                  # http://localhost:3000
 npm test                     # unit, schema and acceptance tests
 ```
 
-- [CLAUDE.md](CLAUDE.md): all commands, the architecture, the design rules and the domain
-  rules the app follows.
+- [CLAUDE.md](CLAUDE.md): the commands, how we work, and a map of the docs.
+- [docs/STATUS.md](docs/STATUS.md): where the app stands, known bugs, next steps and ideas.
+- `docs/`: one file per topic (architecture, design, planning, recipes, shopping, import,
+  development, history).
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): setting up Supabase and Vercel, deploying,
   rollback and backups.
 - [docs/FAMILIE.md](docs/FAMILIE.md): how a family member gets in (German).
