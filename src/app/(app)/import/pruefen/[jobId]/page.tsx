@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { normalizeName } from "@/domain/catalog";
 import { UNITS } from "@/domain/units";
+import { requireHousehold } from "@/server/auth";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { loadReview } from "@/server/import/review";
 import { createSessionClient } from "@/server/supabase/server";
@@ -11,10 +12,11 @@ export const metadata: Metadata = { title: "Rezept prüfen" };
 
 export default async function ReviewPage(props: PageProps<"/import/pruefen/[jobId]">) {
   const { jobId } = await props.params;
+  const household = await requireHousehold();
   const db = await createSessionClient();
   const [review, ingredients, waiting] = await Promise.all([
-    loadReview(db, jobId),
-    loadIngredientNames(db),
+    loadReview(db, household, jobId),
+    loadIngredientNames(db, household),
     db.from("import_job").select("id").eq("status", "needs_review").not("recipe_id", "is", null),
   ]);
   if (!review) notFound();

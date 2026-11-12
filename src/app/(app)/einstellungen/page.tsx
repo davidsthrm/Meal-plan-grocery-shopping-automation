@@ -69,7 +69,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
     loadMembers(db, household),
     loadInvites(db),
     requestOrigin(),
-    loadCatalogIndex(db),
+    loadCatalogIndex(db, household),
   ]);
   const supermarkets = favouriteSupermarkets(index.catalog.shops);
   const { ingredients, aisleGroups } = index.catalog;

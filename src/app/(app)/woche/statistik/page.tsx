@@ -57,7 +57,7 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
   const db = await createSessionClient();
   // Not before the household's first week, and nothing after today's period.
   const first = await countingFrom(db, household);
-  const counted = { firstWeek: first, targets: household.targets };
+  const counted = { ...household, firstWeek: first };
   const period =
     first !== null && asked.end < first
       ? periodOf(asked.kind, first)

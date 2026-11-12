@@ -13,6 +13,7 @@ import { recipeTone } from "@/lib/plan-text";
 import { timeText } from "@/lib/recipe-text";
 import { dayOf, today } from "@/lib/today";
 import { SWAP } from "@/lib/transitions";
+import { requireHousehold } from "@/server/auth";
 import { allRows, must } from "@/server/catalog";
 import { productName } from "@/domain/import/tidy-proposals";
 import { loadLibraryForLists } from "@/server/recipe-list";
@@ -34,10 +35,11 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 export default async function StackPage(props: PageProps<"/rezepte/stapel">) {
   const params = await props.searchParams;
   const now = today();
+  const household = await requireHousehold();
   const db = await createSessionClient();
   const since = addDays(now, -SKIP_DAYS);
   const [library, asideRows] = await Promise.all([
-    loadLibraryForLists(db, now),
+    loadLibraryForLists(db, household, now),
     // Only what was put aside lately: older marks no longer keep a recipe out.
     allRows(
       (from, to) =>

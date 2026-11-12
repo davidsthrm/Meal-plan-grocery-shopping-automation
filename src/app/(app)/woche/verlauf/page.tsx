@@ -51,7 +51,7 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
 
   const db = await createSessionClient();
   const [library, weeks, older] = await Promise.all([
-    loadLibrary(db),
+    loadLibrary(db, household),
     loadWeeks(db, from, addDays(current, 7 * AHEAD)),
     db
       .from("week_plan")

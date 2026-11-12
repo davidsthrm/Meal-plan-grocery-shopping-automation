@@ -4,6 +4,7 @@ import { sourceLabel } from "@/domain/library/source";
 import { similarTag } from "@/domain/library/tag-admin";
 import { chosenTags, OWN_GROUP, TAG_GROUPS } from "@/domain/library/tags";
 import type { TypedRecipe } from "@/domain/library/typed-recipe";
+import type { Household } from "./auth";
 import { loadCatalogIndex, loadIngredientNames, must, type Db } from "./catalog";
 import type { ReviewLine } from "./import/review";
 import { importModels } from "./import/models";
@@ -27,15 +28,15 @@ async function sourceColumns(db: Db, typed: string | null) {
 /** Stores a typed recipe, approved at once: the household wrote it. Returns its id. */
 export async function createTypedRecipe(
   db: Db,
-  householdId: string,
+  household: Pick<Household, "id" | "libraryVersion">,
   recipe: TypedRecipe,
 ): Promise<string> {
   return saveImportedRecipe(db, {
-    householdId,
+    householdId: household.id,
     recipe: { ...recipe, sourceTitle: null, lines: recipe.lines ?? [] },
     status: "approved",
     photoPaths: [],
-    index: await loadCatalogIndex(db),
+    index: await loadCatalogIndex(db, household),
     suggest: importModels().suggest,
     kind: recipe.sourceBook ? "cookbook" : "quick_meal",
   });
@@ -47,7 +48,7 @@ export async function createTypedRecipe(
  */
 export async function updateTypedRecipe(
   db: Db,
-  householdId: string,
+  household: Pick<Household, "id" | "libraryVersion">,
   recipeId: string,
   recipe: TypedRecipe,
 ): Promise<void> {
@@ -57,10 +58,10 @@ export async function updateTypedRecipe(
   );
   if (recipe.lines !== null) {
     await saveReviewedRecipe(db, {
-      householdId,
+      householdId: household.id,
       recipeId,
       recipe: { ...recipe, sourceTitle: existing.source_title, lines: recipe.lines },
-      index: await loadCatalogIndex(db),
+      index: await loadCatalogIndex(db, household),
       suggest: importModels().suggest,
     });
   } else {
@@ -87,7 +88,7 @@ export async function updateTypedRecipe(
     .eq("id", recipeId);
   if (kind.error) throw new Error(`update recipe kind: ${kind.error.message}`);
 
-  await setCategory(db, householdId, [recipeId], recipe.dishType);
+  await setCategory(db, household.id, [recipeId], recipe.dishType);
 }
 
 /**
@@ -206,7 +207,11 @@ export interface RecipeFormData {
 }
 
 /** A recipe as the form for changing it shows it. Null when this household has no such recipe. */
-export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFormData | null> {
+export async function loadRecipeForm(
+  db: Db,
+  household: Pick<Household, "id" | "libraryVersion">,
+  recipeId: string,
+): Promise<RecipeFormData | null> {
   const { data: recipe } = await db
     .from("recipe")
     .select(
@@ -225,7 +230,7 @@ export async function loadRecipeForm(db: Db, recipeId: string): Promise<RecipeFo
       .order("position"),
     db.from("recipe_tag").select("tag_id").eq("recipe_id", recipeId),
     db.from("tag").select("id, key, group_name"),
-    loadIngredientNames(db),
+    loadIngredientNames(db, household),
   ]);
   const own = new Set(must(links, "load recipe tags").map((link) => link.tag_id));
   const ownTags = must(categories, "load tags").filter((tag) => own.has(tag.id));

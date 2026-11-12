@@ -18,6 +18,7 @@ import {
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
 import { EFFORTS } from "@/domain/library/tags";
 import { UNITS } from "@/domain/units";
+import type { Household } from "./auth";
 import { allRows, must, type Db } from "./catalog";
 import { loadLibrary, loadTagIds } from "./library";
 import { setCategory } from "./recipes";
@@ -56,9 +57,12 @@ function printedName(line: string): string {
 }
 
 /** Loads the approved recipes with their ingredients, as both checks need them. */
-export async function loadLibraryChecks(db: Db): Promise<LibraryChecks> {
+export async function loadLibraryChecks(
+  db: Db,
+  household: Pick<Household, "id" | "libraryVersion">,
+): Promise<LibraryChecks> {
   const [library, checkedRows, lines, catalog, proposals] = await Promise.all([
-    loadLibrary(db),
+    loadLibrary(db, household),
     allRows(
       (from, to) =>
         db

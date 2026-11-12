@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BackLink } from "@/components/back-link";
+import { requireHousehold } from "@/server/auth";
 import { loadCatalogIndex, loadIngredientNames, must } from "@/server/catalog";
 import { loadOpenProposals, settleKnownProposals } from "@/server/import/proposals";
 import { createSessionClient } from "@/server/supabase/server";
@@ -8,12 +9,13 @@ import { ProposalList } from "./proposal-list";
 export const metadata: Metadata = { title: "Neue Zutaten" };
 
 export default async function ProposalsPage() {
+  const household = await requireHousehold();
   const db = await createSessionClient();
   // What the catalog can answer by itself by now is closed before anything is shown.
-  await settleKnownProposals(db, await loadCatalogIndex(db));
+  await settleKnownProposals(db, await loadCatalogIndex(db, household));
   const [proposals, ingredients, aisles] = await Promise.all([
     loadOpenProposals(db),
-    loadIngredientNames(db),
+    loadIngredientNames(db, household),
     db.from("aisle_group").select("id, name").order("sort_order"),
   ]);
 

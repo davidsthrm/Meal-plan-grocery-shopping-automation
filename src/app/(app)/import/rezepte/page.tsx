@@ -48,6 +48,7 @@ import { FROM_ALL_RECIPES } from "@/lib/origin";
 import { MEAL_NAME, recipeTone } from "@/lib/plan-text";
 import { servingsText } from "@/lib/recipe-text";
 import { today } from "@/lib/today";
+import { requireHousehold } from "@/server/auth";
 import type { Library } from "@/server/library";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { loadLastCookedAll, loadRecipePlaces, type PlanPlace } from "@/server/planning/week";
@@ -74,16 +75,17 @@ export default async function ShelfPage(props: PageProps<"/import/rezepte">) {
   const filter = readFilter(params);
   const view = readTableView(params);
   const now = today();
+  const household = await requireHousehold();
   const db = await createSessionClient();
   const [library, cooked] = await Promise.all([
-    loadLibraryForLists(db, now),
+    loadLibraryForLists(db, household, now),
     loadLastCookedAll(db, now),
   ]);
   const { recipes, categories, tagGroups } = library;
   const tags = tagGroups.flatMap((group) => group.tags);
 
   // With words to search for, the best fit comes first unless a column is chosen.
-  const list = await listRecipes(db, library, recipes, filter, {
+  const list = await listRecipes(db, household, library, recipes, filter, {
     season: true,
     longAgo: true,
     favorites: true,

@@ -546,6 +546,29 @@ export type Database = {
           },
         ]
       }
+      library_version: {
+        Row: {
+          household_id: string
+          version: number
+        }
+        Insert: {
+          household_id: string
+          version?: number
+        }
+        Update: {
+          household_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_version_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "household"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       model_usage: {
         Row: {
           cost_microcents: number

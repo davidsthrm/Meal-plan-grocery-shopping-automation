@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireHousehold } from "@/server/auth";
 import { loadSearchIndex } from "@/server/library";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -10,7 +11,7 @@ export async function GET() {
   const db = await createSessionClient();
   const { data } = await db.auth.getClaims();
   if (!data?.claims?.sub) return NextResponse.json({ error: "not signed in" }, { status: 401 });
-  return NextResponse.json(await loadSearchIndex(db), {
+  return NextResponse.json(await loadSearchIndex(db, await requireHousehold()), {
     // Private, and fresh enough: a recipe added a minute ago may take a moment to be found.
     headers: { "Cache-Control": "private, max-age=60" },
   });

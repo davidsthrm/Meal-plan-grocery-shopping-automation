@@ -180,13 +180,13 @@ export async function saveTypedRecipe(
   };
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const read = readTypedRecipe(values, await loadCatalogIndex(db));
+  const read = readTypedRecipe(values, await loadCatalogIndex(db, household));
   if (!read.ok) return { errors: read.errors, values };
 
   if (read.recipe.lines === null) {
     return { errors: { lines: "Mindestens eine Zutat, eine pro Zeile." }, values };
   }
-  const created = await createTypedRecipe(db, household.id, read.recipe);
+  const created = await createTypedRecipe(db, household, read.recipe);
   // A recipe that was pasted in keeps its text as it was pasted, beside the steps read from it.
   const sourceText = text("sourceText").trim().slice(0, PASTED_TEXT_MAX);
   if (sourceText !== "") {
@@ -287,7 +287,7 @@ export async function saveRecipeEdit(
     return { errors: { title: "Das Formular konnte nicht gelesen werden." } };
   }
   const db = await createSessionClient();
-  const read = readReview(parsed.data, await loadCatalogIndex(db));
+  const read = readReview(parsed.data, await loadCatalogIndex(db, household));
   if (!read.ok) return { errors: read.errors };
 
   const dishType = (DISH_TYPES as readonly string[]).includes(kind.category)
@@ -296,7 +296,7 @@ export async function saveRecipeEdit(
   const proteinType = (PROTEIN_TYPES as readonly string[]).includes(kind.protein)
     ? (kind.protein as (typeof PROTEIN_TYPES)[number])
     : "unknown";
-  await updateTypedRecipe(db, household.id, id.data, {
+  await updateTypedRecipe(db, household, id.data, {
     title: parsed.data.title.trim(),
     sourceBook: parsed.data.sourceBook.trim() || null,
     sourcePage: read.page,

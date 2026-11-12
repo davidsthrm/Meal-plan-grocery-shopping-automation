@@ -10,6 +10,7 @@ import {
 } from "@/domain/library/filter";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { monthOf, type Month } from "@/domain/season/calendar";
+import type { Household } from "./auth";
 import type { Db } from "./catalog";
 import { loadLibrary, searchLibrary, type Library } from "./library";
 import { loadHistory } from "./planning/week";
@@ -22,18 +23,21 @@ import { loadSeasonalFoods, withSeason } from "./season";
 
 /**
  * The library with what the filters "Passt zur Saison" and "Lange nicht gekocht" need: how
- * each recipe fits this month, and whether it was cooked long ago. Read side by side.
+ * each recipe fits this month, and whether it was cooked long ago. Read side by side. The
+ * library and the seasonal foods are kept for the household; the history changes with every
+ * meal planned and is read per request.
  */
 export async function loadLibraryForLists(
   db: Db,
+  household: Pick<Household, "id" | "libraryVersion">,
   today: IsoDate,
   /** The month "Passt zur Saison" asks about: today's, or that of a week being planned. */
   month: Month = monthOf(today),
 ): Promise<Library & { history: Map<string, IsoDate> }> {
   const [library, history, seasonal] = await Promise.all([
-    loadLibrary(db),
+    loadLibrary(db, household),
     loadHistory(db, today),
-    loadSeasonalFoods(db),
+    loadSeasonalFoods(db, household),
   ]);
   const recipes = withHistory(withSeason(library.recipes, seasonal, month), history, today);
   return { ...library, recipes, history };
@@ -61,6 +65,7 @@ export interface RecipeList {
  */
 export async function listRecipes(
   db: Db,
+  household: Pick<Household, "id" | "libraryVersion">,
   library: Library,
   pool: readonly RecipeSummary[],
   filter: RecipeFilter,
@@ -68,7 +73,12 @@ export async function listRecipes(
 ): Promise<RecipeList> {
   const words = filter.text.trim();
   const found = words
-    ? await searchLibrary(db, { ...library, recipes: [...pool] }, { ...NO_FILTER, text: words })
+    ? await searchLibrary(
+        db,
+        household,
+        { ...library, recipes: [...pool] },
+        { ...NO_FILTER, text: words },
+      )
     : null;
   const base = found ? found.matches : [...pool];
   const results = found

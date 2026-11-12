@@ -121,7 +121,7 @@ export async function correctSeveral(form: FormData): Promise<void> {
   );
   if (chosen.size === 0) backToFields(filter, { fehler: "auswahl" });
   const db = await createSessionClient();
-  const library = await loadLibraryChecks(db);
+  const library = await loadLibraryChecks(db, household);
   const checks = recipeChecks(library).filter((check) => chosen.has(check.recipe.id));
   const action = text(form, "aktion");
   const [kind, value = ""] = action.split(":");

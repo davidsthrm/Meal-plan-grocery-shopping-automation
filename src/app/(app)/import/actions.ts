@@ -77,7 +77,7 @@ export async function submitReview(
   const parsed = reviewInput.safeParse(input);
   if (!parsed.success) return { errors: { title: "Das Formular konnte nicht gelesen werden." } };
   const db = await createSessionClient();
-  const result = await approveReview(db, household.id, jobId, parsed.data);
+  const result = await approveReview(db, household, jobId, parsed.data);
   if (!result.ok) return { errors: result.errors };
   // A recipe uploaded for a meal of the week plan goes there now, and so does its reader.
   const placed = await placeForMeal(db, household.id, batchId);
@@ -116,7 +116,7 @@ export async function submitProposalDecisions(
   decisions: ProposalDecision[],
 ): Promise<{ errors: Record<string, string> }> {
   const household = await requireHousehold();
-  const errors = await decideProposals(await createSessionClient(), household.id, decisions);
+  const errors = await decideProposals(await createSessionClient(), household, decisions);
   revalidatePath("/", "layout");
   return { errors };
 }

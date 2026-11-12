@@ -24,6 +24,7 @@ import {
 import { pictogramFor } from "@/domain/library/pictogram";
 import { FROM_FAVORITES } from "@/lib/origin";
 import { today } from "@/lib/today";
+import { requireHousehold } from "@/server/auth";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -36,8 +37,9 @@ export const metadata: Metadata = { title: "Favoriten" };
 export default async function FavoritesPage(props: PageProps<"/favoriten">) {
   const params = await props.searchParams;
   const filter = { ...readFilter(params), favorites: true };
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const library = await loadLibraryForLists(db, today());
+  const library = await loadLibraryForLists(db, household, today());
   const { recipes, categories } = library;
   const categoryName = new Map(categories.map((category) => [category.key, category.name]));
   const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
@@ -45,7 +47,10 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
   const favorites = recipes.filter((recipe) => recipe.isFavorite);
   const wishes = recipes.filter((recipe) => recipe.wanted);
   const browsing = isNoFilter({ ...filter, favorites: false });
-  const list = await listRecipes(db, library, favorites, filter, { season: true, longAgo: true });
+  const list = await listRecipes(db, household, library, favorites, filter, {
+    season: true,
+    longAgo: true,
+  });
   const listed = list.results;
   const groups = byCategory(listed, categories);
   // The page is the favourites: that is never part of its address.

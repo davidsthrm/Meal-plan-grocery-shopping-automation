@@ -31,9 +31,9 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
  */
 export default async function TagsPage(props: PageProps<"/rezepte/stichworte">) {
   const params = await props.searchParams;
-  await requireHousehold();
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const [tags, library] = await Promise.all([loadStoredTags(db), loadLibrary(db)]);
+  const [tags, library] = await Promise.all([loadStoredTags(db), loadLibrary(db, household)]);
   const ref = (tag: StoredTag) => tag.key ?? tag.id;
   const count = (tag: StoredTag) =>
     tag.group === CATEGORY_GROUP

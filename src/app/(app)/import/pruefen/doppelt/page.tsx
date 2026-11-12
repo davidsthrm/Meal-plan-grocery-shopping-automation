@@ -35,9 +35,9 @@ const percent = (share: number) => `${Math.round(share * 100)} %`;
  */
 export default async function DuplicatesPage(props: PageProps<"/import/pruefen/doppelt">) {
   const params = await props.searchParams;
-  await requireHousehold();
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const library = await loadLibraryChecks(db);
+  const library = await loadLibraryChecks(db, household);
   const pairs = await duplicatePairs(db, library);
   const shown = pairs.slice(0, SHOWN);
   const planned = await timesPlanned(

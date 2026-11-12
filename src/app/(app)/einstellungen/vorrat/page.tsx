@@ -19,8 +19,8 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 export default async function PantryPage(props: PageProps<"/einstellungen/vorrat">) {
   const params = await props.searchParams;
   const query = (one(params.q) ?? "").trim().slice(0, 80);
-  await requireHousehold();
-  const index = await loadCatalogIndex(await createSessionClient());
+  const household = await requireHousehold();
+  const index = await loadCatalogIndex(await createSessionClient(), household);
   const groups = pantryByAisle(index);
   const count = groups.reduce((sum, group) => sum + group.items.length, 0);
   const found = query === "" ? [] : searchCatalog(index.catalog.ingredients, query);
