@@ -85,12 +85,12 @@ export const loadOwnRestock = cache(async (today: IsoDate): Promise<PlacedRestoc
  */
 export async function addRestock(
   db: Db,
-  household: Pick<Household, "id" | "userId">,
+  household: Pick<Household, "id" | "userId" | "libraryVersion">,
   text: string,
 ): Promise<void> {
   const entry = readRestock(text);
   if (entry === "") return;
-  const index = await loadCatalogIndex(db);
+  const index = await loadCatalogIndex(db, household);
   const stored = await db.from("restock_item").insert({
     household_id: household.id,
     text: entry,
@@ -115,7 +115,7 @@ export async function removeRestock(db: Db, id: string): Promise<void> {
  */
 export async function moveToList(
   db: Db,
-  household: Pick<Household, "id" | "userId" | "shoppingDays">,
+  household: Pick<Household, "id" | "userId" | "libraryVersion" | "shoppingDays">,
   today: IsoDate,
   only: string | null,
 ): Promise<ShoppingTrip[]> {
@@ -127,7 +127,7 @@ export async function moveToList(
   // read for every entry, ten entries read all of it ten times (November 2026). The entries
   // are still written one after the other, in the order they were noted.
   let index: Promise<CatalogIndex> | undefined;
-  const catalog = () => (index ??= loadCatalogIndex(db));
+  const catalog = () => (index ??= loadCatalogIndex(db, household));
   for (const item of items) {
     if (!item.trip) continue;
     if (item.trip.place === "drugstore") {
