@@ -13,9 +13,11 @@ decisions, code layout, routes, data access and tests of Essensplan.
   server only.
 - Vitest for unit tests, Playwright for a few end-to-end flows.
 - UI text is written in German directly in the components. There is no strings file.
-- Cache Components are switched off (`next.config.ts`): every page is private and read per
-  request. Read `node_modules/next/dist/docs/` before using a Next.js API; version 16 differs
-  from older ones (`proxy.ts`, async `params`, `PageProps<"/route">`).
+- Cache Components are switched off (`next.config.ts`): every page is private and rendered
+  per request. What the server keeps between requests is the household's library alone,
+  under a counter of the database (see "Speed"). Read `node_modules/next/dist/docs/` before
+  using a Next.js API; version 16 differs from older ones (`proxy.ts`, async `params`,
+  `PageProps<"/route">`).
 
 ## Hosting and limits
 
@@ -158,13 +160,42 @@ decisions, code layout, routes, data access and tests of Essensplan.
   the whole catalog, 1,366 ingredients in five requests, to name its ten lines, for each
   of up to sixty recipes a list fetches ahead. "Auf den Einkaufszettel" reads the catalog
   once for all entries of the Merkzettel it moves, and only if a kind has to be guessed.
-- What was measured in November 2026, with 1,427 recipes: the week plan, the chooser of a
-  meal, Entdecken and the favourites each read the whole library for every render (about
-  32 requests and 1.7 MB: the recipes, 5,795 tag links, the catalog's names and the lines
-  of what has a season), and so does every page fetched ahead and every answer to a button.
-  In the database, most of the time of these reads went into the household check per row
-  (see "Login, accounts and security"). `/api/suche` reads all 15,982 ingredient lines, 17
-  pages.
+- The server keeps a household's library between requests and reads it again only when it
+  changed (`kept` in `src/server/kept.ts`): the recipes with their tags, the catalog and
+  its names, the foods with a season per recipe, and the part of the search index made
+  from the 15,982 ingredient lines. With 1,427 recipes the week plan, the chooser of a
+  meal, Entdecken and the favourites each read all of it for every render, about 32
+  requests and 1.7 MB, and so did every page fetched ahead and every answer to a button
+  (November 2026). Whether it changed says a counter per household, `library_version`,
+  which triggers raise with every change of `recipe`, `recipe_tag`, `tag`,
+  `recipe_ingredient`, `ingredient`, `shop`, `shop_aisle_order` and `aisle_group`, in the
+  same transaction. `requireHousehold` reads the counter with the household, before any
+  read of the library, so what is kept under a counter is never older than it: a favourite
+  tapped shows on the page that answers the tap. Requests that arrive together share one
+  read. What is kept is frozen, because requests share it: never change it in place. A
+  loader given no household reads afresh (the import's steps and the scripts, which run
+  outside a request). The history of meals changes with every meal planned and is read per
+  request. The counter's table is not in the Realtime publication: it must not make open
+  pages read themselves again. The memory is one per server instance; a new instance reads
+  once. Measured on the household's data from a laptop (12 November 2026): the library for
+  a list took 31 requests and 766 KB the first time and one request, the history, every
+  time after; the search index 18 requests and 1.2 MB, then one.
+- A tap on the plan reads only its meal, the week and the meal in one request (`findSlot`),
+  beside whatever else the action reads, and writes what does not depend on each other
+  side by side. Until November 2026 every write went one after the other: "Gute Idee!" 6
+  to 9 round trips and now 4, the stepper 7 and now 5, "Leeren" 3 and now 2, "Mehr
+  kochen" with leftovers 7 and now 2. A wish is fulfilled once its recipe is stored, not
+  beside it.
+- The plan answers a tap before the server does (see
+  [DESIGN.md](DESIGN.md#controls-and-sizes)): its forms stay plain forms, and styles on
+  the pending button show what the tap did. The stepper shows the number of the tap on its
+  way and sends each tap's own number, so quick taps add up.
+- A decision from the shop looks each note's list up once, and reads the lists and the
+  week's notes together; what follows from it is written side by side, except writes to
+  the same row of `shopping_line_state`. A line moved to another note waited for about 16
+  requests one after the other and waits for about 9, most of them the week's notes; another
+  shop on the same note 4 and now 2; a part bought with the rest moved 8 and now 3 (November
+  2026).
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - Server actions of one browser tab run one after the other. Work that should run side by side

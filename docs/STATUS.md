@@ -4,7 +4,7 @@ Update this file in the same pull request that changes what it says.
 
 ## Where the app stands
 
-The app is live at https://familyessensplan.vercel.app for the family since 19 October 2026. The latest feature work is phase 18 (Entdecken with tabs, the Regal as a shelf, the recipe stack, "Was ist noch da?", the roulette, "Alle Rezepte", discoveries in the statistics); see [HISTORY.md](HISTORY.md). A repo tidy-up followed in November 2026. A code audit on 10 November 2026 added several items below. On 11 November 2026 the slow pages were measured and the database's household check, the reads of a week and a recipe's page were made cheaper; what is still open stands under "Questions for David".
+The app is live at https://familyessensplan.vercel.app for the family since 19 October 2026. The latest feature work is phase 18 (Entdecken with tabs, the Regal as a shelf, the recipe stack, "Was ist noch da?", the roulette, "Alle Rezepte", discoveries in the statistics); see [HISTORY.md](HISTORY.md). A repo tidy-up followed in November 2026. A code audit on 10 November 2026 added several items below. On 11 and 12 November 2026 the slow pages were measured and made faster: the database's household check runs once per query, the server keeps the library between requests, a tap on the plan answers at once and writes in fewer round trips, and a line moved to another note waits for fewer; what is still open stands under "Questions for David".
 
 ## Known bugs and risks
 
@@ -50,26 +50,18 @@ Conventions and anything where two topics disagree are decided by David. A quest
 has to wait stands here, with a recommendation; once answered, the answer goes into the doc
 it belongs to and the question goes.
 
-- Speed, next step (11 November 2026). After the household check per query, a render of the
-  week plan, the chooser, Entdecken or the favourites still reads the whole library, about
-  32 requests and 1.7 MB, and every button and every page fetched ahead renders again.
-  Recommendation: keep the library in the server's memory per household and read it again
-  only when it changed, known from a counter that triggers on `recipe`, `recipe_tag`,
-  `tag`, `recipe_ingredient` and `ingredient` raise (a small table of its own, not in the
-  Realtime publication). The pages stay private and never show an older state; it adds a
-  table and five triggers on what an import writes. To decide after the first step is live
-  and felt on the phones.
 - Speed, the echo (11 November 2026). A page reads itself again three seconds after the
   device's own button or tick (`OWN_MS`), because Realtime cannot say whose change it was.
-  That is one more full render per burst of taps, and it empties the pages fetched ahead.
+  That is one more render per burst of taps, and it empties the pages fetched ahead.
   Recommendation: take a change within three seconds of the device's own for its own and
   do not read again; a change of someone else in those seconds then shows with the next
   change or when the page comes back into view.
-- Speed, buttons of the week plan (11 November 2026). Each is a form the server answers
-  with the whole page ("They work before any script has loaded and need no client state",
-  ARCHITECTURE.md). Showing the change at once and sending it behind would make planning
-  feel instant, at the price of client state on the plan. Recommendation: decide after the
-  two steps above; they may be enough.
+- Speed, moving a line (12 November 2026). The server builds the week's notes to find the
+  notes a moved line's parts are from, about six of the nine requests it waits for. The
+  device knows them and could send them with its decision. Lost would be the check "not on
+  that note any more": from a page out of date, a line someone else moved already would be
+  moved again, and a part added since would stay behind. Recommendation: leave it as it
+  is, the move shows at once on the device anyway.
 
 ## Open questions and things to check by hand
 
@@ -79,7 +71,9 @@ it belongs to and the question goes.
 - The steps of the 875 recipes with a photo were filled in on 18 October 2026: 810 read without doubt, 57 with doubts to check (46 of them from the handwritten "bunter Ordner"), 7 without steps on the photo, 1 not read.
 - Picking photos on an iPhone from the batch form did not get as far as the upload for the household (October 2026), which could not be reproduced in WebKit. The folder button is off on touch screens now (`pointer-coarse`), and one recipe is added through `/rezepte/hinzufuegen`. Check a batch from an iPhone once more.
 - The live search loads the whole library into the browser, 1,427 recipes on 11 November 2026 (about 880 in October). Watch how long that takes as the library grows.
-- Speed on the phones after the migration `household_check_once` is live: open the app cold, switch between Woche, Rezepte and Einkauf, plan and remove a meal, type the first letter into the search. Before it, the database took up to 249 ms for one page of ingredient lines; the search index reads 17 of them.
+- Speed on the phones after the migrations `household_check_once` and `library_version` are live: open the app cold, switch between Woche, Rezepte and Einkauf, tap "Gute Idee!", step the servings three times quickly, empty a meal, mark a favourite and see it on the next page, type the first letter into the search, move a line to another note. None of it was measured in production.
+- `src/server/supabase/database.types.ts` has `library_version` written by hand, because `npm run db:types` reads the hosted project. Run it once the migration is applied; the file should not change beyond formatting.
+- The looks of a tap on the plan were checked in Chromium only. Check on an iPhone: "Gute Idee!", "Leeren", "Hier einplanen", and three quick taps on "+".
 - The cookbooks were framed with the first way of asking, and only their turned pages and an overview of all pages were checked by eye. A page that still lies wrongly is framed again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The season calendar's months come from general German calendars, not from the region around Laupheim, and were not checked against the household's market.
 - The offline flow was tested in Chromium (Playwright). On an iPhone, check once by hand: installed from Safari, open a note, airplane mode, tick, reopen the app, back online.
@@ -93,6 +87,7 @@ it belongs to and the question goes.
 - Which days count as workdays is fixed: Monday to Friday. A holiday is planned by hand.
 - The shopping days are the same every week. For a holiday on a shopping day the errand is moved to another day by hand ("An einem anderen Tag einkaufen").
 - The map tiles of the settings are fetched from tile.openstreetmap.org by the browser, as a visitor of OpenStreetMap: they show the household's area, nothing of its data. The address suggestions go through the server to Photon, a free service of Komoot without a key and with fair use; without it the field is a plain field.
+- The servings on the plan change with the tap, the rest of the meal with the server's answer: for that moment the link to the recipe still opens it with the amount before the tap.
 - Turning off zoom takes it from whoever needs larger writing; the household asked for it (October 2026). An iPhone home screen app made before October 2026 starts at "/": the proxy sends it on quickly, adding it to the home screen again starts at the plan directly.
 - Inviting someone needs no e-mail to be sent: the link is passed on by hand. Supabase's own mail server only writes to the project's team, so mail from the app would need another one.
 - What one device changes shows on the others while they are online. A phone without a connection in the shop sees the notes as they were when it last had one, with its own ticks; the counts on the tiles among the notes do not include ticks that still wait.
