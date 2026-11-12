@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { kept } = await import("./kept");
+const { kept, STUCK_MS } = await import("./kept");
 
 /** A household of its own for each test: what is kept lives as long as the module. */
 const household = (id: string, libraryVersion: number | null) => ({ id, libraryVersion });
@@ -79,6 +79,23 @@ describe("what the server keeps of a library", () => {
     const read = vi.fn().mockResolvedValueOnce("alt").mockResolvedValueOnce("neu");
     expect(await kept(household("h10", null), "library", read)).toBe("alt");
     expect(await kept(household("h10", null), "library", read)).toBe("neu");
+  });
+
+  it("stops waiting for a read that hangs, and reads again", async () => {
+    vi.useFakeTimers();
+    try {
+      const hanging = vi.fn(() => new Promise<string>(() => {}));
+      void kept(household("h11", 1), "library", hanging);
+      // Within the time a read may take, others wait for the same one.
+      void kept(household("h11", 1), "library", hanging);
+      expect(hanging).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(STUCK_MS);
+      expect(await kept(household("h11", 1), "library", async () => "frisch")).toBe("frisch");
+      // And what was read afresh is kept.
+      expect(await kept(household("h11", 1), "library", async () => "anders")).toBe("frisch");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps households apart", async () => {

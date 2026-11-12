@@ -25,6 +25,15 @@ interface Entry {
 const entries = new Map<string, Entry>();
 
 /**
+ * How long a read may take before those who come after it stop waiting for it and read for
+ * themselves. A request to the database that hangs, as happens on a bad network, is given
+ * up by the runtime only after five minutes: shared, it would keep every page of the
+ * household waiting that long (seen in the browser tests behind a firewall, November 2026).
+ * A read of the whole library takes a second or two.
+ */
+export const STUCK_MS = 10_000;
+
+/**
  * `read`'s result for the household, kept until its library changes. Requests that arrive
  * together share one read. Whoever asks with an older counter than the one kept gets what is
  * kept: it is newer than what they asked for. A read that fails is not kept.
@@ -50,9 +59,18 @@ export function kept<T>(
   const reads = entry.reads;
   const reading = read().then(frozen);
   reads.set(what, reading);
-  reading.catch(() => {
+  const forget = () => {
     if (reads.get(what) === reading) reads.delete(what);
-  });
+  };
+  // Whoever asked for it goes on waiting; the next one reads afresh.
+  const stuck = setTimeout(forget, STUCK_MS);
+  reading.then(
+    () => clearTimeout(stuck),
+    () => {
+      clearTimeout(stuck);
+      forget();
+    },
+  );
   return reading;
 }
 
