@@ -21,8 +21,10 @@ import {
   addToSlot,
   changeExtra,
   changeItem,
+  findSlot,
   setExtraPortions,
   removeFood,
+  loadSlot,
   loadWeek,
   planOpenSlots,
   resetWeek,
@@ -106,18 +108,26 @@ export async function planRecipe(form: FormData): Promise<void> {
   );
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const servings = (await plannedAmounts(db, [input.recipe], household.defaultServings)).get(
-    input.recipe,
-  );
-  if (servings !== undefined) {
-    const item = { recipeId: input.recipe, servings };
-    if (input.mode === "add") {
-      await addToSlot(db, household.id, input.week, input.date, input.meal, item);
-    } else {
-      await writeSlot(db, household.id, input.week, input.date, input.meal, {
-        kind: "recipes",
-        items: [item],
-      });
+  // The meal is read beside the recipe's servings, not after them (November 2026).
+  const servingsOf = async () =>
+    (await plannedAmounts(db, [input.recipe], household.defaultServings)).get(input.recipe);
+  if (input.mode === "add") {
+    const [servings, loaded] = await Promise.all([
+      servingsOf(),
+      loadSlot(db, household.id, input.week, input.date, input.meal),
+    ]);
+    if (servings !== undefined) {
+      const item = { recipeId: input.recipe, servings };
+      await addToSlot(db, household.id, input.week, input.date, input.meal, item, loaded);
+    }
+  } else {
+    const [servings, found] = await Promise.all([
+      servingsOf(),
+      findSlot(db, household.id, input.week, input.date, input.meal),
+    ]);
+    if (servings !== undefined) {
+      const content = { kind: "recipes" as const, items: [{ recipeId: input.recipe, servings }] };
+      await writeSlot(db, household.id, input.week, input.date, input.meal, content, found);
     }
   }
   afterPlanning(form, input);
@@ -194,16 +204,20 @@ export async function markSlot(form: FormData): Promise<void> {
   const db = await createSessionClient();
   // A typed meal that is the title of a recipe is planned as that recipe, so its ingredients
   // reach the shopping list. Wildcard characters would make the comparison a pattern.
+  let found;
   if (content.kind === "free_text" && !/[%_*\\]/.test(content.label)) {
-    const known = must(
-      await db
+    // The meal is found beside the title, not after it (November 2026).
+    const [typed, slot] = await Promise.all([
+      db
         .from("recipe")
         .select("id")
         .eq("status", "approved")
         .ilike("title", content.label)
         .limit(1),
-      "look up typed meal",
-    );
+      findSlot(db, household.id, input.week, input.date, input.meal),
+    ]);
+    found = slot;
+    const known = must(typed, "look up typed meal");
     const servings = known[0]
       ? (await plannedAmounts(db, [known[0].id], household.defaultServings)).get(known[0].id)
       : undefined;
@@ -211,7 +225,7 @@ export async function markSlot(form: FormData): Promise<void> {
       content = { kind: "recipes", items: [{ recipeId: known[0].id, servings }] };
     }
   }
-  await writeSlot(db, household.id, input.week, input.date, input.meal, content);
+  await writeSlot(db, household.id, input.week, input.date, input.meal, content, found);
   afterPlanning(form, input);
 }
 
@@ -223,14 +237,11 @@ export async function needsNoRecipe(form: FormData): Promise<void> {
   const input = read(place, form);
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const slot = (await loadWeek(db, input.week)).find(
-    (entry) => entry.date === input.date && entry.meal === input.meal,
-  );
-  if (slot?.kind === "free_text") {
-    await writeSlot(db, household.id, input.week, input.date, input.meal, {
-      kind: "away",
-      label: slot.label,
-    });
+  // Only its kind and name are needed: the meal alone, not the whole week (November 2026).
+  const found = await findSlot(db, household.id, input.week, input.date, input.meal);
+  if (found.slot?.kind === "free_text") {
+    const content = { kind: "away" as const, label: found.slot.label ?? "" };
+    await writeSlot(db, household.id, input.week, input.date, input.meal, content, found);
   }
   backToWeek(input.week, input.date);
 }
@@ -307,7 +318,6 @@ export async function cookMoreOfMeal(form: FormData): Promise<void> {
   await setExtraPortions(
     await createSessionClient(),
     household.id,
-    input.week,
     input.date,
     input.meal,
     input.extra,
@@ -329,7 +339,6 @@ export async function changeExtraPortions(form: FormData): Promise<void> {
   await setExtraPortions(
     await createSessionClient(),
     household.id,
-    input.week,
     input.date,
     input.meal,
     input.extra,
@@ -426,7 +435,7 @@ export async function addSlotFood(form: FormData): Promise<void> {
     ? { label: input.label, quantity: input.quantity }
     : readFood(input.label);
   if (food.label !== "") {
-    await addFood(db, household.id, input, food.label, input.shop || null, food.quantity);
+    await addFood(db, household, input, food.label, input.shop || null, food.quantity);
   }
   backToFoods(form, input);
 }
