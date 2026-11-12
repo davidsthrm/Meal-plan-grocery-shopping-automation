@@ -119,8 +119,14 @@ decisions, code layout, routes, data access and tests of Essensplan.
   shops and the members, which an import writes by the hundred, after three seconds of
   quiet and at least every ten seconds while it goes on (`refreshAt`). A change within three
   seconds of the device's own form or tick (`OWN_CHANGE`, sent once the server has the
-  ticks) waits until three seconds after it: in the shop, every tick read the whole notes
-  again half a second later. The Realtime client is a quarter of a page's script and is
+  ticks) is taken for its own coming back and is not read at all (`isOwn`): the page that
+  answered the tap has it, and Realtime cannot say whose change it was. In the shop, every
+  tick read the whole notes again half a second later; then the read waited until three
+  seconds after the tap, which was still one more render of the whole page for every burst
+  of taps and emptied the pages fetched ahead (until November 2026). What someone else
+  changed in those three seconds shows with the next change, or when the page comes back
+  into view. The search index of the browser is fetched again after the device's own
+  change of the library, without the page. The Realtime client is a quarter of a page's script and is
   loaded once the page is idle (October 2026).
 - `LiveRefresh` in the layout listens for changes to the plan, the lists, the note, the goals
   and to recipes, and calls `router.refresh()`: the page is read again from the server, under
@@ -177,7 +183,9 @@ decisions, code layout, routes, data access and tests of Essensplan.
   outside a request). The history of meals changes with every meal planned and is read per
   request. The counter's table is not in the Realtime publication: it must not make open
   pages read themselves again. The memory is one per server instance; a new instance reads
-  once. Measured on the household's data from a laptop (12 November 2026): the library for
+  once. A read that has not come back after ten seconds is no longer waited for by those
+  who come after it (`STUCK_MS`): a request to the database that hangs is given up only
+  after five minutes, and shared it kept every page of the household waiting that long. Measured on the household's data from a laptop (12 November 2026): the library for
   a list took 31 requests and 766 KB the first time and one request, the history, every
   time after; the search index 18 requests and 1.2 MB, then one.
 - A tap on the plan reads only its meal, the week and the meal in one request (`findSlot`),
@@ -195,7 +203,11 @@ decisions, code layout, routes, data access and tests of Essensplan.
   the same row of `shopping_line_state`. A line moved to another note waited for about 16
   requests one after the other and waits for about 9, most of them the week's notes; another
   shop on the same note 4 and now 2; a part bought with the rest moved 8 and now 3 (November
-  2026).
+  2026). The week's notes are still built for a move, to find the notes a line's parts are
+  from. The device knows them and could send them, but the server would lose its check
+  that the line is still on that note: from a page out of date, a line someone else moved
+  already would be moved again, and a part added since would stay behind. Decided against
+  in November 2026; the move shows at once on the device anyway.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - Server actions of one browser tab run one after the other. Work that should run side by side

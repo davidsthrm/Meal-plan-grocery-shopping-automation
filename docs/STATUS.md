@@ -50,18 +50,7 @@ Conventions and anything where two topics disagree are decided by David. A quest
 has to wait stands here, with a recommendation; once answered, the answer goes into the doc
 it belongs to and the question goes.
 
-- Speed, the echo (11 November 2026). A page reads itself again three seconds after the
-  device's own button or tick (`OWN_MS`), because Realtime cannot say whose change it was.
-  That is one more render per burst of taps, and it empties the pages fetched ahead.
-  Recommendation: take a change within three seconds of the device's own for its own and
-  do not read again; a change of someone else in those seconds then shows with the next
-  change or when the page comes back into view.
-- Speed, moving a line (12 November 2026). The server builds the week's notes to find the
-  notes a moved line's parts are from, about six of the nine requests it waits for. The
-  device knows them and could send them with its decision. Lost would be the check "not on
-  that note any more": from a page out of date, a line someone else moved already would be
-  moved again, and a part added since would stay behind. Recommendation: leave it as it
-  is, the move shows at once on the device anyway.
+- None open.
 
 ## Open questions and things to check by hand
 
@@ -71,7 +60,7 @@ it belongs to and the question goes.
 - The steps of the 875 recipes with a photo were filled in on 18 October 2026: 810 read without doubt, 57 with doubts to check (46 of them from the handwritten "bunter Ordner"), 7 without steps on the photo, 1 not read.
 - Picking photos on an iPhone from the batch form did not get as far as the upload for the household (October 2026), which could not be reproduced in WebKit. The folder button is off on touch screens now (`pointer-coarse`), and one recipe is added through `/rezepte/hinzufuegen`. Check a batch from an iPhone once more.
 - The live search loads the whole library into the browser, 1,427 recipes on 11 November 2026 (about 880 in October). Watch how long that takes as the library grows.
-- Speed on the phones once this is merged (the migrations `household_check_once` and `library_version` were applied on 12 November 2026): open the app cold, switch between Woche, Rezepte and Einkauf, tap "Gute Idee!", step the servings three times quickly, empty a meal, mark a favourite and see it on the next page, type the first letter into the search, move a line to another note. None of it was measured in production.
+- Speed on the phones once this is merged (the migrations `household_check_once` and `library_version` were applied on 12 November 2026): open the app cold, switch between Woche, Rezepte and Einkauf, tap "Gute Idee!", step the servings three times quickly, empty a meal, mark a favourite and see it on the next page, type the first letter into the search, move a line to another note. With two phones: what one plans shows on the other, also right after the other's own tap (a change within three seconds of a device's own tap is taken for its own). None of it was measured in production.
 - The looks of a tap on the plan were checked in Chromium only. Check on an iPhone: "Gute Idee!", "Leeren", "Hier einplanen", and three quick taps on "+".
 - The cookbooks were framed with the first way of asking, and only their turned pages and an overview of all pages were checked by eye. A page that still lies wrongly is framed again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The season calendar's months come from general German calendars, not from the region around Laupheim, and were not checked against the household's market.
