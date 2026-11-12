@@ -282,7 +282,7 @@ export async function saveSupermarketDetails(form: FormData): Promise<void> {
   const id = z.guid().parse(form.get("id"));
   const household = await requireHousehold();
   const db = await createSessionClient();
-  const index = await loadCatalogIndex(db);
+  const index = await loadCatalogIndex(db, household);
   const shop = index.shopById.get(id);
   if (!shop) back("supermaerkte");
   const details = readShopDetails(

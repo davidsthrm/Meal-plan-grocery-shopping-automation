@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { RecipeEditForm } from "@/components/recipe-edit-form";
 import { normalizeName } from "@/domain/catalog";
 import { UNITS } from "@/domain/units";
+import { requireHousehold } from "@/server/auth";
 import { loadIngredientNames } from "@/server/catalog";
 import { loadLibrary } from "@/server/library";
 import { loadRecipeForm } from "@/server/recipes";
@@ -14,11 +15,12 @@ export const metadata: Metadata = { title: "Rezept ändern" };
 /** Changing a recipe by hand: title, kind, servings, and every ingredient line. */
 export default async function EditRecipePage(props: PageProps<"/rezepte/[id]/bearbeiten">) {
   const { id } = await props.params;
+  const household = await requireHousehold();
   const db = await createSessionClient();
   const [recipe, library, catalog] = await Promise.all([
-    loadRecipeForm(db, id),
-    loadLibrary(db),
-    loadIngredientNames(db),
+    loadRecipeForm(db, household, id),
+    loadLibrary(db, household),
+    loadIngredientNames(db, household),
   ]);
   if (!recipe) notFound();
 

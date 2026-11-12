@@ -6,6 +6,7 @@ import { foodCounts } from "@/domain/library/fridge";
 import { pictogramFor } from "@/domain/library/pictogram";
 import { recipeTone } from "@/lib/plan-text";
 import { timeText } from "@/lib/recipe-text";
+import { requireHousehold } from "@/server/auth";
 import { loadFridge } from "@/server/library";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -18,8 +19,9 @@ export const metadata: Metadata = { title: "Was ist noch da?" };
  */
 export default async function FridgePage(props: PageProps<"/rezepte/zutaten">) {
   const params = await props.searchParams;
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const { foods, recipes } = await loadFridge(db);
+  const { foods, recipes } = await loadFridge(db, household);
   const asked = [params.z ?? []].flat();
   const items: FridgeItem[] = recipes
     .filter((recipe) => recipe.uses.length > 0)

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AWAY_MS,
   DAILY_TABLES,
+  isOwn,
   LIBRARY_TABLES,
   quicker,
   readOnReturn,
@@ -28,6 +29,18 @@ describe("refreshAt", () => {
 
   it("waits until this device's own taps have stopped for three seconds", () => {
     expect(refreshAt({ now: 1000, firstAt: 1000, pace: "daily", lastOwn: 800 })).toBe(3800);
+  });
+});
+
+describe("isOwn", () => {
+  it("takes a change right after this device's tap for its own", () => {
+    expect(isOwn({ now: 1200, lastOwn: 1000 })).toBe(true);
+    expect(isOwn({ now: 3999, lastOwn: 1000 })).toBe(true);
+  });
+
+  it("takes a change for someone else's once the device has been quiet for three seconds", () => {
+    expect(isOwn({ now: 4000, lastOwn: 1000 })).toBe(false);
+    expect(isOwn({ now: 1000, lastOwn: never })).toBe(false);
   });
 });
 

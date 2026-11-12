@@ -100,6 +100,15 @@ The paper metaphors in motion:
 - A card that explains itself does so behind a round "?" beside its heading (`HelpHeading`):
   the settings explained every card at length and their controls stood a screen further down
   (October 2026).
+- The week plan answers a tap before the server does: a tap showed only a busy button until
+  the whole page came back, and planning felt slow (November 2026). A form says what it
+  does (`data-does`: `plan`, `clear`, `place`, `add`), its button carries `data-pending`
+  while it is on its way (`SubmitButton`), and styles alone show the result: a suggestion
+  taken reads as planned, a meal emptied pales and is struck out and nothing else in it can
+  be tapped, a recipe placed stands where its button was. Nothing is stored in the browser,
+  and it ends by itself when the form is answered, also when the server refuses. The
+  servings stepper (`ServingsStepper`) shows the number of the tap on its way. Nothing
+  travels, so less motion changes nothing.
 - What is done with the recipes ticked in "Alle Rezepte" is a bar at the foot of the screen
   that opens upwards (`.selection-bar`, `SelectionBar`), out of sight while nothing is
   ticked. It is put directly into the body: every page comes in with a transform (`page-in`),

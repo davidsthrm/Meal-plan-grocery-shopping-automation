@@ -4,6 +4,7 @@ import { sameProductName } from "@/domain/import/map-ingredient";
 import { usualShop } from "@/domain/import/proposal";
 import { tidyProposals } from "@/domain/import/tidy-proposals";
 import { isUnit, type Unit } from "@/domain/units";
+import type { Household } from "../auth";
 import { loadCatalogIndex, must, type Db } from "../catalog";
 import type { Database } from "../supabase/database.types";
 
@@ -249,10 +250,10 @@ export interface ProposalDecision {
  */
 export async function decideProposals(
   db: Db,
-  householdId: string,
+  household: Pick<Household, "id" | "libraryVersion">,
   decisions: ProposalDecision[],
 ): Promise<Record<string, string>> {
-  const index = await loadCatalogIndex(db);
+  const index = await loadCatalogIndex(db, household);
   const open = new Map((await loadOpenProposals(db)).map((proposal) => [proposal.id, proposal]));
   const errors: Record<string, string> = {};
   const todo = decisions.filter((d) => d.decision !== "later" && open.has(d.id));
@@ -295,7 +296,7 @@ export async function decideProposals(
       const aisle = index.aisleGroupById.has(first.aisleGroupId)
         ? first.aisleGroupId
         : proposal.aisleGroupId;
-      const created = await acceptAsNew(db, householdId, first.id, {
+      const created = await acceptAsNew(db, household.id, first.id, {
         name: proposal.name,
         aisleGroupId: aisle,
         // A different aisle usually means a different shop too.

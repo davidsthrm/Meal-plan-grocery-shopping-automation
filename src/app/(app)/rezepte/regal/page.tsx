@@ -12,6 +12,7 @@ import { filterHref } from "@/components/recipe-filters";
 import { fromBookshelf } from "@/lib/origin";
 import { today } from "@/lib/today";
 import { SWAP } from "@/lib/transitions";
+import { requireHousehold } from "@/server/auth";
 import { loadLibraryForLists } from "@/server/recipe-list";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -49,8 +50,9 @@ const lastText = (day: string) => `Zuletzt am ${dayAndMonth(day)}`;
 export default async function BookshelfPage(props: PageProps<"/rezepte/regal">) {
   const params = await props.searchParams;
   const now = today();
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const library = await loadLibraryForLists(db, now);
+  const library = await loadLibraryForLists(db, household, now);
   const { recipes, categories, history } = library;
   const shelf = bookshelf(recipes, history, now);
   const asked = one(params.buch);

@@ -11,6 +11,8 @@ import {
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import type { GramsPer } from "@/domain/units";
 import { readPages } from "@/lib/paging";
+import type { Household } from "./auth";
+import { kept } from "./kept";
 import type { Database } from "./supabase/database.types";
 
 export type Db = SupabaseClient<Database>;
@@ -54,15 +56,27 @@ export async function allRows<T>(
   return readPages(async (from, to) => must(await page(from, to), what));
 }
 
-/** Every ingredient of the catalog with its names, for lists to choose from and to search. */
+/**
+ * Every ingredient of the catalog with its names, for lists to choose from and to search.
+ * Kept for the household when one is given (`kept`); the import and the scripts, outside a
+ * request, read it fresh.
+ */
 export async function loadIngredientNames(
   db: Db,
+  household?: Pick<Household, "id" | "libraryVersion">,
 ): Promise<{ id: string; name: string; synonyms: string[] }[]> {
-  return allRows(
-    (from, to) =>
-      db.from("ingredient").select("id, name, synonyms").order("name").order("id").range(from, to),
-    "load ingredient names",
-  );
+  const read = () =>
+    allRows(
+      (from, to) =>
+        db
+          .from("ingredient")
+          .select("id, name, synonyms")
+          .order("name")
+          .order("id")
+          .range(from, to),
+      "load ingredient names",
+    );
+  return household ? kept(household, "ingredient names", read) : read();
 }
 
 /** The household's supermarkets, the main one first. Empty until it has named one. */
@@ -93,9 +107,18 @@ export async function loadSupermarkets(db: Db): Promise<Shop[]> {
 
 /**
  * Loads the household's catalog in the shape the domain logic works with. Which household is
- * decided by row level security: the client only sees its own.
+ * decided by row level security: the client only sees its own. Kept for the household when
+ * one is given, like the names above. Its lookups are Maps, which freezing does not close:
+ * nobody may `set` or `delete` on them.
  */
-export async function loadCatalogIndex(db: Db): Promise<CatalogIndex> {
+export async function loadCatalogIndex(
+  db: Db,
+  household?: Pick<Household, "id" | "libraryVersion">,
+): Promise<CatalogIndex> {
+  return household ? kept(household, "catalog", () => readCatalogIndex(db)) : readCatalogIndex(db);
+}
+
+async function readCatalogIndex(db: Db): Promise<CatalogIndex> {
   const [shops, overrides, aisles, ingredients] = await Promise.all([
     db
       .from("shop")

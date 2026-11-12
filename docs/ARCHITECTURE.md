@@ -13,9 +13,11 @@ decisions, code layout, routes, data access and tests of Essensplan.
   server only.
 - Vitest for unit tests, Playwright for a few end-to-end flows.
 - UI text is written in German directly in the components. There is no strings file.
-- Cache Components are switched off (`next.config.ts`): every page is private and read per
-  request. Read `node_modules/next/dist/docs/` before using a Next.js API; version 16 differs
-  from older ones (`proxy.ts`, async `params`, `PageProps<"/route">`).
+- Cache Components are switched off (`next.config.ts`): every page is private and rendered
+  per request. What the server keeps between requests is the household's library alone,
+  under a counter of the database (see "Speed"). Read `node_modules/next/dist/docs/` before
+  using a Next.js API; version 16 differs from older ones (`proxy.ts`, async `params`,
+  `PageProps<"/route">`).
 
 ## Hosting and limits
 
@@ -49,6 +51,14 @@ decisions, code layout, routes, data access and tests of Essensplan.
 - Two Supabase clients on the server: `createSessionClient()` acts as the signed-in user and
   is bound by row level security; use it for all table access. `createAdminClient()` bypasses
   it and exists only for storage. Never use it for a table without checking access first.
+- A policy compares the row's household with the member's households, looked up once per
+  query: `household_id = any ((select private.my_household_ids())::uuid[])`. The first form,
+  `private.is_household_member(household_id)`, ran once for every row scanned, because
+  Postgres cannot inline a `security definer` function, and wrapping it in `(select ...)`
+  changes nothing while it takes a column: the last page of the 15,982 ingredient lines
+  took 249 ms in the database, 11 ms with the lookup done once (November 2026).
+  `supabase/tests/schema.test.ts` fails for a policy written the first way.
+  `is_household_member` stays for functions that ask about one household.
 - Every photo path a row names lies in its household's folder of the bucket
   (`private.in_household_folder`): the server signs and removes whatever path a row says,
   with the secret key, and a member can write those rows.
@@ -109,8 +119,14 @@ decisions, code layout, routes, data access and tests of Essensplan.
   shops and the members, which an import writes by the hundred, after three seconds of
   quiet and at least every ten seconds while it goes on (`refreshAt`). A change within three
   seconds of the device's own form or tick (`OWN_CHANGE`, sent once the server has the
-  ticks) waits until three seconds after it: in the shop, every tick read the whole notes
-  again half a second later. The Realtime client is a quarter of a page's script and is
+  ticks) is taken for its own coming back and is not read at all (`isOwn`): the page that
+  answered the tap has it, and Realtime cannot say whose change it was. In the shop, every
+  tick read the whole notes again half a second later; then the read waited until three
+  seconds after the tap, which was still one more render of the whole page for every burst
+  of taps and emptied the pages fetched ahead (until November 2026). What someone else
+  changed in those three seconds shows with the next change, or when the page comes back
+  into view. The search index of the browser is fetched again after the device's own
+  change of the library, without the page. The Realtime client is a quarter of a page's script and is
   loaded once the page is idle (October 2026).
 - `LiveRefresh` in the layout listens for changes to the plan, the lists, the note, the goals
   and to recipes, and calls `router.refresh()`: the page is read again from the server, under
@@ -142,6 +158,56 @@ decisions, code layout, routes, data access and tests of Essensplan.
   depend on its week before it finds the week (the library on `/woche`), and reads that do
   not depend on each other go side by side: a week's recipes and foods, the library's
   recipes, tags and links, and the earlier dm entries with everything else of the notes.
+- A read that needs rows of a related table filters on it in the same request
+  (`week_plan!inner(week_start)`, `plan_slot!inner(date)`, `ingredient(name, synonyms)`),
+  instead of looking up ids first and asking again per hundred of them. Until November 2026
+  every read of a week looked up the week's id first, the history of meals and a recipe's
+  last day asked per hundred meals one request after the other, and a recipe's page read
+  the whole catalog, 1,366 ingredients in five requests, to name its ten lines, for each
+  of up to sixty recipes a list fetches ahead. "Auf den Einkaufszettel" reads the catalog
+  once for all entries of the Merkzettel it moves, and only if a kind has to be guessed.
+- The server keeps a household's library between requests and reads it again only when it
+  changed (`kept` in `src/server/kept.ts`): the recipes with their tags, the catalog and
+  its names, the foods with a season per recipe, and the part of the search index made
+  from the 15,982 ingredient lines. With 1,427 recipes the week plan, the chooser of a
+  meal, Entdecken and the favourites each read all of it for every render, about 32
+  requests and 1.7 MB, and so did every page fetched ahead and every answer to a button
+  (November 2026). Whether it changed says a counter per household, `library_version`,
+  which triggers raise with every change of `recipe`, `recipe_tag`, `tag`,
+  `recipe_ingredient`, `ingredient`, `shop`, `shop_aisle_order` and `aisle_group`, in the
+  same transaction. `requireHousehold` reads the counter with the household, before any
+  read of the library, so what is kept under a counter is never older than it: a favourite
+  tapped shows on the page that answers the tap. Requests that arrive together share one
+  read. What is kept is frozen, because requests share it: never change it in place. A
+  loader given no household reads afresh (the import's steps and the scripts, which run
+  outside a request). The history of meals changes with every meal planned and is read per
+  request. The counter's table is not in the Realtime publication: it must not make open
+  pages read themselves again. The memory is one per server instance; a new instance reads
+  once. A read that has not come back after ten seconds is no longer waited for by those
+  who come after it (`STUCK_MS`): a request to the database that hangs is given up only
+  after five minutes, and shared it kept every page of the household waiting that long. Measured on the household's data from a laptop (12 November 2026): the library for
+  a list took 31 requests and 766 KB the first time and one request, the history, every
+  time after; the search index 18 requests and 1.2 MB, then one.
+- A tap on the plan reads only its meal, the week and the meal in one request (`findSlot`),
+  beside whatever else the action reads, and writes what does not depend on each other
+  side by side. Until November 2026 every write went one after the other: "Gute Idee!" 6
+  to 9 round trips and now 4, the stepper 7 and now 5, "Leeren" 3 and now 2, "Mehr
+  kochen" with leftovers 7 and now 2. A wish is fulfilled once its recipe is stored, not
+  beside it.
+- The plan answers a tap before the server does (see
+  [DESIGN.md](DESIGN.md#controls-and-sizes)): its forms stay plain forms, and styles on
+  the pending button show what the tap did. The stepper shows the number of the tap on its
+  way and sends each tap's own number, so quick taps add up.
+- A decision from the shop looks each note's list up once, and reads the lists and the
+  week's notes together; what follows from it is written side by side, except writes to
+  the same row of `shopping_line_state`. A line moved to another note waited for about 16
+  requests one after the other and waits for about 9, most of them the week's notes; another
+  shop on the same note 4 and now 2; a part bought with the rest moved 8 and now 3 (November
+  2026). The week's notes are still built for a move, to find the notes a line's parts are
+  from. The device knows them and could send them, but the server would lose its check
+  that the line is still on that note: from a page out of date, a line someone else moved
+  already would be moved again, and a part added since would stay behind. Decided against
+  in November 2026; the move shows at once on the device anyway.
 - The week plan and the filters are plain forms and links: a server action per button, the
   filter in the address. They work before any script has loaded and need no client state.
 - Server actions of one browser tab run one after the other. Work that should run side by side

@@ -11,9 +11,16 @@ import { knownSources, type KnownSource } from "@/domain/library/source";
 import type { Category, ProteinType, RecipeSummary } from "@/domain/library/summary";
 import { groupTags, TAG_GROUPS, type Tag, type TagGroup } from "@/domain/library/tags";
 import { withHistory } from "@/domain/library/discover";
-import { foodsByRecipe, foodsOfCatalog, monthOf } from "@/domain/season/calendar";
+import {
+  foodsByRecipe,
+  foodsOfCatalog,
+  monthOf,
+  type SeasonalFood,
+} from "@/domain/season/calendar";
 import { today } from "@/lib/today";
+import type { Household } from "./auth";
 import { allRows, loadIngredientNames, must, type Db } from "./catalog";
+import { kept } from "./kept";
 import { loadHistory } from "./planning/week";
 import { CALENDAR, withSeason } from "./season";
 
@@ -21,6 +28,8 @@ import { CALENDAR, withSeason } from "./season";
  * The recipe library as the pages need it. Which household is decided by row level
  * security: the client only sees its own.
  */
+
+type KeptFor = Pick<Household, "id" | "libraryVersion">;
 
 export interface Library {
   /** Every approved recipe. */
@@ -44,7 +53,12 @@ export async function loadTagIds(db: Db): Promise<Map<string, string>> {
   );
 }
 
-export async function loadLibrary(db: Db): Promise<Library> {
+/** Kept for the household when one is given (`kept`): it changes rarely. */
+export async function loadLibrary(db: Db, household?: KeptFor): Promise<Library> {
+  return household ? kept(household, "library", () => readLibrary(db)) : readLibrary(db);
+}
+
+async function readLibrary(db: Db): Promise<Library> {
   // The links of recipes and tags are read alongside the recipes and the tags, not after the
   // tags: what a link names that is no category and no described tag is passed over below.
   const [rows, tags, links] = await Promise.all([
@@ -123,13 +137,31 @@ export async function loadLibrary(db: Db): Promise<Library> {
 
 /**
  * The library as the browser searches it while someone types: the recipes, and per recipe
- * which ingredients it uses.
+ * which ingredients it uses. What depends only on the library and the catalog is kept, the
+ * 15,982 ingredient lines (17 pages) among it; the season of today's month and the history
+ * of meals, which changes with every meal planned, are applied per request.
  */
-export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
+export async function loadSearchIndex(db: Db, household: KeptFor): Promise<SearchIndex> {
   const now = today();
-  const [library, catalog, lines, history] = await Promise.all([
-    loadLibrary(db),
-    loadIngredientNames(db),
+  const [index, history] = await Promise.all([
+    kept(household, "search index", () => readSearchIndex(db, household)),
+    loadHistory(db, now),
+  ]);
+  const { foods, ...rest } = index;
+  // The filters "Passt zur Saison" and "Lange nicht gekocht" work while typing too.
+  return {
+    ...rest,
+    recipes: withHistory(withSeason(rest.recipes, foods, monthOf(now)), history, now),
+  };
+}
+
+async function readSearchIndex(
+  db: Db,
+  household: KeptFor,
+): Promise<SearchIndex & { foods: Map<string, SeasonalFood[]> }> {
+  const [library, catalog, lines] = await Promise.all([
+    loadLibrary(db, household),
+    loadIngredientNames(db, household),
     allRows(
       (from, to) =>
         db
@@ -139,11 +171,7 @@ export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
           .range(from, to),
       "load ingredient lines",
     ),
-    loadHistory(db, now),
   ]);
-  // The filters "Passt zur Saison" and "Lange nicht gekocht" work while typing too.
-  const foods = foodsByRecipe(foodsOfCatalog(CALENDAR, catalog), lines);
-  const recipes = withHistory(withSeason(library.recipes, foods, monthOf(now)), history, now);
   const at = new Map(catalog.map((ingredient, position) => [ingredient.id, position]));
   const uses = new Map<string, Set<number>>();
   const loose = new Map<string, string[]>();
@@ -159,7 +187,8 @@ export async function loadSearchIndex(db: Db): Promise<SearchIndex> {
     }
   }
   return {
-    recipes,
+    recipes: library.recipes,
+    foods: foodsByRecipe(foodsOfCatalog(CALENDAR, catalog), lines),
     categories: library.categories,
     tags: library.tagGroups.flatMap((group) =>
       group.tags.map((tag) => ({ ref: tag.ref, name: tag.name })),
@@ -182,13 +211,17 @@ const MAX_INGREDIENTS_PER_WORD = 150;
  * its other names, or the printed line of an ingredient the catalog does not know yet. A word
  * that names no ingredient as written may be one typing mistake away from one.
  */
-async function ingredientHits(db: Db, text: string): Promise<Map<string, Set<string>>> {
+async function ingredientHits(
+  db: Db,
+  household: KeptFor,
+  text: string,
+): Promise<Map<string, Set<string>>> {
   const printed = text.split(/[\s,;/]+/).filter(Boolean);
   const words = searchWords(text).filter((word) => word.length >= MIN_INGREDIENT_WORD);
   const hits = new Map<string, Set<string>>();
   if (words.length === 0) return hits;
 
-  const ingredients = (await loadIngredientNames(db)).map((ingredient) => ({
+  const ingredients = (await loadIngredientNames(db, household)).map((ingredient) => ({
     id: ingredient.id,
     names: [ingredient.name, ...ingredient.synonyms].map(searchKey),
   }));
@@ -240,6 +273,7 @@ async function ingredientHits(db: Db, text: string): Promise<Map<string, Set<str
 /** Searches the library with a filter: what fits, best first, and what fits in part. */
 export async function searchLibrary(
   db: Db,
+  household: KeptFor,
   library: Library,
   filter: RecipeFilter,
 ): Promise<SearchResult> {
@@ -248,7 +282,8 @@ export async function searchLibrary(
     library.tagGroups.flatMap((group) => group.tags.map((tag) => [tag.ref, tag.name])),
   );
   return searchRecipes(library.recipes, filter, {
-    ingredientHits: filter.text.trim() === "" ? undefined : await ingredientHits(db, filter.text),
+    ingredientHits:
+      filter.text.trim() === "" ? undefined : await ingredientHits(db, household, filter.text),
     categoryName: (key) => names.get(key),
     tagName: (ref) => tagNames.get(ref),
   });
@@ -266,9 +301,9 @@ export interface FridgeLibrary {
  * The library as "Was ist noch da?" needs it. Pantry staples are left out: salt and oil are
  * always there and decide nothing. A food no recipe uses is not offered.
  */
-export async function loadFridge(db: Db): Promise<FridgeLibrary> {
+export async function loadFridge(db: Db, household: KeptFor): Promise<FridgeLibrary> {
   const [library, catalog, lines] = await Promise.all([
-    loadLibrary(db),
+    loadLibrary(db, household),
     allRows(
       (from, to) =>
         db

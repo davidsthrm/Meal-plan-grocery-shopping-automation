@@ -21,7 +21,7 @@ const one = (value: string | string[] | undefined) =>
 export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
   const params = await props.searchParams;
   const household = await requireHousehold();
-  const { categories } = await loadLibrary(await createSessionClient());
+  const { categories } = await loadLibrary(await createSessionClient(), household);
   // Started from a meal of the week plan: the new recipe goes there.
   const meal = { w: one(params.w), d: one(params.d), m: one(params.m) };
   const forMeal = meal.w !== "" && meal.d !== "" && meal.m !== "";

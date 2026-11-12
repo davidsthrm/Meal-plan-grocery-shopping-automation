@@ -15,7 +15,9 @@ import { findIngredient } from "@/domain/catalog";
 import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/planned";
 import { asSide } from "@/domain/vesper";
 import { today } from "@/lib/today";
+import type { Household } from "../auth";
 import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
+import type { Tables } from "../supabase/database.types";
 
 /**
  * Reading and writing week plans. A week exists in the database from the first meal planned
@@ -23,10 +25,23 @@ import { allRows, loadCatalogIndex, maybe, must, type Db } from "../catalog";
  */
 
 export async function loadWeek(db: Db, weekStart: IsoDate): Promise<PlanSlot[]> {
-  const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
-  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
-  if (!plan.data) return [];
-  return loadSlots(db, [plan.data.id]);
+  // The meals are found through their week in the same request: looking up the week's id
+  // first made every read of a week, several per page of the plan, a round trip longer
+  // (November 2026). A week without a plan has no meals.
+  const slots = await allRows(
+    (from, to) =>
+      db
+        .from("plan_slot")
+        .select(
+          "id, date, meal, kind, label, leftovers_of_slot_id, extra_servings, week_plan!inner(week_start)",
+        )
+        .eq("week_plan.week_start", weekStart)
+        .order("date")
+        .order("id")
+        .range(from, to),
+    "load meals",
+  );
+  return withContents(db, slots);
 }
 
 /**
@@ -110,6 +125,16 @@ async function loadSlots(db: Db, planIds: string[]): Promise<PlanSlot[]> {
         .range(from, to),
     "load meals",
   );
+  return withContents(db, slots);
+}
+
+type SlotRow = Pick<
+  Tables<"plan_slot">,
+  "id" | "date" | "meal" | "kind" | "label" | "leftovers_of_slot_id" | "extra_servings"
+>;
+
+/** Meals as they are read, with their recipes and foods. */
+async function withContents(db: Db, slots: SlotRow[]): Promise<PlanSlot[]> {
   const withRecipes = slots.filter((slot) => slot.kind === "recipes").map((slot) => slot.id);
   // Foods go with a meal without a recipe, and with recipes as what they do not cover.
   const withFoods = slots
@@ -250,6 +275,50 @@ export async function ensureWeek(db: Db, householdId: string, weekStart: IsoDate
   return plan.id;
 }
 
+/** A week's id, null while nothing was ever planned in it, and one meal of it, if planned. */
+export type FoundSlot = { planId: string | null; slot: Pick<SlotRow, "id" | "kind"> | null };
+
+/**
+ * Finds a week and one meal of it in one request. Opening the week (`ensureWeek`) and then
+ * looking for the meal made every tap on the plan wait two round trips (November 2026).
+ */
+export async function findSlot(
+  db: Db,
+  householdId: string,
+  weekStart: IsoDate,
+  date: IsoDate,
+  meal: Meal,
+): Promise<FoundSlot & { slot: SlotRow | null }> {
+  const plan = maybe(
+    await db
+      .from("week_plan")
+      .select("id, plan_slot(id, date, meal, kind, label, leftovers_of_slot_id, extra_servings)")
+      .eq("household_id", householdId)
+      .eq("week_start", weekStart)
+      .eq("plan_slot.date", date)
+      .eq("plan_slot.meal", meal)
+      .maybeSingle(),
+    "find meal",
+  );
+  return { planId: plan?.id ?? null, slot: plan?.plan_slot[0] ?? null };
+}
+
+/**
+ * One meal as `loadWeek` reads it, and its week's id: two round trips, where reading the
+ * whole week to find the meal took two and three requests (November 2026).
+ */
+export async function loadSlot(
+  db: Db,
+  householdId: string,
+  weekStart: IsoDate,
+  date: IsoDate,
+  meal: Meal,
+): Promise<{ planId: string | null; slot: PlanSlot | null }> {
+  const found = await findSlot(db, householdId, weekStart, date, meal);
+  const [slot] = found.slot ? await withContents(db, [found.slot]) : [];
+  return { planId: found.planId, slot: slot ?? null };
+}
+
 /**
  * A recipe someone wanted to cook is on a plan now: the wish is fulfilled and its mark goes.
  */
@@ -267,7 +336,11 @@ async function fulfilWishes(db: Db, recipeIds: string[]): Promise<void> {
  * Sets what one meal of a week is, replacing what was there. Null empties it. A recipe that
  * comes without the day it was planned on is planned today; one that is written again, with
  * other servings or next to a new side, keeps its day. Returns the meal's new id, or null
- * when nothing is planned on it now.
+ * when nothing is planned on it now. `found` is the week and the meal when the caller has
+ * already looked them up (`findSlot`, `loadSlot`), side by side with what else it reads.
+ *
+ * What does not depend on each other is written side by side: writing a meal took 5 to 8
+ * round trips one after the other, and takes 2 to 4 (November 2026).
  */
 export async function writeSlot(
   db: Db,
@@ -276,18 +349,12 @@ export async function writeSlot(
   date: IsoDate,
   meal: Meal,
   content: SlotContent | null,
+  found?: FoundSlot,
 ): Promise<string | null> {
-  const planId = await ensureWeek(db, householdId, weekStart);
-  const existing = maybe(
-    await db
-      .from("plan_slot")
-      .select("id, kind")
-      .eq("week_plan_id", planId)
-      .eq("date", date)
-      .eq("meal", meal)
-      .maybeSingle(),
-    "find meal",
-  );
+  const { planId: known, slot: existing } =
+    found ?? (await findSlot(db, householdId, weekStart, date, meal));
+  // The week comes into being only when it has no plan yet, as before.
+  const planId = known ?? (await ensureWeek(db, householdId, weekStart));
   // A meal without a recipe is no "recipes" meal.
   if (content === null || (content.kind === "recipes" && content.items.length === 0)) {
     if (existing) {
@@ -309,15 +376,17 @@ export async function writeSlot(
     content.kind === "recipes" && content.foods === undefined && existing?.kind === "recipes";
   let slotId: string;
   if (existing) {
-    // The meal keeps its id, so that leftovers planned from it stay linked to it.
-    const tables = keepFoods
-      ? (["plan_slot_item"] as const)
-      : (["plan_slot_item", "plan_slot_food"] as const);
-    for (const table of tables) {
-      const cleared = await db.from(table).delete().eq("plan_slot_id", existing.id);
-      if (cleared.error) throw new Error(`clear meal: ${cleared.error.message}`);
+    // The meal keeps its id, so that leftovers planned from it stay linked to it. Its
+    // recipes, its foods and its own row are different rows: cleared and updated side by
+    // side, one round trip instead of three.
+    const [items, foods, updated] = await Promise.all([
+      db.from("plan_slot_item").delete().eq("plan_slot_id", existing.id),
+      keepFoods ? null : db.from("plan_slot_food").delete().eq("plan_slot_id", existing.id),
+      db.from("plan_slot").update(row).eq("id", existing.id),
+    ]);
+    for (const cleared of [items, foods]) {
+      if (cleared?.error) throw new Error(`clear meal: ${cleared.error.message}`);
     }
-    const updated = await db.from("plan_slot").update(row).eq("id", existing.id);
     if (updated.error) throw new Error(`plan meal: ${updated.error.message}`);
     slotId = existing.id;
   } else {
@@ -330,29 +399,45 @@ export async function writeSlot(
       "plan meal",
     ).id;
   }
-  if (content.kind === "free_text" || (content.kind === "recipes" && !keepFoods)) {
-    await storeFoods(db, householdId, slotId, content.foods ?? []);
+  const foods =
+    content.kind === "free_text" || (content.kind === "recipes" && !keepFoods)
+      ? storeFoods(db, householdId, slotId, content.foods ?? [])
+      : null;
+  if (content.kind !== "recipes") {
+    await foods;
+    return slotId;
   }
-  if (content.kind !== "recipes") return slotId;
-  const items = await db.from("plan_slot_item").insert(
-    content.items.map((item, position) => ({
-      household_id: householdId,
-      plan_slot_id: slotId,
-      recipe_id: item.recipeId,
-      servings: item.servings,
-      position,
-      ...plannedWhen(item),
-    })),
+  const storeItems = async () => {
+    const items = await db.from("plan_slot_item").insert(
+      content.items.map((item, position) => ({
+        household_id: householdId,
+        plan_slot_id: slotId,
+        recipe_id: item.recipeId,
+        servings: item.servings,
+        position,
+        ...plannedWhen(item),
+      })),
+    );
+    if (items.error) {
+      // Do not leave a meal behind that claims to have recipes and has none.
+      await db.from("plan_slot").delete().eq("id", slotId);
+      throw new Error(`plan recipes of meal: ${items.error.message}`);
+    }
+    // A wish is fulfilled once its recipe is on the plan, not before: a recipe that could
+    // not be stored keeps its mark.
+    await fulfilWishes(
+      db,
+      content.items.map((item) => item.recipeId),
+    );
+  };
+  // The foods are stored beside the recipes, not before them. Both are waited for, so a
+  // meal whose recipes failed is removed whatever else failed, and the first failure is
+  // thrown.
+  const stored = await Promise.allSettled([foods, storeItems()]);
+  const failed = stored.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
   );
-  if (items.error) {
-    // Do not leave a meal behind that claims to have recipes and has none.
-    await db.from("plan_slot").delete().eq("id", slotId);
-    throw new Error(`plan recipes of meal: ${items.error.message}`);
-  }
-  await fulfilWishes(
-    db,
-    content.items.map((item) => item.recipeId),
-  );
+  if (failed) throw failed.reason;
   return slotId;
 }
 
@@ -423,7 +508,10 @@ export async function planOpenSlots(
   );
 }
 
-/** Adds a recipe to a meal that may already have some: a main dish and its side. */
+/**
+ * Adds a recipe to a meal that may already have some: a main dish and its side. `loaded` is
+ * the meal as it is now (`loadSlot`), read by the caller beside the recipe's servings.
+ */
 export async function addToSlot(
   db: Db,
   householdId: string,
@@ -431,17 +519,24 @@ export async function addToSlot(
   date: IsoDate,
   meal: Meal,
   item: SlotItem,
+  loaded: Awaited<ReturnType<typeof loadSlot>>,
 ): Promise<void> {
-  const existing = (await loadWeek(db, weekStart)).find(
-    (slot) => slot.date === date && slot.meal === meal,
-  );
+  const existing = loaded.slot;
   const items = existing?.kind === "recipes" ? existing.items : [];
   if (items.some((other) => other.recipeId === item.recipeId)) return;
-  await writeSlot(db, householdId, weekStart, date, meal, {
-    kind: "recipes",
-    items: [...items, item],
-    extra: existing?.kind === "recipes" ? existing.extra : 0,
-  });
+  await writeSlot(
+    db,
+    householdId,
+    weekStart,
+    date,
+    meal,
+    {
+      kind: "recipes",
+      items: [...items, item],
+      extra: existing?.kind === "recipes" ? existing.extra : 0,
+    },
+    loaded,
+  );
 }
 
 /**
@@ -453,35 +548,40 @@ export async function addToSlot(
 export async function setExtraPortions(
   db: Db,
   householdId: string,
-  weekStart: IsoDate,
   date: IsoDate,
   meal: Meal,
   extra: number,
   leftoversOn: { date: IsoDate; meal: Meal } | null = null,
 ): Promise<void> {
-  const planId = await ensureWeek(db, householdId, weekStart);
-  const cooked = maybe(
-    await db
+  // The meal is updated by its day, and the later meal looked up, side by side: opening the
+  // week, updating, reading the later week whole, opening it again and finding the meal
+  // took seven round trips one after the other, and take two (November 2026). A meal is
+  // stored in the week of its day, so the day and the meal name it without the week's id.
+  const [cooked, later] = await Promise.all([
+    db
       .from("plan_slot")
       .update({ extra_servings: extra })
-      .eq("week_plan_id", planId)
+      .eq("household_id", householdId)
       .eq("date", date)
       .eq("meal", meal)
       .eq("kind", "recipes")
       .select("id")
       .maybeSingle(),
-    "cook more",
+    leftoversOn
+      ? findSlot(db, householdId, mondayOf(leftoversOn.date), leftoversOn.date, leftoversOn.meal)
+      : null,
+  ]);
+  const done = maybe(cooked, "cook more");
+  if (!done || !leftoversOn || !later || later.slot) return;
+  await writeSlot(
+    db,
+    householdId,
+    mondayOf(leftoversOn.date),
+    leftoversOn.date,
+    leftoversOn.meal,
+    { kind: "leftovers", ofSlotId: done.id },
+    later,
   );
-  if (!cooked || !leftoversOn) return;
-  const later = mondayOf(leftoversOn.date);
-  const taken = (await loadWeek(db, later)).some(
-    (slot) => slot.date === leftoversOn.date && slot.meal === leftoversOn.meal,
-  );
-  if (taken) return;
-  await writeSlot(db, householdId, later, leftoversOn.date, leftoversOn.meal, {
-    kind: "leftovers",
-    ofSlotId: cooked.id,
-  });
 }
 
 /** Changes one recipe of a meal: other servings, or none of it any more. */
@@ -494,19 +594,22 @@ export async function changeItem(
   recipeId: string,
   servings: number | null,
 ): Promise<void> {
-  const existing = (await loadWeek(db, weekStart)).find(
-    (slot) => slot.date === date && slot.meal === meal,
-  );
+  const loaded = await loadSlot(db, householdId, weekStart, date, meal);
+  const existing = loaded.slot;
   if (existing?.kind !== "recipes") return;
   const items = existing.items.flatMap((item) => {
     if (item.recipeId !== recipeId) return [item];
     return servings === null ? [] : [{ ...item, servings }];
   });
-  await writeSlot(db, householdId, weekStart, date, meal, {
-    kind: "recipes",
-    items,
-    extra: existing.extra,
-  });
+  await writeSlot(
+    db,
+    householdId,
+    weekStart,
+    date,
+    meal,
+    { kind: "recipes", items, extra: existing.extra },
+    loaded,
+  );
 }
 
 /** How far back the history of planned meals is read. */
@@ -514,35 +617,26 @@ const HISTORY_DAYS = 182;
 
 /** The last day each recipe was on a plan before `before`. */
 export async function loadHistory(db: Db, before: IsoDate): Promise<Map<string, IsoDate>> {
-  const slots = await allRows(
+  // The recipes are read with the day of their meal, filtered on it, in one request: the
+  // meals first and then their recipes, a hundred meals per request one after the other,
+  // kept the plan waiting a round trip and more (November 2026).
+  const items = await allRows(
     (from, to) =>
       db
-        .from("plan_slot")
-        .select("id, date")
-        .eq("kind", "recipes")
-        .lt("date", before)
-        .gte("date", addDays(before, -HISTORY_DAYS))
+        .from("plan_slot_item")
+        .select("recipe_id, plan_slot!inner(date, kind)")
+        .eq("plan_slot.kind", "recipes")
+        .lt("plan_slot.date", before)
+        .gte("plan_slot.date", addDays(before, -HISTORY_DAYS))
         .order("id")
         .range(from, to),
-    "load earlier meals",
+    "load earlier recipes",
   );
-  const dateOf = new Map(slots.map((slot) => [slot.id, slot.date]));
   const history = new Map<string, IsoDate>();
-  const ids = [...dateOf.keys()];
-  // In portions, so the list of meals fits into the address of one request.
-  for (let at = 0; at < ids.length; at += 100) {
-    const items = must(
-      await db
-        .from("plan_slot_item")
-        .select("plan_slot_id, recipe_id")
-        .in("plan_slot_id", ids.slice(at, at + 100)),
-      "load earlier recipes",
-    );
-    for (const item of items) {
-      const date = dateOf.get(item.plan_slot_id) as IsoDate;
-      const known = history.get(item.recipe_id);
-      if (known === undefined || date > known) history.set(item.recipe_id, date);
-    }
+  for (const item of items) {
+    const date = item.plan_slot.date;
+    const known = history.get(item.recipe_id);
+    if (known === undefined || date > known) history.set(item.recipe_id, date);
   }
   return history;
 }
@@ -556,31 +650,22 @@ export async function loadLastCooked(
   recipeId: string,
   today: IsoDate,
 ): Promise<IsoDate | null> {
+  // One request, the day of each meal read with it: as for `loadHistory` (November 2026).
   const items = await allRows(
     (from, to) =>
       db
         .from("plan_slot_item")
-        .select("id, plan_slot_id")
+        .select("plan_slot!inner(date)")
         .eq("recipe_id", recipeId)
+        .lt("plan_slot.date", today)
         .order("id")
         .range(from, to),
-    "load meals of recipe",
+    "load days of recipe",
   );
-  const ids = [...new Set(items.map((item) => item.plan_slot_id))];
-  const days: IsoDate[] = [];
-  // In portions, so the list of meals fits into the address of one request.
-  for (let at = 0; at < ids.length; at += SLOTS_PER_REQUEST) {
-    const slots = must(
-      await db
-        .from("plan_slot")
-        .select("date")
-        .in("id", ids.slice(at, at + SLOTS_PER_REQUEST))
-        .lt("date", today),
-      "load days of recipe",
-    );
-    days.push(...slots.map((slot) => slot.date));
-  }
-  return lastCooked(days, today);
+  return lastCooked(
+    items.map((item) => item.plan_slot.date),
+    today,
+  );
 }
 
 /**
@@ -684,7 +769,7 @@ export async function mealWithFoods(db: Db, weekStart: IsoDate, date: IsoDate, m
  */
 export async function addFood(
   db: Db,
-  householdId: string,
+  household: Pick<Household, "id" | "libraryVersion">,
   place: { week: IsoDate; date: IsoDate; meal: Meal },
   label: string,
   shopName: string | null,
@@ -697,12 +782,12 @@ export async function addFood(
     return;
   }
   const [index, shops] = await Promise.all([
-    loadCatalogIndex(db),
+    loadCatalogIndex(db, household),
     db.from("shop").select("id, name"),
   ]);
   const shop = shopName ? must(shops, "load shops").find((entry) => entry.name === shopName) : null;
   const stored = await db.from("plan_slot_food").insert({
-    household_id: householdId,
+    household_id: household.id,
     plan_slot_id: slot.id,
     label: name,
     quantity,
@@ -752,14 +837,14 @@ export async function loadPlannedAt(
 
 /** The recipes a week needs outside its meals, oldest first. */
 export async function loadExtras(db: Db, weekStart: IsoDate): Promise<PlanExtra[]> {
-  const plan = await db.from("week_plan").select("id").eq("week_start", weekStart).maybeSingle();
-  if (plan.error) throw new Error(`load week: ${plan.error.message}`);
-  if (!plan.data) return [];
+  // Found through their week in the same request, as the meals are (`loadWeek`).
   const rows = must(
     await db
       .from("plan_extra")
-      .select("recipe_id, servings, note, needed_on, planned_on, created_at")
-      .eq("week_plan_id", plan.data.id)
+      .select(
+        "recipe_id, servings, note, needed_on, planned_on, created_at, week_plan!inner(week_start)",
+      )
+      .eq("week_plan.week_start", weekStart)
       .order("created_at"),
     "load extras of week",
   );

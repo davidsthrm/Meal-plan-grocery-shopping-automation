@@ -45,6 +45,7 @@ import {
 import { pictogramForFilter } from "@/domain/library/pictogram";
 import { monthInSeason, monthOf, MONTH_NAME, seasonTagOf } from "@/domain/season/calendar";
 import { today } from "@/lib/today";
+import { requireHousehold } from "@/server/auth";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { CALENDAR } from "@/server/season";
 import { createSessionClient } from "@/server/supabase/server";
@@ -83,9 +84,10 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const shown = Math.max(STEP, Number(params.n) || STEP);
   const now = today();
   const month = monthOf(now);
+  const household = await requireHousehold();
   const db = await createSessionClient();
   const [library, waitingRows] = await Promise.all([
-    loadLibraryForLists(db, now),
+    loadLibraryForLists(db, household, now),
     db.from("recipe").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
   ]);
   const { recipes, categories, tagGroups } = library;
@@ -96,7 +98,10 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
   const browsing = isNoFilter(filter);
   // Favourites and wishes are on "Favoriten": only a search by words finds them here.
   const offered = toDiscover(recipes, filter);
-  const list = await listRecipes(db, library, offered, filter, { season: true, longAgo: true });
+  const list = await listRecipes(db, household, library, offered, filter, {
+    season: true,
+    longAgo: true,
+  });
   const favorites = recipes.filter((recipe) => recipe.isFavorite);
   // A category's tab is a page of its own inside the category; "Für euch" is the whole library.
   const tabs = browsing ? categoryTabs(offered, categories) : [];

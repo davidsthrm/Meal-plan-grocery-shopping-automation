@@ -143,6 +143,9 @@ test("a meal with a recipe takes bread to go with it, which the bakery's note bu
   await sunday.getByRole("button", { name: "Mehr von Pilzrisotto" }).click();
   await expect(sunday).toContainText("5 Personen");
   await expect(sunday).toContainText("Dazu: 1 Dinkelbaguette");
+  // The number changes with the tap; the link to the recipe carries it once the server has
+  // answered.
+  await expect(sunday.locator('[aria-busy="true"]')).toHaveCount(0);
   // The recipe's page starts with as much as the meal cooks.
   await sunday.getByRole("link", { name: "Pilzrisotto" }).click();
   await expect(page.getByRole("group", { name: "Menge" })).toContainText("5 Personen");

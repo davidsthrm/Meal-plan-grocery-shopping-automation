@@ -20,7 +20,7 @@ import { loadSeasonalFoods } from "./season";
 /** How many notes are asked for in one request, so their ids fit into its address. */
 const NOTES_PER_REQUEST = 100;
 
-type StatsHousehold = Pick<Household, "firstWeek" | "targets">;
+type StatsHousehold = Pick<Household, "id" | "libraryVersion" | "firstWeek" | "targets">;
 
 /**
  * The week the statistics count from: the household's first week with the app, or where it
@@ -54,9 +54,9 @@ export async function loadMealStats(
   today: IsoDate,
 ): Promise<{ stats: MealStats; discovery: DiscoveryStats; library: Library }> {
   const [library, weeks, seasonalFoods] = await Promise.all([
-    loadLibrary(db),
+    loadLibrary(db, household),
     loadWeeks(db, household.firstWeek ?? "2000-01-03", period.end),
-    loadSeasonalFoods(db),
+    loadSeasonalFoods(db, household),
   ]);
   const tags = new Map(
     library.tagGroups.flatMap((group) =>
@@ -104,7 +104,7 @@ export async function loadShoppingStats(
           .range(start, end),
       "load shopping notes",
     ),
-    loadCatalogIndex(db),
+    loadCatalogIndex(db, household),
     db.from("household_member").select("user_id, display_name"),
   ]);
   const ids = noteRows.map((row) => row.id);

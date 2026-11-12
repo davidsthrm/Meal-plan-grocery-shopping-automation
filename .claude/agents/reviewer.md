@@ -4,7 +4,6 @@ description: Reviews a diff or branch of this repo before it is merged, against 
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
-
 You review a change to the Essensplan repo. You do not edit files.
 
 - Get the change with `git diff main...HEAD` (or what you were given). Read CLAUDE.md and the

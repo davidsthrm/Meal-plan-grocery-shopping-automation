@@ -273,7 +273,7 @@ function historyOf(
 
 export async function loadShoppingNotes(
   db: Db,
-  household: Pick<Household, "shoppingDays">,
+  household: Pick<Household, "id" | "libraryVersion" | "shoppingDays">,
   weekStart: IsoDate,
 ): Promise<WeekNotes> {
   const readAt = Date.now();
@@ -295,7 +295,7 @@ export async function loadShoppingNotes(
     await Promise.all([
       loadWeeks(db, addDays(weekStart, -7), addDays(weekStart, 7)),
       Promise.all([-7, 0, 7].map((days) => loadExtras(db, addDays(weekStart, days)))),
-      loadCatalogIndex(db),
+      loadCatalogIndex(db, household),
       db.from("household_member").select("user_id, display_name"),
       db
         .from("shopping_list")
@@ -585,10 +585,12 @@ async function ensureList(db: Db, householdId: string, trip: ShoppingTrip): Prom
  */
 export async function addEntry(
   db: Db,
-  household: Pick<Household, "id" | "userId">,
+  household: Pick<Household, "id" | "userId" | "libraryVersion">,
   trip: ShoppingTrip,
   text: string,
   extra: { quantity: number | null; forWhom: string | null } = { quantity: null, forWhom: null },
+  /** The catalog, where the caller writes several entries and reads it once for all. */
+  catalog: () => Promise<CatalogIndex> = () => loadCatalogIndex(db, household),
 ): Promise<void> {
   const listId = await ensureList(db, household.id, trip);
   const stored = await db.from("shopping_manual_entry").insert({
@@ -598,7 +600,7 @@ export async function addEntry(
     quantity: extra.quantity,
     for_whom: extra.forWhom,
     created_by: household.userId,
-    aisle_group_id: (await rememberedKind(db, text)) ?? (await guessedKind(db, text)),
+    aisle_group_id: (await rememberedKind(db, text)) ?? (await guessedKind(text, catalog)),
   });
   if (stored.error) throw new Error(`add entry: ${stored.error.message}`);
 }
@@ -627,9 +629,11 @@ async function rememberedKind(db: Db, text: string): Promise<string | null> {
  * it is written (`guessKind`) and stored like one the household chose: "Gehört zu" on the
  * line corrects it. Null where the catalog knows the line, or nothing fits.
  */
-async function guessedKind(db: Db, text: string): Promise<string | null> {
-  const index = await loadCatalogIndex(db);
-  return guessKind(text, index);
+async function guessedKind(
+  text: string,
+  catalog: () => Promise<CatalogIndex>,
+): Promise<string | null> {
+  return guessKind(text, await catalog());
 }
 
 /** A text as a pattern that finds it written the same way, in any case: no wildcards. */
@@ -658,10 +662,11 @@ export async function setEntryKind(
   if (updated.error) throw new Error(`set kind: ${updated.error.message}`);
 }
 
+/** Stores columns of one line's row. The list's id is the caller's: it often knows it already. */
 async function storeState(
   db: Db,
   household: Pick<Household, "id">,
-  trip: ShoppingTrip,
+  listId: string,
   lineKey: string,
   values: {
     at_home?: boolean;
@@ -673,7 +678,6 @@ async function storeState(
     unit?: Amount["unit"] | null;
   },
 ): Promise<void> {
-  const listId = await ensureList(db, household.id, trip);
   const stored = await db.from("shopping_line_state").upsert(
     {
       household_id: household.id,
@@ -709,7 +713,8 @@ export async function changeLine(
     await tickLine(db, listId, lineKey, change.checked, new Date());
     return;
   }
-  await storeState(db, household, trip, lineKey, stateOf(change));
+  const listId = await ensureList(db, household.id, trip);
+  await storeState(db, household, listId, lineKey, stateOf(change));
 }
 
 /** The columns a change of a line other than its tick is stored in. */
@@ -743,6 +748,8 @@ export async function moveLines(
   target: ShoppingTrip,
   /** The list of the note a move was decided on in the shop, so that it can be taken back. */
   movedWith: string | null = null,
+  /** The list of a note, where the caller has looked it up already (`applyDecisions`). */
+  lookUp: (trip: ShoppingTrip) => Promise<string> = (trip) => ensureList(db, household.id, trip),
 ): Promise<void> {
   const listOf = new Map<string, string>();
   const rows = [];
@@ -751,7 +758,7 @@ export async function moveLines(
     const key = partKey(line.key);
     for (const origin of line.origins) {
       const id = noteId(origin);
-      if (!listOf.has(id)) listOf.set(id, await ensureList(db, household.id, origin));
+      if (!listOf.has(id)) listOf.set(id, await lookUp(origin));
       const home = id === noteId(target);
       rows.push({
         household_id: household.id,
@@ -936,7 +943,7 @@ async function rememberChoice(
  */
 export async function applyDecisions(
   db: Db,
-  household: Pick<Household, "id" | "shoppingDays">,
+  household: Pick<Household, "id" | "libraryVersion" | "shoppingDays">,
   decisions: readonly DecisionToApply[],
 ): Promise<{ taken: string[]; refused: string[] }> {
   const taken: string[] = [];
@@ -961,7 +968,6 @@ export async function applyDecisions(
   // seconds.
   const apply = async (each: DecisionToApply): Promise<void> => {
     const { decision, note, key } = each;
-    const listId = await listOf(note);
     const to =
       decision.kind === "moved"
         ? decision.to
@@ -973,25 +979,35 @@ export async function applyDecisions(
       refused.push(each.id);
       return;
     }
+    const sameNote = target !== null && noteId(target) === noteId(note);
+
+    // The note's list, the target's and, for a move, the week's notes are read together, and
+    // each list once: a line moved to another note waited for about 16 requests one after
+    // the other, now for about 9, most of them building the week's notes (November 2026).
+    const [listId, there, week] = await Promise.all([
+      listOf(note),
+      target ? listOf(target) : null,
+      decision.kind === "moved" && !sameNote ? notesOf(note) : null,
+    ]);
 
     // Another shop on the same note: no move, the line is bought in that shop's section.
-    if (decision.kind === "moved" && target && noteId(target) === noteId(note)) {
-      await storeState(db, household, note, key, { shop_id: decision.shopId });
-      if (each.about) {
-        await rememberChoice(db, household, each.about.item, decision.shopId ?? note.place);
-      }
+    // The shop is remembered alongside, in another table: 2 requests in a row instead of 4.
+    if (decision.kind === "moved" && sameNote) {
+      await Promise.all([
+        storeState(db, household, listId, key, { shop_id: decision.shopId }),
+        each.about
+          ? rememberChoice(db, household, each.about.item, decision.shopId ?? note.place)
+          : null,
+      ]);
       taken.push(each.id);
       return;
     }
 
     // A move needs the line as it stands on its note now: the notes its parts are from.
-    const view =
-      decision.kind === "moved"
-        ? (await notesOf(note)).notes
-            .find((entry) => entry.id === noteId(note))
-            ?.view.groups.flatMap((group) => group.lines)
-            .find((entry) => entry.line.key === key)
-        : undefined;
+    const view = week?.notes
+      .find((entry) => entry.id === noteId(note))
+      ?.view.groups.flatMap((group) => group.lines)
+      .find((entry) => entry.line.key === key);
     if (decision.kind === "moved" && !view) {
       // Not on that note any more: moved already, or gone from the plan.
       taken.push(each.id);
@@ -1007,57 +1023,62 @@ export async function applyDecisions(
     // A plain tick changes nothing else: no rest was moved from a line ticked as planned in
     // the same breath, and only a line opened again can be a move taken back.
     const plainTick = decision.kind === "bought" && !decision.amount && !decision.name;
-    if (!plainTick) {
-      await Promise.all([
-        dropCarried(db, listId, key, rest?.kind === "moved" ? rest.entryId : null),
-        decision.kind === "open" ? takeBackMove(db, household, listId, note, key) : null,
-      ]);
-    }
+    // Once the decision stands, what follows from it is written side by side: each writes
+    // rows no other one writes, but for the target's row of a move (below). Any one failing
+    // fails the decision, which the device then sends again.
+    const follows: (Promise<void> | null)[] = [
+      plainTick ? null : dropCarried(db, listId, key, rest?.kind === "moved" ? rest.entryId : null),
+      decision.kind === "open" ? takeBackMove(db, household, listId, note, key) : null,
+      isBought(decision) && each.about
+        ? rememberChoice(db, household, each.about.item, each.about.shop ?? note.place)
+        : null,
+    ];
 
-    if (decision.kind === "moved" && target && view) {
-      await moveLines(
-        db,
-        household,
-        [{ key: view.line.key, origins: originsOf(view.line, note) }],
-        target,
-        listId,
+    if (decision.kind === "moved" && target && there && view) {
+      const { shopId } = decision;
+      const origins = originsOf(view.line, note);
+      const moved = moveLines(db, household, [{ key, origins }], target, listId, listOf);
+      // The target's row: the line opened there, then its shop. Where a part of the line is
+      // at home on the target, the move writes that row too, and goes first.
+      const onTarget = async () => {
+        if (origins.some((origin) => noteId(origin) === noteId(target))) await moved;
+        // What arrives is still to buy there, also where that note bought the same before.
+        await decideLine(db, there, key, { kind: "open" }, each.at);
+        if (shopId) await storeState(db, household, there, key, { shop_id: shopId });
+      };
+      follows.push(
+        moved,
+        onTarget(),
+        each.about ? rememberChoice(db, household, each.about.item, shopId ?? target.place) : null,
       );
-      // What arrives is still to buy there, also where that note bought the same before.
-      const there = await listOf(target);
-      await decideLine(db, there, key, { kind: "open" }, each.at);
-      if (decision.shopId)
-        await storeState(db, household, target, key, { shop_id: decision.shopId });
-      if (each.about) {
-        await rememberChoice(db, household, each.about.item, decision.shopId ?? target.place);
-      }
     }
-    if (rest?.kind === "moved" && target) {
+    if (rest?.kind === "moved" && there) {
       const ingredientId = each.about?.item.startsWith("text:") ? null : (each.about?.item ?? null);
-      const there = await listOf(target);
       const name = each.about?.planned.name ?? key;
-      const stored = await db.from("shopping_manual_entry").upsert(
-        {
-          id: rest.entryId,
-          household_id: household.id,
-          shopping_list_id: there,
-          text: ingredientId ? name : `${rest.amount.quantity} ${name}`,
-          ingredient_id: ingredientId,
-          carried_quantity: ingredientId ? rest.amount.quantity : null,
-          carried_unit: ingredientId ? rest.amount.unit : null,
-          carried_from_list_id: listId,
-          carried_from_key: key,
-        },
-        { onConflict: "id" },
+      const carry = async () => {
+        const stored = await db.from("shopping_manual_entry").upsert(
+          {
+            id: rest.entryId,
+            household_id: household.id,
+            shopping_list_id: there,
+            text: ingredientId ? name : `${rest.amount.quantity} ${name}`,
+            ingredient_id: ingredientId,
+            carried_quantity: ingredientId ? rest.amount.quantity : null,
+            carried_unit: ingredientId ? rest.amount.unit : null,
+            carried_from_list_id: listId,
+            carried_from_key: key,
+          },
+          { onConflict: "id" },
+        );
+        if (stored.error) throw new Error(`carry rest: ${stored.error.message}`);
+      };
+      const lineKey = ingredientId ? `${ingredientId}@main` : `manual:${rest.entryId}`;
+      follows.push(
+        carry(),
+        rest.shopId ? storeState(db, household, there, lineKey, { shop_id: rest.shopId }) : null,
       );
-      if (stored.error) throw new Error(`carry rest: ${stored.error.message}`);
-      if (rest.shopId) {
-        const lineKey = ingredientId ? `${ingredientId}@main` : `manual:${rest.entryId}`;
-        await storeState(db, household, target, lineKey, { shop_id: rest.shopId });
-      }
     }
-    if (isBought(decision) && each.about) {
-      await rememberChoice(db, household, each.about.item, each.about.shop ?? note.place);
-    }
+    await Promise.all(follows);
     taken.push(each.id);
   };
   for (let from = 0; from < decisions.length; from += PARALLEL) {

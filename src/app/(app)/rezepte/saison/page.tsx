@@ -21,6 +21,7 @@ import {
   type SeasonalFood,
 } from "@/domain/season/calendar";
 import { today } from "@/lib/today";
+import { requireHousehold } from "@/server/auth";
 import { loadLibrary } from "@/server/library";
 import { filterHref } from "@/components/recipe-filters";
 import { CALENDAR, loadSeasonalFoods, withSeason } from "@/server/season";
@@ -76,8 +77,12 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
   const now = monthOf(today());
   const asked = Number(one(params.monat));
   const month = (MONTHS as readonly number[]).includes(asked) ? (asked as Month) : now;
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const [library, foods] = await Promise.all([loadLibrary(db), loadSeasonalFoods(db)]);
+  const [library, foods] = await Promise.all([
+    loadLibrary(db, household),
+    loadSeasonalFoods(db, household),
+  ]);
   const categoryName = new Map(library.categories.map((category) => [category.key, category.name]));
   const nameOf = (key: string | null) => (key ? (categoryName.get(key) ?? null) : null);
 

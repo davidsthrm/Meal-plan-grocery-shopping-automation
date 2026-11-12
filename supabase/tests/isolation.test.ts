@@ -16,7 +16,10 @@ const MEMBER_B = "b1111111-1111-4111-8111-111111111111";
 
 let db: PGlite;
 
-/** One row in every table that the seed does not fill already. */
+/**
+ * One row in every table that the seed does not fill already. library_version has its row
+ * from the household's own trigger; members may only read it.
+ */
 const ROWS_OF_A = `
   insert into public.household_member (household_id, user_id, role, display_name)
     values ('${A}', '${MEMBER_A}', 'admin', 'Anna');

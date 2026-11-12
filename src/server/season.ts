@@ -8,7 +8,9 @@ import {
   type SeasonalFood,
 } from "@/domain/season/calendar";
 import { seasonalFoods } from "../../supabase/seed/seasons";
+import type { Household } from "./auth";
 import { allRows, loadIngredientNames, type Db } from "./catalog";
+import { kept } from "./kept";
 
 /** The calendar of what is in season (`supabase/seed/seasons.ts`). */
 export const CALENDAR: readonly SeasonalFood[] = seasonalFoods;
@@ -18,10 +20,23 @@ const IDS_PER_REQUEST = 100;
 
 /**
  * Per recipe, the foods of the calendar it is made with. Only the lines of ingredients the
- * calendar knows are read, a few hundred ingredients of the catalog's thousand.
+ * calendar knows are read, a few hundred ingredients of the catalog's thousand. Kept for the
+ * household when one is given (`kept`).
  */
-export async function loadSeasonalFoods(db: Db): Promise<Map<string, SeasonalFood[]>> {
-  const foods = foodsOfCatalog(CALENDAR, await loadIngredientNames(db));
+export async function loadSeasonalFoods(
+  db: Db,
+  household?: Pick<Household, "id" | "libraryVersion">,
+): Promise<Map<string, SeasonalFood[]>> {
+  return household
+    ? kept(household, "seasonal foods", () => readSeasonalFoods(db, household))
+    : readSeasonalFoods(db);
+}
+
+async function readSeasonalFoods(
+  db: Db,
+  household?: Pick<Household, "id" | "libraryVersion">,
+): Promise<Map<string, SeasonalFood[]>> {
+  const foods = foodsOfCatalog(CALENDAR, await loadIngredientNames(db, household));
   const ids = [...foods.keys()];
   const parts: string[][] = [];
   for (let at = 0; at < ids.length; at += IDS_PER_REQUEST) {

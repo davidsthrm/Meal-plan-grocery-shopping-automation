@@ -52,8 +52,8 @@ export default async function FieldChecksPage(props: PageProps<"/import/pruefen/
   const filter = CHECKED_FIELDS.find((field) => field === one(params.feld)) ?? null;
   const limit = Math.max(PAGE, Math.min(1000, Number(one(params.anzahl)) || PAGE));
   const failed = one(params.fehler);
-  await requireHousehold();
-  const library = await loadLibraryChecks(await createSessionClient());
+  const household = await requireHousehold();
+  const library = await loadLibraryChecks(await createSessionClient(), household);
   const all = recipeChecks(library);
   const categoryName = categoryNamer(library.categories);
   const servingsUnits = commonServingsUnits(

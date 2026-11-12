@@ -69,7 +69,7 @@ export async function changeSeveral(form: FormData): Promise<void> {
   }
   if (action === "kategorie") {
     const key = text(form, "kategorie");
-    const { categories } = await loadLibrary(db);
+    const { categories } = await loadLibrary(db, household);
     if (key !== "" && !categories.some((category) => category.key === key)) backToShelf(form);
     await setField(db, household.id, chosen, {
       field: "category",

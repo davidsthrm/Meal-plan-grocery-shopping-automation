@@ -11,7 +11,6 @@ import {
   ArrowIcon,
   ChartIcon,
   PenIcon,
-  PersonIcon,
   PinIcon,
   PlusIcon,
   TrashIcon,
@@ -21,6 +20,7 @@ import { ListMemory } from "@/components/list-return";
 import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
+import { ServingsStepper } from "@/components/servings-stepper";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addDays,
@@ -124,9 +124,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const now = today();
   const db = await createSessionClient();
   // The library does not depend on the week: it is read while the week is found.
-  const libraryRead = loadLibrary(db);
+  const libraryRead = loadLibrary(db, household);
   // What each recipe is made with that has a season: suggestions weigh the week's month.
-  const seasonalRead = loadSeasonalFoods(db);
+  const seasonalRead = loadSeasonalFoods(db, household);
   // The running week decides which week the planner opens on, and what there is today.
   const running = mondayOf(now);
   const runningSlots = await loadWeek(db, running);
@@ -875,55 +875,6 @@ function KindTitle({
   );
 }
 
-/**
- * Plus and minus for how much of a recipe is made, as a small stepper: "− 4 +" with a sign
- * for persons, or the recipe's own unit ("1 Springform"). Zero takes the recipe away.
- */
-function Amount({
-  action,
-  fields,
-  servings,
-  unit,
-  title,
-}: {
-  action: (form: FormData) => Promise<void>;
-  /** What says which recipe of what is meant. */
-  fields: Record<string, string>;
-  servings: number;
-  unit: string | null;
-  title: string;
-}) {
-  const step = (to: number, sign: string, label: string) => (
-    <form action={action}>
-      {Object.entries(fields).map(([name, value]) => (
-        <input key={name} type="hidden" name={name} value={value} />
-      ))}
-      <input type="hidden" name="servings" value={to} />
-      <SubmitButton className="" label={label}>
-        {sign}
-      </SubmitButton>
-    </form>
-  );
-  const amount = plannedText(servings, unit);
-  return (
-    <div className="stepper" title={amount}>
-      {step(servings - 1, "−", `Weniger von ${title}`)}
-      <span className="stepper-value">
-        {unit === null ? (
-          <>
-            <PersonIcon />
-            <span aria-hidden>{servings}</span>
-            <span className="sr-only">{amount}</span>
-          </>
-        ) : (
-          <span className="px-1 text-sm">{amount}</span>
-        )}
-      </span>
-      {step(Math.min(99, servings + 1), "+", `Mehr von ${title}`)}
-    </div>
-  );
-}
-
 /** The recipes of a week that belong to none of its meals. */
 function Extras({
   week,
@@ -964,7 +915,7 @@ function Extras({
                     </span>
                   )}
                 </p>
-                <Amount
+                <ServingsStepper
                   action={changeExtraServings}
                   fields={{ week, recipe: extra.recipeId }}
                   servings={extra.servings}
@@ -1228,7 +1179,7 @@ function MealCell({
                   day={date}
                   servings={{ planned: item.servings, extra: slot.extra }}
                 />
-                <Amount
+                <ServingsStepper
                   action={changeServings}
                   fields={{ week, date, meal, recipe: item.recipeId }}
                   servings={item.servings}
@@ -1308,19 +1259,20 @@ function MealCell({
 
       {/*
        * A suggestion, asked for or offered unasked: a box of its own with a dashed edge, so
-       * that it does not read as planned. Nothing is planned until "Gute Idee!".
+       * that it does not read as planned. Nothing is planned until "Gute Idee!"; from its tap
+       * on it reads as planned (`.suggestion`, `data-does="plan"`).
        */}
       {!slot && shown && !placing && (
-        <div className="mt-1 rounded-lg border border-dashed border-accent/50 bg-accent-soft/40 px-3 py-2.5">
+        <div className={`suggestion ${recipeTone(shown.recipe)?.className ?? ""}`}>
           <p className="text-xs font-semibold text-accent">Vorschlag</p>
-          <div className="mt-1">
+          <div className="suggestion-title">
             <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} day={date} />
           </div>
           {shown.reasons.length > 0 && (
             <p className="mt-1 text-sm text-muted">{whyText(shown.reasons)}</p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <form action={planRecipe}>
+            <form action={planRecipe} data-does="plan">
               {where}
               <input type="hidden" name="recipe" value={shown.recipe.id} />
               <input type="hidden" name="mode" value="replace" />
@@ -1339,9 +1291,14 @@ function MealCell({
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {/* While a recipe is placed, the row names it: it shows where the recipe lands as soon
+          as its button is tapped (`data-landing`, `data-does="place"` or "add"). */}
+      <div
+        className={`meal-actions mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 ${placing ? (recipeTone(placing)?.className ?? "kind-none") : ""}`}
+        data-landing={placing?.title}
+      >
         {placing ? (
-          <form action={planRecipe}>
+          <form action={planRecipe} data-does={slot?.kind === "recipes" ? "add" : "place"}>
             {where}
             <input type="hidden" name="recipe" value={placing.id} />
             <input type="hidden" name="mode" value={slot?.kind === "recipes" ? "add" : "replace"} />
@@ -1380,7 +1337,7 @@ function MealCell({
                 Lebensmittel
               </Link>
             )}
-            <form action={clearSlot}>
+            <form action={clearSlot} data-does="clear">
               {where}
               <SubmitButton className={`${ICON_ACTION} hover:text-danger`} label={`${what} leeren`}>
                 <TrashIcon />

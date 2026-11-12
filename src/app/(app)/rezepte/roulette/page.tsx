@@ -10,6 +10,7 @@ import { rank } from "@/domain/rank";
 import { recipeTone } from "@/lib/plan-text";
 import { timeText } from "@/lib/recipe-text";
 import { today } from "@/lib/today";
+import { requireHousehold } from "@/server/auth";
 import { loadLibraryForLists } from "@/server/recipe-list";
 import { createSessionClient } from "@/server/supabase/server";
 
@@ -24,8 +25,9 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 export default async function RoulettePage(props: PageProps<"/rezepte/roulette">) {
   const params = await props.searchParams;
   const now = today();
+  const household = await requireHousehold();
   const db = await createSessionClient();
-  const { recipes, tagGroups } = await loadLibraryForLists(db, now);
+  const { recipes, tagGroups } = await loadLibraryForLists(db, household, now);
   // The day's first combination is the same on every look; a spin draws another.
   const combos = combinations(recipes, tagGroups).sort(
     (a, b) => rank(now, comboKey(a)) - rank(now, comboKey(b)),

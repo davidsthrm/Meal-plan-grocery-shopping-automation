@@ -1202,7 +1202,14 @@ summary,
     position: relative;
     padding-left: 0.8rem;
   }
-  .meal-cell[class*="kind-"]::before {
+  /*
+   * A suggestion taken or a recipe placed draws the same edge the moment it is tapped (see
+   * "The plan answers a tap" outside the layers): the box and the row are not positioned, so
+   * the edge runs down the meal. A suggestion of no kind has none set: the grey of none.
+   */
+  .meal-cell[class*="kind-"]::before,
+  .suggestion:has([data-does="plan"] [data-pending])::before,
+  .meal-actions:has([data-does="place"] [data-pending])::after {
     content: "";
     position: absolute;
     top: 0.1rem;
@@ -1210,7 +1217,21 @@ summary,
     left: 0;
     width: 0.25rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--kind) 50%, var(--kind-ink));
+    background: color-mix(in srgb, var(--kind, #e9e5de) 50%, var(--kind-ink, #5f5a52));
+  }
+  /*
+   * A suggestion: a box of its own with a dashed edge, so that it does not read as planned.
+   * A class and not utilities, so that the tap on "Gute Idee!" can take the box away.
+   */
+  .suggestion {
+    margin-top: 0.25rem;
+    border: 1px dashed color-mix(in oklab, var(--color-accent) 50%, transparent);
+    border-radius: 0.5rem;
+    background: color-mix(in oklab, var(--color-accent-soft) 40%, transparent);
+    padding: 0.625rem 0.75rem;
+  }
+  .suggestion-title {
+    margin-top: 0.25rem;
   }
 
   /* A card that leads somewhere lifts a little when it is touched or pointed at. */
@@ -3012,6 +3033,65 @@ summary,
     flex: none;
     scroll-snap-align: start;
   }
+}
+
+/*
+ * The plan answers a tap before the server does: a tap on the week showed only a busy button
+ * until the whole page came back, and planning felt slow (November 2026). A form says what
+ * it does (`data-does`), its button carries `data-pending` while it is on its way
+ * (`SubmitButton`), and styles alone show what the tap did. The server's page replaces it;
+ * it ends by itself when the form is answered, also when the server refuses. Outside the
+ * layers, as it has to win over the utilities on the same elements. Nothing travels, so less
+ * motion changes nothing: a short fade at most, which less motion keeps.
+ */
+/* "Gute Idee!": box, label, reasons and buttons go; the title stands on a line as tall as a
+   planned meal's with its stepper, and the row below keeps its height. Edge: `.meal-cell`. */
+.suggestion:has([data-does="plan"] [data-pending]) {
+  border-color: transparent;
+  background: none;
+  padding: 0;
+}
+.suggestion:has([data-does="plan"] [data-pending]) > :not(.suggestion-title) {
+  display: none;
+}
+.suggestion:has([data-does="plan"] [data-pending]) > .suggestion-title {
+  display: flex;
+  min-height: calc(2.6rem + 4px);
+  align-items: center;
+  margin-top: 0;
+}
+.meal-cell:has(.suggestion [data-does="plan"] [data-pending]) > .meal-actions {
+  min-height: 2.75rem;
+  visibility: hidden;
+}
+/* "Leeren", and "Ersetzen" for what is replaced: what the meal holds pales and is struck out.
+   While it is emptied nothing else in it can be tapped. */
+.meal-cell:has([data-does="clear"] [data-pending]) {
+  pointer-events: none;
+}
+.meal-cell:has(:is([data-does="clear"], [data-does="place"]) [data-pending])
+  > :not(.eyebrow, .meal-actions),
+.meal-cell:has([data-does="clear"] [data-pending]) > .meal-actions > :not([data-does="clear"]),
+.meal-cell:has(:is([data-does="clear"], [data-does="place"]) [data-pending])::before {
+  opacity: 0.45;
+  transition: opacity 150ms ease;
+}
+.meal-cell:has(:is([data-does="clear"], [data-does="place"]) [data-pending])
+  > :not(.eyebrow, .meal-actions) {
+  text-decoration: line-through;
+}
+/* "Hier einplanen", "Ersetzen", "Dazu einplanen": the recipe's title stands where its button
+   was, as tall. An open or replaced meal takes the recipe's kind as its edge: `.meal-cell`. */
+.meal-actions:has(:is([data-does="place"], [data-does="add"]) [data-pending]) > form {
+  display: none;
+}
+.meal-actions:has(:is([data-does="place"], [data-does="add"]) [data-pending])::before {
+  content: attr(data-landing);
+  display: flex;
+  min-height: 2.6rem;
+  align-items: center;
+  font-weight: 600;
+  animation: fade-in 150ms var(--ease-out);
 }
 
 /*

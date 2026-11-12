@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { dayAndMonth, isIsoDate, mondayOf, weekdayLong } from "@/domain/dates";
 import { foodText, SIDE_FOODS, VESPER_FOODS } from "@/domain/vesper";
 import { MEAL_NAME } from "@/lib/plan-text";
+import { requireHousehold } from "@/server/auth";
 import { loadIngredientNames, must } from "@/server/catalog";
 import { loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
@@ -27,11 +28,12 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
   if (!isIsoDate(week) || !isIsoDate(date) || mondayOf(date) !== week) notFound();
   if (meal !== "lunch" && meal !== "dinner" && meal !== "coffee") notFound();
 
+  const household = await requireHousehold();
   const db = await createSessionClient();
   const [slots, shopRows, ingredientRows] = await Promise.all([
     loadWeek(db, week),
     db.from("shop").select("id, name").order("sort_order"),
-    loadIngredientNames(db),
+    loadIngredientNames(db, household),
   ]);
   const slot = slots.find((entry) => entry.date === date && entry.meal === meal);
   if (slot?.kind !== "free_text" && slot?.kind !== "recipes") notFound();

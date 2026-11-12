@@ -130,6 +130,20 @@ describe("schema", () => {
     expect(result.rows.map((r) => r.table_name)).toEqual([]);
   });
 
+  it("looks up the member's households once per query, not once per row", async () => {
+    // is_household_member(household_id) in a policy runs for every row scanned: 249 ms
+    // instead of 11 ms for a page of recipe lines. Write household_id = any ((select
+    // private.my_household_ids())::uuid[]) instead.
+    const result = await db.query<{ policy: string }>(`
+      select tablename || '.' || policyname as policy
+      from pg_policies
+      where schemaname = 'public'
+        and (qual like '%is_household_member%' or with_check like '%is_household_member%')
+      order by 1
+    `);
+    expect(result.rows.map((r) => r.policy)).toEqual([]);
+  });
+
   it("rejects a pack ingredient without a pack size", async () => {
     await expect(
       db.query(
@@ -381,6 +395,19 @@ describe("row level security", () => {
       expect(await count("select 1 from public.recipe")).toBe(seedRecipes.length);
       expect(await count("select 1 from public.household")).toBe(1);
     });
+  });
+
+  it("knows the households of whoever is signed in, and only those", async () => {
+    const ids = (userId: string) =>
+      asUser(db, userId, async () => {
+        const result = await db.query<{ ids: string[] }>(
+          "select private.my_household_ids() as ids",
+        );
+        return result.rows[0].ids;
+      });
+    expect(await ids(MEMBER)).toEqual([SEED_HOUSEHOLD_ID]);
+    expect(await ids(STRANGER)).toEqual([OTHER_HOUSEHOLD]);
+    expect(await ids("55555555-5555-4555-8555-555555555555")).toEqual([]);
   });
 
   it("shows nothing of it to a user of another household", async () => {

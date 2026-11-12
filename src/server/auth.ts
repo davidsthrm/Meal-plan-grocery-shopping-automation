@@ -35,6 +35,13 @@ export interface Household {
    * the list of all weeks go back no further. Null for no limit.
    */
   firstWeek: IsoDate | null;
+  /**
+   * How often the library has changed (`library_version`): what the server keeps of it is
+   * kept under this number (`kept`). Read with the household, before any read of the
+   * library, so nothing kept is older than it. Null for a household without a counter:
+   * nothing is kept for it then, where a made-up number would keep one state for ever.
+   */
+  libraryVersion: number | null;
   userId: string;
 }
 
@@ -55,7 +62,7 @@ export const requireHousehold = cache(async function requireHousehold(): Promise
   const { data, error } = await supabase
     .from("household")
     .select(
-      "id, name, default_servings, balance_targets, shopping_days, drugstore_weekday, postal_code, place_name, first_week",
+      "id, name, default_servings, balance_targets, shopping_days, drugstore_weekday, postal_code, place_name, first_week, library_version(version)",
     )
     .limit(1)
     .maybeSingle();
@@ -73,6 +80,7 @@ export const requireHousehold = cache(async function requireHousehold(): Promise
     postalCode: data.postal_code,
     placeName: data.place_name,
     firstWeek: data.first_week && isIsoDate(data.first_week) ? data.first_week : null,
+    libraryVersion: data.library_version?.version ?? null,
     userId,
   };
 });

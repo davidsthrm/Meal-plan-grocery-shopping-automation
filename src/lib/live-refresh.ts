@@ -52,10 +52,22 @@ export const LONGEST_WAIT_MS = 10_000;
 
 /**
  * How long after a tap on this device a change is taken for its own. The page that comes
- * back from the tap is already up to date, and reading it once more right away would only
- * make the next tap wait.
+ * back from the tap is already up to date, and reading it once more would only make the
+ * next tap wait.
  */
 export const OWN_MS = 3000;
+
+/**
+ * Whether a change is this device's own coming back from Realtime, which cannot say whose
+ * it was: one that arrives within `OWN_MS` of the device's last form or tick. The page is
+ * not read again for it. Until November 2026 it was, three seconds after the tap: one more
+ * render of the whole page for every burst of taps, which also emptied the pages fetched
+ * ahead. What someone else changed in those seconds shows with the next change, or when
+ * the page comes back into view.
+ */
+export function isOwn({ now, lastOwn }: { now: number; lastOwn: number }): boolean {
+  return now - lastOwn < OWN_MS;
+}
 
 /**
  * When the page should be read again, as a time.
@@ -63,7 +75,8 @@ export const OWN_MS = 3000;
  * - `now`: when the latest change arrived
  * - `firstAt`: when the first change still waiting arrived (`now` for a new burst)
  * - `pace`: the quickest pace among the changes waiting
- * - `lastOwn`: when this device last sent a form
+ * - `lastOwn`: when this device last sent a form: a read that waits for someone else's
+ *   change goes behind the device's own taps
  */
 export function refreshAt({
   now,

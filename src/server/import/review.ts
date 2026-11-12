@@ -9,6 +9,7 @@ import {
   type ReviewLineInput,
 } from "@/domain/import/review-input";
 import type { Unit } from "@/domain/units";
+import type { Household } from "../auth";
 import { loadCatalogIndex, loadIngredientNames, must, type Db } from "../catalog";
 import { importModels } from "./models";
 import { saveReviewedRecipe } from "./save-recipe";
@@ -21,7 +22,7 @@ import { viewUrls } from "./storage";
 
 export async function approveReview(
   db: Db,
-  householdId: string,
+  household: Pick<Household, "id" | "libraryVersion">,
   jobId: string,
   input: ReviewInput,
 ): Promise<{ ok: true } | { ok: false; errors: ReviewErrors }> {
@@ -30,7 +31,7 @@ export async function approveReview(
     "load recipe job",
   );
   if (!job.recipe_id) return { ok: false, errors: { title: "Dieses Rezept gibt es nicht mehr." } };
-  const index = await loadCatalogIndex(db);
+  const index = await loadCatalogIndex(db, household);
   const read = readReview(input, index);
   if (!read.ok) return read;
 
@@ -40,7 +41,7 @@ export async function approveReview(
     "load recipe",
   );
   await saveReviewedRecipe(db, {
-    householdId,
+    householdId: household.id,
     recipeId: job.recipe_id,
     recipe: {
       title: input.title.trim(),
@@ -214,7 +215,11 @@ export interface Review {
   neighbours: { before: boolean; after: boolean };
 }
 
-export async function loadReview(db: Db, jobId: string): Promise<Review | null> {
+export async function loadReview(
+  db: Db,
+  household: Pick<Household, "id" | "libraryVersion">,
+  jobId: string,
+): Promise<Review | null> {
   const { data: job } = await db
     .from("import_job")
     .select("id, batch_id, status, recipe_id, issues, notes, photo_paths, page_ids, extraction")
@@ -237,7 +242,7 @@ export async function loadReview(db: Db, jobId: string): Promise<Review | null> 
       )
       .eq("recipe_id", job.recipe_id)
       .order("position"),
-    loadIngredientNames(db),
+    loadIngredientNames(db, household),
     db.from("import_page").select("position").in("id", job.page_ids).order("position"),
     db
       .from("import_page")

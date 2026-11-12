@@ -50,6 +50,10 @@ that cost time before.
   before calling it real.
 - Some tests depend on the day: two failed only because the run was on a Sunday, or because
   the test user's name made the plan greet them. Read the assertion before suspecting sleep.
+- `npm run e2e:production` needs a network that leaves HTTPS alone. Behind a firewall that
+  reads it (a Sophos certificate in front of `*.vercel.app`, November 2026) the test
+  browser refuses the page at its first step: `net::ERR_CERT_AUTHORITY_INVALID`. That says
+  nothing about the deployment; run it from another network.
 - To wait for a background test run, wait for a file the run writes when it ends. A loop on
   `pgrep -f "playwright test"` matches its own command line and never ends.
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireHousehold } from "@/server/auth";
 import { duplicatePairs, loadLibraryChecks, recipeChecks } from "@/server/quality";
 import { countStepChecks } from "@/server/step-checks";
 import { createSessionClient } from "@/server/supabase/server";
@@ -122,9 +123,10 @@ export async function CheckTilesWithLibrary(counts: Counts) {
 }
 
 async function countLibraryChecks(): Promise<LibraryCounts> {
+  const household = await requireHousehold();
   try {
     const db = await createSessionClient();
-    const library = await loadLibraryChecks(db);
+    const library = await loadLibraryChecks(db, household);
     const [pairs, steps] = await Promise.all([duplicatePairs(db, library), countStepChecks(db)]);
     return { fields: recipeChecks(library).length, pairs: pairs.length, steps };
   } catch (error) {

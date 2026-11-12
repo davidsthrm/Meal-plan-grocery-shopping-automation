@@ -76,6 +76,9 @@ test("the list under the search field changes with every letter", async ({ page 
   await page.goto("/rezepte");
   const field = page.getByPlaceholder("Titel oder Zutat");
   const hits = page.getByRole("region", { name: "Treffer beim Tippen" });
+  // Tapped first, as someone would: typing alone does not wait until the field can be seen,
+  // and the page's content is in the document a moment before it is shown.
+  await field.click();
   await field.pressSequentially("l");
   await expect(hits.getByRole("listitem").first()).toBeVisible();
   await expect(hits).toContainText("Lachs mit Currysahne");

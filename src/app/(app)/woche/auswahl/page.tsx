@@ -86,7 +86,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
   const db = await createSessionClient();
   const [library, slots, history, extras, nextWeek] = await Promise.all([
     // Suggestions and "Passt zur Saison" weigh the month the week counts for.
-    loadLibraryForLists(db, today(), monthOf(monthOfWeek(week))),
+    loadLibraryForLists(db, household, today(), monthOf(monthOfWeek(week))),
     loadWeek(db, week),
     loadHistory(db, week),
     loadExtras(db, week),
@@ -150,7 +150,7 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
         (recipe) => !planned.has(recipe.id),
       )
     : [];
-  const listed = await listRecipes(db, library, recipes, filter, {
+  const listed = await listRecipes(db, household, library, recipes, filter, {
     favorites: true,
     season: true,
     longAgo: true,
