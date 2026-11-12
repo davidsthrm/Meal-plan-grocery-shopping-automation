@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   DAILY_TABLES,
+  isOwn,
   LIBRARY_TABLES,
   OWN_CHANGE,
   quicker,
   readOnReturn,
   refreshAt,
   SEARCHED_TABLES,
+  SETTLE_MS,
   type Pace,
 } from "@/lib/live-refresh";
 import { LIBRARY_CHANGED } from "./live-search";
@@ -78,7 +80,21 @@ export function LiveRefresh() {
     // Out of view, a change is remembered for when the page comes back.
     let missed = false;
     let hiddenAt = 0;
+    // The device's own change of the library: the page is up to date, the search index of
+    // the browser is not. It is fetched again once the burst is over, without the page.
+    let ownSearch: ReturnType<typeof setTimeout> | undefined;
     const changed = (at: Pace, table: string) => {
+      // The device's own change coming back: the page that answered the tap has it.
+      if (isOwn({ now: Date.now(), lastOwn })) {
+        if (SEARCHED_TABLES.has(table)) {
+          clearTimeout(ownSearch);
+          ownSearch = setTimeout(
+            () => window.dispatchEvent(new Event(LIBRARY_CHANGED)),
+            SETTLE_MS.library,
+          );
+        }
+        return;
+      }
       if (SEARCHED_TABLES.has(table)) searchStale = true;
       if (document.visibilityState !== "visible") missed = true;
       if (quiet() || document.visibilityState !== "visible" || !navigator.onLine) return;
@@ -154,6 +170,7 @@ export function LiveRefresh() {
     document.addEventListener("submit", acted, true);
     return () => {
       clearTimeout(timer);
+      clearTimeout(ownSearch);
       closed = true;
       if (idleCallback) window.cancelIdleCallback(idle);
       clearTimeout(fallback);
