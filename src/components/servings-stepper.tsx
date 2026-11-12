@@ -48,7 +48,7 @@ function Steps({
   unit: string | null;
   title: string;
 }) {
-  const { data } = useFormStatus();
+  const { data, pending } = useFormStatus();
   const shown = shownServings(servings, data?.get("servings"));
   const amount = plannedText(shown, unit);
   // Not the busy `SubmitButton`: it would refuse the next tap until the first is answered.
@@ -66,7 +66,9 @@ function Steps({
   return (
     <>
       {step(-1, "−", `Weniger von ${title}`)}
-      <span className="stepper-value">
+      {/* Busy while a tap is on its way: a page that wants to read itself again waits for
+          it (`LiveRefresh`), as it does for every other button. */}
+      <span className="stepper-value" aria-busy={pending || undefined}>
         {unit === null ? (
           <>
             <PersonIcon />
