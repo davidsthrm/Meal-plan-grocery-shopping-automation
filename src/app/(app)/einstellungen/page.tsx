@@ -95,7 +95,7 @@ export default async function SettingsPage(props: PageProps<"/einstellungen">) {
       <p className="mt-1 text-muted">Haushalt „{household.name}“</p>
       <nav aria-label="Teile der Einstellungen" className="mt-3 flex flex-wrap gap-1.5 lg:hidden">
         {PARTS.map((part) => (
-          <a key={part.id} href={`#${part.id}`} className="chip px-3 text-[0.85rem]">
+          <a key={part.id} href={`#${part.id}`} className="chip px-3">
             {part.name}
           </a>
         ))}

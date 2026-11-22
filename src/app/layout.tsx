@@ -1,8 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Figtree } from "next/font/google";
 import { AppFeel, TurnUpright } from "@/components/app-feel";
 import { ServiceWorker } from "@/components/service-worker";
 import "./globals.css";
 import { startupImages } from "@/lib/startup-screens";
+
+/**
+ * One typeface, Figtree, in two weights: 500 for the text and 700 for what stands out. Served
+ * by the app itself (`next/font`), so it needs no other site, and the service worker keeps
+ * it with the scripts and styles for the shop (`/_next/static/`).
+ */
+const figtree = Figtree({ subsets: ["latin"], weight: ["500", "700"], variable: "--font-figtree" });
 
 export const metadata: Metadata = {
   title: { default: "Essensplan", template: "%s · Essensplan" },
@@ -34,7 +42,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="de">
+    <html lang="de" className={figtree.variable}>
       <body>
         {children}
         <ServiceWorker />

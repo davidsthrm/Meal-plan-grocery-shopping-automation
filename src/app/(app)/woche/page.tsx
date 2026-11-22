@@ -867,7 +867,7 @@ function KindTitle({
         href={`/rezepte/${id}${fromPlan(week, day, cooked)}`}
         prefetch
         transitionTypes={[FORWARD]}
-        className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-[0.92rem] leading-snug" : ""}`}
+        className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-sm leading-snug" : ""}`}
       >
         {recipe?.title ?? "Rezept"}
       </Link>

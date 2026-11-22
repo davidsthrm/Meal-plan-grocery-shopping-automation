@@ -109,9 +109,7 @@ export function RecipeCard({
             <span className="eyebrow">{category ?? "Rezept"}</span>
             <Marks recipe={recipe} heart={false} />
           </span>
-          <span className="line-clamp-3 text-[1.1rem] leading-snug font-semibold">
-            {recipe.title}
-          </span>
+          <span className="line-clamp-3 text-lg leading-snug font-semibold">{recipe.title}</span>
           {note && <span className="line-clamp-1 text-sm font-semibold text-accent">{note}</span>}
           <span className="mt-auto space-y-1.5 pt-2">
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">

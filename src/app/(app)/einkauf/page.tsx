@@ -380,7 +380,7 @@ function NoteTile({
                 : `${note.open} offen${note.done > 0 ? `, ${note.done} erledigt` : ""}`}
             </span>
           </span>
-          <span className="mt-2 block flex-1 text-[0.95rem]">
+          <span className="mt-2 block flex-1 text-sm">
             {lines.slice(0, PREVIEW).map((entry) => (
               <span
                 key={entry.line.key}
