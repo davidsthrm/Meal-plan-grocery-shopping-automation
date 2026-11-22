@@ -7,6 +7,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowIcon,
+  CalendarIcon,
   ChartIcon,
   PenIcon,
   PinIcon,
@@ -321,11 +322,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       )}
     </div>
   );
-  // Back, the running week and forward as one control; all weeks and the statistics words next to it.
+  // Back, the running week and forward as one control; all weeks and the statistics next to
+  // it, signs on a phone, so that the row stays one line on every week (22 November 2026).
   const weekNav = (
     <nav
       aria-label="Woche wechseln"
-      className="flex flex-wrap items-center gap-1.5 max-sm:text-sm sm:gap-x-3"
+      className="flex items-center gap-1.5 max-sm:text-sm sm:gap-x-3"
     >
       <span className="capsule">
         {/* Not before the week the household started with the app. */}
@@ -364,9 +366,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       <Link
         href={`/woche/verlauf?w=${week}`}
         transitionTypes={[FORWARD]}
-        className="link inline-flex min-h-11 items-center"
+        className="link inline-flex min-h-11 items-center gap-1.5 max-sm:px-3"
+        aria-label="Alle Wochen"
+        title="Alle Wochen"
       >
-        Alle Wochen
+        <CalendarIcon />
+        <span className="max-sm:hidden">Alle Wochen</span>
       </Link>
       <Link
         href="/woche/statistik"
