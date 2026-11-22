@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatLine, formatNumber, formatPurchase, labelFor } from "./format";
+import {
+  formatAmount,
+  formatBeside,
+  formatLine,
+  formatNumber,
+  formatPurchase,
+  labelFor,
+} from "./format";
 
 describe("formatNumber", () => {
   it("uses a decimal comma and at most two decimals", () => {
@@ -22,6 +29,27 @@ describe("formatAmount", () => {
     expect(formatAmount({ quantity: 1250, unit: "ml" })).toBe("1,25 l");
     expect(formatAmount({ quantity: 2000, unit: "g" })).toBe("2 kg");
     expect(formatAmount({ quantity: 999, unit: "g" })).toBe("999 g");
+  });
+
+  it("says g and ml below 1 kg and 1 l", () => {
+    // A drink kept in litres read "0,15 l Haferdrink".
+    expect(formatAmount({ quantity: 0.15, unit: "l" })).toBe("150 ml");
+    expect(formatAmount({ quantity: 0.125, unit: "l" })).toBe("125 ml");
+    expect(formatAmount({ quantity: 0.5, unit: "kg" })).toBe("500 g");
+    expect(formatAmount({ quantity: 1, unit: "l" })).toBe("1 l");
+    expect(formatAmount({ quantity: 1.25, unit: "kg" })).toBe("1,25 kg");
+    expect(formatLine("Haferdrink", { quantity: 0.15, unit: "l" }, null)).toBe("150 ml Haferdrink");
+  });
+});
+
+describe("formatBeside", () => {
+  it("writes a number beside an amount in the amount's scale", () => {
+    expect(formatBeside(3, " von ", { quantity: 6, unit: "Stück" })).toBe("3 von 6 Stück");
+    expect(formatBeside(2, "–", { quantity: 3, unit: "Zehe" })).toBe("2–3 Zehen");
+    // Not "0,1 von 150 ml" or "0,5–630 ml".
+    expect(formatBeside(0.1, " von ", { quantity: 0.15, unit: "l" })).toBe("100 von 150 ml");
+    expect(formatBeside(0.5, "–", { quantity: 0.63, unit: "l" })).toBe("500–630 ml");
+    expect(formatBeside(800, "–", { quantity: 1200, unit: "ml" })).toBe("0,8–1,2 l");
   });
 });
 
@@ -58,6 +86,19 @@ describe("formatLine", () => {
     expect(formatLine("Mais (Dose)", { quantity: 140, unit: "g" }, null)).toBe("140 g Mais (Dose)");
     expect(formatLine("Spinat (TK)", { quantity: 600, unit: "g" }, null)).toBe("600 g Spinat (TK)");
   });
+
+  it("does not say a unit word the name already says", () => {
+    // It read "1 Blatt Lorbeerblätter" and "1 Knolle Fenchelknolle".
+    expect(formatLine("Lorbeerblatt", { quantity: 1, unit: "Blatt" }, null)).toBe("1 Lorbeerblatt");
+    expect(formatLine("Lorbeerblätter", { quantity: 2, unit: "Blatt" }, null)).toBe(
+      "2 Lorbeerblätter",
+    );
+    expect(formatLine("Fenchelknolle", { quantity: 2, unit: "Knolle" }, null)).toBe(
+      "2 Fenchelknolle",
+    );
+    expect(formatLine("Kopfsalat", { quantity: 1, unit: "Kopf" }, "groß")).toBe("1 Kopfsalat groß");
+    expect(formatLine("Petersilie", { quantity: 1, unit: "Bund" }, null)).toBe("1 Bund Petersilie");
+  });
 });
 
 describe("labelFor", () => {
@@ -68,6 +109,15 @@ describe("labelFor", () => {
     expect(labelFor(forms, "Schalotte", { quantity: 2, unit: "Stück" })).toBe("Schalotten");
     expect(labelFor(forms, "Schalotte", { quantity: 1, unit: "Packung" })).toBe("Schalotten");
     expect(labelFor(forms, "Schalotte", null)).toBe("Schalotten");
+  });
+
+  it("takes the singular for one of the unit the name says", () => {
+    const leaves = { one: "Lorbeerblatt", many: "Lorbeerblätter" };
+    expect(labelFor(leaves, "Lorbeerblätter", { quantity: 1, unit: "Blatt" })).toBe("Lorbeerblatt");
+    expect(labelFor(leaves, "Lorbeerblätter", { quantity: 2, unit: "Blatt" })).toBe(
+      "Lorbeerblätter",
+    );
+    expect(labelFor(forms, "Schalotten", { quantity: 1, unit: "Bund" })).toBe("Schalotten");
   });
 
   it("keeps the label of a line the catalog does not know", () => {

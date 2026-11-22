@@ -53,7 +53,8 @@ export function leavesNote(decision: Decision, note: string): boolean {
 
 /**
  * The line as the plan has it, kept next to what was bought at the first decision that
- * departs from it.
+ * departs from it. An amount changed on the note ("Menge ändern") is not what the plan had:
+ * 10 eggs changed to 6 were kept as planned 6.
  */
 export type PlannedLine = {
   name: string;
@@ -67,8 +68,8 @@ export type PlannedLine = {
 export function plannedOf(view: ViewLine, note: ShoppingTrip): PlannedLine {
   return {
     name: view.line.label,
-    quantity: view.purchase?.quantity ?? null,
-    unit: view.purchase?.unit ?? null,
+    quantity: view.line.purchase?.quantity ?? null,
+    unit: view.line.purchase?.unit ?? null,
     date: note.date,
     place: note.place,
     shopId: view.chosenShopId ?? view.shopId,

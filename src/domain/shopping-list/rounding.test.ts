@@ -65,6 +65,28 @@ describe("purchaseFor", () => {
     expect(purchaseFor(meat, 610)).toEqual({ quantity: 650, unit: "g" });
   });
 
+  it("rounds spoons and pinches to whole ones, not like grams", () => {
+    // 6 EL Limettensaft stood on the note as "10 EL" (November 2026).
+    const lime: Ingredient = { ...base, defaultUnit: "EL", buyingMode: "none" };
+    expect(purchaseFor(lime, 2)).toEqual({ quantity: 2, unit: "EL" });
+    expect(purchaseFor(lime, 6)).toEqual({ quantity: 6, unit: "EL" });
+    expect(purchaseFor({ ...lime, defaultUnit: "TL" }, 2.5)).toEqual({ quantity: 3, unit: "TL" });
+    expect(purchaseFor({ ...lime, defaultUnit: "Prise" }, 0.5)).toEqual({
+      quantity: 1,
+      unit: "Prise",
+    });
+  });
+
+  it("rounds litres and kilos as their millilitres and grams", () => {
+    // 150 ml Haferdrink stood on the note as "5 l".
+    const oatDrink: Ingredient = { ...base, defaultUnit: "l", buyingMode: "pack", packSize: 1 };
+    expect(purchaseFor(oatDrink, 0.15)).toEqual({ quantity: 0.15, unit: "l" });
+    expect(purchaseFor(oatDrink, 0.123)).toEqual({ quantity: 0.13, unit: "l" });
+    expect(purchaseFor(oatDrink, 1.234)).toEqual({ quantity: 1.25, unit: "l" });
+    const kilos: Ingredient = { ...base, defaultUnit: "kg", buyingMode: "none" };
+    expect(purchaseFor(kilos, 0.1)).toEqual({ quantity: 0.1, unit: "kg" });
+  });
+
   it("shows the amount of what comes in packs, not the packs", () => {
     const cream: Ingredient = { ...base, defaultUnit: "ml", buyingMode: "pack", packSize: 200 };
     expect(purchaseFor(cream, 150)).toEqual({ quantity: 150, unit: "ml" });
@@ -97,5 +119,13 @@ describe("naturalStep", () => {
     expect(naturalStep(437, "ml")).toBe(10);
     expect(naturalStep(1234, "ml")).toBe(50);
     expect(naturalStep(3, "Bund")).toBe(1);
+  });
+
+  it("steps grams and millilitres only, litres and kilos in them, any other unit whole", () => {
+    expect(naturalStep(0.15, "l")).toBe(0.01);
+    expect(naturalStep(0.08, "kg")).toBe(0.005);
+    expect(naturalStep(2, "EL")).toBe(1);
+    expect(naturalStep(2, "TL")).toBe(1);
+    expect(naturalStep(2, "Handvoll")).toBe(1);
   });
 });

@@ -94,10 +94,23 @@ export function toDefaultUnit(
 }
 
 /**
- * Amounts too small to shop for: a spoonful or a pinch. One that cannot be added to the rest
- * counts as "some", and a line asked for by the spoonful only shows no amount.
+ * Amounts too small to shop for: a spoonful, a pinch or a handful. One that cannot be added
+ * to the rest counts as "some". A line kept in one of these units shows no amount, nor does
+ * one asked for by them only of what is bought as it is or at home anyway (`nameAlone`).
  */
-const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp"]);
+const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp", "Handvoll"]);
+
+/**
+ * Whether pieces of something measured by volume or by the spoon, and bought as it is, say
+ * only "some": the juice of a lemon is read as one piece of lemon juice and was "1x
+ * Zitronensaft", eight juniper berries "8x Wacholderbeeren" (November 2026). A bottle, a jar
+ * or a packet is bought whole and keeps its line: "1x Rotwein".
+ */
+function countsAsSome(ingredient: Ingredient, amount: Amount): boolean {
+  const measured =
+    dimensionOf(ingredient.defaultUnit) === "volume" || SPOONFULS.has(ingredient.defaultUnit);
+  return amount.unit === "Stück" && measured && ingredient.buyingMode === "none";
+}
 
 /**
  * Whether a food was named as one piece of something bought by the piece: "Gurke", where the
@@ -144,11 +157,12 @@ interface Sums {
   primary: Contribution[];
   /** Their sum in the default unit. Null when none of them has a quantity that converts. */
   sum: number | null;
-  /** True when a part asks for no quantity, or for a spoonful that cannot be added. */
+  /** True when a part asks for no quantity, or for "some" that cannot be added. */
   hasUnquantified: boolean;
   /**
    * Whether everything with an amount asks for a spoonful or a pinch: then a pantry staple
-   * shows no amount, three tablespoons of oil are "Öl", not "45 ml Öl".
+   * or what is bought as it is shows no amount, three tablespoons of oil are "Öl", not
+   * "45 ml Öl".
    */
   bySpoonOnly: boolean;
   /** Amounts with no conversion path: one exact sum per dimension, in its base unit. */
@@ -178,9 +192,10 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
       continue;
     }
     // A spoonful or a pinch of something bought by weight or by the piece changes nothing
-    // about what to buy. It counts as "some", and does not become a line of its own that
-    // would read "55 ml Butter".
-    if (spoonful) {
+    // about what to buy, nor does the juice of a lemon where the juice is bought as it is.
+    // It counts as "some", and does not become a line of its own that would read "55 ml
+    // Butter" or "1x Zitronensaft".
+    if (spoonful || countsAsSome(ingredient, amount)) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;
@@ -237,10 +252,15 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
   if (primary.length > 0) {
     // The amount needed stands in front of the name whenever it is known, whatever the
     // ingredient is bought as: "200 g Crème fraîche", "1x Schalotte", "400 g Champignons".
-    // By the spoonful only, a staple is "Öl", but six tablespoons of Schmand are bought:
-    // "90 g Schmand". Without its amount the household did not know how much (October 2026).
-    const spoonOnly = bySpoonOnly && ingredient.isPantryStaple;
-    const purchase = sum !== null && !spoonOnly ? purchaseFor(ingredient, sum) : null;
+    // Without its amount the household did not know how much (October 2026). But nobody
+    // buys a part of what is kept in spoons, nor two spoonfuls of what is bought as it is or
+    // at home anyway: "Limettensaft", "Zitronensaft", "Öl". It read "10 EL Limettensaft"
+    // ("you can't buy parts of Limettensaft", David, November 2026). Six tablespoons of
+    // Schmand, which comes in packs, are bought: "90 g Schmand".
+    const nameAlone =
+      SPOONFULS.has(ingredient.defaultUnit) ||
+      (bySpoonOnly && (ingredient.isPantryStaple || ingredient.buyingMode === "none"));
+    const purchase = sum !== null && !nameAlone ? purchaseFor(ingredient, sum) : null;
     lines.push({
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
@@ -427,14 +447,17 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     });
     // A typed line with a number in front buys that many: "4 Ingwer-Shots" is "4x
     // Ingwer-Shots". Written twice in one unit, the amounts add up; otherwise none is shown.
-    // What is counted is bought whole: three quarters of a Seele for one person is one.
+    // Rounded as any other line: what is counted is bought whole, three quarters of a Seele
+    // for one person is one, and ⅛ l Hühnerbrühe is not "0,13 l". Of spoonfuls the name
+    // alone: "0,5 TL Pimentpulver" was the line.
     const amounts = line.contributions.map((part) => part.amount);
     const unit = amounts[0]?.unit;
     if (unit && amounts.every((amount) => amount?.unit === unit)) {
       const exact = tidy(amounts.reduce((total, a) => total + (a?.quantity ?? 0), 0));
-      const counted = dimensionOf(unit) !== "mass" && dimensionOf(unit) !== "volume";
       line.amounts = [{ quantity: exact, unit }];
-      line.purchase = { quantity: counted ? Math.ceil(exact - 1e-9) : exact, unit };
+      line.purchase = SPOONFULS.has(unit)
+        ? null
+        : { quantity: roundUpTo(exact, naturalStep(exact, unit)), unit };
       line.hasUnquantified = false;
     } else {
       line.amounts = [];

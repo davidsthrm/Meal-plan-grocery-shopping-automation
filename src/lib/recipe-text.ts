@@ -3,7 +3,7 @@ import type { RecipeSummary } from "@/domain/library/summary";
 import { EFFORT_NAME, effortOf } from "@/domain/library/tags";
 import { nameForOne, type Ingredient } from "@/domain/catalog";
 import { VOLUME_UNIT } from "@/domain/import/servings";
-import { formatAmount, formatNumber } from "@/domain/shopping-list/format";
+import { formatAmount, formatBeside, formatNumber } from "@/domain/shopping-list/format";
 import type { Unit } from "@/domain/units";
 
 /**
@@ -66,7 +66,9 @@ export function amountText(
   const amount = (value: number) =>
     unit === "Stück" ? formatNumber(value) : formatAmount({ quantity: value, unit });
   if (quantityMax === null) return amount(quantity);
-  return `${formatNumber(quantity)}–${amount(quantityMax)}`;
+  return unit === "Stück"
+    ? `${formatNumber(quantity)}–${amount(quantityMax)}`
+    : formatBeside(quantity, "–", { quantity: quantityMax, unit });
 }
 
 /**

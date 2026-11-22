@@ -44,6 +44,10 @@ describe("a recipe line", () => {
     expect(amountText(250, null, "g")).toBe("250 g");
     expect(amountText(2, 3, "Zehe")).toBe("2–3 Zehen");
     expect(amountText(1.5, 2, "Stück")).toBe("1,5–2");
+    // Both ends of a range in one unit, below one litre in millilitres.
+    expect(amountText(0.75, null, "l")).toBe("750 ml");
+    expect(amountText(0.5, 0.63, "l")).toBe("500–630 ml");
+    expect(amountText(1, 1.25, "l")).toBe("1–1,25 l");
     expect(ingredientText(shallots, 1, null, "Bund")).toBe("Schalotten");
     expect(amountText(null, null, null)).toBe("");
   });

@@ -10,9 +10,13 @@ after.
 - Mass and volume convert only through an ingredient's own density. Counted units (Stück,
   Bund, Zehe, Dose, ...) convert only through the ingredient's own grams-per-unit values.
 - If two amounts of one ingredient cannot be converted, keep separate lines. Never guess.
-- The exception is a spoonful or a pinch (EL, TL, Prise, Msp) that cannot be converted: it
-  counts as "some" on the ingredient's line. Otherwise three tablespoons of butter would be
-  the line "55 ml Butter".
+- The exception is a spoonful, a pinch or a handful (EL, TL, Prise, Msp, Handvoll) that
+  cannot be converted: it counts as "some" on the ingredient's line. Otherwise three
+  tablespoons of butter would be the line "55 ml Butter", and two handfuls of rocket "2
+  Handvoll Rucola" beside the rocket (November 2026). So do pieces of something measured by
+  volume or by the spoon and bought as it is: "Saft von 1 Zitrone" is read as one piece of
+  lemon juice and was "1x Zitronensaft" (November 2026). A bottle or a packet of it keeps its
+  line.
 - The other exception: slices of something bought by the piece that the catalog cannot weigh
   buy whole pieces, one for every eight slices (`SLICES_PER_PIECE`, `shoppingAmount`).
   "2 Zitronenscheiben" are "1x Zitrone"; the line was "2 Scheiben Zitronenscheiben"
@@ -42,7 +46,9 @@ after.
   (`plannedServings`: a recipe with a unit as written), and opened from a planned meal with
   that meal's, its extra portions included (`fromPlan`, `cookedServings`). Amounts are
   rounded as a cook measures (`cookingAmount`: 135 g, 1½ EL, ⅓ Zwiebel, whole eggs) and a
-  changed one is marked (`.scaled`); "Wie gedruckt zeigen" shows the steps as printed.
+  changed one is marked (`.scaled`); "Wie gedruckt zeigen" shows the steps as printed. In the
+  list of ingredients they read as on the shopping list, below 1 kg or 1 l in g or ml ("750
+  ml" for "¾ l", [SHOPPING.md](SHOPPING.md#lines-and-amounts)), a range in one unit.
 - A number in a step is scaled only where it is an amount (`scaleStep`,
   `src/domain/scaling.ts`): a weight or volume, a counted unit with one of the recipe's
   ingredients behind it, or one of them itself ("2 Eier"), past adjectives only. Never a

@@ -319,6 +319,17 @@ describe("a substitute", () => {
     expect(plannedOf(milk, monday)).toMatchObject({ name: "Milch", date: MONDAY });
     expect(decisionOf(milk)).toEqual({ kind: "bought", amount: null, name: "Hafermilch" });
   });
+
+  it("keeps what the plan had when the amount was changed on the note", () => {
+    // "Menge ändern" from 10 to 6 eggs: the plan had 10, and the purchase stored 6.
+    const lines = build([dinner(MONDAY)]);
+    const view = viewOf(lines, monday, {
+      "eier@main": { amount: { quantity: 6, unit: "Stück" } },
+    });
+    const eggs = toBuy(view).find((entry) => entry.line.key === "eier@main")!;
+    expect(eggs.purchase).toEqual({ quantity: 6, unit: "Stück" });
+    expect(plannedOf(eggs, monday)).toMatchObject({ name: "Eier", quantity: 10, unit: "Stück" });
+  });
 });
 
 describe("shops to offer", () => {

@@ -488,6 +488,25 @@ describe("buildShoppingList", () => {
     expect(forOne.amounts).toEqual([{ quantity: 0.75, unit: "Stück" }]);
   });
 
+  it("rounds a line the catalog does not know as any other", () => {
+    // "0,13 l Hühnerbrühe" stood on the list for ⅛ l, "0,5 TL Pimentpulver" for half a spoon.
+    const soup = recipe("suppe", [
+      line(null, 0.125, "l", { originalText: "⅛ l Hühnerbrühe" }),
+      line(null, 0.5, "TL", { originalText: "½ TL Pimentpulver" }),
+      line(null, 137.5, "g", { originalText: "137,5 g Feldsalat" }),
+    ]);
+    const lines = build([soup], [slot(MONDAY, "suppe")]);
+    expect(lines.get("unmapped:huehnerbruehe")).toMatchObject({
+      purchase: { quantity: 0.13, unit: "l" },
+      amounts: [{ quantity: 0.125, unit: "l" }],
+    });
+    expect(lines.get("unmapped:pimentpulver")).toMatchObject({
+      purchase: null,
+      amounts: [{ quantity: 0.5, unit: "TL" }],
+    });
+    expect(lines.get("unmapped:feldsalat")!.purchase).toEqual({ quantity: 140, unit: "g" });
+  });
+
   it("buys a line the catalog does not know by the name it is proposed with", () => {
     const olives = line(null, 6, "Stück", {
       originalText: "6 grüne, paprikagefüllte Oliven (Glas; nach Belieben)",
@@ -536,6 +555,101 @@ describe("slices of a lemon", () => {
     const tea = recipe("tee", [line("zitronen", 1, "Stück")]);
     const both = build([fish, tea], [slot(MONDAY, "fisch"), slot(MONDAY, "tee")]);
     expect(both.get("zitronen@main")!.purchase).toEqual({ quantity: 2, unit: "Stück" });
+  });
+});
+
+describe("what cannot be bought in parts", () => {
+  // As the live catalog keeps them: lime juice and zest in spoons, lemon juice in ml, all
+  // bought as they are; rocket in packs.
+  const ginger = testIndex.ingredientById.get("ingwer")!;
+  const like = (id: string, name: string, patch: Partial<Ingredient>): Ingredient => ({
+    ...ginger,
+    id,
+    name,
+    ...patch,
+  });
+  const parts = createCatalogIndex({
+    ...testCatalog,
+    ingredients: [
+      ...testCatalog.ingredients,
+      like("limettensaft", "Limettensaft", { defaultUnit: "EL" }),
+      like("zitronenschale", "Zitronenschale", { defaultUnit: "TL" }),
+      like("zitronensaft", "Zitronensaft", { defaultUnit: "ml" }),
+      like("rucola", "Rucola", { buyingMode: "pack", packSize: 125 }),
+    ],
+  });
+  const lines = (...recipes: Recipe[]) =>
+    new Map(
+      buildShoppingList({
+        index: parts,
+        recipes,
+        slots: recipes.map((each) => slot(MONDAY, each.id)),
+        trips: singleTrip(MONDAY),
+        onDemand: [],
+      }).map((each) => [each.key, each]),
+    );
+
+  it("names what is kept in spoons without an amount, and keeps the exact sum", () => {
+    // "you can't buy parts of Limettensaft" (David, 21 November 2026): it read "10 EL".
+    const lime = lines(recipe("a", [line("limettensaft", 6, "EL")])).get("limettensaft@main");
+    expect(lime).toMatchObject({
+      label: "Limettensaft",
+      purchase: null,
+      amounts: [{ quantity: 6, unit: "EL" }],
+    });
+    // Asked for in millilitres, it is still a part.
+    const inMl = lines(recipe("a", [line("limettensaft", 30, "ml")])).get("limettensaft@main");
+    expect(inMl).toMatchObject({ purchase: null, amounts: [{ quantity: 2, unit: "EL" }] });
+    const zest = lines(recipe("a", [line("zitronenschale", 2.5, "TL")]));
+    expect(zest.get("zitronenschale@main")).toMatchObject({ purchase: null });
+  });
+
+  it("names what is bought as it is and asked for by the spoonful only, staple or not", () => {
+    const juice = lines(recipe("a", [line("zitronensaft", 2, "EL")])).get("zitronensaft@main");
+    expect(juice).toMatchObject({ purchase: null, amounts: [{ quantity: 30, unit: "ml" }] });
+    // With an amount that is not a spoonful, the amount stands in front.
+    const more = lines(
+      recipe("a", [line("zitronensaft", 2, "EL")]),
+      recipe("b", [line("zitronensaft", 100, "ml")]),
+    );
+    expect(more.get("zitronensaft@main")!.purchase).toEqual({ quantity: 130, unit: "ml" });
+  });
+
+  it("counts the juice of a lemon as some, not as a line of its own", () => {
+    // "Saft von 1 Zitrone" is read as one piece of lemon juice: it read "1x Zitronensaft".
+    const lemon = line("zitronensaft", 1, "Stück", { originalText: "Saft von 1 Zitrone" });
+    const alone = lines(recipe("a", [lemon]));
+    expect([...alone.keys()]).toEqual(["zitronensaft@main"]);
+    expect(alone.get("zitronensaft@main")).toMatchObject({ purchase: null, hasUnquantified: true });
+    const spoons = lines(recipe("a", [lemon, line("zitronensaft", 2, "EL")]));
+    expect([...spoons.keys()]).toEqual(["zitronensaft@main"]);
+    expect(spoons.get("zitronensaft@main")).toMatchObject({ purchase: null });
+    const more = lines(recipe("a", [lemon, line("zitronensaft", 100, "ml")]));
+    expect([...more.keys()]).toEqual(["zitronensaft@main"]);
+    expect(more.get("zitronensaft@main")).toMatchObject({
+      purchase: { quantity: 100, unit: "ml" },
+      hasUnquantified: true,
+    });
+    // A bottle is bought whole: "1 Flasche Rotwein" was "1x Rotwein", and stays so.
+    const bottle = lines(recipe("a", [line("zitronensaft", 1, "Packung")]));
+    expect(bottle.get("zitronensaft@main#Packung")!.purchase).toEqual({
+      quantity: 1,
+      unit: "Packung",
+    });
+    // Pieces of something bought otherwise stay apart: a cup of cream, a piece of ginger.
+    const cream = lines(recipe("a", [line("sahne", 1, "Becher"), line("ingwer", 1, "Stück")]));
+    expect(cream.get("sahne@main#Becher")!.purchase).toEqual({ quantity: 1, unit: "Becher" });
+    expect(cream.get("ingwer@main#Stück")!.purchase).toEqual({ quantity: 1, unit: "Stück" });
+  });
+
+  it("counts a handful as some, not as a line of its own", () => {
+    // "5 Handvoll Rucola" stood on the note beside the rocket (16 November 2026).
+    const salad = lines(recipe("a", [line("rucola", 2, "Handvoll")]));
+    expect([...salad.keys()]).toEqual(["rucola@main"]);
+    expect(salad.get("rucola@main")).toMatchObject({ purchase: null, hasUnquantified: true });
+    const more = lines(recipe("a", [line("rucola", 2, "Handvoll"), line("rucola", 100, "g")]));
+    expect([...more.keys()]).toEqual(["rucola@main"]);
+    expect(more.get("rucola@main")!.purchase).toEqual({ quantity: 100, unit: "g" });
   });
 });
 

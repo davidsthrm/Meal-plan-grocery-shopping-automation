@@ -1,5 +1,5 @@
 import type { Ingredient } from "../catalog";
-import { dimensionOf, tidy, type Amount, type Unit } from "../units";
+import { tidy, type Amount, type Unit } from "../units";
 
 /** Rounds up to a multiple of `step`, ignoring floating point noise below the step. */
 export function roundUpTo(quantity: number, step: number): number {
@@ -9,12 +9,15 @@ export function roundUpTo(quantity: number, step: number): number {
 
 /**
  * The step a weight or volume is rounded to when the catalog names none: just enough to
- * read well. 137,5 g of Feldsalat reads "140 g", 1234 ml of milk "1,25 l". Counted units
- * are rounded to whole pieces.
+ * read well. 137,5 g of Feldsalat reads "140 g", 1234 ml of milk "1,25 l". Litres and kilos
+ * are stepped as their millilitres and grams: 150 ml Haferdrink in litres was "5 l".
+ * Spoons, pinches and counted units are rounded to whole ones: 6 EL were "10 EL"
+ * (November 2026).
  */
 export function naturalStep(quantity: number, unit: Unit): number {
-  const dimension = dimensionOf(unit);
-  if (dimension !== "mass" && dimension !== "volume") return 1;
+  if (unit === "kg") return naturalStep(quantity * 1000, "g") / 1000;
+  if (unit === "l") return naturalStep(quantity * 1000, "ml") / 1000;
+  if (unit !== "g" && unit !== "ml") return 1;
   if (quantity <= 100) return 5;
   if (quantity <= 1000) return 10;
   return 50;
