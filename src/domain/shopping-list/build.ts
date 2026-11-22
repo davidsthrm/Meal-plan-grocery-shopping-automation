@@ -1,5 +1,5 @@
 import type { CatalogIndex, Ingredient, Place } from "../catalog";
-import { nameForOne, normalizeName } from "../catalog";
+import { convertFor, nameForOne, normalizeName, wholesOf } from "../catalog";
 import { addDays, mondayOf, type IsoDate } from "../dates";
 import { cookedServings, type PlanExtra, type PlanSlot, type SlotItem } from "../plan";
 import { scaleFactor, shoppingAmount, type Recipe } from "../recipe";
@@ -76,16 +76,17 @@ export function originsOf(line: Pick<ShoppingLine, "contributions">, note: Shopp
 
 /**
  * Converts an amount to the ingredient's default unit, or returns null if there is no path.
- * For an ingredient bought in packs, "2 Packungen" means two packs. A bare "2" means two
- * packs only where it was typed onto a note (`typed`): "2x Garnelen". In a recipe it counts
- * pieces, and "4 Riesengarnelen" are four prawns, not four packs of 225 g.
+ * Parts add up through their whole: 4 Frühlingszwiebeln are 4/7 Bund. For an ingredient
+ * bought in packs, "2 Packungen" means two packs. A bare "2" means two packs only where it
+ * was typed onto a note (`typed`): "2x Garnelen". In a recipe it counts pieces, and "4
+ * Riesengarnelen" are four prawns, not four packs of 225 g.
  */
 export function toDefaultUnit(
   ingredient: Ingredient,
   amount: Amount,
   typed = false,
 ): number | null {
-  const direct = convert(amount.quantity, amount.unit, ingredient.defaultUnit, ingredient.gramsPer);
+  const direct = convertFor(ingredient, amount, ingredient.defaultUnit);
   if (direct !== null) return direct;
   const meansPacks =
     ingredient.buyingMode === "pack" &&
@@ -165,6 +166,8 @@ interface Sums {
    * "45 ml Öl".
    */
   bySpoonOnly: boolean;
+  /** The parts that add up, one sum per part and unit as asked: "1 Bund", "4 Stück". */
+  asked: ShoppingLine["amounts"];
   /** Amounts with no conversion path: one exact sum per dimension, in its base unit. */
   apart: { dimension: Dimension; exact: Amount; contributions: Contribution[] }[];
 }
@@ -174,6 +177,7 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
   let sum: number | null = null;
   let hasUnquantified = false;
   let bySpoonOnly = true;
+  const asked = new Map<string, ShoppingLine["amounts"][number]>();
   const apart = new Map<Dimension, { sum: number; contributions: Contribution[] }>();
 
   for (const contribution of contributions) {
@@ -189,6 +193,16 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
       sum = (sum ?? 0) + inDefault;
       if (!spoonful) bySpoonOnly = false;
       primary.push(contribution);
+      const { of, amount: part } = contribution.part ?? { amount };
+      if (part) {
+        const key = `${of ?? ""}|${part.unit}`;
+        const before = asked.get(key)?.quantity ?? 0;
+        asked.set(key, {
+          quantity: tidy(before + part.quantity),
+          unit: part.unit,
+          ...(of && { of }),
+        });
+      }
       continue;
     }
     // A spoonful or a pinch of something bought by weight or by the piece changes nothing
@@ -212,6 +226,7 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
     sum,
     hasUnquantified,
     bySpoonOnly,
+    asked: [...asked.values()],
     apart: [...apart].map(([dimension, group]) => ({
       dimension,
       exact: { quantity: tidy(group.sum), unit: baseUnitOf(dimension) },
@@ -222,7 +237,7 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
 
 function linesForBucket(bucket: Bucket): ShoppingLine[] {
   const { ingredient, trip } = bucket;
-  const { primary, sum, hasUnquantified, bySpoonOnly, apart } = sumUp(
+  const { primary, sum, hasUnquantified, bySpoonOnly, asked, apart } = sumUp(
     ingredient,
     bucket.contributions,
   );
@@ -261,6 +276,8 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       SPOONFULS.has(ingredient.defaultUnit) ||
       (bySpoonOnly && (ingredient.isPantryStaple || ingredient.buyingMode === "none"));
     const purchase = sum !== null && !nameAlone ? purchaseFor(ingredient, sum) : null;
+    // What is bought whole says what it was asked for in: "Genau: 8 Zehen".
+    const bySum = !ingredient.whole?.unit && !primary.some((c) => c.part);
     lines.push({
       ...common,
       label: labelFor(forms, ingredient.name, purchase),
@@ -268,7 +285,8 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
       neededBy: dated ? neededBy(primary) : null,
       purchase,
       packs: sum !== null ? packsFor(ingredient, sum) : null,
-      amounts: sum !== null ? [{ quantity: tidy(sum), unit: ingredient.defaultUnit }] : [],
+      amounts:
+        sum === null ? [] : bySum ? [{ quantity: tidy(sum), unit: ingredient.defaultUnit }] : asked,
       hasUnquantified,
       contributions: primary,
       note,
@@ -407,7 +425,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       ...contribution,
       origin: { date: origin.date, place: origin.place },
     });
-    if (note) bucket.notes.push(note);
+    if (note && !bucket.notes.includes(note)) bucket.notes.push(note);
     buckets.set(key, bucket);
   };
 
@@ -486,7 +504,8 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         ? index.ingredientById.get(line.ingredientId)
         : undefined;
       const lunch = source.type === "recipe" && source.meal === "lunch";
-      const on = date ? errandFor(ingredient, date, planned, lunch) : extrasErrand(planned);
+      const errand = (bought?: Ingredient) =>
+        date ? errandFor(bought, date, planned, lunch) : extrasErrand(planned);
       if (!ingredient) {
         // Not in the catalog yet ("Neue Zutaten"): bought by the name it is proposed with, or
         // read from the printed line, and as much as the meal needs. Shown as printed,
@@ -503,17 +522,31 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
           optional: line.optional,
           plannedAt,
         };
-        addLoose(`unmapped:${normalizeName(name)}`, name, on, contribution);
+        addLoose(`unmapped:${normalizeName(name)}`, name, errand(), contribution);
         continue;
       }
       const base = shoppingAmount(line, ingredient.defaultUnit, ingredient.gramsPer);
-      add(ingredient, on, {
+      const amount = base && { quantity: tidy(base.quantity * factor), unit: base.unit };
+      const contribution = {
         source,
-        amount: base && { quantity: tidy(base.quantity * factor), unit: base.unit },
+        amount,
         originalText: line.originalText,
         plannedAt,
         optional: line.optional,
-      });
+      };
+      // Zest is bought as its fruit, an organic one, and adds up with what else needs the
+      // fruit (David, 22 November 2026). Without an amount it takes one: "Schale von 1
+      // Zitrone" says so in its name.
+      const id = ingredient.whole?.ingredientId;
+      const fruit = id ? index.ingredientById.get(id) : undefined;
+      const wholes = amount ? wholesOf(ingredient, amount) : 1;
+      if (fruit && wholes !== null) {
+        const part = { of: ingredient.name, amount };
+        const inWholes = { quantity: tidy(wholes), unit: fruit.defaultUnit };
+        add(fruit, errand(fruit), { ...contribution, amount: inWholes, part }, "Bio");
+        continue;
+      }
+      add(ingredient, errand(ingredient), contribution);
     }
   };
 

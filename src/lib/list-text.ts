@@ -27,9 +27,14 @@ export function sourceText(contribution: Contribution): string {
   }
 }
 
-/** The exact amounts behind a line, where the list itself shows a rounded one or none. */
+/**
+ * The exact amounts behind a line, where the list itself shows a rounded one or none. A
+ * part of another ingredient says which: "2 TL Bio-Zitronenschale" on the lemons.
+ */
 export function exactText(view: ViewLine): string {
-  const amounts = view.line.amounts.map(formatAmount);
+  const amounts = view.line.amounts.map((each) =>
+    each.of ? `${formatAmount(each)} ${each.of}` : formatAmount(each),
+  );
   if (view.line.hasUnquantified && amounts.length > 0) amounts.push("und ohne Mengenangabe");
   const packs = view.line.packs;
   // What comes in packs says how many that is: "300 ml, das sind 2 Packungen".

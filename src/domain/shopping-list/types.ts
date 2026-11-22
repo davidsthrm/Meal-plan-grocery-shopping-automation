@@ -47,6 +47,11 @@ export interface Contribution {
   source: ContributionSource;
   /** Scaled amount in the unit the recipe uses. Null when the recipe gives no quantity. */
   amount: Amount | null;
+  /**
+   * Where the line buys the whole this is a part of: the part as the recipe asked for it,
+   * "2 TL Bio-Zitronenschale" on the lemons' line. `amount` then counts the wholes.
+   */
+  part?: { of: string; amount: Amount | null };
   /** The recipe line or free entry as written. */
   originalText: string;
   optional: boolean;
@@ -113,8 +118,12 @@ export interface ShoppingLine {
   purchase: Amount | null;
   /** For what is bought in packs: how many. Said with the exact amount, not on the line. */
   packs: number | null;
-  /** Exact sums, one per dimension that could not be merged. Shown on tap. */
-  amounts: Amount[];
+  /**
+   * Exact sums, one per dimension that could not be merged. Shown on tap. A line that buys
+   * the whole has one per part as asked: "8 Zehen", "1 Bund + 4 Stück", and `of` names a
+   * part of another ingredient: "2 TL Bio-Zitronenschale".
+   */
+  amounts: (Amount & { of?: string })[];
   /** True when at least one recipe asks for this without a quantity ("Salz"). */
   hasUnquantified: boolean;
   contributions: Contribution[];

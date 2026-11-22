@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   aisleSortOrder,
+  convertFor,
   createCatalogIndex,
   findIngredient,
   nameForOne,
   normalizeName,
+  wholesOf,
 } from "./catalog";
 import { testCatalog, testIndex } from "./shopping-list/test-catalog";
 
@@ -75,5 +77,34 @@ describe("nameForOne", () => {
     expect(nameForOne({ name: "Äpfel", synonyms: ["äpfel", "Äpfelchen"] })).toBe("Äpfel");
     // Named in the singular, with the plural among the other names.
     expect(nameForOne({ name: "Biskuitboden", synonyms: ["Biskuitböden"] })).toBe("Biskuitboden");
+  });
+});
+
+describe("wholesOf and convertFor", () => {
+  const ginger = testIndex.ingredientById.get("ingwer")!;
+  const garlic = {
+    ...ginger,
+    defaultUnit: "Zehe" as const,
+    whole: { ingredientId: null, unit: "Knolle" as const, parts: { Zehe: 10 } },
+  };
+  const zest = {
+    ...ginger,
+    defaultUnit: "TL" as const,
+    whole: { ingredientId: "zitronen", unit: null, parts: { TL: 3, Stück: 1 } },
+  };
+
+  it("counts the wholes of a part, in any unit the part converts to", () => {
+    expect(wholesOf(garlic, { quantity: 8, unit: "Zehe" })).toBe(0.8);
+    expect(wholesOf(garlic, { quantity: 2, unit: "Knolle" })).toBe(2);
+    expect(wholesOf(zest, { quantity: 1, unit: "EL" })).toBe(1);
+    expect(wholesOf(zest, { quantity: 2, unit: "Stück" })).toBe(2);
+    expect(wholesOf(zest, { quantity: 1, unit: "Packung" })).toBeNull();
+    expect(wholesOf(ginger, { quantity: 1, unit: "Stück" })).toBeNull();
+  });
+
+  it("converts through the whole where the weights say nothing", () => {
+    expect(convertFor(garlic, { quantity: 8, unit: "Zehe" }, "Knolle")).toBe(0.8);
+    expect(convertFor(garlic, { quantity: 1, unit: "Knolle" }, "Zehe")).toBe(10);
+    expect(convertFor(garlic, { quantity: 10, unit: "g" }, "Zehe")).toBeNull();
   });
 });
