@@ -151,60 +151,52 @@ export async function buyAfterAll(form: FormData): Promise<void> {
   backToList(input);
 }
 
-/** Writes a note next to a line: a brand, an offer price. */
-export async function noteLine(form: FormData): Promise<void> {
-  // The text is not called "note": that is the shopping note the line is on.
-  const input = read(line.extend({ text: z.string().trim().max(80) }), form);
-  const household = await requireHousehold();
-  await changeLine(await createSessionClient(), household, noteOf(input.note), input.key, {
-    note: input.text,
-  });
-  backToList(input);
-}
-
 /**
- * Puts a typed line the catalog does not know under a kind of grocery: "Lakritzschnecken"
- * under "Süßes". The same text written again goes there by itself.
+ * The pen on a note: how much of a line to buy and the note beside it (a brand, an offer
+ * price), in one go. The amount is written over the one the plan works out: "5" Karotten,
+ * "300" g Hack. None sent leaves it as it is, an empty one or "Wie geplant" takes it back,
+ * and one that cannot be read changes nothing. A typed line the catalog does not know can be
+ * put under a kind of grocery as well: "Lakritzschnecken" under "Süßes". The same text
+ * written again goes there by itself.
  */
-export async function kindOfEntry(form: FormData): Promise<void> {
-  const input = read(line.extend({ entry: z.guid(), kind: z.string().min(1).max(64) }), form);
-  await requireHousehold();
-  const db = await createSessionClient();
-  // Row level security lets this find the household's own kinds only.
-  const kind = await db.from("aisle_group").select("id").eq("id", input.kind).maybeSingle();
-  if (kind.error) throw new Error(`load kind: ${kind.error.message}`);
-  if (kind.data) await setEntryKind(db, input.entry, kind.data.id);
-  backToList(input);
-}
-
-/**
- * Writes an amount over the one the plan works out: "5" Karotten, "300" g Hack. An empty
- * amount, or "Wie geplant", takes it back. What cannot be read changes nothing.
- */
-export async function amountLine(form: FormData): Promise<void> {
+export async function editLine(form: FormData): Promise<void> {
   const input = read(
     line.extend({
       quantity: z.string().max(12).optional(),
       unit: z.string().max(12).optional(),
       reset: z.enum(["1"]).optional(),
+      // Not called "note": that is the shopping note the line is on.
+      text: z.string().trim().max(80),
+      entry: z.guid().optional(),
+      kind: z.string().min(1).max(64).optional(),
     }),
     form,
   );
   const household = await requireHousehold();
-  const quantity = input.reset ? null : parseQuantity(input.quantity ?? "");
-  const unit = input.unit ?? "";
-  const amount =
-    quantity === null
-      ? null
-      : quantity !== undefined && quantity > 0 && quantity < 100000 && isUnit(unit)
-        ? { quantity, unit }
-        : undefined;
-  if (amount !== undefined) {
-    await changeLine(await createSessionClient(), household, noteOf(input.note), input.key, {
-      amount,
-    });
+  const db = await createSessionClient();
+  const trip = noteOf(input.note);
+  const amount = amountOf(input);
+  if (amount !== undefined) await changeLine(db, household, trip, input.key, { amount });
+  await changeLine(db, household, trip, input.key, { note: input.text });
+  if (input.entry && input.kind) {
+    // Row level security lets this find the household's own kinds only.
+    const kind = await db.from("aisle_group").select("id").eq("id", input.kind).maybeSingle();
+    if (kind.error) throw new Error(`load kind: ${kind.error.message}`);
+    if (kind.data) await setEntryKind(db, input.entry, kind.data.id);
   }
   backToList(input);
+}
+
+/** The amount a form writes over the plan's: null for the plan's again, undefined for none. */
+function amountOf(input: { quantity?: string; unit?: string; reset?: "1" }) {
+  if (input.reset) return null;
+  if (input.quantity === undefined) return undefined;
+  const quantity = parseQuantity(input.quantity);
+  if (quantity === null) return null;
+  const unit = input.unit ?? "";
+  return quantity !== undefined && quantity > 0 && quantity < 100000 && isUnit(unit)
+    ? { quantity, unit }
+    : undefined;
 }
 
 /** Says that an errand is done: everything still open on its note is ticked. */

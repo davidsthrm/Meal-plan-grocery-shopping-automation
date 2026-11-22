@@ -10,8 +10,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { editLine } from "@/app/(app)/einkauf/actions";
 import { addDays, type IsoDate } from "@/domain/dates";
-import { formatAmount, formatBeside, formatNumber } from "@/domain/shopping-list/format";
+import { parseQuantity, quantityText } from "@/domain/quantity";
+import {
+  formatAmount,
+  formatBeside,
+  formatNumber,
+  formatPurchase,
+} from "@/domain/shopping-list/format";
 import {
   isBought,
   leavesNote,
@@ -26,6 +33,7 @@ import type { ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { noteId, readNoteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { convert, type Amount, type Unit } from "@/domain/units";
 import { dayName, PLACE_LOOK, problemText } from "@/lib/list-text";
+import { useOnline } from "./connection";
 import { MoveIcon, PenIcon, ShelfIcon, TickIcon, TrashIcon, UndoIcon } from "./icons";
 import { SubmitButton } from "./submit-button";
 import { PictogramIcon } from "./pictogram";
@@ -42,7 +50,8 @@ import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLin
  * be taken back for a few seconds from the bar at the foot. On a note that is planned and
  * looked over at home, the shelf takes the bin's place: what is at home is not bought
  * ("Haben wir schon", a form like any other), and nothing else is taken off a note there
- * but a line someone wrote by hand.
+ * but a line someone wrote by hand. The pen there changes how much is to be bought and the
+ * note beside it: what was bought is said in the shop.
  */
 
 /** The line as the plan has it, for the history of where it is bought. */
@@ -70,8 +79,22 @@ export interface ActionLine extends PageLine {
   hint?: string | null;
 }
 
+/** What the pen on a note changes about a line: how much of it to buy, and its note. */
+export interface LineEdit {
+  /** What the plan works out, or what was written by hand: what "Wie geplant" goes back to. */
+  planned: Amount | null;
+  /** The household wrote an amount of its own over it. */
+  edited: boolean;
+  /** Only written by hand, with no plan behind it: "Geschrieben", "Wie geschrieben". */
+  written: boolean;
+  note: string;
+  /** A typed line the catalog does not know: its entry, the kind it is under, the kinds. */
+  kind: { entry: string; current: string; kinds: { id: string; name: string }[] } | null;
+}
+
 type Sheet =
   | { kind: "edit"; line: ActionLine }
+  | { kind: "note"; line: ActionLine; edit: LineEdit }
   | {
       kind: "move";
       line: ActionLine;
@@ -106,6 +129,8 @@ interface MenuChoices {
   atHome: (() => void) | null;
   /** "Entfernen": in the shop, and on a note for a line written by hand. */
   remove: boolean;
+  /** On a note the pen's sheet: amount and note. In the shop the pen says what was bought. */
+  change: (() => void) | null;
 }
 
 const HostContext = createContext<Host | null>(null);
@@ -436,6 +461,7 @@ export function ActionRow({
   line,
   variant,
   atHome,
+  edit,
   removable = true,
   className = "",
   children,
@@ -447,6 +473,11 @@ export function ActionRow({
    * Its shelf stands where the bin stands in the shop, and a swipe to the left does it.
    */
   atHome?: { action: (form: FormData) => void | Promise<void>; fields: ReactNode };
+  /**
+   * On a note: what its pen changes, the amount and the note. There, planned and looked over
+   * at home, the pen said what was bought and ticked the line (November 2026).
+   */
+  edit?: LineEdit;
   /** Whether the line can be removed. On a note only one written by hand needs to be. */
   removable?: boolean;
   className?: string;
@@ -457,6 +488,7 @@ export function ActionRow({
   const face = useRef<HTMLDivElement>(null);
   const homeForm = useRef<HTMLFormElement>(null);
   const home = variant === "note" && atHome !== undefined;
+  const change = edit ? () => host.open({ kind: "note", line, edit }) : null;
   // Sent like a tap on the shelf. Without a connection the form is stopped before it goes
   // (the bar at the foot says so), and the row comes back.
   const toHome = () => {
@@ -473,6 +505,7 @@ export function ActionRow({
       host.menu(line, row.current.getBoundingClientRect(), {
         atHome: home ? toHome : null,
         remove: !home || removable,
+        change,
       });
     },
   });
@@ -510,9 +543,9 @@ export function ActionRow({
       <button
         type="button"
         className="icon-button"
-        aria-label={`${line.label}: Menge oder Produkt ändern`}
+        aria-label={`${line.label}: Menge oder ${change ? "Notiz" : "Produkt"} ändern`}
         title="Ändern"
-        onClick={() => host.open({ kind: "edit", line })}
+        onClick={change ?? (() => host.open({ kind: "edit", line }))}
       >
         <PenIcon />
       </button>
@@ -798,9 +831,17 @@ function RowMenu({
           Verschieben …
         </button>
       )}
-      <button type="button" role="menuitem" onClick={run(() => host.open({ kind: "edit", line }))}>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={run(choices.change ?? (() => host.open({ kind: "edit", line })))}
+      >
         <PenIcon />
-        {line.purchase ? "Nicht alles bekommen …" : "Anderes Produkt …"}
+        {choices.change
+          ? "Menge oder Notiz ändern …"
+          : line.purchase
+            ? "Nicht alles bekommen …"
+            : "Anderes Produkt …"}
       </button>
       {choices.atHome && (
         <button type="button" role="menuitem" onClick={run(choices.atHome)}>
@@ -826,9 +867,9 @@ function stepOf(unit: Unit, quantity: number): number {
 }
 
 /**
- * A sheet from the foot of the screen over the note: what was bought instead, or where it is
- * bought. It comes from below and goes back down; pulled down by its top, it follows the
- * finger and goes once let go on its way down.
+ * A sheet from the foot of the screen over the note: what was bought instead, where it is
+ * bought, or on a note how much of it to buy. It comes from below and goes back down; pulled
+ * down by its top, it follows the finger and goes once let go on its way down.
  */
 function ActionSheet({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -907,7 +948,7 @@ function ActionSheet({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) 
   }, [onClose]);
 
   const title =
-    sheet.kind === "edit"
+    sheet.kind !== "move"
       ? sheet.line.label
       : sheet.rest
         ? `Rest: ${formatAmount(sheet.rest.rest)} ${sheet.line.label}`
@@ -939,6 +980,8 @@ function ActionSheet({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) 
         </div>
         {sheet.kind === "edit" ? (
           <EditForm line={sheet.line} onDone={close} />
+        ) : sheet.kind === "note" ? (
+          <NoteForm line={sheet.line} edit={sheet.edit} onDone={close} />
         ) : (
           <MoveForm line={sheet.line} rest={sheet.rest} onDone={close} />
         )}
@@ -1086,6 +1129,168 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * On a note, planned and looked over at home: how much of a line to buy and the note beside
+ * it ("Angebot 1,29"), saved in one go, and for a typed line the catalog does not know, its
+ * kind of grocery. What was bought is said in the shop. Like every form but a tick, it needs
+ * a connection.
+ */
+function NoteForm({
+  line,
+  edit,
+  onDone,
+}: {
+  line: ActionLine;
+  edit: LineEdit;
+  onDone: () => void;
+}) {
+  const { page } = useHost();
+  const online = useOnline();
+  // The amount the line shows now, changed or planned.
+  const shown = {
+    text: quantityText(line.purchase?.quantity ?? null),
+    unit: line.purchase?.unit ?? "Stück",
+  };
+  const [text, setText] = useState(shown.text);
+  const [unit, setUnit] = useState<Unit>(shown.unit);
+  const [kind, setKind] = useState(edit.kind?.current);
+  // Null while empty, undefined while it cannot be read.
+  const quantity = parseQuantity(text);
+  const step = stepOf(unit, line.purchase?.quantity ?? 1);
+  const planned = edit.planned;
+  // Left alone, the amount is not sent: a note written alone would have made the plan's
+  // amount a change of its own. Set to the plan's, it is the plan again, not "(Plan: 10x)".
+  const kept = text === shown.text && unit === shown.unit;
+  const asPlanned = planned
+    ? quantityText(quantity ?? null) === quantityText(planned.quantity) && unit === planned.unit
+    : quantity === null;
+  const origin = edit.written ? "geschrieben" : "geplant";
+
+  return (
+    <form
+      className="space-y-5 px-4 pt-2 pb-4"
+      action={async (form) => {
+        // The sheet goes once the server has it, and the line under it says the new amount.
+        try {
+          await editLine(form);
+        } finally {
+          onDone();
+        }
+      }}
+    >
+      <input type="hidden" name="week" value={page.week} />
+      <input type="hidden" name="note" value={page.note} />
+      <input type="hidden" name="back" value="note" />
+      <input type="hidden" name="key" value={line.key} />
+      {kept ? null : asPlanned ? (
+        <input type="hidden" name="reset" value="1" />
+      ) : (
+        <>
+          <input type="hidden" name="quantity" value={text} />
+          <input type="hidden" name="unit" value={unit} />
+        </>
+      )}
+      <fieldset>
+        <legend className="font-semibold">Menge</legend>
+        <span className="mt-2 flex items-center gap-2">
+          <span className="stepper">
+            <button
+              type="button"
+              aria-label="Weniger"
+              disabled={!quantity || quantity <= step}
+              onClick={() => setText(quantityText(Math.max(step, (quantity ?? step) - step)))}
+            >
+              −
+            </button>
+            <span className="stepper-value min-w-[5.5rem] justify-center text-lg">
+              <input
+                aria-label={`Menge von ${line.label}`}
+                inputMode="decimal"
+                autoComplete="off"
+                maxLength={8}
+                className="w-16 bg-transparent text-center"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+              />
+            </span>
+            <button
+              type="button"
+              aria-label="Mehr"
+              onClick={() => setText(quantityText((quantity ?? 0) + step))}
+            >
+              +
+            </button>
+          </span>
+          <select
+            aria-label={`Einheit von ${line.label}`}
+            className="field field-select w-28"
+            value={unit}
+            onChange={(event) => setUnit(event.target.value as Unit)}
+          >
+            {line.units.map((each) => (
+              <option key={each} value={each}>
+                {each}
+              </option>
+            ))}
+          </select>
+        </span>
+        {edit.edited && (
+          <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+            {edit.written ? "Geschrieben" : "Geplant"}:{" "}
+            {planned ? formatPurchase(planned) : "ohne Menge"}
+            <SubmitButton className="link min-h-11" name="reset" value="1">
+              Wie {origin}
+            </SubmitButton>
+          </span>
+        )}
+      </fieldset>
+      <label className="block">
+        <span className="font-semibold">Notiz</span>
+        {/* Not "note": that field names the shopping note the form belongs to. */}
+        <input
+          name="text"
+          defaultValue={edit.note}
+          maxLength={80}
+          autoComplete="off"
+          className="field mt-1"
+          placeholder="z. B. Marke"
+        />
+      </label>
+      {/* Typed, and unknown to the catalog: it stood under "Sonstiges" until the household
+          said what it is. The same text written again goes there too. */}
+      {edit.kind && (
+        <label className="block">
+          <span className="font-semibold">Gehört zu</span>
+          <select
+            className="field field-select mt-1"
+            value={kind}
+            onChange={(event) => setKind(event.target.value)}
+          >
+            {edit.kind.kinds.map((each) => (
+              <option key={each.id} value={each.id}>
+                {each.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {/* Sent only when changed: saved as it was, an unsorted line would be put under
+          "Sonstiges" for good. */}
+      {edit.kind && kind !== edit.kind.current && (
+        <>
+          <input type="hidden" name="entry" value={edit.kind.entry} />
+          <input type="hidden" name="kind" value={kind} />
+        </>
+      )}
+      <SubmitButton className="btn btn-primary w-full">Speichern</SubmitButton>
+      {/* The bar that says so lies under the sheet. */}
+      {!online && (
+        <p className="text-sm text-warn">Offline: Das geht erst wieder mit Verbindung.</p>
+      )}
+    </form>
   );
 }
 

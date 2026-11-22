@@ -20,7 +20,6 @@ import {
 } from "@/components/ticks";
 import type { AisleGroup, CatalogIndex, Shop } from "@/domain/catalog";
 import { addDays, type IsoDate } from "@/domain/dates";
-import { quantityText } from "@/domain/quantity";
 import { blocks, dayProblems, lineWindow, noteDays } from "@/domain/shopping-list/change-day";
 import { decisionOf, plannedOf } from "@/domain/shopping-list/decisions";
 import { DRUGSTORE_ITEMS, FOR_WHOM_MAX, QUANTITY_MAX } from "@/domain/shopping-list/drugstore";
@@ -58,11 +57,8 @@ import { chosenShop, type NoteList } from "@/server/shopping/list";
 import {
   addDrugstoreEntry,
   addListEntry,
-  amountLine,
   changeNoteDay,
   markAtHome,
-  noteLine,
-  kindOfEntry,
   putAwayListNote,
 } from "./actions";
 
@@ -191,7 +187,9 @@ export function NoteSheet({
   const drugstore = trip.place === "drugstore";
   const covers = coversText(view);
   // The kinds of grocery a typed line the catalog does not know can be put under.
-  const kinds = [...index.aisleGroupById.values()].sort((a, b) => a.sortOrder - b.sortOrder);
+  const kinds = [...index.aisleGroupById.values()]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(({ id, name }) => ({ id, name }));
   // The errand on another day, earlier or later: which days work, which would leave
   // something too long before its meal (said, not stopped), and why the others do not.
   const lines = view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
@@ -549,10 +547,11 @@ function DrugstoreForm({
 }
 
 /**
- * One line of a note: a box to tick, the text, and behind it what it is for and what can be
- * changed about it. Moving it and "Haben wir schon" are the arrow and the shelf at the end
- * of the line, and only there: the same buttons once more in the opened line made it a wall
- * of buttons (October 2026).
+ * One line of a note: a box to tick, the text, and behind it what it is for. Moving it,
+ * changing its amount and note, and "Haben wir schon" are the arrow, the pen and the shelf at
+ * the end of the line, and only there: the same buttons once more in the opened line made it
+ * a wall of buttons (October 2026), and its forms, four on every line, were one editor per
+ * note in the end, the pen's (November 2026).
  */
 function Line({
   view,
@@ -570,10 +569,10 @@ function Line({
   note: ShoppingTrip;
   /** The shop, where the line names one on purpose. */
   shop: string | null;
-  /** A line of the drugstore's note: written by hand, nothing to add to it but its removal. */
+  /** A line of the drugstore's note: written by hand, sorted by the drugstore's sections. */
   drugstore: boolean;
   /** The kinds of grocery, in the order of a walk through the shop. */
-  kinds: AisleGroup[];
+  kinds: Pick<AisleGroup, "id" | "name">[];
 }) {
   const { line } = view;
   const here = noteId(note);
@@ -592,8 +591,6 @@ function Line({
   // A line only written by hand has no plan behind it: its amount is what was written.
   const written = typed.length > 0 && typed.length === line.contributions.length;
   const origin = written ? "Geschrieben" : "Plan";
-  // The amount can be written in the line's own unit and a few common ones.
-  const units = [...new Set([...(view.purchase ? [view.purchase.unit] : []), ...AMOUNT_UNITS])];
 
   return (
     <ActionRow
@@ -602,6 +599,17 @@ function Line({
       // At home, a line is not bought: the shelf in place of the shop's bin. What the
       // drugstore's note holds is written by hand and has no "Haben wir schon".
       atHome={drugstore ? undefined : { action: markAtHome, fields: where }}
+      edit={{
+        planned: line.purchase,
+        edited: view.edited,
+        written,
+        note: view.note ?? "",
+        // Typed, and unknown to the catalog. The drugstore's sections are not kinds of grocery.
+        kind:
+          !drugstore && line.ingredientId === null && typed.length > 0
+            ? { entry: typed[0].id, current: line.aisleGroupId, kinds }
+            : null,
+      }}
       removable={drugstore || written}
       className="print:py-0.5"
     >
@@ -618,7 +626,7 @@ function Line({
             )}
           </span>
         </summary>
-        <div className="line-details mt-1 mb-2 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
+        <div className="mt-1 mb-2 rounded-lg bg-accent-soft/50 p-3 text-sm print:hidden">
           {(line.contributions.length > 0 || needed !== "" || exact !== "") && (
             <section aria-label="Wofür" className="space-y-1">
               {/* The day is said here, not on the line: on every line it was too much. */}
@@ -635,89 +643,6 @@ function Line({
               </ul>
               {exact !== "" && <p className="text-muted">Genau: {exact}</p>}
             </section>
-          )}
-          {!drugstore && (
-            <div className="line-details-forms space-y-2">
-              <form action={amountLine} className="detail-row">
-                {where}
-                <span className="detail-label">Menge</span>
-                {/* Where the button does not fit beside them, it goes below. */}
-                <span className="flex min-w-[10.5rem] flex-1 gap-2">
-                  <input
-                    name="quantity"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    maxLength={8}
-                    defaultValue={quantityText(view.purchase?.quantity ?? null)}
-                    className="field w-16 shrink-0"
-                    aria-label={`Menge von ${line.label}`}
-                  />
-                  <select
-                    name="unit"
-                    defaultValue={view.purchase?.unit ?? "Stück"}
-                    className="field min-w-0 flex-1"
-                    aria-label={`Einheit von ${line.label}`}
-                  >
-                    {units.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-                <SubmitButton className="btn btn-small" label="Menge ändern">
-                  Ändern
-                </SubmitButton>
-              </form>
-              {view.edited && (
-                <form action={amountLine} className="detail-row">
-                  {where}
-                  <input type="hidden" name="reset" value="1" />
-                  <SubmitButton className="link min-h-11">
-                    {written ? "Wie geschrieben" : "Wie geplant"}: {planned}
-                  </SubmitButton>
-                </form>
-              )}
-              <form action={noteLine} className="detail-row">
-                {where}
-                <label className="contents">
-                  <span className="detail-label">Notiz</span>
-                  {/* Not "note": that field names the shopping note the form belongs to. */}
-                  <input
-                    name="text"
-                    defaultValue={view.note ?? ""}
-                    maxLength={80}
-                    className="field min-w-0 flex-1"
-                    placeholder="z. B. Marke"
-                    aria-label={`Notiz zu ${line.label}`}
-                  />
-                </label>
-                <SubmitButton className="btn btn-small">Merken</SubmitButton>
-              </form>
-              {/* Typed, and unknown to the catalog: it stood under "Sonstiges" until the
-                    household said what it is. The same text written again goes there too. */}
-              {line.ingredientId === null && typed.length > 0 && (
-                <form action={kindOfEntry} className="detail-row">
-                  {where}
-                  <input type="hidden" name="entry" value={typed[0].id} />
-                  <label className="contents">
-                    <span className="detail-label">Gehört zu</span>
-                    <select
-                      name="kind"
-                      defaultValue={line.aisleGroupId}
-                      className="field min-w-0 flex-1"
-                    >
-                      {kinds.map((kind) => (
-                        <option key={kind.id} value={kind.id}>
-                          {kind.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <SubmitButton className="btn btn-small">Einordnen</SubmitButton>
-                </form>
-              )}
-            </div>
           )}
         </div>
       </details>
