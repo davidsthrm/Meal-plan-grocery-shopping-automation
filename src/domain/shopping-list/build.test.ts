@@ -4,6 +4,7 @@ import type { Ingredient } from "../catalog";
 import type { Recipe, RecipeIngredient, Servings } from "../recipe";
 import { buildShoppingList, moveKey, originsOf, partKey, toDefaultUnit } from "./build";
 import { createCatalogIndex } from "../catalog";
+import { resolveLine } from "./present";
 import { line, testCatalog, testIndex } from "./test-catalog";
 import {
   butcherWeekdays,
@@ -650,6 +651,133 @@ describe("what cannot be bought in parts", () => {
     const more = lines(recipe("a", [line("rucola", 2, "Handvoll"), line("rucola", 100, "g")]));
     expect([...more.keys()]).toEqual(["rucola@main"]);
     expect(more.get("rucola@main")!.purchase).toEqual({ quantity: 100, unit: "g" });
+  });
+});
+
+describe("parts become the whole", () => {
+  // As David set the yields on 22 November 2026.
+  const ginger = testIndex.ingredientById.get("ingwer")!;
+  const like = (id: string, name: string, patch: Partial<Ingredient>): Ingredient => ({
+    ...ginger,
+    id,
+    name,
+    ...patch,
+  });
+  const zest = { ingredientId: "zitronen", unit: null, parts: { TL: 3, Stück: 1 } };
+  const wholes = createCatalogIndex({
+    ...testCatalog,
+    ingredients: [
+      ...testCatalog.ingredients,
+      like("knoblauch", "Knoblauch", {
+        defaultUnit: "Zehe",
+        gramsPer: { Zehe: 5, Knolle: 50 },
+        isPantryStaple: true,
+        whole: { ingredientId: null, unit: "Knolle", parts: { Zehe: 10 } },
+      }),
+      like("thymian", "Thymian", {
+        defaultUnit: "Bund",
+        whole: { ingredientId: null, unit: "Bund", parts: { Zweig: 10, Stängel: 10 } },
+      }),
+      like("fruehlingszwiebeln", "Frühlingszwiebeln", {
+        defaultUnit: "Bund",
+        whole: { ingredientId: null, unit: "Bund", parts: { Stück: 7 } },
+      }),
+      like("radieschen", "Radieschen", {
+        defaultUnit: "Bund",
+        buyingMode: "count",
+        whole: { ingredientId: null, unit: "Bund", parts: { Stück: 12 } },
+      }),
+      like("zitronenschale", "Bio-Zitronenschale", { defaultUnit: "TL", whole: zest }),
+      like("schale-1-zitrone", "Schale von 1 Zitrone", { defaultUnit: "Stück", whole: zest }),
+      like("orangensaft", "Orangensaft", { defaultUnit: "ml" }),
+    ],
+  });
+  const lines = (...recipes: Recipe[]) =>
+    new Map(
+      buildShoppingList({
+        index: wholes,
+        recipes,
+        slots: recipes.map((each) => slot(MONDAY, each.id)),
+        trips: singleTrip(MONDAY),
+        onDemand: [],
+      }).map((each) => [each.key, each]),
+    );
+  const text = (each: ShoppingLine | undefined) => resolveLine(each!).text;
+
+  it("buys a bulb of garlic for its cloves, and says how many cloves", () => {
+    const garlic = lines(recipe("a", [line("knoblauch", 8, "Zehe")])).get("knoblauch@main");
+    expect(text(garlic)).toBe("1 Knolle Knoblauch");
+    expect(garlic).toMatchObject({
+      purchase: { quantity: 1, unit: "Knolle" },
+      amounts: [{ quantity: 8, unit: "Zehe" }],
+      defaultAtHome: true,
+    });
+    const more = lines(recipe("a", [line("knoblauch", 8, "Zehe"), line("knoblauch", 1, "Knolle")]));
+    expect(more.get("knoblauch@main")).toMatchObject({
+      purchase: { quantity: 2, unit: "Knolle" },
+      amounts: [
+        { quantity: 8, unit: "Zehe" },
+        { quantity: 1, unit: "Knolle" },
+      ],
+    });
+  });
+
+  it("buys herbs by the bunch for their sprigs, with what is asked by the bunch", () => {
+    const thyme = lines(recipe("a", [line("thymian", 12, "Zweig")]));
+    expect([...thyme.keys()]).toEqual(["thymian@main"]);
+    expect(text(thyme.get("thymian@main"))).toBe("2 Bund Thymian");
+    expect(thyme.get("thymian@main")!.amounts).toEqual([{ quantity: 12, unit: "Zweig" }]);
+    const both = lines(
+      recipe("a", [line("thymian", 1, "Bund")]),
+      recipe("b", [line("thymian", 3, "Stängel")]),
+    );
+    expect([...both.keys()]).toEqual(["thymian@main"]);
+    expect(both.get("thymian@main")!.purchase).toEqual({ quantity: 2, unit: "Bund" });
+  });
+
+  it("adds counted spring onions and radishes to their bunches: one line", () => {
+    // "1 Bund Frühlingszwiebeln" and "4x Frühlingszwiebeln" stood on one note.
+    const onions = lines(
+      recipe("a", [line("fruehlingszwiebeln", 1, "Bund")]),
+      recipe("b", [line("fruehlingszwiebeln", 4, "Stück")]),
+    );
+    expect([...onions.keys()]).toEqual(["fruehlingszwiebeln@main"]);
+    expect(text(onions.get("fruehlingszwiebeln@main"))).toBe("2 Bund Frühlingszwiebeln");
+    expect(onions.get("fruehlingszwiebeln@main")!.amounts).toEqual([
+      { quantity: 1, unit: "Bund" },
+      { quantity: 4, unit: "Stück" },
+    ]);
+    const radishes = lines(recipe("a", [line("radieschen", 12, "Stück")]));
+    expect(radishes.get("radieschen@main")!.purchase).toEqual({ quantity: 1, unit: "Bund" });
+  });
+
+  it("buys the fruit for its zest, organic, together with the other lemons", () => {
+    const cake = lines(recipe("a", [line("zitronenschale", 2, "TL")]));
+    expect([...cake.keys()]).toEqual(["zitronen@main"]);
+    expect(text(cake.get("zitronen@main"))).toBe("1x Zitrone Bio");
+    expect(cake.get("zitronen@main")!.amounts).toEqual([
+      { quantity: 2, unit: "TL", of: "Bio-Zitronenschale" },
+    ]);
+    // "Schale von 1 Zitrone" is one lemon, also where the line was read without an amount.
+    const named = lines(recipe("a", [line("schale-1-zitrone", null, null)]));
+    expect(text(named.get("zitronen@main"))).toBe("1x Zitrone Bio");
+    const week = lines(
+      recipe("a", [line("zitronen", 2, "Stück"), line("zitronenschale", 1, "EL")]),
+      recipe("b", [line("zitronenschale", 1, "Stück")]),
+    );
+    expect([...week.keys()]).toEqual(["zitronen@main"]);
+    expect(text(week.get("zitronen@main"))).toBe("4x Zitronen Bio");
+  });
+
+  it("keeps a zest that does not say how much fruit it is: a packet of it", () => {
+    const packet = lines(recipe("a", [line("zitronenschale", 1, "Packung")]));
+    expect([...packet.keys()]).toEqual(["zitronenschale@main#Packung"]);
+  });
+
+  it("leaves orange juice a juice", () => {
+    const juice = lines(recipe("a", [line("orangensaft", 200, "ml")])).get("orangensaft@main");
+    expect(text(juice)).toBe("200 ml Orangensaft");
+    expect(juice!.defaultAtHome).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import type { GramsPer, Unit } from "./units";
+import { convert, type Amount, type GramsPer, type Unit } from "./units";
 
 /**
  * Where the household shops. Every place it goes to on a day has a note of its own. The
@@ -78,6 +78,48 @@ export interface Ingredient {
   isPantryStaple: boolean;
   /** Days it stays good after buying. Null means it keeps for any planned week. */
   shelfLifeDays: number | null;
+  /** The whole that is bought where recipes ask for a part of it. Null or left out: none. */
+  whole?: Whole | null;
+}
+
+/**
+ * What one whole gives, where recipes ask for parts and the household buys the whole: 10
+ * Zehen a Knolle, 10 Zweige a Bund, 3 TL zest a lemon (David, 22 November 2026).
+ */
+export interface Whole {
+  /** Bought as another ingredient, in its default unit: the lemon for its zest. */
+  ingredientId: string | null;
+  /** The unit a whole of this ingredient itself is counted in: Knolle, Bund. */
+  unit: Unit | null;
+  /** How many of a unit one whole gives: { Zehe: 10 }, { TL: 3, Stück: 1 }. */
+  parts: Partial<Record<Unit, number>>;
+}
+
+/**
+ * How many wholes an amount is: 8 Zehen are 0,8 Knollen, 1 EL lemon zest is one lemon.
+ * Null where the ingredient has no whole or the amount is no part of it.
+ */
+export function wholesOf(ingredient: Ingredient, amount: Amount): number | null {
+  const whole = ingredient.whole;
+  if (!whole) return null;
+  if (amount.unit === whole.unit) return amount.quantity;
+  for (const [unit, count] of Object.entries(whole.parts) as [Unit, number][]) {
+    const inPart = convert(amount.quantity, amount.unit, unit);
+    if (inPart !== null) return inPart / count;
+  }
+  return null;
+}
+
+/**
+ * Converts an amount of an ingredient into a unit: by its weights where the catalog has
+ * them, otherwise through its whole: 12 Zweige Thymian are 1,2 Bund. Null without a path.
+ */
+export function convertFor(ingredient: Ingredient, amount: Amount, unit: Unit): number | null {
+  const direct = convert(amount.quantity, amount.unit, unit, ingredient.gramsPer);
+  if (direct !== null) return direct;
+  const wholes = wholesOf(ingredient, amount);
+  const one = wholesOf(ingredient, { quantity: 1, unit });
+  return wholes === null || !one ? null : wholes / one;
 }
 
 export interface Catalog {

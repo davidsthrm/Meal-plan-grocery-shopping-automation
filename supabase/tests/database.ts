@@ -42,17 +42,20 @@ export function migrationFiles(): string[] {
  * - `seed`: loads the catalog and the sample recipes of `supabase/seed.sql`
  * - `legacyGrants`: grants as a project made before mid 2026 does by itself
  * - `realtime`: has Supabase's publication for Realtime, which the migrations fill
+ * - `before`: stops before that migration, to run it on rows made for a test
  */
 export async function createDatabase({
   seed = false,
   legacyGrants = false,
   realtime = false,
+  before = "",
 } = {}): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(SUPABASE_STAND_INS);
   if (legacyGrants) await db.exec(LEGACY_AUTOMATIC_GRANTS);
   if (realtime) await db.exec("create publication supabase_realtime");
   for (const file of migrationFiles()) {
+    if (file === before) break;
     await db.exec(readFileSync(migrationsDir + file, "utf8"));
   }
   if (seed) {

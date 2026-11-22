@@ -1,4 +1,4 @@
-import type { Ingredient } from "../catalog";
+import { convertFor, type Ingredient } from "../catalog";
 import { tidy, type Amount, type Unit } from "../units";
 
 /** Rounds up to a multiple of `step`, ignoring floating point noise below the step. */
@@ -28,10 +28,14 @@ export function naturalStep(quantity: number, unit: Unit): number {
  * of the name on the list. Every line shows the amount needed in the ingredient's own unit:
  * "200 g Crème fraîche", "1x Schalotte", "1 Bund Petersilie". Counts and weights are rounded
  * to the catalog's step; whatever else is rounded to whole pieces or a sensible weight. How
- * many packs that is, is said apart (`packsFor`).
+ * many packs that is, is said apart (`packsFor`). What is bought whole is bought in wholes:
+ * 8 Zehen are "1 Knolle".
  */
 export function purchaseFor(ingredient: Ingredient, quantity: number): Amount {
   const unit = ingredient.defaultUnit;
+  const whole = ingredient.whole?.unit;
+  const wholes = whole && convertFor(ingredient, { quantity, unit }, whole);
+  if (whole && wholes) return { quantity: roundUpTo(wholes, 1), unit: whole };
   const step =
     ingredient.roundingStep ??
     (ingredient.buyingMode === "count" || ingredient.buyingMode === "weight"

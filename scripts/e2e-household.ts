@@ -100,6 +100,11 @@ async function setup() {
           grams_per: i.gramsPer,
           is_pantry_staple: i.isPantryStaple,
           shelf_life_days: i.shelfLifeDays,
+          whole_unit: i.whole?.unit ?? null,
+          whole_ingredient_id: i.whole?.ingredientId
+            ? id("ingredient", i.whole.ingredientId)
+            : null,
+          per_whole: i.whole?.parts ?? {},
         })),
       )
     ).error,

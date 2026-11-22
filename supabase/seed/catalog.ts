@@ -1,4 +1,4 @@
-import type { AisleGroup, BuyingMode, Catalog, Ingredient, Shop } from "@/domain/catalog";
+import type { AisleGroup, BuyingMode, Catalog, Ingredient, Shop, Whole } from "@/domain/catalog";
 import type { GramsPer, Unit } from "@/domain/units";
 
 /**
@@ -71,6 +71,8 @@ interface Extra {
   /** Days it keeps after buying. Leave out for things that keep. */
   shelf?: number;
   shop?: string;
+  /** What one whole gives, where recipes ask for parts of it. */
+  whole?: Whole;
 }
 
 /** Builds the rows of one aisle group. `mode` "pack" needs `pack` in the extras. */
@@ -95,6 +97,7 @@ function aisle(aisleGroupId: string, defaultShop: string) {
     gramsPer: extra.gramsPer ?? {},
     isPantryStaple: extra.staple ?? false,
     shelfLifeDays: extra.shelf ?? null,
+    whole: extra.whole ?? null,
   });
 }
 
@@ -116,6 +119,16 @@ const haushalt = aisle("haushalt", "aldi");
 /** A can or jar bought by the piece: one needs no number, two show as "2x". */
 const dose = { pack: 1 };
 
+/** Fresh herbs: ten sprigs or stalks a bunch (David, 22 November 2026). */
+const sprigs: Whole = { ingredientId: null, unit: "Bund", parts: { Zweig: 10, Stängel: 10 } };
+
+/** Zest is bought as its fruit: so much of it a fruit, or the zest of one. */
+const zestOf = (fruit: string, parts: Whole["parts"]): Whole => ({
+  ingredientId: fruit,
+  unit: null,
+  parts: { ...parts, Stück: 1 },
+});
+
 // prettier-ignore
 export const ingredients: Ingredient[] = [
   // Obst & Gemüse
@@ -127,8 +140,8 @@ export const ingredients: Ingredient[] = [
   obst("zwiebeln", "Zwiebeln", "Stück", "none", { syn: ["Zwiebel", "Speisezwiebeln", "Gemüsezwiebel"], gramsPer: { Stück: 80 }, staple: true, shelf: 30 }),
   obst("rote-zwiebeln", "rote Zwiebeln", "Stück", "none", { syn: ["rote Zwiebel"], gramsPer: { Stück: 80 }, shelf: 30 }),
   obst("schalotten", "Schalotten", "Stück", "none", { syn: ["Schalotte"], shelf: 30 }),
-  obst("fruehlingszwiebeln", "Frühlingszwiebeln", "Bund", "none", { syn: ["Frühlingszwiebel", "Frühl.zwiebeln", "Lauchzwiebeln", "Lauchzwiebel"], shelf: 7 }),
-  obst("knoblauch", "Knoblauch", "Zehe", "none", { syn: ["Knoblauchzehe", "Knoblauchzehen"], gramsPer: { Zehe: 5, Knolle: 50 }, staple: true, shelf: 30 }),
+  obst("fruehlingszwiebeln", "Frühlingszwiebeln", "Bund", "none", { syn: ["Frühlingszwiebel", "Frühl.zwiebeln", "Lauchzwiebeln", "Lauchzwiebel"], shelf: 7, whole: { ingredientId: null, unit: "Bund", parts: { Stück: 7 } } }),
+  obst("knoblauch", "Knoblauch", "Zehe", "none", { syn: ["Knoblauchzehe", "Knoblauchzehen"], gramsPer: { Zehe: 5, Knolle: 50 }, staple: true, shelf: 30, whole: { ingredientId: null, unit: "Knolle", parts: { Zehe: 10 } } }),
   obst("ingwer", "Ingwer", "g", "none", { syn: ["frischer Ingwer"], shelf: 21 }),
   obst("feldsalat", "Feldsalat", "g", "pack", { syn: ["Rapunzel", "Ackersalat"], pack: 150, shelf: 3 }),
   obst("kopfsalat", "Kopfsalat", "Stück", "count", { syn: ["grüner Salat", "Blattsalat"], shelf: 4 }),
@@ -152,26 +165,31 @@ export const ingredients: Ingredient[] = [
   obst("kuerbis", "Hokkaido-Kürbis", "Stück", "count", { syn: ["Kürbis", "Hokkaido"], shelf: 30 }),
   obst("gruene-bohnen", "grüne Bohnen", "g", "weight", { syn: ["Buschbohnen", "Bohnen"], step: 50, shelf: 4 }),
   obst("spargel", "Spargel", "g", "weight", { syn: ["weißer Spargel", "grüner Spargel"], step: 250, shelf: 2 }),
-  obst("radieschen", "Radieschen", "Bund", "count", { shelf: 5 }),
+  obst("radieschen", "Radieschen", "Bund", "count", { shelf: 5, whole: { ingredientId: null, unit: "Bund", parts: { Stück: 12 } } }),
   obst("avocados", "Avocados", "Stück", "count", { syn: ["Avocado"], shelf: 5 }),
   obst("zitronen", "Zitronen", "Stück", "count", { syn: ["Zitrone", "Bio-Zitrone", "Bio-Zitronen"], shelf: 14 }),
-  obst("zitronensaft", "Zitronensaft", "ml", "none"),
+  // Bottled lemon and lime juice is at home (David, 22 November 2026).
+  obst("zitronensaft", "Zitronensaft", "ml", "none", { staple: true }),
+  obst("zitronenschale", "Zitronenschale", "TL", "none", { syn: ["Bio-Zitronenschale", "Zitronenabrieb"], whole: zestOf("zitronen", { TL: 3 }) }),
   obst("limetten", "Limetten", "Stück", "count", { syn: ["Limette"], shelf: 14 }),
+  obst("limettensaft", "Limettensaft", "ml", "none", { staple: true }),
+  obst("limettenschale", "Limettenschale", "TL", "none", { syn: ["Bio-Limettenschale", "Limettenabrieb"], whole: zestOf("limetten", { TL: 2 }) }),
   obst("orangen", "Orangen", "Stück", "count", { syn: ["Orange", "Apfelsinen"], shelf: 14 }),
+  obst("orangenschale", "Orangenschale", "TL", "none", { syn: ["Bio-Orangenschale", "Orangenabrieb"], whole: zestOf("orangen", { EL: 1 }) }),
   obst("aepfel", "Äpfel", "Stück", "count", { syn: ["Apfel"], gramsPer: { Stück: 180 }, shelf: 21 }),
   obst("birnen", "Birnen", "Stück", "count", { syn: ["Birne"], shelf: 7 }),
   obst("bananen", "Bananen", "Stück", "count", { syn: ["Banane"], shelf: 5 }),
   obst("weintrauben", "Weintrauben", "g", "pack", { syn: ["Trauben"], pack: 500, shelf: 5 }),
   obst("erdbeeren", "Erdbeeren", "g", "pack", { pack: 500, shelf: 2 }),
   obst("heidelbeeren", "Heidelbeeren", "g", "pack", { syn: ["Blaubeeren"], pack: 125, shelf: 4 }),
-  obst("petersilie", "Petersilie", "Bund", "none", { syn: ["glatte Petersilie", "krause Petersilie", "gehackte Petersilie"], shelf: 5 }),
+  obst("petersilie", "Petersilie", "Bund", "none", { syn: ["glatte Petersilie", "krause Petersilie", "gehackte Petersilie"], shelf: 5, whole: sprigs }),
   obst("schnittlauch", "Schnittlauch", "Bund", "none", { syn: ["Schnittlauchröllchen"], shelf: 5 }),
-  obst("basilikum", "Basilikum", "Bund", "none", { syn: ["Basilikumblätter", "frisches Basilikum"], shelf: 7 }),
-  obst("koriander", "Koriander", "Bund", "none", { syn: ["Koriandergrün", "frischer Koriander", "frisches Koriandergrün"], shelf: 4 }),
-  obst("dill", "Dill", "Bund", "none", { shelf: 4 }),
-  obst("thymian", "Thymian", "Bund", "none", { syn: ["Thymianblättchen", "frischer Thymian", "Thymianzweige"], shelf: 7 }),
-  obst("rosmarin", "Rosmarin", "Bund", "none", { syn: ["Rosmarinzweige"], shelf: 10 }),
-  obst("minze", "Minze", "Bund", "none", { syn: ["frische Minze"], shelf: 5 }),
+  obst("basilikum", "Basilikum", "Bund", "none", { syn: ["Basilikumblätter", "frisches Basilikum"], shelf: 7, whole: sprigs }),
+  obst("koriander", "Koriander", "Bund", "none", { syn: ["Koriandergrün", "frischer Koriander", "frisches Koriandergrün"], shelf: 4, whole: sprigs }),
+  obst("dill", "Dill", "Bund", "none", { shelf: 4, whole: sprigs }),
+  obst("thymian", "Thymian", "Bund", "none", { syn: ["Thymianblättchen", "frischer Thymian", "Thymianzweige"], shelf: 7, whole: sprigs }),
+  obst("rosmarin", "Rosmarin", "Bund", "none", { syn: ["Rosmarinzweige"], shelf: 10, whole: sprigs }),
+  obst("minze", "Minze", "Bund", "none", { syn: ["frische Minze"], shelf: 5, whole: sprigs }),
   obst("chilischoten", "Chilischoten", "Stück", "none", { syn: ["Chilischote", "frische Chili", "rote Chilischote", "Peperoni"], shelf: 10 }),
 
   // Konserven & Gläser
