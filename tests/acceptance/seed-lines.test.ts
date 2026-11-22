@@ -5,6 +5,7 @@ import { resolveLine } from "@/domain/shopping-list/present";
 import { singleTrip } from "@/domain/shopping-list/trips";
 import type { ShoppingLine } from "@/domain/shopping-list/types";
 import { convert, dimensionOf, type Unit } from "@/domain/units";
+import { line } from "@/domain/shopping-list/test-catalog";
 import { seedCatalog } from "../../supabase/seed/catalog";
 import { seedRecipes } from "../../supabase/seed/recipes";
 
@@ -96,5 +97,48 @@ describe("every seed recipe on a list", () => {
     const part = ({ purchase }: ShoppingLine) =>
       purchase !== null && !measured(purchase.unit) && !Number.isInteger(purchase.quantity);
     expect(wrong(part)).toEqual([]);
+  });
+});
+
+describe("parts on the seed catalog", () => {
+  // As David decided on 22 November 2026.
+  const week = (...parts: [string, number | null, Unit | null][]) =>
+    buildShoppingList({
+      index,
+      recipes: parts.map(([id, quantity, unit], at) => ({
+        id: `r${at}`,
+        title: `r${at}`,
+        kind: "cookbook",
+        servings: { min: 4, max: 4, unit: null },
+        ingredients: [line(id, quantity, unit)],
+      })),
+      trips: singleTrip(DATE),
+      onDemand: [],
+      slots: parts.map((_, at) => ({
+        id: `s${at}`,
+        date: DATE,
+        meal: "dinner",
+        kind: "recipes",
+        items: [{ recipeId: `r${at}`, servings: 4 }],
+      })),
+    }).map((each) => ({ text: resolveLine(each).text, atHome: each.defaultAtHome }));
+
+  it("buys the whole", () => {
+    expect(week(["knoblauch", 8, "Zehe"])).toEqual([{ text: "1 Knolle Knoblauch", atHome: true }]);
+    expect(week(["thymian", 12, "Zweig"])).toEqual([{ text: "2 Bund Thymian", atHome: false }]);
+    expect(week(["fruehlingszwiebeln", 1, "Bund"], ["fruehlingszwiebeln", 4, "Stück"])).toEqual([
+      { text: "2 Bund Frühlingszwiebeln", atHome: false },
+    ]);
+    expect(week(["zitronenschale", 2, "TL"])).toEqual([{ text: "1x Zitrone Bio", atHome: false }]);
+  });
+
+  it("has lemon and lime juice at home and buys orange juice", () => {
+    expect(week(["zitronensaft", 2, "EL"], ["limettensaft", 1, "EL"])).toEqual([
+      { text: "Zitronensaft", atHome: true },
+      { text: "Limettensaft", atHome: true },
+    ]);
+    expect(week(["orangensaft", 200, "ml"])).toEqual([
+      { text: "200 ml Orangensaft", atHome: false },
+    ]);
   });
 });

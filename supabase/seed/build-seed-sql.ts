@@ -130,6 +130,9 @@ export function buildSeedSql(): string {
         "grams_per",
         "is_pantry_staple",
         "shelf_life_days",
+        "whole_unit",
+        "whole_ingredient_id",
+        "per_whole",
       ],
       seedCatalog.ingredients.map((i) => [
         ingredientId(i.id),
@@ -145,6 +148,9 @@ export function buildSeedSql(): string {
         i.gramsPer,
         i.isPantryStaple,
         i.shelfLifeDays,
+        i.whole?.unit ?? null,
+        i.whole?.ingredientId ? ingredientId(i.whole.ingredientId) : null,
+        i.whole?.parts ?? {},
       ]),
     ),
     insert(
