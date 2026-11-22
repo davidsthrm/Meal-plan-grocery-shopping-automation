@@ -1,4 +1,4 @@
-import type { Amount, Unit } from "../units";
+import { convert, type Amount, type Unit } from "../units";
 
 const PLURALS: Partial<Record<Unit, string>> = {
   Zehe: "Zehen",
@@ -23,14 +23,16 @@ function unitWord(unit: Unit, quantity: number): string {
   return quantity > 1 ? (PLURALS[unit] ?? unit) : unit;
 }
 
-/** Larger weights and volumes read better in kg and l. */
+/**
+ * Weights and volumes read in g and ml below 1 kg and 1 l, in kg and l from there. A drink
+ * kept in litres read "0,15 l Haferdrink" (November 2026).
+ */
 function humanScale(amount: Amount): Amount {
-  if (amount.unit === "g" && amount.quantity >= 1000) {
-    return { quantity: amount.quantity / 1000, unit: "kg" };
-  }
-  if (amount.unit === "ml" && amount.quantity >= 1000) {
-    return { quantity: amount.quantity / 1000, unit: "l" };
-  }
+  const { quantity, unit } = amount;
+  if (unit === "g" && quantity >= 1000) return { quantity: quantity / 1000, unit: "kg" };
+  if (unit === "ml" && quantity >= 1000) return { quantity: quantity / 1000, unit: "l" };
+  if (unit === "kg" && quantity < 1) return { quantity: quantity * 1000, unit: "g" };
+  if (unit === "l" && quantity < 1) return { quantity: quantity * 1000, unit: "ml" };
   return amount;
 }
 
@@ -38,6 +40,15 @@ function humanScale(amount: Amount): Amount {
 export function formatAmount(amount: Amount): string {
   const { quantity, unit } = humanScale(amount);
   return `${formatNumber(quantity)} ${unitWord(unit, quantity)}`;
+}
+
+/**
+ * A number beside an amount of the same unit, both in the amount's scale: "3 von 6 Stück",
+ * "500–630 ml". The bare number would keep its own: "0,5–630 ml".
+ */
+export function formatBeside(quantity: number, between: string, amount: Amount): string {
+  const shown = convert(quantity, amount.unit, humanScale(amount).unit) ?? quantity;
+  return `${formatNumber(shown)}${between}${formatAmount(amount)}`;
 }
 
 /**

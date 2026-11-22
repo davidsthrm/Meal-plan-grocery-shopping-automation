@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatLine, formatNumber, formatPurchase, labelFor } from "./format";
+import {
+  formatAmount,
+  formatBeside,
+  formatLine,
+  formatNumber,
+  formatPurchase,
+  labelFor,
+} from "./format";
 
 describe("formatNumber", () => {
   it("uses a decimal comma and at most two decimals", () => {
@@ -22,6 +29,29 @@ describe("formatAmount", () => {
     expect(formatAmount({ quantity: 1250, unit: "ml" })).toBe("1,25 l");
     expect(formatAmount({ quantity: 2000, unit: "g" })).toBe("2 kg");
     expect(formatAmount({ quantity: 999, unit: "g" })).toBe("999 g");
+  });
+
+  it("says g and ml below 1 kg and 1 l", () => {
+    // A drink kept in litres read "0,15 l Haferdrink".
+    expect(formatAmount({ quantity: 0.15, unit: "l" })).toBe("150 ml");
+    expect(formatAmount({ quantity: 0.125, unit: "l" })).toBe("125 ml");
+    expect(formatAmount({ quantity: 0.5, unit: "kg" })).toBe("500 g");
+    expect(formatAmount({ quantity: 1, unit: "l" })).toBe("1 l");
+    expect(formatAmount({ quantity: 1.25, unit: "kg" })).toBe("1,25 kg");
+    expect(formatLine("Haferdrink", { quantity: 0.15, unit: "l" }, null)).toBe(
+      "150 ml Haferdrink",
+    );
+  });
+});
+
+describe("formatBeside", () => {
+  it("writes a number beside an amount in the amount's scale", () => {
+    expect(formatBeside(3, " von ", { quantity: 6, unit: "Stück" })).toBe("3 von 6 Stück");
+    expect(formatBeside(2, "–", { quantity: 3, unit: "Zehe" })).toBe("2–3 Zehen");
+    // Not "0,1 von 150 ml" or "0,5–630 ml".
+    expect(formatBeside(0.1, " von ", { quantity: 0.15, unit: "l" })).toBe("100 von 150 ml");
+    expect(formatBeside(0.5, "–", { quantity: 0.63, unit: "l" })).toBe("500–630 ml");
+    expect(formatBeside(800, "–", { quantity: 1200, unit: "ml" })).toBe("0,8–1,2 l");
   });
 });
 

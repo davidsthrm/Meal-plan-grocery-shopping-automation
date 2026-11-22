@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { addDays, type IsoDate } from "@/domain/dates";
-import { formatAmount, formatNumber } from "@/domain/shopping-list/format";
+import { formatAmount, formatBeside, formatNumber } from "@/domain/shopping-list/format";
 import {
   isBought,
   leavesNote,
@@ -141,7 +141,7 @@ export function outcomeText(line: Pick<ActionLine, "label" | "purchase">, decisi
   const amount = decision.amount;
   if (amount && line.purchase && amount.unit === line.purchase.unit) {
     if (amount.quantity !== line.purchase.quantity) {
-      parts.push(`${formatNumber(amount.quantity)} von ${formatAmount(line.purchase)}`);
+      parts.push(formatBeside(amount.quantity, " von ", line.purchase));
     }
   } else if (amount) {
     parts.push(`${formatAmount(amount)} gekauft`);
