@@ -630,6 +630,12 @@ describe("what cannot be bought in parts", () => {
       purchase: { quantity: 100, unit: "ml" },
       hasUnquantified: true,
     });
+    // A bottle is bought whole: "1 Flasche Rotwein" was "1x Rotwein", and stays so.
+    const bottle = lines(recipe("a", [line("zitronensaft", 1, "Packung")]));
+    expect(bottle.get("zitronensaft@main#Packung")!.purchase).toEqual({
+      quantity: 1,
+      unit: "Packung",
+    });
     // Pieces of something bought otherwise stay apart: a cup of cream, a piece of ginger.
     const cream = lines(recipe("a", [line("sahne", 1, "Becher"), line("ingwer", 1, "Stück")]));
     expect(cream.get("sahne@main#Becher")!.purchase).toEqual({ quantity: 1, unit: "Becher" });

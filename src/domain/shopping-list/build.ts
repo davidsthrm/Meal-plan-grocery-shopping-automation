@@ -101,15 +101,15 @@ export function toDefaultUnit(
 const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp", "Handvoll"]);
 
 /**
- * Whether a counted amount of something measured by volume or by the spoon, and bought as it
- * is, says only "some": the juice of a lemon is read as one piece of lemon juice and was
- * "1x Zitronensaft" (November 2026).
+ * Whether pieces of something measured by volume or by the spoon, and bought as it is, say
+ * only "some": the juice of a lemon is read as one piece of lemon juice and was "1x
+ * Zitronensaft", eight juniper berries "8x Wacholderbeeren" (November 2026). A bottle, a jar
+ * or a packet is bought whole and keeps its line: "1x Rotwein".
  */
 function countsAsSome(ingredient: Ingredient, amount: Amount): boolean {
-  const counted = dimensionOf(amount.unit) !== "mass" && dimensionOf(amount.unit) !== "volume";
   const measured =
     dimensionOf(ingredient.defaultUnit) === "volume" || SPOONFULS.has(ingredient.defaultUnit);
-  return counted && measured && ingredient.buyingMode === "none";
+  return amount.unit === "Stück" && measured && ingredient.buyingMode === "none";
 }
 
 /**
