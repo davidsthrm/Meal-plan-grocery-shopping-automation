@@ -39,9 +39,11 @@ specification of the receipt upload (not built yet).
   the meals it comes from stay available per line. A note picked up is one column on screen,
   the width of the page, so that an opened line has room: what it is for on the left, amount
   and note on the right, its buttons in one row below. On paper it keeps its columns.
-- The amount of a line can be changed on its note ("Menge ändern", `LineState.amount`,
-  `shopping_line_state.quantity` and `unit`). The line then says what the plan has, and
-  "Wie geplant" takes the change back. The change stays when the plan changes.
+- The amount of a line can be changed on its note, in the sheet of the line's pen ("Menge",
+  `editLine`, `LineState.amount`, `shopping_line_state.quantity` and `unit`). The line then
+  says what the plan has, and "Wie geplant" takes the change back, as does setting the
+  plan's amount again. A note saved alone leaves the amount to the plan. The change stays
+  when the plan changes.
 - A line does not say on which other notes of the week the same thing stands. "Auch auf:
   Di 27. Supermarkt" with "Dort mitkaufen" under the lines was taken out: the household did
   not need it (October 2026). The arrow of a line moves it.
@@ -285,7 +287,8 @@ specification of the receipt upload (not built yet).
   refused the move and the Wiener stayed at the butcher. The arrow is the one way to move a
   line, and the shelf the one way to say it is at home: "Lieber woanders kaufen" and "Bei
   EDEKA kaufen" in the opened line said the same once more (October 2026). An opened line
-  says what it is for, then Menge, Notiz and Gehört zu, each with its name above.
+  says only what it is for: its Menge, Notiz and Gehört zu, four forms on every line, became
+  the one sheet of the pen (November 2026).
 - A line typed onto a note stays on that note, unless it is moved.
 
 ## At home ("Haben wir schon")
@@ -310,7 +313,7 @@ specification of the receipt upload (not built yet).
   Trauben"), the longest run of words anywhere that names one wins, in the singular or the
   plural too, and the other words are the note: the grapes are fruit (`parseFreeEntry`).
   Text that matches nothing stays a free line under "Sonstiges", until the household puts
-  it under a kind of grocery on the opened line ("Gehört zu", `kindOfEntry`,
+  it under a kind of grocery with the line's pen ("Gehört zu", `editLine`,
   `shopping_manual_entry.aisle_group_id`). Every entry of the same text goes with it, and
   the same text written again later takes that kind by itself (`rememberedKind`).
 - A typed line the catalog does not know gets its kind of grocery guessed once as it is
@@ -395,9 +398,15 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
 
 - Every row of a note and of the view for the shop has its actions at its end, quiet and
   without words (`ActionRow`, `src/components/line-actions.tsx`): the arrow moves it, the
-  pen says what was bought (a stepper "3 von 6", another product), the bin removes it
-  without asking. A swipe to the right buys, to the left removes; a finger held still
-  opens the same as a menu. On a note, planned and looked over before the shop, the shelf
+  pen changes it, the bin removes it without asking. In the shop the pen says what was
+  bought (a stepper "3 von 6", another product). On a note it changes how much is to be
+  bought and the note beside it, in one sheet saved with "Speichern" (Menge, Notiz, and
+  "Gehört zu" for a typed line the catalog does not know; not on the drugstore's note,
+  whose sections come from what was written), and needs a connection like every form but
+  a tick. There it opened the shop's sheet and bought the line: what was bought is said in
+  "Jetzt einkaufen" only (David, 21 November 2026). A swipe to the right buys, to the left
+  removes; a finger held still opens the same as a menu, on a note with "Menge oder Notiz
+  ändern …". On a note, planned and looked over before the shop, the shelf
   takes the bin's place ("Haben wir schon", `ShelfIcon`, the `markAtHome` form, so it works
   before any script): a swipe to the left and the menu say the same, on a calm grey instead
   of the warning red. Only a line written by hand can still be removed there, from the
@@ -410,7 +419,10 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
   it fades in 160ms) instead of making the lines below it jump. The view for the shop has its own menu, sheets and bar
   (`LineActionsHere`): a modal dialog makes everything outside it inert. On a note the
   actions stand at the end of the line's first row, and an opened line runs the width of
-  the note under them; beside them it was a narrow column on a phone.
+  the note under them; beside them it was a narrow column on a phone. The line's text stops
+  short of them, and they keep a little room apart, each 44px: the text ran on under them,
+  so that a tap beside a short line hit a sign instead of opening the line, and the three
+  touched (November 2026).
 
 ## Not bought
 

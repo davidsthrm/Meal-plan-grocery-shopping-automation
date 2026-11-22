@@ -4,7 +4,7 @@ Update this file in the same pull request that changes what it says.
 
 ## Where the app stands
 
-The app is live at https://familyessensplan.vercel.app for the family since 19 October 2026. The latest feature work is phase 18 (Entdecken with tabs, the Regal as a shelf, the recipe stack, "Was ist noch da?", the roulette, "Alle Rezepte", discoveries in the statistics); see [HISTORY.md](HISTORY.md). A repo tidy-up followed in November 2026. A code audit on 10 November 2026 added several items below. On 11 and 12 November 2026 the slow pages were measured and made faster: the database's household check runs once per query, the server keeps the library between requests, a tap on the plan answers at once and writes in fewer round trips, and a line moved to another note waits for fewer; what is still open stands under "Questions for David".
+The app is live at https://familyessensplan.vercel.app for the family since 19 October 2026. The latest feature work is phase 18 (Entdecken with tabs, the Regal as a shelf, the recipe stack, "Was ist noch da?", the roulette, "Alle Rezepte", discoveries in the statistics); see [HISTORY.md](HISTORY.md). A repo tidy-up followed in November 2026. A code audit on 10 November 2026 added several items below. On 11 and 12 November 2026 the slow pages were measured and made faster: the database's household check runs once per query, the server keeps the library between requests, a tap on the plan answers at once and writes in fewer round trips, and a line moved to another note waits for fewer; what is still open stands under "Questions for David". Since 22 November 2026 the pen on a shopping note changes a line's amount and note in one sheet; it no longer buys the line there, which is said in "Jetzt einkaufen" only.
 
 ## Known bugs and risks
 
@@ -25,6 +25,7 @@ The app is live at https://familyessensplan.vercel.app for the family since 19 O
 - A baking recipe without a printed servings line got whatever was entered in review, mostly "4 Portionen". "Ändern" on the recipe page sets its unit.
 - A book that prints no servings with its recipes sends every one of them to review for that alone (106 recipes of "Freude am Kochen"). The upload form has no "servings unless printed" field yet.
 - `npm run import:servings-units -- "Stührmann"` would still change three recipes of "Einfach Hausgemacht" (Knuspermüsli, Tomaten-Blechkuchen, Lauch-Tarte) to units that look like misread cover text ("1 Backblech À ca. 25 X 40 cm"). Fix them by hand, do not apply. The script also leaves 7 "FÜR EINE 26ER SPRINGFORM" lines it cannot parse.
+- Safari draws a select 25 to 28px high, whatever height is asked for: on Ziele, Rezept ändern and in the pen's sheet of "Jetzt einkaufen". The pen's sheet on a note draws its own (`.field-select`, 44px); the others can take the same class.
 - `supabase/config.toml` says `minimum_password_length = 10`, the app enforces 8. Harmless unless `supabase config push` is run. Align it to 8.
 - The old column `recipe.steps` is still referenced by `merge_recipes` (`supabase/migrations/20261018000100_preparation_steps.sql`); dropping it needs a non-additive migration.
 
@@ -55,7 +56,7 @@ Conventions and anything where two topics disagree are decided by David. A quest
 has to wait stands here, with a recommendation; once answered, the answer goes into the doc
 it belongs to and the question goes.
 
-- None open.
+- The drugstore's note: its pen now changes the amount and the note of a line like on any note (without "Gehört zu"). Before, it had no such forms and its pen opened the shop's sheet. Recommendation: keep it; the alternative is no pen on the drugstore's note.
 
 ## Open questions and things to check by hand
 
@@ -66,6 +67,7 @@ it belongs to and the question goes.
 - Picking photos on an iPhone from the batch form did not get as far as the upload for the household (October 2026), which could not be reproduced in WebKit. The folder button is off on touch screens now (`pointer-coarse`), and one recipe is added through `/rezepte/hinzufuegen`. Check a batch from an iPhone once more.
 - The live search loads the whole library into the browser, 1,427 recipes on 11 November 2026 (about 880 in October). Watch how long that takes as the library grows.
 - Speed on the phones once this is merged (the migrations `household_check_once` and `library_version` were applied on 12 November 2026): open the app cold, switch between Woche, Rezepte and Einkauf, tap "Gute Idee!", step the servings three times quickly, empty a meal, mark a favourite and see it on the next page, type the first letter into the search, move a line to another note. With two phones: what one plans shows on the other, also right after the other's own tap (a change within three seconds of a device's own tap is taken for its own). None of it was measured in production.
+- The pen's sheet on a note was checked in WebKit (Playwright) only. On an iPhone: the stepper and its field, the unit and "Gehört zu" (selects the page draws), "Speichern", "Wie geplant", and a tap beside a short line's text.
 - The looks of a tap on the plan were checked in Chromium only. Check on an iPhone: "Gute Idee!", "Leeren", "Hier einplanen", and three quick taps on "+".
 - The cookbooks were framed with the first way of asking, and only their turned pages and an overview of all pages were checked by eye. A page that still lies wrongly is framed again with `npm run import:frame-photos -- "<name>" --path <page> --again`.
 - The season calendar's months come from general German calendars, not from the region around Laupheim, and were not checked against the household's market.

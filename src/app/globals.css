@@ -243,31 +243,6 @@ summary,
       busy-show 120ms ease 150ms forwards,
       busy-turn 700ms linear infinite;
   }
-  /*
-   * A line of a note opened: what it is for, then what can be changed about it, each row
-   * with its name in front. A hairline between the two parts, nothing more.
-   */
-  .line-details {
-    display: grid;
-    gap: 0.75rem;
-  }
-  .line-details > * + * {
-    border-top: 1px solid rgb(35 33 29 / 0.08);
-    padding-top: 0.75rem;
-  }
-  /* Its name above, then field and button: beside them it pushed the button off a phone. */
-  .detail-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem 0.5rem;
-  }
-  .detail-label {
-    flex-basis: 100%;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--color-muted);
-  }
 
   /*
    * The weekend on the card of today: Saturday and Sunday side by side, each a small card
@@ -404,6 +379,18 @@ summary,
   .field-problem {
     border-color: var(--color-warn);
     background: var(--color-warn-soft);
+  }
+  /*
+   * A select as tall as a field. Safari draws a select of its own 25 to 28px high, whatever
+   * height is asked for, unless the page draws it: so it does, with a chevron of its own.
+   */
+  .field-select {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b665d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
   }
 
   .label {
@@ -3340,22 +3327,34 @@ summary,
    * On a note the actions stand at the end of the line's first row, beside its text; what an
    * opened line holds runs underneath them, the whole width of the note. Beside them it was
    * a narrow column on a phone, its fields and buttons one under the other (October 2026).
+   * The text stops short of them, and they keep a little room apart, each still 44px: the
+   * text ran on under them, so that a tap beside a short line hit a sign instead of opening
+   * the line, and the signs touched (November 2026).
    */
+  .tick-line {
+    --sign: 2.6rem;
+    --sign-gap: 0.3rem;
+  }
   .tick-line .row-actions {
     position: absolute;
-    top: -0.1rem;
+    top: -0.025rem;
     right: 0;
+    gap: var(--sign-gap);
+  }
+  .tick-line .row-actions .icon-button {
+    width: var(--sign);
+    height: var(--sign);
   }
   .tick-line summary {
-    padding-right: calc(3 * 2.75rem);
+    margin-right: calc(3 * (var(--sign) + var(--sign-gap)));
   }
   .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
-    padding-right: calc(2 * 2.75rem);
+    margin-right: calc(2 * (var(--sign) + var(--sign-gap)));
   }
   @media print {
     .tick-line summary,
     .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
-      padding-right: 0;
+      margin-right: 0;
     }
   }
 
