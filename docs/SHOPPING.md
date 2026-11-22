@@ -33,8 +33,25 @@ specification of the receipt upload (not built yet).
   Zitronensaft"), and so does what is bought by weight, by the piece or in packs: six
   tablespoons of Schmand are "90 g Schmand" (October 2026). Otherwise only a line without
   any amount ("Petersilie") shows the name alone. How a lemon's juice or a handful counts is
-  in [RECIPES.md](RECIPES.md#units-and-conversion). Once parts are bought as the whole (see
-  [STATUS.md](STATUS.md)), this stays the rule for whatever has no yield.
+  in [RECIPES.md](RECIPES.md#units-and-conversion). This stays the rule for whatever has no
+  whole (next point).
+- Parts become the whole: the household buys a whole thing where recipes ask for a part of
+  it, and the line buys the whole, added up with what other meals need of it (David, 22
+  November 2026). The catalog says what one whole gives (`Ingredient.whole`, columns
+  `whole_unit`, `whole_ingredient_id`, `per_whole`): garlic 10 Zehen a Knolle ("8 Zehen
+  Knoblauch" is "1 Knolle Knoblauch"), fresh herbs 10 Zweige or Stängel a Bund ("12 Zweige
+  Thymian" are "2 Bund Thymian"), Frühlingszwiebeln 7 and Radieschen 12 a Bund. Counted
+  pieces add up with the bunches: "1 Bund Frühlingszwiebeln" and "4x Frühlingszwiebeln" were
+  two lines and are "2 Bund". Zest is bought as the household's fruit of that kind, with the
+  note "Bio", because zest is grated from an untreated fruit: 3 TL a lemon, 2 TL a lime,
+  1 EL an orange. A piece of zest, or a zest read without an amount, is one fruit: "Schale
+  von 1 Zitrone" is "1x Zitrone Bio". A packet of zest has no fruit to count and stays as it
+  is. An opened line says what it was asked for in ("Genau: 8 Zehen", "Genau: 2 Stück + 2 TL
+  Bio-Zitronenschale"). Lemon and lime juice are not turned into fruit: the household uses
+  bottled juice it has at home, so Zitronensaft and Limettensaft are pantry staples and
+  stand under "Haben wir schon"; orange juice is bought as juice. The yields are estimates.
+  A herb kept by the leaf (Salbei) or dried (Majoran, Oregano) has no bunch its sprigs can
+  add up in, and keeps them on a line of their own.
 - Line text: quantity, name, note ("600 g Leberkäse", "Milch WS 1.29"). The exact sum and
   the meals it comes from stay available per line. A note picked up is one column on screen,
   the width of the page, so that an opened line has room: what it is for on the left, amount

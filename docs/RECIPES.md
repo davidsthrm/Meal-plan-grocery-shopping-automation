@@ -8,7 +8,9 @@ after.
 
 - Base units are g and ml. EL = 15 ml, TL = 5 ml.
 - Mass and volume convert only through an ingredient's own density. Counted units (Stück,
-  Bund, Zehe, Dose, ...) convert only through the ingredient's own grams-per-unit values.
+  Bund, Zehe, Dose, ...) convert only through the ingredient's own grams-per-unit values, or
+  through what one whole of it gives: 10 Zehen a Knolle, 10 Zweige a Bund (`per_whole`, see
+  [SHOPPING.md](SHOPPING.md#lines-and-amounts)).
 - If two amounts of one ingredient cannot be converted, keep separate lines. Never guess.
 - The exception is a spoonful, a pinch or a handful (EL, TL, Prise, Msp, Handvoll) that
   cannot be converted: it counts as "some" on the ingredient's line. Otherwise three

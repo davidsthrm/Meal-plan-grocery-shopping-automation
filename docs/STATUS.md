@@ -36,11 +36,11 @@ The app is live at https://familyessensplan.vercel.app for the family since 19 O
 - Not built yet in the import: retrying a failed page or recipe from the screen.
 - Wire `mainIngredients()` into the end of a batch, so that new imports get their "Hauptzutat" tags.
 - The shopping list does not show yet what changed since it was last looked at. `src/domain/shopping-list/diff.ts` ("what changed since last look") exists with tests but is not used by the app yet. Also not yet: without a connection only ticking works (typing a line, moving it or changing its amount needs one); only a supermarket line can be bought at another shop for a week; the "Haben wir schon?" step is a plain section of each list for now.
-- Shopping lines, left open by the audit of 21 November 2026 (counted on the 1,391 approved recipes of the library): counted pieces of an ingredient bought by the Bund or by weight make a second line ("12x Radieschen" beside "1 Bund", 1,400 lines), and two lines stand for one thing on 4 of 28 real notes ("100 g Oliven" and "5x Oliven").
-- Shopping lines: parts of a whole are not bought as the whole yet ("8 Zehen Knoblauch" as "1 Knolle", juice and zest as the fruit); it needs yields per fruit. Decided by David on 22 November 2026: that branch makes Zitronensaft and Limettensaft pantry staples, because he uses bottled juice he has at home. Whatever has no yield keeps its name alone ([SHOPPING.md](SHOPPING.md#lines-and-amounts)).
+- Shopping lines, left open by the audit of 21 November 2026 (counted on the 1,391 approved recipes of the library): counted pieces of an ingredient bought by weight, or in a unit its catalog cannot add up, make a line of their own (1,122 lines; 1,400 before garlic, herbs, spring onions and radishes were bought whole on 22 November 2026), and two lines stand for one thing on 4 of 28 real notes ("100 g Oliven" and "5x Oliven").
+- Shopping lines: sprigs and stalks of herbs that have no bunch to add up in stay a line of their own, 36 lines: Salbei is kept by the leaf, Majoran and Oregano dried; Zitronenmelisse, Bohnenkraut, Schnittlauch, Beifuß and Waldmeister were not among the herbs David named ([SHOPPING.md](SHOPPING.md#lines-and-amounts)).
 - Shopping lines: a weight is rounded to the gram where the catalog has no step ("134 g Belugalinsen"), and to whole kilos where the catalog weighs in kg ("1 kg Miesmuscheln" for 500 g).
 - Shopping lines, import quirks: "3 l Salz" from "2–3 l Salzwasser", "1x Grundrezept" (a recipe named in another one, read as an ingredient), "1 Tasse" read as one piece.
-- Shopping lines, catalog typos and gaps: "Samabal Oelek" beside "Sambal Oelek", "Tunfischfilet" beside "Thunfischfilet", lemon zest under four names; Rote Beten, Pastinaken, Gewürzgurken and Jalapeños have no singular among their other names ("1x Rote Beten").
+- Shopping lines, catalog typos and gaps: "Samabal Oelek" beside "Sambal Oelek", "Tunfischfilet" beside "Thunfischfilet", lemon zest under four names (all of them buy lemons now); Rote Beten, Pastinaken, Gewürzgurken and Jalapeños have no singular among their other names ("1x Rote Beten").
 - "Passwort vergessen" sends its e-mail through Supabase, whose own mail server writes only to the project's team and twice an hour. The family needs a mail server of its own set in the dashboard (SMTP). The link of Supabase's default template works only in the browser that asked for it; with the template set to `token_hash` it works on any device.
 
 ## Ideas
@@ -74,6 +74,7 @@ it belongs to and the question goes.
 - The offline flow was tested in Chromium (Playwright). On an iPhone, check once by hand: installed from Safari, open a note, airplane mode, tick, reopen the app, back online.
 - Handwritten recipes have never been measured. Expect more review for the household's own folders and try a few pages first.
 - The measurements cover five clean, well-lit pages. Watch the review rate and spot-check the first real cookbook batch.
+- The yields of parts are estimates (10 Zehen a Knolle, 10 Zweige or Stängel a Bund of herbs, 7 Frühlingszwiebeln and 12 Radieschen a Bund, 3 TL zest a lemon, 2 TL a lime, 1 EL an orange). Watch the first weeks whether the notes buy too much or too little, and correct `per_whole` where they do.
 - Shelf life, pack sizes and default shops in the catalog are estimates. The household corrects them in the app once the settings UI exists.
 
 ## Limits we accept
