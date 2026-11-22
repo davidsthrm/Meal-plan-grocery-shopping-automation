@@ -488,6 +488,25 @@ describe("buildShoppingList", () => {
     expect(forOne.amounts).toEqual([{ quantity: 0.75, unit: "Stück" }]);
   });
 
+  it("rounds a line the catalog does not know as any other", () => {
+    // "0,13 l Hühnerbrühe" stood on the list for ⅛ l, "0,5 TL Pimentpulver" for half a spoon.
+    const soup = recipe("suppe", [
+      line(null, 0.125, "l", { originalText: "⅛ l Hühnerbrühe" }),
+      line(null, 0.5, "TL", { originalText: "½ TL Pimentpulver" }),
+      line(null, 137.5, "g", { originalText: "137,5 g Feldsalat" }),
+    ]);
+    const lines = build([soup], [slot(MONDAY, "suppe")]);
+    expect(lines.get("unmapped:huehnerbruehe")).toMatchObject({
+      purchase: { quantity: 0.13, unit: "l" },
+      amounts: [{ quantity: 0.125, unit: "l" }],
+    });
+    expect(lines.get("unmapped:pimentpulver")).toMatchObject({
+      purchase: null,
+      amounts: [{ quantity: 0.5, unit: "TL" }],
+    });
+    expect(lines.get("unmapped:feldsalat")!.purchase).toEqual({ quantity: 140, unit: "g" });
+  });
+
   it("buys a line the catalog does not know by the name it is proposed with", () => {
     const olives = line(null, 6, "Stück", {
       originalText: "6 grüne, paprikagefüllte Oliven (Glas; nach Belieben)",

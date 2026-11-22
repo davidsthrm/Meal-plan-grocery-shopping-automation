@@ -447,14 +447,17 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     });
     // A typed line with a number in front buys that many: "4 Ingwer-Shots" is "4x
     // Ingwer-Shots". Written twice in one unit, the amounts add up; otherwise none is shown.
-    // What is counted is bought whole: three quarters of a Seele for one person is one.
+    // Rounded as any other line: what is counted is bought whole, three quarters of a Seele
+    // for one person is one, and ⅛ l Hühnerbrühe is not "0,13 l". Of spoonfuls the name
+    // alone: "0,5 TL Pimentpulver" was the line.
     const amounts = line.contributions.map((part) => part.amount);
     const unit = amounts[0]?.unit;
     if (unit && amounts.every((amount) => amount?.unit === unit)) {
       const exact = tidy(amounts.reduce((total, a) => total + (a?.quantity ?? 0), 0));
-      const counted = dimensionOf(unit) !== "mass" && dimensionOf(unit) !== "volume";
       line.amounts = [{ quantity: exact, unit }];
-      line.purchase = { quantity: counted ? Math.ceil(exact - 1e-9) : exact, unit };
+      line.purchase = SPOONFULS.has(unit)
+        ? null
+        : { quantity: roundUpTo(exact, naturalStep(exact, unit)), unit };
       line.hasUnquantified = false;
     } else {
       line.amounts = [];
