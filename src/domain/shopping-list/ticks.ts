@@ -103,6 +103,20 @@ export function decisionOfTick(tick: Pick<Tick, "checked" | "decision">): Decisi
 }
 
 /**
+ * The device's own tick on a line where it says more than the page: while it waits, or
+ * when the page is older than the moment the server took it. Null where the page says it.
+ */
+export function shownTick(
+  ticks: readonly Tick[],
+  line: Pick<Tick, "note" | "key">,
+  renderedAt: number,
+): Tick | null {
+  const wanted = lineOf(line);
+  const own = ticks.find((tick) => lineOf(tick) === wanted);
+  return own && (own.sentAt === null || own.sentAt > renderedAt) ? own : null;
+}
+
+/**
  * What a line shows as decided, as `shownChecked` says whether it is ticked: the device's
  * own decision where the page cannot know it yet, otherwise the page's.
  */
@@ -111,11 +125,8 @@ export function shownDecision(
   line: Pick<Tick, "note" | "key">,
   page: { decision: Decision; renderedAt: number },
 ): Decision {
-  const wanted = lineOf(line);
-  const own = ticks.find((tick) => lineOf(tick) === wanted);
-  if (!own) return page.decision;
-  if (own.sentAt === null || own.sentAt > page.renderedAt) return decisionOfTick(own);
-  return page.decision;
+  const own = shownTick(ticks, line, page.renderedAt);
+  return own ? decisionOfTick(own) : page.decision;
 }
 
 /** Forgets ticks the server took long ago. Waiting ticks are never forgotten. */

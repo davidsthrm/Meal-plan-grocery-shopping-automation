@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { enqueue, forget, KEEP_SENT_MS, settle, shownChecked, waiting, type Tick } from "./ticks";
+import {
+  enqueue,
+  forget,
+  KEEP_SENT_MS,
+  settle,
+  shownChecked,
+  shownTick,
+  waiting,
+  type Tick,
+} from "./ticks";
 
 const NOTE = "2026-10-12.supermarket";
 
@@ -122,6 +131,20 @@ describe("shownChecked", () => {
     expect(
       shownChecked([tick("a", "eier@main", true, 5)], line, { checked: false, renderedAt: 1 }),
     ).toBe(false);
+  });
+});
+
+describe("shownTick", () => {
+  const line = { note: NOTE, key: "milch@main" };
+
+  it("is the device's own tick while it says more than the page, with when it was made", () => {
+    expect(shownTick([tick("a", "milch@main", true, 5)], line, 50)?.at).toBe(5);
+    expect(shownTick([tick("a", "milch@main", true, 5, 20)], line, 10)?.id).toBe("a");
+  });
+
+  it("is none where the page says it", () => {
+    expect(shownTick([], line, 10)).toBeNull();
+    expect(shownTick([tick("a", "milch@main", true, 5, 20)], line, 30)).toBeNull();
   });
 });
 

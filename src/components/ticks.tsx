@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { checkLine, completeListNote } from "@/app/(app)/einkauf/actions";
 import {
   isBought,
@@ -9,7 +9,13 @@ import {
   type Decision,
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
-import { shownDecision, type Tick } from "@/domain/shopping-list/ticks";
+import {
+  FOLD_MS,
+  settleTicked,
+  type Settled,
+  type ShownLine,
+} from "@/domain/shopping-list/ticked-last";
+import { shownDecision, shownTick, type Tick } from "@/domain/shopping-list/ticks";
 import { OWN_CHANGE } from "@/lib/live-refresh";
 import { indexedDbTickStore } from "@/lib/tick-store";
 import { syncText, TickQueue, type Answer, type Snapshot, type TickStore } from "@/lib/tick-sync";
@@ -141,6 +147,94 @@ export function useDecisions(page: NotePage, lines: readonly PageLine[]): Decisi
       { decision: pageDecision(line), renderedAt: page.renderedAt },
     ),
   );
+}
+
+/**
+ * Where the lines of one view stand (`settleTicked`), kept outside React because it changes
+ * by the clock: a line goes a moment after the last tick, not with a render. The view tells
+ * it after every render what its lines show (`see`); a line opened on the note holds it
+ * (`hold`).
+ */
+class Placing {
+  private settled: Settled;
+  private lines: readonly ShownLine[];
+  private readonly held = new Set<string>();
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private readonly listeners = new Set<() => void>();
+  private readonly movers = new Set<(keys: readonly string[]) => void>();
+
+  constructor(lines: readonly ShownLine[], now: number) {
+    this.lines = lines;
+    this.settled = settleTicked(null, lines, now);
+  }
+
+  get = (): Settled => this.settled;
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+      if (this.listeners.size === 0) clearTimeout(this.timer);
+    };
+  };
+
+  /** Told which lines leave their place, while the page still shows them there. */
+  onMove = (mover: (keys: readonly string[]) => void): (() => void) => {
+    this.movers.add(mover);
+    return () => this.movers.delete(mover);
+  };
+
+  see(lines: readonly ShownLine[]): void {
+    this.lines = lines;
+    this.run();
+  }
+
+  hold = (key: string, opened: boolean): void => {
+    if (opened === this.held.has(key)) return;
+    if (opened) this.held.add(key);
+    else this.held.delete(key);
+    this.run();
+  };
+
+  private run(): void {
+    const now = Date.now();
+    clearTimeout(this.timer);
+    const before = this.settled;
+    const lines = this.lines.map((line) =>
+      this.held.has(line.key) ? { ...line, held: true } : line,
+    );
+    // Asked for less motion, a line simply moves.
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const next = settleTicked(before, lines, now, { foldMs: still ? 0 : FOLD_MS });
+    if (next !== before) {
+      const leaving = [...next.folding, ...next.placed].filter(
+        (key) => !before.folding.has(key) && !before.placed.has(key),
+      );
+      if (leaving.length > 0) for (const mover of this.movers) mover(leaving);
+      this.settled = next;
+      for (const listener of this.listeners) listener();
+    }
+    if (next.due !== null) this.timer = setTimeout(() => this.run(), Math.max(0, next.due - now));
+  }
+}
+
+/**
+ * Where the lines of a view stand: still to buy, or under "Gekauft" at its end. From what this
+ * device shows as decided, also ticks still waiting for a connection, never from the order the
+ * server sent: the page read again after a tick, or `TickRefresh`, moves no line a second time.
+ */
+export function useTickedLast(page: NotePage, lines: readonly PageLine[]) {
+  const { ticks } = useTicks();
+  const decisions = useDecisions(page, lines);
+  const shown: ShownLine[] = lines.map((line, index) => ({
+    key: line.key,
+    decision: decisions[index],
+    at: shownTick(ticks, { note: page.note, key: line.key }, page.renderedAt)?.at,
+  }));
+  const [placing] = useState(() => new Placing(shown, Date.now()));
+  const settled = useSyncExternalStore(placing.subscribe, placing.get, placing.get);
+  useLayoutEffect(() => placing.see(shown));
+  return { settled, hold: placing.hold, onMove: placing.onMove };
 }
 
 /** Whether each line shows as ticked: bought, in full or in part. */
