@@ -11,6 +11,7 @@ import { SheetHoles } from "@/components/sheet-holes";
 import { ShopLogo } from "@/components/shop-logo";
 import { StoreView, type StoreNote } from "@/components/store-view";
 import { SubmitButton } from "@/components/submit-button";
+import { TickedLast, TickedPart, type TickedSection } from "@/components/ticked-last";
 import {
   CompleteNote,
   SyncStatus,
@@ -233,6 +234,34 @@ export function NoteSheet({
     },
     to,
   }));
+  // Every line of the note, drawn here; where it stands, open or under "Gekauft", is the
+  // device's to say (`TickedLast`).
+  const rows: TickedSection[] = sections.map((section) => ({
+    shop:
+      named && section.shop
+        ? { id: section.shop.id, name: section.shop.name, logoUrl: section.shop.logoUrl }
+        : null,
+    groups: section.groups.map(({ aisleGroup, lines: entries }) => ({
+      name: aisleGroup.name,
+      lines: entries.map((line) => ({
+        key: line.line.key,
+        checked: line.checked,
+        decision: decisionOf(line),
+        label: line.line.label,
+        row: (
+          <Line
+            view={line}
+            action={actionLineOf(line, context)}
+            week={week}
+            note={trip}
+            shop={chosenShop(index, line)}
+            drugstore={drugstore}
+            kinds={kinds}
+          />
+        ),
+      })),
+    })),
+  }));
   // The same note for the shop: large rows, a tap buys.
   const forShop: StoreNote = {
     title:
@@ -312,147 +341,110 @@ export function NoteSheet({
             </form>
           )}
 
-          {sections.map((section) => (
-            <section
-              key={section.shop?.id ?? "alle"}
-              aria-label={named && section.shop ? section.shop.name : undefined}
-              className="mt-4"
-            >
-              {named && section.shop && (
-                <h2 className="mb-2 flex items-center gap-2 border-b border-line pb-1.5 text-base font-bold tracking-tight print:text-black">
-                  <span className="print:hidden">
-                    <ShopLogo shop={section.shop} size={32} />
-                  </span>
-                  {section.shop.name}
-                </h2>
-              )}
-              {/* One column on screen, so that an opened line has the sheet's whole width;
-                on paper the columns of `printRules`. */}
-              <div className="note-columns gap-x-10">
-                {section.groups.map(({ aisleGroup, lines }) => (
-                  <section
-                    key={aisleGroup.id}
-                    aria-label={aisleGroup.name}
-                    className="mb-5 break-inside-avoid-column"
-                  >
-                    <h3 className="eyebrow print:font-bold print:text-black">{aisleGroup.name}</h3>
-                    <ul className="ruled mt-1">
-                      {lines.map((line) => (
-                        <Line
-                          key={line.line.key}
-                          view={line}
-                          action={actionLineOf(line, context)}
-                          week={week}
-                          note={trip}
-                          shop={chosenShop(index, line)}
-                          drugstore={drugstore}
-                          kinds={kinds}
-                        />
-                      ))}
-                    </ul>
-                  </section>
-                ))}
-              </div>
-            </section>
-          ))}
+          <TickedLast page={page} sections={rows}>
+            <TickedPart part="open" variant="note" />
 
-          {moved.length > 0 && (
-            <section aria-label="Verschoben" className="mb-5 print:hidden">
-              <h3 className="eyebrow">Verschoben</h3>
-              <ul className="mt-1">
-                {moved.map((entry) => (
-                  <MovedAwayRow key={`${entry.line.key}-${noteId(entry.to)}`} {...entry} />
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {drugstore ? (
-            <DrugstoreForm week={week} note={note.id} members={members} />
-          ) : (
-            <>
-              <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
-                <Where week={week} note={note.id} />
-                <label className="flex-1">
-                  <span className="sr-only">Auf den Zettel schreiben</span>
-                  <input
-                    name="text"
-                    maxLength={120}
-                    list="zutaten"
-                    autoComplete="off"
-                    className="field"
-                    placeholder="Dazuschreiben"
-                  />
-                </label>
-                <SubmitButton>Hinzufügen</SubmitButton>
-              </form>
-              <datalist id="zutaten">
-                {index.catalog.ingredients.map((ingredient) => (
-                  <option key={ingredient.id} value={ingredient.name} />
-                ))}
-              </datalist>
-            </>
-          )}
-
-          <div className="mt-5 print:hidden">
-            <CompleteNote page={page} lines={pageLines} />
-          </div>
-
-          {notBought.length > 0 && (
-            <section aria-label="Nicht gekaufte Einträge" className="mt-6 print:hidden">
-              <h2 className="text-base font-bold tracking-tight">Nicht gekaufte Einträge</h2>
-              <ul className="mt-1">
-                {notBought.map((entry) => (
-                  <NotBoughtRow key={entry.line.key} {...entry} />
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {lines.length > 0 && !drugstore && (
-            <details className="mt-3 print:hidden">
-              <summary className="link inline-flex min-h-11 items-center">
-                An einem anderen Tag einkaufen
-              </summary>
-              <div
-                className="mt-1 flex flex-wrap gap-2"
-                role="group"
-                aria-label="Geht an diesen Tagen"
-              >
-                {days
-                  .filter((option) => option.blocked.length === 0)
-                  .map(({ day }) => (
-                    <form key={day} action={changeNoteDay}>
-                      <Where week={week} note={note.id} />
-                      <input type="hidden" name="day" value={day} />
-                      <SubmitButton
-                        className="chip"
-                        label={`Einkauf verlegen auf ${dayTitle({ date: day })}`}
-                      >
-                        {dayWord(day, now)}
-                      </SubmitButton>
-                    </form>
+            {moved.length > 0 && (
+              <section aria-label="Verschoben" className="mb-5 print:hidden">
+                <h3 className="eyebrow">Verschoben</h3>
+                <ul className="mt-1">
+                  {moved.map((entry) => (
+                    <MovedAwayRow key={`${entry.line.key}-${noteId(entry.to)}`} {...entry} />
                   ))}
-              </div>
-              <ul className="mt-2 space-y-1 text-sm text-muted">
-                {days.map(({ day, blocked, warned }) =>
-                  blocked.length > 0 ? (
-                    <li key={day}>
-                      <span className="font-semibold text-ink">{dayName(day)} geht nicht:</span>{" "}
-                      {problemText(blocked[0])}
-                      {moreText(blocked.length)}
-                    </li>
-                  ) : warned.length > 0 ? (
-                    <li key={day} className="text-warn">
-                      <span className="font-semibold">{dayName(day)}:</span>{" "}
-                      {problemText(warned[0])}
-                      {moreText(warned.length)}
-                    </li>
-                  ) : null,
-                )}
-              </ul>
-            </details>
-          )}
+                </ul>
+              </section>
+            )}
+
+            {drugstore ? (
+              <DrugstoreForm week={week} note={note.id} members={members} />
+            ) : (
+              <>
+                <form action={addListEntry} className="mt-2 flex gap-2 print:hidden">
+                  <Where week={week} note={note.id} />
+                  <label className="flex-1">
+                    <span className="sr-only">Auf den Zettel schreiben</span>
+                    <input
+                      name="text"
+                      maxLength={120}
+                      list="zutaten"
+                      autoComplete="off"
+                      className="field"
+                      placeholder="Dazuschreiben"
+                    />
+                  </label>
+                  <SubmitButton>Hinzufügen</SubmitButton>
+                </form>
+                <datalist id="zutaten">
+                  {index.catalog.ingredients.map((ingredient) => (
+                    <option key={ingredient.id} value={ingredient.name} />
+                  ))}
+                </datalist>
+              </>
+            )}
+
+            <div className="mt-5 print:hidden">
+              <CompleteNote page={page} lines={pageLines} />
+            </div>
+
+            {notBought.length > 0 && (
+              <section aria-label="Nicht gekaufte Einträge" className="mt-6 print:hidden">
+                <h2 className="text-base font-bold tracking-tight">Nicht gekaufte Einträge</h2>
+                <ul className="mt-1">
+                  {notBought.map((entry) => (
+                    <NotBoughtRow key={entry.line.key} {...entry} />
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {lines.length > 0 && !drugstore && (
+              <details className="mt-3 print:hidden">
+                <summary className="link inline-flex min-h-11 items-center">
+                  An einem anderen Tag einkaufen
+                </summary>
+                <div
+                  className="mt-1 flex flex-wrap gap-2"
+                  role="group"
+                  aria-label="Geht an diesen Tagen"
+                >
+                  {days
+                    .filter((option) => option.blocked.length === 0)
+                    .map(({ day }) => (
+                      <form key={day} action={changeNoteDay}>
+                        <Where week={week} note={note.id} />
+                        <input type="hidden" name="day" value={day} />
+                        <SubmitButton
+                          className="chip"
+                          label={`Einkauf verlegen auf ${dayTitle({ date: day })}`}
+                        >
+                          {dayWord(day, now)}
+                        </SubmitButton>
+                      </form>
+                    ))}
+                </div>
+                <ul className="mt-2 space-y-1 text-sm text-muted">
+                  {days.map(({ day, blocked, warned }) =>
+                    blocked.length > 0 ? (
+                      <li key={day}>
+                        <span className="font-semibold text-ink">{dayName(day)} geht nicht:</span>{" "}
+                        {problemText(blocked[0])}
+                        {moreText(blocked.length)}
+                      </li>
+                    ) : warned.length > 0 ? (
+                      <li key={day} className="text-warn">
+                        <span className="font-semibold">{dayName(day)}:</span>{" "}
+                        {problemText(warned[0])}
+                        {moreText(warned.length)}
+                      </li>
+                    ) : null,
+                  )}
+                </ul>
+              </details>
+            )}
+
+            {/* At the very end: "Dazuschreiben" stays next to what is still open. */}
+            <TickedPart part="bought" variant="note" />
+          </TickedLast>
         </div>
       </LineActions>
     </section>

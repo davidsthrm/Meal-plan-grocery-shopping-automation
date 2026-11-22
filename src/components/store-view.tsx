@@ -15,6 +15,7 @@ import {
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
 import { leaveSheet } from "./sheet";
+import { TickedLast, TickedPart, type TickedSection } from "./ticked-last";
 import { useWakeLock } from "./wake-lock";
 import { CompleteNote, SyncStatus, TickProgress, useAllTicked, type NotePage } from "./ticks";
 
@@ -54,6 +55,16 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const lines = note.sections.flatMap((section) => section.groups.flatMap((group) => group.lines));
+  const rows: TickedSection[] = note.sections.map((section) => ({
+    shop: section.shop,
+    groups: section.groups.map((group) => ({
+      name: group.name,
+      lines: group.lines.map((line) => ({
+        ...line,
+        row: <ActionRow line={line} variant="store" />,
+      })),
+    })),
+  }));
   const allTicked = useAllTicked(page, lines);
   useWakeLock(open);
 
@@ -133,48 +144,33 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
                 </button>
               </header>
               <SyncStatus className="mx-4 mt-2" />
-              <div className="flex-1 px-2 pb-4">
-                {note.sections.map((section) => (
-                  <section key={section.shop?.id ?? "alle"} aria-label={section.shop?.name}>
-                    {section.shop && (
-                      <h3 className="mx-2 mt-5 flex items-center gap-2.5 border-b border-line pb-2 text-lg font-bold tracking-tight">
-                        <ShopLogo shop={section.shop} size={32} />
-                        {section.shop.name}
-                      </h3>
-                    )}
-                    {section.groups.map((group) => (
-                      <section key={group.name} aria-label={group.name} className="mt-4">
-                        <h4 className="eyebrow mx-2">{group.name}</h4>
-                        <ul className="mt-1">
-                          {group.lines.map((line) => (
-                            <ActionRow key={line.key} line={line} variant="store" />
-                          ))}
-                        </ul>
-                      </section>
-                    ))}
-                  </section>
-                ))}
-                {note.moved.length > 0 && (
-                  <section aria-label="Verschoben" className="mx-2 mt-6">
-                    <h4 className="eyebrow">Verschoben</h4>
-                    <ul className="mt-1">
-                      {note.moved.map((entry) => (
-                        <MovedAwayRow key={entry.line.key} {...entry} />
-                      ))}
-                    </ul>
-                  </section>
-                )}
-                {note.notBought.length > 0 && (
-                  <section aria-label="Nicht gekaufte Einträge" className="mx-2 mt-6">
-                    <h4 className="eyebrow">Nicht gekaufte Einträge</h4>
-                    <ul className="mt-1">
-                      {note.notBought.map((entry) => (
-                        <NotBoughtRow key={entry.line.key} {...entry} />
-                      ))}
-                    </ul>
-                  </section>
-                )}
-              </div>
+              <TickedLast page={page} sections={rows}>
+                <div className="flex-1 px-2 pb-4">
+                  <TickedPart part="open" variant="store" />
+                  {note.moved.length > 0 && (
+                    <section aria-label="Verschoben" className="mx-2 mt-6">
+                      <h4 className="eyebrow">Verschoben</h4>
+                      <ul className="mt-1">
+                        {note.moved.map((entry) => (
+                          <MovedAwayRow key={entry.line.key} {...entry} />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  {note.notBought.length > 0 && (
+                    <section aria-label="Nicht gekaufte Einträge" className="mx-2 mt-6">
+                      <h4 className="eyebrow">Nicht gekaufte Einträge</h4>
+                      <ul className="mt-1">
+                        {note.notBought.map((entry) => (
+                          <NotBoughtRow key={entry.line.key} {...entry} />
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+                  {/* What is in the trolley, last of all: the open lines are what is read. */}
+                  <TickedPart part="bought" variant="store" />
+                </div>
+              </TickedLast>
               <footer className="store-foot">
                 {allTicked ? (
                   <button type="button" className="btn btn-primary w-full" onClick={close}>
