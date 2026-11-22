@@ -82,7 +82,7 @@ export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote
           <>
             <div className="note-drawer-string" aria-hidden />
             <RestockNote items={items} onLeave={pushUp} />
-            <button type="button" className="note-drawer-close" onClick={pushUp}>
+            <button type="button" className="btn note-drawer-close" onClick={pushUp}>
               Zurückstecken
             </button>
           </>

@@ -884,7 +884,7 @@ summary,
    */
   .note-drawer {
     inset: 0 0 auto;
-    width: min(34rem, 100vw - 1.5rem);
+    width: min(19rem, 100vw - 1.5rem);
     max-width: none;
     max-height: 100dvh;
     margin: 0 auto;
@@ -916,14 +916,12 @@ summary,
     height: 1.7rem;
     background: var(--color-note-line);
   }
+  /* Under the note, on the dimmed page: a button of paper, not words floating in the air. */
   .note-drawer-close {
-    display: block;
-    min-height: 2.75rem;
-    margin: 0.4rem auto 0;
-    padding: 0 1rem;
-    font-size: var(--text-sm);
-    font-weight: 700;
-    color: #fff;
+    display: flex;
+    width: fit-content;
+    margin: 0.9rem auto 0;
+    background: var(--color-surface);
   }
 
   /* A shopping note picked up from among the others comes closer. */
