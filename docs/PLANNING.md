@@ -94,13 +94,13 @@ are in [SHOPPING.md](SHOPPING.md).
   that page once before the plan, remembered in the cookie `ziele-gesehen`: each person
   should see the goals and be able to change them, but they belong to the household. The
   admin is asked on `/woche/ziele?start=1`; every other member is welcomed on `/willkommen`.
-- The week's count stands above it as four tiles in the kinds' pastels, each with its number,
-  its goal ("mind. 3", "max. 2", "geschafft" once reached; a limit alone is never reached,
-  `targetText`). The tiles are the way to the goals: "Ziele ändern" below them took a row of
-  its own and a bar that fills towards the goal, in the warning colour
-  once there are too many (`progress`: towards the most where there is one, else the
-  least). Two by two on a phone narrower than an iPhone 14, where "Vegetarisch" no longer
-  fits a quarter of the width.
+- The week's count stands above it as one quiet row: per kind its number, a dot in its
+  colour, its name and its goal in small words ("mind. 3", "max. 2", "geschafft" once
+  reached; a limit alone is never reached, `targetText`), the number in the warning colour
+  once there are too many (`progress`). It wraps on a phone. The row is the way to the
+  goals: "Ziele ändern" below it took a row of its own. Until 22 November 2026 it was four
+  tiles in the kinds' pastels with a bar filling towards the goal (see
+  [DESIGN.md](DESIGN.md#colours-of-kinds)).
 
 ## Meals and foods
 
@@ -174,16 +174,17 @@ are in [SHOPPING.md](SHOPPING.md).
   took 190 ms of the server for the family's 1,146 recipes on every look at the plan, and
   take 60 (October 2026). The suggestions themselves are the same.
 - The plan does not fill itself. An open meal has "Planen" and "Was könnten wir kochen?".
-  Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Lieber
-  was anderes" for the next best; after twelve they come round again. The household found
+  Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Was
+  anderes" for the next best, in one row; after twelve they come round again. The household found
   a plan that arrives full of suggestions too pushy.
 - Up to five open meals offer a suggestion without being asked: those with the most to say
   for them (a wish, a favourite, a gap in the week, the season; `HINT_SCORE`; "never
   cooked" alone is not enough), at most two of them favourites (`hintedMeals`), spread
   over the week. It
-  is the same box as an answer to "Was könnten wir kochen?", with a dashed edge and
-  "Vorschlag" on it, so that it does not read as planned: "Gute Idee!" takes it, "Lieber was
-  anderes" shows the next best. More wishes and favourites mean more such meals, up to
+  is the same line as an answer to "Was könnten wir kochen?", with a dashed rule under it
+  (a group named "Vorschlag" for a screen reader), so that it does not read as planned:
+  "Gute Idee!" takes it, "Was anderes" shows the next best. Until 22 November 2026 it was a
+  box with a dashed edge and "Vorschlag" on it, a box inside the sheet. More wishes and favourites mean more such meals, up to
   five. The household took the pale ideas shown before for planned meals.
 - "Plan vervollständigen" plans every open meal that is still to come at once. Those
   suggestions are chosen one after the other as if the earlier ones were accepted
@@ -239,7 +240,8 @@ are in [SHOPPING.md](SHOPPING.md).
   control on the left, what is done with the whole plan on the right ("Plan vervollständigen",
   "Woche leeren", "Plan speichern" last). On a phone the control is as wide as the screen and
   the actions wrap below it. The week is changed with one capsule (back, "Aktuelle",
-  forward) and "Alle Wochen" next to it.
+  forward), with "Alle Wochen" and "Statistik" next to it, on a phone as signs (a month's
+  calendar, a chart), so that the row is one line on every week (22 November 2026).
 - Above the plan of the running week stands what there is to eat today and what the weekend
   holds (`Today`), also while the page already shows the coming week. Once something is
   planned for those days, it stands next to the greeting like a widget on a large screen,

@@ -91,7 +91,8 @@ decisions, code layout, routes, data access and tests of Essensplan.
 - The service worker is plain JavaScript in `public/sw.js`, registered in the root layout
   (`ServiceWorker`). It touches only GET requests of the app: pages of `/einkauf` come from
   the network and are kept (in production a kept page is shown after 4 seconds without an
-  answer: in a shop the connection hangs rather than fails), scripts and styles are kept
+  answer: in a shop the connection hangs rather than fails), scripts, styles and the
+  typeface's files (all under `/_next/static/`) are kept
   as they load, and any other page without a connection shows `/offline.html`. The page
   names what to keep (`pagesForTheShop`, `KeepForTheShop`): the notes of the running week,
   each note, and the next errand when it lies in the week after. A copy asked for earlier

@@ -383,7 +383,7 @@ specification of the receipt upload (not built yet).
   the catalog once, when it is written (`restock_item.fresh_place`, and its kind of grocery
   in `restock_item.aisle_group_id`), so that the header of every page can say where each
   entry goes without reading the catalog: at a supermarket errand the supermarket its kind
-  is bought at ("TK-Beeren · Mo 19. Aldi", `restockSupermarket`). Entries written before
+  is bought at ("TK-Beeren", in small words "Mo 19. Aldi", `restockSupermarket`). Entries written before
   the kind was kept name the main one. While it has
   entries, the Merkzettel also lies among the shopping notes.
 

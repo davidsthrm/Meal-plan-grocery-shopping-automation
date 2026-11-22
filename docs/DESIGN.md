@@ -9,6 +9,21 @@ them, and how to work on the look. UI text is German; this document is English.
   needed. One sans-serif family for everything. No serif typeface: the household does not
   want the look of an AI product (twice: the user asked for no serif font on 2026-10-12, and
   the system typeface was left out of the proposals taken over on 19 October 2026).
+- The typeface is Figtree, served by the app itself (`next/font/google` in the root layout,
+  `--font-sans`), in two weights: 500 for the text, 700 for what stands out (Tailwind's
+  `font-normal` is the 500, `font-semibold` the 700). The household picked it on 22 November
+  2026: the app should not "look like any other app", and the system's own typeface, or
+  Avenir Next before it, is what every other app has. The service worker keeps its files
+  for the shop with the scripts and styles (`/_next/static/`).
+- Five sizes and no others (`--text-*` in `@theme`): 26px a title and the greeting, set a
+  little tight (`-0.015em`); 19px the name of a dish or a note; 16px the text (at 500);
+  15px what is said beside it; 13px a small label. Tailwind's sizes in use fall onto them
+  (`text-xl` is 19, `text-2xl` and `text-3xl` are 26), and `tracking-tight` is a hair
+  (`-0.01em`): tight tracking on every heading reads as machine-made. A dish's name on the
+  week is 16px on a phone and 19px from `sm` on: beside the stepper, at 19px it broke into
+  syllables ("Cur-rysahne"). Text in a field stays 16px at least (see "Controls and sizes").
+  The only sizes outside the scale are drawn inside a chart (the donut's figure, in the
+  units of its SVG) and the root of 17px that the spacing is measured in.
 - No headings in capitals with wide letter spacing: the household reads them as machine-made.
   A small label (`.eyebrow`) is written as it is spelled.
 - Words on the screen say something concrete or are left out. No filler such as "for
@@ -16,7 +31,8 @@ them, and how to work on the look. UI text is German; this document is English.
   and recipe titles were set in a system serif, and "Zur Abwechslung" was shown under every
   suggestion that had no specific reason. The user wrote: "please dont use the serif claude
   font. use anouther modern one instead. also please no generic statements from ai!")
-- Keep the palette pastel: the household asked for that.
+- Keep the palette pastel: the household asked for that. The page is the paper, and the
+  colours of the kinds are small marks on it (see "Section colours" and "Colours of kinds").
 - What the household wants: clean, easy to use, structured, not too fancy but still premium.
 
 ## Paper and notes
@@ -26,10 +42,16 @@ A few things are borrowed from the handwritten notes the app replaces, and only 
 - The week plan and every shopping list are a sheet of a pad (`.sheet`: holes along the top,
   two more sheets underneath).
 - A list has ruled lines and a margin (`.ruled`) with a tick made by a pen (`.tickbox`).
-- What ran out at home is written on a yellow note stuck on with tape (`.note`).
+- What ran out at home is written on a yellow note stuck on with tape (`.note`), as narrow
+  as a real sticky note (`RestockNote`, 18rem, about 300px). "+" writes on it; each entry
+  is one line: its name, where it will go in small muted words, the sign of the shopping
+  notes (the Einkauf tab's) for "Auf den Einkaufszettel" and the cross, each sign 44px. One
+  link at its foot, "Alle auf den Einkaufszettel". Chosen on 22 November 2026: with a pill
+  under every entry, a caption and a green button, the note was a page of buttons.
 - A meal without a recipe carries a small yellow slip.
 - Today is marked with a highlighter (`.marked`), "Heute" beside it in the green, far enough
-  away for the mark to reach past the name.
+  away for the mark to reach past the name. The same stroke marks the open section in the
+  strip of the sections.
 - No handwriting typeface. On real paper only a note's ruled lines are printed, faint, as in
   its PDF.
 
@@ -56,7 +78,9 @@ The paper metaphors in motion:
 
 - The Merkzettel does not open a page: it is pulled down over the open one on a string
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up.
-  A link to `#merkzettel` pulls it down too.
+  A link to `#merkzettel` pulls it down too. "Zurückstecken" under it is a button of paper
+  (`.note-drawer-close`): as white words floating over the dimmed page it did not read as
+  something to tap (22 November 2026).
 - Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`).
 - Going on to the next meal tears the meal's page off like a sheet of a pad (a React
   `<ViewTransition>` keyed by the meal, `.note-off` and `.note-on`, started only by that
@@ -70,13 +94,20 @@ The paper metaphors in motion:
 - A button or a chip is a soft tint of the ink over whatever it lies on, not a white box with
   an edge, and a pill; only `.btn-primary` is solid, so the one green button on a screen is
   what stands out.
-- An action written as a link is a pill too, its words in the green on the green's pastel:
-  the way back (`BackLink`, "← Wochenplan") and every standalone link the size of a finger
-  (`.link.min-h-11`, "Alle Wochen").
+- Pills are for buttons and filter chips only. A way back (`BackLink`, "← Wochenplan") or to
+  another page, and every standalone link the size of a finger (`.link.min-h-11`, "Zum
+  Wochenplan"), is a plain link: its words in the green, underlined, still 44px tall; the
+  arrow of the way back stands without the line. In October 2026 these links became pills on
+  the green's pastel so that they read as tappable; on 22 November 2026 the household found
+  that with every way somewhere a pill, nothing on a screen said which was a button. A word
+  inside a row of signs ("Mehr kochen") stays a word without a line (`.link-quiet`).
 - Buttons that belong together stand in one row, also on a phone: where words would break it,
   the lesser ones are a sign with their words as label and title (the plan's Pinnwand and
-  Leeren, the statistics, the week's arrows), and "Plan speichern" is "Speichern"
-  (October 2026).
+  Leeren, the statistics, the week's arrows, all weeks as a month's calendar), and "Plan
+  speichern" is "Speichern" (October 2026). The week's row of arrows is one line on every
+  week at 375px too: "Alle Wochen" in words broke it (22 November 2026). A suggestion's two
+  buttons share a row the same way: "Gute Idee!" and "Was anderes", which as "Lieber was
+  anderes" took a second row.
 - Every control gives a little the moment a finger lands on it (`:active`, a scale of 0.96),
   not only when it lifts, also for whoever asked for less motion: nothing travels. Hover is
   for a mouse or trackpad only, and a press answers on every screen (`:active`).
@@ -138,8 +169,15 @@ The paper metaphors in motion:
 
 - A recipe has a pictogram (`pictogramFor`: pasta, soup, fish, cake, 21 in all, drawn as
   lines in `pictogram-paths.ts`). It stands large and pale behind a card's text
-  (`.watermark`) and small on its pastel in front of a name (`.badge`). It is drawn sharp:
+  (`.watermark`) and small on its pastel on a recipe card (`.badge`). It is drawn sharp:
   the household did not want it out of focus. Never a photo.
+- Pictograms on a tinted square are for the recipe cards and the tiles of the shopping notes.
+  On the week (its meals, today, a suggestion, the week beside the meal chooser) a dish's
+  kind is a small dot in its colour in front of its name (`.dot`, `.dot-first` on the
+  middle of the name's first line), grey for a meal without a recipe, a ring for an open
+  meal in the chooser's week. Chosen on 22 November 2026: with a square in front of every
+  meal, every row of the week was a row of tiles. Elsewhere the squares are still to go
+  (see [STATUS.md](STATUS.md)).
 - Which picture a recipe gets: the kind of dish decides before what is in it (a salmon pasta
   is pasta). The dish a title names first decides before its sides ("Steak mit
   Pfefferrahmsoße, Pilzen und Spätzle" is meat). A meatless dish named after a vegetable with
@@ -154,29 +192,38 @@ The paper metaphors in motion:
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
   green (`logo.tsx`, `app/icon.svg`).
 
-## Glass tab bar and header
+## Strip of the sections and header
 
-- On a phone the five sections are a round bar of liquid glass that floats above the bottom
-  of the screen (`.tabbar`, `GlassSurface` from `src/components/ui/glass.tsx`: blur, a white
-  tint, a sheen and a bright rim; Safari cannot bend the page through it as Chrome can and
-  keeps it frosted), the page visible under it, with a sign above each name and the open
-  section on the green's pastel.
+- On a phone the five sections are a strip of paper across the foot of the screen
+  (`.tabbar`): the surface's white, a hairline above it, no blur, no float, no shadow. A
+  sign stands above each name in the muted ink, the names at 13px; the open section has its
+  name under the highlighter of today (`.marked`) and its sign in the green. Every tab is
+  at least 44px. Chosen on 22 November 2026: the household wanted the app not to "look like
+  any other app", and the round bar of liquid glass that floated above the screen's foot
+  (October 2026, `GlassSurface`) is what every app has now.
 - It has a layer of its own (`translateZ(0)`), and every entrance of a page lets go of its
   transform when it ends (`backwards`, not `both`): on the iPhone, content left on a layer by
-  its animation was drawn over the glass (October 2026).
+  its animation was drawn over the bar (October 2026).
 - That entrance (`page-in`) is never switched off or renamed, only where it starts
   (`--page-in-*`): switched off while a page moved, it started again the moment the move
   ended, and the page flickered once after every tap on a section (October 2026).
 - A tapped section is the current one the moment the finger lands, before its page has come
   (`AppNav`).
-- The header stays at the top of every page on a strip of frosted paper as wide as the screen
-  (`.app-header`), so that the Merkzettel and the settings are one tap away halfway down a
-  long list; anchors land below it (`scroll-padding-top`), and `body` clips sideways so that
-  the strip does not widen the page. Asked for less transparency, both are solid.
-- The bar keeps clear of the iPhone's own home bar (`viewport-fit=cover` and
+- Every page ends above the strip: its foot leaves the strip's height free
+  (`--tabbar-height`), so that nothing lies under it at the end of a scroll, and what stands
+  at the foot of the screen (the offline bar, the bar of ticked recipes, "Fertig" of a
+  photographed recipe) stands on it. The Rezept-Stapel's deck takes what the screen has left
+  above its three buttons: at its old height they lay under the bar on a 375px phone
+  (November 2026). `e2e/small-phone.spec.ts` checks both.
+- The header stays at the top of every page on a strip of the page's paper as wide as the
+  screen (`.app-header`), solid, fading out at its foot instead of ending in a line, so that
+  the Merkzettel and the settings are one tap away halfway down a long list; anchors land
+  below it (`scroll-padding-top`), and `body` clips sideways so that the strip does not
+  widen the page. It was frosted glass until 22 November 2026.
+- The strip's signs keep clear of the iPhone's own home bar (`viewport-fit=cover` and
   `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
-  phone's gestures. It reaches half a rem into that inset: above the whole of it, the bar
-  floated too high (October 2026).
+  phone's gestures. They reach half a rem into that inset: above the whole of it, the bar
+  stood too high (October 2026).
 - Next to the Merkzettel stands the first letter of whoever is signed in on the green
   (`.account`, `initialOf`), the way to the settings, on every screen size.
 - Between a phone and a large screen (`sm` to `lg`, an iPad upright) the header holds the
@@ -187,10 +234,11 @@ The paper metaphors in motion:
 
 ## Section colours
 
-- Each section has a pastel of its own at the top of its pages, fading into the paper
-  (`.app-shell`, `--section-tint`): Woche sage, Einkauf a misty blue, Rezepte peach, Favoriten
-  blush, Import lavender; no yellow. It is read in CSS from the section the bar marks as
-  current, so it is there from the first paint and changes with the tap.
+- No section has a colour of its own: every page lies on the paper, and nothing tints the
+  top of a page or the header. From October 2026 each section had a pastel at the top of its
+  pages (`--section-tint`: Woche sage, Einkauf a misty blue, Rezepte peach, Favoriten blush,
+  Import lavender) and a breath of green lay behind the header; on 22 November 2026 the
+  household chose today's colours cleaned up, the paper alone (palette C1).
 
 ## Colours of kinds
 
@@ -199,6 +247,13 @@ The paper metaphors in motion:
   vegetarian meal. A parent with the class `kind-<group>` sets it; `.tag` and `.dot` inside
   use it. The same colour marks the kind on a recipe card, next to a planned meal, in the
   week's count and in the goals.
+- The colours of the kinds are small marks only: a dot, a tag, the edge of a planned meal,
+  the square behind a recipe card's pictogram, a part of a chart. No card or tile is filled
+  with one (22 November 2026): the week's count is one row of numbers, each with a dot, its
+  name and its goal in small words, a count over its goal in the warning colour
+  (`.balance-row`); it was four pastel tiles with bars, the loudest thing on the page. The
+  recipe of the day, the tiles beside it and the Rezept-Stapel's cards are paper with the
+  pictogram on its pastel.
 
 ## App feel and loading
 
@@ -238,11 +293,12 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
   the bar of the sections included, whatever its z-index, and one picture less is what the
   iPhone needed to move smoothly.
 - While a page moves, the header and the bar are views of their own above it (`app-header`,
-  `app-tabbar`), shown at once in their new state, frosted paper instead of glass for that
-  moment. Only then: a named element is a backdrop root, and named for good, the bar saw
-  nothing behind it to blur and stood clear as glass (October 2026).
-- The pastel of a section is not faded: a change of an inherited value recalculated every
-  element of the page in every frame while the tap loaded the next page.
+  `app-tabbar`), shown at once in their new state. Only then: a named element is a backdrop
+  root, and named for good, the glass bar of October 2026 saw nothing behind it to blur and
+  stood clear as glass. The paper strip kept it so; it costs nothing.
+- A value that many elements inherit is never faded: the section pastels of October 2026,
+  faded, recalculated every element of the page in every frame while the tap loaded the
+  next page.
 - The raised pill of a segmented control is an element of its own (`SegmentPill`, named per
   control) that slides to the other view, under the words; a pill whose page goes without one
   on the next goes with it (`:only-child`).
@@ -265,7 +321,6 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
 - A tick on a note is drawn like a pen stroke in 200ms and goes at once when taken back (a
   transition on `stroke-dashoffset`, the path's length 1).
 - What a fold holds comes out with a short fade and drop (`unfold`).
-- The bars of the week's balance grow when a meal is planned (`scaleX`, not the width).
 - The views for the shop and for cooking rise like a sheet (`sheet-up`) and go back down the
   way they came (`leaveSheet`, `sheet-down`, 200ms, as the Merkzettel goes up on its string).
 - The bar of "Alle Rezepte" for ticked recipes rises from the foot and goes back down
@@ -328,8 +383,9 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
   - Slow view transitions to see them: inject
     `::view-transition-old(*), ::view-transition-new(*) { animation-duration: 3s !important }`,
     screenshot about 700ms after the tap, compare WebKit and Chromium side by side.
-  - Headless browsers do not draw `backdrop-filter`: text crisp behind the glass bar is not a
-    layering bug. Check whether the bar's icons are on top instead.
+  - Headless browsers do not draw `backdrop-filter`: text crisp behind a frosted surface (the
+    cooking view's foot, a row's menu) is not a layering bug. Check whether its icons are on
+    top instead.
   - Check every new layout trick in WebKit too, not only Chromium: on 2026-10-28 the user
     found the Regal's spine names upside down and overlapping on the iPad, while every
     Chromium screenshot looked right (`-webkit-line-clamp` is not drawn in vertical writing in
@@ -367,7 +423,12 @@ Where this project's rules override a skill:
   `--ease-in-out`, `--ease-drawer`) under 300ms instead of springs (exceptions listed under
   "Motion"), and no haptics on iPhone.
 - No serif typeface and no filler copy, whatever a skill suggests as typography or wording.
-- Pastel palette, the paper metaphors above and the pill controls stay as they are.
+  `/apple-design` would start from the system's typeface: here it is Figtree on the scale
+  under "Principles" (22 November 2026).
+- `/apple-design` builds bars of translucent material with the page scrolling under them:
+  here the strip of the sections and the header are solid paper (22 November 2026).
+- Pastel marks on the paper, the paper metaphors above, and pills for buttons and filter
+  chips (only) stay as they are.
 - Controls are at least 44px and text in a field at least 16px; "reduced motion" means
   fading without travel here, as described under "Motion".
 - Skills that propose a broad redesign (`prototype`, `emil-design-eng`) are used the way
