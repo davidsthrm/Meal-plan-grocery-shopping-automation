@@ -400,8 +400,11 @@ test("a note written next to a line stays with it", async ({ page }) => {
   const panel = await sheet(page, MONDAY).locator("details[open] > div").boundingBox();
   const note = await sheet(page, MONDAY).boundingBox();
   expect(panel!.width).toBeGreaterThan(note!.width * 0.7);
-  await page.getByLabel("Notiz zu Sahne").fill("Angebot 1,29");
-  await page.getByRole("button", { name: "Merken" }).click();
+  // The note is written with the line's pen.
+  await sheet(page, MONDAY).getByRole("button", { name: "Sahne: Menge oder Notiz ändern" }).click();
+  const pen = page.getByRole("dialog", { name: "Sahne" });
+  await pen.getByLabel("Notiz", { exact: true }).fill("Angebot 1,29");
+  await pen.getByRole("button", { name: "Speichern" }).click();
   // The note's own field was called like the field naming the note, and the page broke.
   await expect(sheet(page, MONDAY)).toContainText("Angebot 1,29");
 });
@@ -453,9 +456,12 @@ test("a typed line goes under its kind of grocery", async ({ page }) => {
   await write.fill("Lakritzschnecken");
   await write.press("Enter");
   await expect(group(page, MONDAY, "Sonstiges")).toContainText("Lakritzschnecken");
-  await sheet(page, MONDAY).getByText("Lakritzschnecken", { exact: true }).click();
-  await sheet(page, MONDAY).getByLabel("Gehört zu").selectOption({ label: "Süßes & Snacks" });
-  await sheet(page, MONDAY).getByRole("button", { name: "Einordnen" }).click();
+  await sheet(page, MONDAY)
+    .getByRole("button", { name: "Lakritzschnecken: Menge oder Notiz ändern" })
+    .click();
+  const pen = page.getByRole("dialog", { name: "Lakritzschnecken" });
+  await pen.getByLabel("Gehört zu").selectOption({ label: "Süßes & Snacks" });
+  await pen.getByRole("button", { name: "Speichern" }).click();
   await expect(group(page, MONDAY, "Süßes & Snacks")).toContainText("Lakritzschnecken");
 
   await page.goto(`/einkauf?w=${WEEK}&zettel=2027-03-05.supermarket`);
