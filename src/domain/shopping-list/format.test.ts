@@ -38,9 +38,7 @@ describe("formatAmount", () => {
     expect(formatAmount({ quantity: 0.5, unit: "kg" })).toBe("500 g");
     expect(formatAmount({ quantity: 1, unit: "l" })).toBe("1 l");
     expect(formatAmount({ quantity: 1.25, unit: "kg" })).toBe("1,25 kg");
-    expect(formatLine("Haferdrink", { quantity: 0.15, unit: "l" }, null)).toBe(
-      "150 ml Haferdrink",
-    );
+    expect(formatLine("Haferdrink", { quantity: 0.15, unit: "l" }, null)).toBe("150 ml Haferdrink");
   });
 });
 
@@ -88,6 +86,19 @@ describe("formatLine", () => {
     expect(formatLine("Mais (Dose)", { quantity: 140, unit: "g" }, null)).toBe("140 g Mais (Dose)");
     expect(formatLine("Spinat (TK)", { quantity: 600, unit: "g" }, null)).toBe("600 g Spinat (TK)");
   });
+
+  it("does not say a unit word the name already says", () => {
+    // It read "1 Blatt Lorbeerblätter" and "1 Knolle Fenchelknolle".
+    expect(formatLine("Lorbeerblatt", { quantity: 1, unit: "Blatt" }, null)).toBe("1 Lorbeerblatt");
+    expect(formatLine("Lorbeerblätter", { quantity: 2, unit: "Blatt" }, null)).toBe(
+      "2 Lorbeerblätter",
+    );
+    expect(formatLine("Fenchelknolle", { quantity: 2, unit: "Knolle" }, null)).toBe(
+      "2 Fenchelknolle",
+    );
+    expect(formatLine("Kopfsalat", { quantity: 1, unit: "Kopf" }, "groß")).toBe("1 Kopfsalat groß");
+    expect(formatLine("Petersilie", { quantity: 1, unit: "Bund" }, null)).toBe("1 Bund Petersilie");
+  });
 });
 
 describe("labelFor", () => {
@@ -98,6 +109,15 @@ describe("labelFor", () => {
     expect(labelFor(forms, "Schalotte", { quantity: 2, unit: "Stück" })).toBe("Schalotten");
     expect(labelFor(forms, "Schalotte", { quantity: 1, unit: "Packung" })).toBe("Schalotten");
     expect(labelFor(forms, "Schalotte", null)).toBe("Schalotten");
+  });
+
+  it("takes the singular for one of the unit the name says", () => {
+    const leaves = { one: "Lorbeerblatt", many: "Lorbeerblätter" };
+    expect(labelFor(leaves, "Lorbeerblätter", { quantity: 1, unit: "Blatt" })).toBe("Lorbeerblatt");
+    expect(labelFor(leaves, "Lorbeerblätter", { quantity: 2, unit: "Blatt" })).toBe(
+      "Lorbeerblätter",
+    );
+    expect(labelFor(forms, "Schalotten", { quantity: 1, unit: "Bund" })).toBe("Schalotten");
   });
 
   it("keeps the label of a line the catalog does not know", () => {

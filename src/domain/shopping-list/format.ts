@@ -65,12 +65,16 @@ export function formatPurchase(amount: Amount): string {
 }
 
 /**
- * One list line: quantity where needed, name, then the note. A name that says its unit
- * ("Mais (Dose)") does not say it twice: "1x Dose Mais", not "1 Dose Mais (Dose)".
+ * One list line: quantity where needed, name, then the note. A name that says its unit does
+ * not say it twice: "1x Dose Mais", not "1 Dose Mais (Dose)", and "1 Lorbeerblatt", not
+ * "1 Blatt Lorbeerblätter" (November 2026).
  */
 export function formatLine(label: string, purchase: Amount | null, note: string | null): string {
   const name = purchase ? withoutUnit(label, purchase.unit) : label;
-  return [purchase ? formatPurchase(purchase) : null, name, note].filter(Boolean).join(" ");
+  const amount =
+    purchase &&
+    (saysUnit(name, purchase.unit) ? formatNumber(purchase.quantity) : formatPurchase(purchase));
+  return [amount, name, note].filter(Boolean).join(" ");
 }
 
 /** "Mais (Dose)" bought by the tin is "Mais". */
@@ -79,9 +83,36 @@ function withoutUnit(label: string, unit: Unit): string {
   return label.endsWith(tag) ? label.slice(0, -tag.length) : label;
 }
 
+/** The units written as a word before the name: "1 Blatt", "2 Knollen". */
+const UNIT_WORDS: ReadonlySet<Unit> = new Set([
+  "Zehe",
+  "Bund",
+  "Stängel",
+  "Zweig",
+  "Blatt",
+  "Scheibe",
+  "Glas",
+  "Becher",
+  "Beutel",
+  "Würfel",
+  "Kopf",
+  "Knolle",
+  "Stange",
+]);
+
+/** Whether a name says the unit it is counted in: "Lorbeerblätter", "Kopfsalat". */
+function saysUnit(name: string, unit: Unit): boolean {
+  const lower = name.toLowerCase();
+  return (
+    UNIT_WORDS.has(unit) &&
+    [unit, PLURALS[unit] ?? unit].some((word) => lower.includes(word.toLowerCase()))
+  );
+}
+
 /**
- * The name a line goes by for an amount: one piece in the singular ("1x Schalotte"), any
- * other amount by the catalog's name. A line without catalog forms keeps its label.
+ * The name a line goes by for an amount: one piece in the singular ("1x Schalotte"), and one
+ * of a unit the name says ("1 Lorbeerblatt"); any other amount by the catalog's name. A line
+ * without catalog forms keeps its label.
  */
 export function labelFor(
   forms: { one: string; many: string } | null,
@@ -89,5 +120,7 @@ export function labelFor(
   amount: Amount | null,
 ): string {
   if (!forms) return label;
-  return amount?.unit === "Stück" && amount.quantity === 1 ? forms.one : forms.many;
+  const one =
+    amount?.quantity === 1 && (amount.unit === "Stück" || saysUnit(forms.many, amount.unit));
+  return one ? forms.one : forms.many;
 }
