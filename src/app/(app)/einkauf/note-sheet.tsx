@@ -550,8 +550,8 @@ function DrugstoreForm({
  * One line of a note: a box to tick, the text, and behind it what it is for. Moving it,
  * changing its amount and note, and "Haben wir schon" are the arrow, the pen and the shelf at
  * the end of the line, and only there: the same buttons once more in the opened line made it
- * a wall of buttons (October 2026), and its forms, four on every line, were one editor per
- * note in the end, the pen's (November 2026).
+ * a wall of buttons (October 2026), and the forms it held, four on every line, became one
+ * editor per note, the pen's (November 2026).
  */
 function Line({
   view,
