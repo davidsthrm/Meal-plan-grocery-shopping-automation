@@ -3327,22 +3327,34 @@ summary,
    * On a note the actions stand at the end of the line's first row, beside its text; what an
    * opened line holds runs underneath them, the whole width of the note. Beside them it was
    * a narrow column on a phone, its fields and buttons one under the other (October 2026).
+   * The text stops short of them, and they keep a little room apart, each still 44px: the
+   * text ran on under them, so that a tap beside a short line hit a sign instead of opening
+   * the line, and the signs touched (November 2026).
    */
+  .tick-line {
+    --sign: 2.6rem;
+    --sign-gap: 0.3rem;
+  }
   .tick-line .row-actions {
     position: absolute;
-    top: -0.1rem;
+    top: -0.025rem;
     right: 0;
+    gap: var(--sign-gap);
+  }
+  .tick-line .row-actions .icon-button {
+    width: var(--sign);
+    height: var(--sign);
   }
   .tick-line summary {
-    padding-right: calc(3 * 2.75rem);
+    margin-right: calc(3 * (var(--sign) + var(--sign-gap)));
   }
   .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
-    padding-right: calc(2 * 2.75rem);
+    margin-right: calc(2 * (var(--sign) + var(--sign-gap)));
   }
   @media print {
     .tick-line summary,
     .tick-line .swipe-face:not(:has(.row-actions > :nth-child(3))) summary {
-      padding-right: 0;
+      margin-right: 0;
     }
   }
 
