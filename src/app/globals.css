@@ -1050,7 +1050,7 @@ summary,
   }
 
   /*
-   * A small label above something: "Mittag", "Vorschlag", a category. Written as it is
+   * A small label above something: "Mittag", "Zutaten", a category. Written as it is
    * spelled: the household found headings in capitals to look machine-made.
    */
   .eyebrow {
@@ -1170,18 +1170,13 @@ summary,
     background: color-mix(in srgb, var(--kind, #e9e5de) 50%, var(--kind-ink, #5f5a52));
   }
   /*
-   * A suggestion: a box of its own with a dashed edge, so that it does not read as planned.
-   * A class and not utilities, so that the tap on "Gute Idee!" can take the box away.
+   * A suggestion: a line with a dashed rule under it, so that it does not read as planned.
+   * A class and not utilities, so that the tap on "Gute Idee!" can take the rule away.
    */
   .suggestion {
     margin-top: 0.25rem;
-    border: 1px dashed color-mix(in oklab, var(--color-accent) 50%, transparent);
-    border-radius: 0.5rem;
-    background: color-mix(in oklab, var(--color-accent-soft) 40%, transparent);
-    padding: 0.625rem 0.75rem;
-  }
-  .suggestion-title {
-    margin-top: 0.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1.5px dashed color-mix(in oklab, var(--color-accent) 45%, transparent);
   }
 
   /* A card that leads somewhere lifts a little when it is touched or pointed at. */
@@ -2952,11 +2947,10 @@ summary,
  * layers, as it has to win over the utilities on the same elements. Nothing travels, so less
  * motion changes nothing: a short fade at most, which less motion keeps.
  */
-/* "Gute Idee!": box, label, reasons and buttons go; the title stands on a line as tall as a
-   planned meal's with its stepper, and the row below keeps its height. Edge: `.meal-cell`. */
+/* "Gute Idee!": rule, reasons and buttons go; the title stands on a line as tall as a planned
+   meal's with its stepper, and the row below keeps its height. Edge: `.meal-cell`. */
 .suggestion:has([data-does="plan"] [data-pending]) {
   border-color: transparent;
-  background: none;
   padding: 0;
 }
 .suggestion:has([data-does="plan"] [data-pending]) > :not(.suggestion-title) {
@@ -2966,7 +2960,6 @@ summary,
   display: flex;
   min-height: calc(2.6rem + 4px);
   align-items: center;
-  margin-top: 0;
 }
 .meal-cell:has(.suggestion [data-does="plan"] [data-pending]) > .meal-actions {
   min-height: 2.75rem;

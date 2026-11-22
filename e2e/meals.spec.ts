@@ -53,7 +53,9 @@ test("Sunday has a place for coffee and cake", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await expect(meal(page, "Samstag Kaffee & Kuchen")).toHaveCount(0);
   // Optional: nothing is suggested there, and the other meals never get a cake.
-  await expect(meal(page, "Sonntag Kaffee & Kuchen")).not.toContainText("Vorschlag");
+  await expect(
+    meal(page, "Sonntag Kaffee & Kuchen").getByRole("group", { name: "Vorschlag" }),
+  ).toHaveCount(0);
   await expect(page.getByText("Zitronen-Mohn-Kuchen")).toHaveCount(0);
 
   await page.getByRole("link", { name: "Sonntag Kaffee & Kuchen planen" }).click();

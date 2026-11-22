@@ -1249,20 +1249,26 @@ function MealCell({
       )}
 
       {/*
-       * A suggestion, asked for or offered unasked: a box of its own with a dashed edge, so
-       * that it does not read as planned. Nothing is planned until "Gute Idee!"; from its tap
-       * on it reads as planned (`.suggestion`, `data-does="plan"`).
+       * A suggestion, asked for or offered unasked: a line with a dashed rule under it, so
+       * that it does not read as planned; a box with a dashed edge inside the sheet was a box
+       * in a box (22 November 2026). The rule says what it is, a screen reader hears it as
+       * "Vorschlag". Nothing is planned until "Gute Idee!"; from its tap on it reads as
+       * planned (`.suggestion`, `data-does="plan"`).
        */}
       {!slot && shown && !placing && (
-        <div className={`suggestion ${recipeTone(shown.recipe)?.className ?? ""}`}>
-          <p className="text-xs font-semibold text-accent">Vorschlag</p>
+        <div
+          role="group"
+          aria-label="Vorschlag"
+          className={`suggestion ${recipeTone(shown.recipe)?.className ?? ""}`}
+        >
           <div className="suggestion-title">
             <KindTitle recipe={shown.recipe} id={shown.recipe.id} week={week} day={date} />
           </div>
           {shown.reasons.length > 0 && (
             <p className="mt-1 text-sm text-muted">{whyText(shown.reasons)}</p>
           )}
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {/* One row, also on a phone: "Lieber was anderes" took a second one. */}
+          <div className="mt-2 flex items-center gap-2">
             <form action={planRecipe} data-does="plan">
               {where}
               <input type="hidden" name="recipe" value={shown.recipe.id} />
@@ -1276,7 +1282,7 @@ function MealCell({
             </form>
             {/* An idea offered unasked is the first answer; the next one is the second. */}
             <Link href={ask(proposal ? draw + 1 : 1)} scroll={false} className="btn btn-small">
-              Lieber was anderes
+              Was anderes
             </Link>
           </div>
         </div>
