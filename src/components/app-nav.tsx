@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { sideways } from "@/lib/transitions";
 import { BookIcon, CameraIcon, HeartIcon, ListIcon, WeekIcon } from "./icons";
-import { GlassSurface } from "./ui/glass";
 
 const SECTIONS: { href: string; label: string; icon: ReactNode }[] = [
   { href: "/woche", label: "Woche", icon: <WeekIcon /> },
@@ -21,11 +20,11 @@ function sectionOf(pathname: string): number {
 }
 
 /**
- * The main sections. On a phone (`floating`) they are a bar of liquid glass that floats
- * above the bottom of the screen, where the thumb is, each with its sign above its name. It
- * keeps clear of the bar the iPhone itself has at its lower edge: right at the edge, a tap
- * on a section brought up the phone's own gestures. On a wider screen they are a row of
- * names in the header.
+ * The main sections. On a phone (`floating`) they are a strip of paper at the foot of the
+ * screen, where the thumb is, each with its sign above its name, the open one marked with
+ * the highlighter as today is on the plan. Its signs keep clear of the bar the iPhone itself
+ * has at its lower edge: right at the edge, a tap on a section brought up the phone's own
+ * gestures. On a wider screen they are a row of names in the header.
  *
  * A tapped section is the current one the moment the finger lands, before its page has
  * come: the page took up to a second, and the household tapped again (October 2026). The
@@ -61,7 +60,7 @@ export function AppNav({ floating = false }: { floating?: boolean }) {
               }
             >
               {floating && icon}
-              {label}
+              <span className={floating && active ? "marked" : undefined}>{label}</span>
             </Link>
           </li>
         );
@@ -72,9 +71,7 @@ export function AppNav({ floating = false }: { floating?: boolean }) {
   if (!floating) return <nav aria-label="Hauptbereiche">{list}</nav>;
   return (
     <nav aria-label="Hauptbereiche" className="tabbar">
-      <GlassSurface radius={999} tint={0.55} blur={22} className="tabbar-glass">
-        {list}
-      </GlassSurface>
+      {list}
     </nav>
   );
 }

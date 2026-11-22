@@ -26,11 +26,11 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   // count of the Merkzettel and the initial follow. Waiting for them, opening the app showed
   // nothing at all until they were read (October 2026).
   return (
-    // On a phone the sections float above the bottom of the screen: the page leaves room for
-    // them and for the bar the phone itself keeps there. Coming from the welcome, the whole
-    // app rises into place (`.app-in`); any other way in, it is simply there.
+    // On a phone the sections are a strip at the foot of the screen: the page ends above it,
+    // so that nothing lies under it at the end of a scroll. Coming from the welcome, the
+    // whole app rises into place (`.app-in`); any other way in, it is simply there.
     <ViewTransition enter={{ willkommen: "app-in", default: "none" }} default="none">
-      <div className="app-shell min-h-dvh px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-10 print:p-0">
+      <div className="app-shell min-h-dvh px-4 pb-[calc(var(--tabbar-height)+1.5rem)] sm:pb-10 print:p-0">
         <NavigationProgress />
         {/* Paper gets the content only: no header, no navigation. */}
         <header className="app-header mx-auto flex max-w-5xl items-center justify-between gap-4 pt-2.5 pb-3.5 print:hidden">
