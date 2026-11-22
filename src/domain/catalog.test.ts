@@ -63,8 +63,17 @@ describe("nameForOne", () => {
     expect(nameForOne({ name: "Karotten", synonyms: ["Möhren", "Karotte"] })).toBe("Karotte");
   });
 
+  it("finds a singular without the plural's umlaut", () => {
+    // The note said "1x Äpfel".
+    expect(nameForOne({ name: "Äpfel", synonyms: ["Apfel"] })).toBe("Apfel");
+    expect(nameForOne({ name: "Walnüsse", synonyms: ["Walnuss"] })).toBe("Walnuss");
+  });
+
   it("keeps the name where no other name is its singular", () => {
     expect(nameForOne({ name: "Ingwer", synonyms: ["frischer Ingwer"] })).toBe("Ingwer");
     expect(nameForOne({ name: "Tomaten", synonyms: ["Tomatenmark"] })).toBe("Tomaten");
+    expect(nameForOne({ name: "Äpfel", synonyms: ["äpfel", "Äpfelchen"] })).toBe("Äpfel");
+    // Named in the singular, with the plural among the other names.
+    expect(nameForOne({ name: "Biskuitboden", synonyms: ["Biskuitböden"] })).toBe("Biskuitboden");
   });
 });

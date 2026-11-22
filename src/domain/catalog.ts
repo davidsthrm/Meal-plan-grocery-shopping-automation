@@ -148,18 +148,24 @@ export function findIngredient(index: CatalogIndex, text: string): Ingredient | 
 /**
  * The name for one piece, where the catalog knows it: "1 Zitrone" instead of "1 Zitronen".
  * The catalog names things in the plural and lists the singular among the other names: a
- * shorter name the plural starts with, at most two letters shorter ("Schalotte", "Ei").
+ * name the plural starts with, at most two letters shorter ("Schalotte", "Ei"), where an
+ * umlaut of the plural may be its plain vowel ("Apfel": the note said "1x Äpfel").
  */
 export function nameForOne(ingredient: Pick<Ingredient, "name" | "synonyms">): string {
   const plural = ingredient.name.toLowerCase();
   const singular = ingredient.synonyms.find((name) => {
     const short = name.toLowerCase();
     return (
-      short.length < plural.length && plural.length - short.length <= 2 && plural.startsWith(short)
+      short !== plural &&
+      plural.length - short.length <= 2 &&
+      [...short].every((letter, i) => plural[i] === letter || PLAIN[plural[i]] === letter)
     );
   });
   return singular ?? ingredient.name;
 }
+
+/** The vowel an umlaut of a plural has in the singular: "Äpfel", "Apfel". */
+const PLAIN: Record<string, string> = { ä: "a", ö: "o", ü: "u" };
 
 /** Position of an aisle group inside a shop: the shop's own order wins over the default. */
 export function aisleSortOrder(index: CatalogIndex, shopId: string, aisleGroupId: string): number {
