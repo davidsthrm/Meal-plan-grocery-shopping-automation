@@ -1371,6 +1371,10 @@ summary,
     border-radius: 999px;
     background: var(--kind-ink, var(--color-line));
   }
+  /* In front of a name that may take two lines: on the middle of its first. */
+  .dot-first {
+    margin-top: calc(0.5lh - 0.3rem);
+  }
 
   /* Small, but never under 44px, the least a finger needs (2.6rem at a root of 17px). */
   .btn-small {
@@ -2020,12 +2024,13 @@ summary,
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }
+  /* An open meal: the ring of a dot with nothing in it yet. */
   .strip-open {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 0.6rem;
+    height: 0.6rem;
     flex: none;
-    border: 1.5px dashed var(--color-line);
-    border-radius: 0.5rem;
+    border: 1.5px solid var(--color-line);
+    border-radius: 999px;
   }
 
   /* A row of cards to swipe through. It reaches to the edge of the screen on a phone. */

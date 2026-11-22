@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { RecipeBadge } from "@/components/recipe-card";
 import { weekdayShort, type IsoDate } from "@/domain/dates";
 import type { RecipeSummary } from "@/domain/library/summary";
 import type { StripMeal } from "@/domain/plan";
-import { MEAL_NAME, slotText } from "@/lib/plan-text";
+import { MEAL_NAME, recipeTone, slotText } from "@/lib/plan-text";
 
 /**
  * The week beside the recipe chooser on an iPad, so that a week is planned with the library
@@ -48,11 +47,16 @@ export function WeekStrip({
                       aria-current={current ? "page" : undefined}
                       className="strip-meal"
                     >
-                      {first ? (
-                        <RecipeBadge recipe={first} className="h-7 w-7" />
-                      ) : (
-                        <span className="strip-open" aria-hidden />
-                      )}
+                      <span
+                        aria-hidden
+                        className={
+                          first
+                            ? `dot ${recipeTone(first)?.className ?? "kind-none"}`
+                            : slot
+                              ? "dot kind-none"
+                              : "strip-open"
+                        }
+                      />
                       <span className="min-w-0">
                         <span className="block text-xs text-muted">{MEAL_NAME[meal]}</span>
                         <span

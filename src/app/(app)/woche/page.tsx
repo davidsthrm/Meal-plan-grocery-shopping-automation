@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { SegmentPill } from "@/components/segment-pill";
-import { slotPictogram } from "@/domain/library/pictogram";
-import { PictogramIcon } from "@/components/pictogram";
 import { WeekDone } from "@/components/week-done";
 import { BACK, FORWARD, SWAP } from "@/lib/transitions";
 import { cookies } from "next/headers";
@@ -17,7 +15,6 @@ import {
   WishIcon,
 } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
-import { RecipeBadge } from "@/components/recipe-card";
 import { ResetWeek } from "@/components/reset-week";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ServingsStepper } from "@/components/servings-stepper";
@@ -706,8 +703,8 @@ function slotSaid(slot: PlanSlot | undefined, recipeOf: ReadonlyMap<string, Reci
 
 /**
  * Today's meals, and below them Saturday and Sunday as two small cards, each meal on a line
- * of its own with its pictogram: the weekend was one grey sentence the household did not
- * read (October 2026).
+ * of its own with the dot of its kind: the weekend was one grey sentence the household did
+ * not read (October 2026).
  */
 function Today({
   now,
@@ -758,7 +755,7 @@ function Today({
             )}
           </ul>
         ) : slot ? (
-          <SlotName slot={slot} small={small} className="font-semibold">
+          <SlotName small={small} className="font-semibold">
             {slotSaid(slot, recipeOf)}
           </SlotName>
         ) : (
@@ -805,34 +802,40 @@ function Today({
 }
 
 /**
- * A meal without a recipe with its picture in front, where it has one: the bread of a
- * "Vesper", the pot of leftovers, a pin with a plate for a meal away. On the grey of no
- * kind of meal.
+ * The size of a dish's name on the week: the name size of the scale where there is room, the
+ * text size on a phone, where beside the stepper a name at 19px broke into syllables
+ * ("Cur-rysahne", 22 November 2026).
+ */
+const DISH_SIZE = "text-base sm:text-lg";
+
+/**
+ * A meal without a recipe ("Vesper", leftovers, a meal away) with the grey dot of no kind in
+ * front, so that it lines up with the names of dishes.
  */
 function SlotName({
-  slot,
   small = false,
   className = "",
   children,
 }: {
-  slot: Exclude<PlanSlot, { kind: "recipes" }>;
   small?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
-  const picture = slotPictogram(slot);
-  if (!picture) return <p className={className}>{children}</p>;
   return (
-    <p className={`flex items-center ${small ? "gap-2" : "gap-2.5"} ${className}`}>
-      <span className={`badge kind-none ${small ? "size-6" : "size-8"}`}>
-        <PictogramIcon name={picture} className="h-[68%] w-[68%]" />
-      </span>
+    <p
+      className={`flex items-start gap-2 ${small ? "text-sm" : DISH_SIZE} leading-snug ${className}`}
+    >
+      <span aria-hidden className="dot dot-first kind-none" />
       <span className="min-w-0">{children}</span>
     </p>
   );
 }
 
-/** A recipe's title as a link to it, with its pictogram on the colour of its kind in front. */
+/**
+ * A recipe's title as a link to it, with the dot of its kind in front. Pictograms on their
+ * pastel are for the recipe cards and the shopping notes: on the week they made every row a
+ * row of tiles (22 November 2026).
+ */
 function KindTitle({
   recipe,
   id,
@@ -859,15 +862,16 @@ function KindTitle({
     servings &&
     cookedServings(servings.planned, servings.extra, (recipe?.servings?.unit ?? null) === null);
   return (
-    <span className={`flex items-center ${small ? "gap-2" : "gap-2.5"}`}>
-      {recipe && (
-        <RecipeBadge recipe={recipe} className={small ? "size-6 shrink-0" : "size-8 shrink-0"} />
-      )}
+    <span className={`flex items-start gap-2 leading-snug ${small ? "text-sm" : DISH_SIZE}`}>
+      <span
+        aria-hidden
+        className={`dot dot-first ${(recipe && recipeTone(recipe)?.className) || "kind-none"}`}
+      />
       <Link
         href={`/rezepte/${id}${fromPlan(week, day, cooked)}`}
         prefetch
         transitionTypes={[FORWARD]}
-        className={`min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline ${small ? "text-sm leading-snug" : ""}`}
+        className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
       </Link>
@@ -1124,10 +1128,7 @@ function MealCell({
           </ul>
         )}
         {slot && slot.kind !== "recipes" && (
-          <SlotName
-            slot={slot}
-            className={`font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}
-          >
+          <SlotName className={`font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
             {slotText(slot)}
             {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
           </SlotName>
@@ -1209,10 +1210,7 @@ function MealCell({
       )}
 
       {slot && slot.kind !== "recipes" && (
-        <SlotName
-          slot={slot}
-          className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}
-        >
+        <SlotName className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
           {slotText(slot)}
           {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
         </SlotName>
