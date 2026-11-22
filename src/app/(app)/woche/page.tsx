@@ -966,30 +966,23 @@ function Extras({
 /** The week counted: how many meals of each kind, against what the household aims for. */
 function Balance({ lines }: { lines: BalanceLine[] }) {
   return (
-    // A tile per group in its pastel, with a bar that fills towards the goal: the week can be
-    // read at a glance. The tiles are the way to the goals: "Ziele ändern" below them took a
-    // row of its own on a phone.
+    // One quiet row of counts, each kind a small dot in its colour, and the goal beside it:
+    // four pastel tiles were the loudest thing on the page (22 November 2026). The row is the
+    // way to the goals: "Ziele ändern" below it took a row of its own on a phone.
     <Link href="/woche/ziele" aria-label="Ziele ändern" className="balance-link mt-4 block">
-      <ul aria-label="Ausgewogenheit der Woche" className="balance-tiles">
-        {lines.map((line) => {
-          const filled = progress(line);
-          return (
-            <li key={line.group} className={`balance-tile kind-${line.group}`}>
-              <span className="truncate text-[0.7rem] font-semibold tracking-[-0.01em]">
-                {GROUP_NAME[line.group]}
-              </span>
-              <span className="text-[1.6rem] leading-tight font-semibold tabular-nums">
-                {line.count}
-              </span>
-              <span className="truncate text-[0.72rem] text-muted">{targetText(line)}</span>
-              {filled && (
-                <span className="balance-bar" data-over={filled.over} aria-hidden>
-                  <span style={{ transform: `scaleX(${filled.share.toFixed(3)})` }} />
-                </span>
-              )}
-            </li>
-          );
-        })}
+      <ul aria-label="Ausgewogenheit der Woche" className="balance-row">
+        {lines.map((line) => (
+          <li
+            key={line.group}
+            className={`kind-${line.group}`}
+            data-over={progress(line)?.over || undefined}
+          >
+            <span className="dot" aria-hidden />
+            <span className="font-bold tabular-nums">{line.count}</span>
+            <span>{GROUP_NAME[line.group]}</span>
+            <span className="text-xs text-muted">{targetText(line)}</span>
+          </li>
+        ))}
       </ul>
     </Link>
   );

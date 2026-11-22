@@ -63,7 +63,7 @@ export function FeaturedRecipe({
           {tags.length > 0 && (
             <ul aria-label="Stichworte" className="mt-2 flex flex-wrap gap-1.5">
               {tags.map((tag) => (
-                <li key={tag} className="tag bg-surface">
+                <li key={tag} className="tag">
                   {tag}
                 </li>
               ))}

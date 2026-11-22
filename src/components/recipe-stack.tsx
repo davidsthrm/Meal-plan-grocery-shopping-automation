@@ -273,7 +273,7 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
                 {card.tags.length > 0 && (
                   <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Stichworte">
                     {card.tags.map((tag) => (
-                      <li key={tag} className="tag bg-surface">
+                      <li key={tag} className="tag">
                         {tag}
                       </li>
                     ))}
