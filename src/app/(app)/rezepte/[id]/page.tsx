@@ -187,7 +187,7 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
     // Wider on an iPad, where ingredients and steps stand side by side.
     <article className="mx-auto max-w-3xl tablet:max-w-5xl">
       <BackToList href={back.href} className="back-link">
-        ← {back.label}
+        ← <span>{back.label}</span>
       </BackToList>
       <div className="mt-3 flex items-start gap-3.5">
         <RecipeBadge
