@@ -1211,7 +1211,7 @@ function NoteForm({
                 inputMode="decimal"
                 autoComplete="off"
                 maxLength={8}
-                className="w-16 bg-transparent text-center"
+                className="min-h-11 w-16 bg-transparent text-center"
                 value={text}
                 onChange={(event) => setText(event.target.value)}
               />
