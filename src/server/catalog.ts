@@ -7,6 +7,7 @@ import {
   type CatalogIndex,
   type Ingredient,
   type Shop,
+  type Whole,
 } from "@/domain/catalog";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
 import type { GramsPer } from "@/domain/units";
@@ -136,7 +137,7 @@ async function readCatalogIndex(db: Db): Promise<CatalogIndex> {
         db
           .from("ingredient")
           .select(
-            "id, name, synonyms, aisle_group_id, preferred_shop_id, preferred_brand, default_unit, buying_mode, pack_size, rounding_step, grams_per, is_pantry_staple, shelf_life_days",
+            "id, name, synonyms, aisle_group_id, preferred_shop_id, preferred_brand, default_unit, buying_mode, pack_size, rounding_step, grams_per, is_pantry_staple, shelf_life_days, whole_unit, whole_ingredient_id, per_whole",
           )
           .eq("status", "active")
           .order("name")
@@ -188,6 +189,13 @@ async function readCatalogIndex(db: Db): Promise<CatalogIndex> {
       gramsPer: (row.grams_per ?? {}) as GramsPer,
       isPantryStaple: row.is_pantry_staple,
       shelfLifeDays: row.shelf_life_days,
+      whole: Object.keys(row.per_whole as object).length
+        ? {
+            ingredientId: row.whole_ingredient_id,
+            unit: row.whole_unit,
+            parts: row.per_whole as Whole["parts"],
+          }
+        : null,
     })),
     defaultShopId: (shopRows.find((s) => s.is_default) ?? shopRows[0])?.id ?? "",
     fallbackAisleGroupId:

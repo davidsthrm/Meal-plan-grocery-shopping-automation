@@ -393,8 +393,11 @@ export type Database = {
           preferred_shop_id: string
           rounding_step: number | null
           shelf_life_days: number | null
+          per_whole: Json
           status: Database["public"]["Enums"]["ingredient_status"]
           synonyms: string[]
+          whole_ingredient_id: string | null
+          whole_unit: Database["public"]["Enums"]["unit"] | null
         }
         Insert: {
           aisle_group_id: string
@@ -411,8 +414,11 @@ export type Database = {
           preferred_shop_id: string
           rounding_step?: number | null
           shelf_life_days?: number | null
+          per_whole?: Json
           status?: Database["public"]["Enums"]["ingredient_status"]
           synonyms?: string[]
+          whole_ingredient_id?: string | null
+          whole_unit?: Database["public"]["Enums"]["unit"] | null
         }
         Update: {
           aisle_group_id?: string
@@ -429,8 +435,11 @@ export type Database = {
           preferred_shop_id?: string
           rounding_step?: number | null
           shelf_life_days?: number | null
+          per_whole?: Json
           status?: Database["public"]["Enums"]["ingredient_status"]
           synonyms?: string[]
+          whole_ingredient_id?: string | null
+          whole_unit?: Database["public"]["Enums"]["unit"] | null
         }
         Relationships: [
           {
@@ -452,6 +461,13 @@ export type Database = {
             columns: ["household_id", "preferred_shop_id"]
             isOneToOne: false
             referencedRelation: "shop"
+            referencedColumns: ["household_id", "id"]
+          },
+          {
+            foreignKeyName: "ingredient_whole_fkey"
+            columns: ["household_id", "whole_ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient"
             referencedColumns: ["household_id", "id"]
           },
         ]
