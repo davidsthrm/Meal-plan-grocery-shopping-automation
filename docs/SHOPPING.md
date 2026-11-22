@@ -12,12 +12,29 @@ specification of the receipt upload (not built yet).
   (`purchaseFor`): "200 g Crème fraîche", "400 g Champignons", "1 Bund Petersilie", pieces as
   "1x Schalotte", as on the dm note. `count` and `weight` round to the catalog's step,
   everything else to whole pieces or just enough to read well (`naturalStep`: 137,5 g is
-  140 g). The household found "Champignons" one week and "4x Champignons" the next, and had
-  to open "Crème fraîche" to learn it was 200 g. What comes in packs says how many packs
-  with the exact amount, on tap (`packsFor`). A tin is "1x Dose Mais": a name that says its
-  unit ("Mais (Dose)") does not say it again. Only a line without any amount ("Petersilie")
-  and a pantry staple asked for by the spoonful only ("Salz", "Öl") show the name alone;
-  six tablespoons of Schmand are "90 g Schmand" (October 2026).
+  140 g). The steps of 5, 10 and 50 are for g and ml; kg and l are stepped as their g and
+  ml, spoons and every other unit to whole ones. Until November 2026 six tablespoons read
+  "10 EL" and 150 ml of a drink kept in litres "5 l". A line without a catalog ingredient
+  is rounded the same way ("0,13 l Hühnerbrühe" was ⅛ l). The household found "Champignons"
+  one week and "4x Champignons" the next, and had to open "Crème fraîche" to learn it was
+  200 g. What comes in packs says how many packs with the exact amount, on tap (`packsFor`).
+- Below 1 kg or 1 l an amount reads in g or ml, from there in kg or l: "150 ml Haferdrink",
+  not "0,15 l" (`formatAmount`). Only the text: the line keeps the ingredient's unit, in
+  which the shop's stepper and "Menge ändern" work.
+- A tin is "1x Dose Mais": a name that says its unit does not say it again, "Mais (Dose)" is
+  "1x Dose Mais", "Lorbeerblätter" in leaves "1 Lorbeerblatt" or "2 Lorbeerblätter", and
+  "1 Fenchelknolle" was "1 Knolle Fenchelknolle". One of such a unit takes the singular
+  where the catalog has one, otherwise the name stays as it is.
+- Nobody buys a part of something. A line kept in spoons (EL, TL, Prise, Msp, Handvoll), and
+  one asked for by the spoonful only of what is bought as it is (`none`) or at home anyway,
+  shows its name alone: "Limettensaft", "Zitronensaft", "Öl". The note said "10 EL
+  Limettensaft", and David: "you can't buy parts of Limettensaft" (21 November 2026, decided
+  on 22 November). The exact sum stays on tap. A line with any other amount keeps it ("100 ml
+  Zitronensaft"), and so does what is bought by weight, by the piece or in packs: six
+  tablespoons of Schmand are "90 g Schmand" (October 2026). Otherwise only a line without
+  any amount ("Petersilie") shows the name alone. How a lemon's juice or a handful counts is
+  in [RECIPES.md](RECIPES.md#units-and-conversion). Once parts are bought as the whole (see
+  [STATUS.md](STATUS.md)), this stays the rule for whatever has no yield.
 - Line text: quantity, name, note ("600 g Leberkäse", "Milch WS 1.29"). The exact sum and
   the meals it comes from stay available per line. A note picked up is one column on screen,
   the width of the page, so that an opened line has room: what it is for on the left, amount
@@ -30,7 +47,7 @@ specification of the receipt upload (not built yet).
   not need it (October 2026). The arrow of a line moves it.
 - The household's word is shown, not the recipe's (Karotten for Möhren). Synonyms map to one
   catalog ingredient. One piece takes the singular when the catalog lists it among the other
-  names: "1 Zitrone".
+  names: "1 Zitrone", and "1x Apfel" for "Äpfel" (it read "1x Äpfel" until November 2026).
 - For an ingredient bought in packs, a typed "2x" or a bare "2" means two packs. Only typed:
   in a recipe a number counts pieces, and "4 Riesengarnelen" are four prawns, a line of
   their own beside any grams other recipes need, not four packs of 225 g. A prawn's weight
