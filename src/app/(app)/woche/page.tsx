@@ -794,7 +794,8 @@ function Today({
           "Heute"
         )}
       </h2>
-      <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2.5">
+      {/* At 19px in two columns, a dish's name breaks between its words, not into syllables. */}
+      <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2.5 [&_a]:hyphens-manual">
         {mealsOn(now).map((which) => meal(now, which, "text-lg"))}
       </ul>
       {weekend.length > 0 && (
