@@ -93,7 +93,7 @@ export function ResetWeek({
       ) : (
         <button
           type="button"
-          className="btn btn-small max-sm:px-3"
+          className="btn btn-small max-sm:w-[2.6rem] max-sm:px-0"
           aria-label="Ganze Woche leeren"
           title="Woche leeren"
           onClick={() => setAsking(true)}

@@ -47,7 +47,7 @@ test("a saved plan is read, with what there is today on top and a pen for a chan
 
   // Done planning. The controls go, the meals stay.
   await page.getByRole("button", { name: "Plan speichern" }).click();
-  await expect(page.getByText("Gespeichert.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Plan bearbeiten" })).toBeVisible();
   await expect(meal(page, lunch)).toContainText("Pilzrisotto");
   await expect(page.getByRole("link", { name: `${lunch} ändern` })).toHaveCount(0);
   await expect(page.getByRole("button", { name: `${lunch} leeren` })).toHaveCount(0);

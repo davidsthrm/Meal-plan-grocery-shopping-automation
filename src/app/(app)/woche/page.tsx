@@ -10,6 +10,7 @@ import {
   CalendarIcon,
   ChartIcon,
   PenIcon,
+  PersonIcon,
   PinIcon,
   PlusIcon,
   TrashIcon,
@@ -300,18 +301,20 @@ export default async function WeekPage(props: PageProps<"/woche">) {
          * the heading of the page.
          */
         <>
-          <p className="text-sm font-medium text-muted">
+          <p className="font-medium text-muted">
             {weekdayLong(now)}, {dayAndMonth(now)}
           </p>
           <p className="greeting mt-1">
             {salutation(hourNow())}, <span className="text-accent">{greeting}</span>
           </p>
-          <h1 className="mt-1 text-base font-semibold tracking-tight text-muted">
+          <h1 className="mt-1.5 text-lg font-semibold tracking-tight text-muted">
             Wochenplan
             <span aria-hidden className="mx-2 text-line">
               ·
             </span>
-            <span className="text-ink">{weekRange(week)}</span>
+            {/* A week across two months takes a second line on a phone: it breaks at the
+                dash, never inside a day ("30. November – / 6. Dezember"). */}
+            <span className="text-ink">{weekRange(week).replace(/\. /g, ".\u00a0")}</span>
           </h1>
         </>
       ) : (
@@ -461,7 +464,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
             </Link>
           </nav>
           {!showExtras && (
-            <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end">
+            /* One row at 375px too: the signs are round and as wide as a finger, the words
+                hug theirs closer, and nothing stands between them (23 November 2026). */
+            <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end sm:gap-2">
               {picks.length > 0 && (
                 <form action={acceptSuggestions}>
                   <input type="hidden" name="week" value={week} />
@@ -473,7 +478,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                       value={`${pick.date}|${pick.meal}|${pick.suggestion.recipe.id}`}
                     />
                   ))}
-                  <SubmitButton className="btn btn-small" label="Plan vervollständigen">
+                  <SubmitButton className="btn btn-small max-sm:px-2" label="Plan vervollständigen">
                     <span className="sm:hidden">Vervollständigen</span>
                     <span className="max-sm:hidden">Plan vervollständigen</span>
                   </SubmitButton>
@@ -485,7 +490,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                   href={`/woche/pdf?w=${week}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn btn-small max-sm:px-3"
+                  className="btn btn-small max-sm:w-[2.6rem] max-sm:px-0"
                   aria-label="Für die Pinnwand"
                   title="Für die Pinnwand"
                 >
@@ -494,13 +499,11 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                 </a>
               )}
               {/* Done planning: the plan is saved and shown to read. Or the whole week is
-                  rubbed out. */}
+                  rubbed out. A saved plan says so by its pens and "Plan bearbeiten": the line
+                  "Gespeichert." stood between the buttons and broke their row. */}
               {slots.length + extras.length > 0 &&
                 (saved ? (
                   <>
-                    <p className="text-sm text-muted">
-                      Gespeichert. Der Stift an einer Mahlzeit ändert nur sie.
-                    </p>
                     <form action={saveWeekPlan}>
                       <input type="hidden" name="week" value={week} />
                       <input type="hidden" name="saved" value="0" />
@@ -516,7 +519,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                     <form action={saveWeekPlan}>
                       <input type="hidden" name="week" value={week} />
                       <input type="hidden" name="saved" value="1" />
-                      <SubmitButton className="btn btn-primary btn-small" label="Plan speichern">
+                      <SubmitButton
+                        className="btn btn-primary btn-small max-sm:px-2"
+                        label="Plan speichern"
+                      >
                         <span className="sm:hidden">Speichern</span>
                         <span className="max-sm:hidden">Plan speichern</span>
                       </SubmitButton>
@@ -997,6 +1003,26 @@ function Balance({ lines }: { lines: BalanceLine[] }) {
   );
 }
 
+/**
+ * How much a meal of a saved plan is cooked for, to read: a person's sign and the number
+ * beside the dish, as on the stepper; a recipe's own unit ("1 Springform (Ø 26 cm)") goes
+ * below it, where it does not squeeze the name.
+ */
+function ServingsSaid({ servings, unit }: { servings: number; unit: string | null }) {
+  const amount = plannedText(servings, unit);
+  if (unit !== null) return <p className="col-span-2 mt-0.5 text-sm text-muted">{amount}</p>;
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-sm leading-snug text-muted tabular-nums"
+      title={amount}
+    >
+      <PersonIcon />
+      <span aria-hidden>{servings}</span>
+      <span className="sr-only">{amount}</span>
+    </span>
+  );
+}
+
 /** A meal's action shown as a sign: round, large enough for a finger. */
 const ICON_ACTION =
   "-mx-1 flex size-11 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent";
@@ -1105,7 +1131,12 @@ function MealCell({
             {slot.items.map((item) => {
               const recipe = recipeOf.get(item.recipeId);
               return (
-                <li key={item.recipeId}>
+                // How much it is cooked for stands beside the dish, as the stepper does while
+                // planning: a line below it went unseen (23 November 2026).
+                <li
+                  key={item.recipeId}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3"
+                >
                   <KindTitle
                     recipe={recipe}
                     id={item.recipeId}
@@ -1113,9 +1144,7 @@ function MealCell({
                     day={date}
                     servings={{ planned: item.servings, extra: slot.extra }}
                   />
-                  <p className="mt-0.5 text-sm text-muted">
-                    {plannedText(item.servings, recipe?.servings?.unit ?? null)}
-                  </p>
+                  <ServingsSaid servings={item.servings} unit={recipe?.servings?.unit ?? null} />
                 </li>
               );
             })}
