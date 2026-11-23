@@ -103,9 +103,10 @@ test("screens @look", async ({ page }, info) => {
       await shopping.click();
       const view = page.getByRole("dialog", { name: /^Einkaufen: / });
       await view.getByRole("button").nth(1).click();
-      await page.waitForTimeout(500);
+      // Ticked, it goes under "Gekauft" at the end a moment later.
+      await page.waitForTimeout(1000);
       await page.screenshot({ path: `test-results/look/${info.project.name}-2-einkaufen.png` });
-      await view.getByRole("button").nth(1).click();
+      await view.getByRole("button", { pressed: true }).click();
       await view.getByRole("button", { name: "Fertig" }).first().click();
     }
   }
