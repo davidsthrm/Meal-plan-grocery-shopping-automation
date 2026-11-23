@@ -715,7 +715,8 @@ function slotSaid(slot: PlanSlot | undefined, recipeOf: ReadonlyMap<string, Reci
 /**
  * Today's meals, and below them Saturday and Sunday as two small cards, each meal on a line
  * of its own with the dot of its kind: the weekend was one grey sentence the household did
- * not read (October 2026).
+ * not read (October 2026). Today's dishes are named at 19px, the strongest thing on the page
+ * after the greeting (`.today-card`, 23 November 2026).
  */
 function Today({
   now,
@@ -739,7 +740,7 @@ function Today({
   // Coffee on Sunday is said only when there is some.
   const mealsOn = (date: IsoDate) =>
     mealsOf(date).filter((meal) => meal !== "coffee" || at(date, meal));
-  const meal = (date: IsoDate, which: Meal, small: boolean) => {
+  const meal = (date: IsoDate, which: Meal, size: string) => {
     const slot = at(date, which);
     return (
       <li key={which} className="min-w-0">
@@ -753,7 +754,7 @@ function Today({
                   id={item.recipeId}
                   week={week}
                   day={date}
-                  small={small}
+                  size={size}
                   servings={{ planned: item.servings, extra: slot.extra }}
                 />
               </li>
@@ -766,7 +767,7 @@ function Today({
             )}
           </ul>
         ) : slot ? (
-          <SlotName small={small} className="font-semibold">
+          <SlotName size={size} className="font-semibold">
             {slotSaid(slot, recipeOf)}
           </SlotName>
         ) : (
@@ -777,7 +778,7 @@ function Today({
   };
 
   return (
-    <section aria-label="Heute" className="card px-4 py-3.5 sm:px-5">
+    <section aria-label="Heute" className="card today-card px-4 py-3.5 sm:px-5">
       <h2 className="text-lg font-bold tracking-tight">
         {dated ? (
           <>
@@ -789,7 +790,7 @@ function Today({
         )}
       </h2>
       <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2.5">
-        {mealsOn(now).map((which) => meal(now, which, false))}
+        {mealsOn(now).map((which) => meal(now, which, "text-lg"))}
       </ul>
       {weekend.length > 0 && (
         <section aria-label="Am Wochenende" className="mt-3.5">
@@ -801,7 +802,7 @@ function Today({
                   {weekdayLong(date)}
                 </Link>
                 <ul className="mt-1 space-y-1.5">
-                  {mealsOn(date).map((which) => meal(date, which, true))}
+                  {mealsOn(date).map((which) => meal(date, which, "text-sm"))}
                 </ul>
               </div>
             ))}
@@ -824,17 +825,18 @@ const DISH_SIZE = "text-base sm:text-lg";
  * front, so that it lines up with the names of dishes.
  */
 function SlotName({
-  small = false,
+  size = DISH_SIZE,
   className = "",
   children,
 }: {
-  small?: boolean;
+  /** The size of its words: smaller in a card of the weekend, larger for today. */
+  size?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <p
-      className={`flex items-start gap-2 ${small ? "text-sm" : DISH_SIZE} leading-snug ${className}`}
+      className={`flex items-start gap-2 ${size} leading-snug ${className}`}
     >
       <span aria-hidden className="dot dot-first kind-none" />
       <span className="min-w-0">{children}</span>
@@ -852,7 +854,7 @@ function KindTitle({
   id,
   week,
   day,
-  small = false,
+  size = DISH_SIZE,
   servings,
 }: {
   recipe: RecipeSummary | undefined;
@@ -861,8 +863,8 @@ function KindTitle({
   week: IsoDate;
   /** The day it stands on, where the way back lands when it cannot step back. */
   day?: IsoDate;
-  /** Smaller, in a card of the weekend. */
-  small?: boolean;
+  /** The size of its words: smaller in a card of the weekend, larger for today. */
+  size?: string;
   /**
    * The meal's servings and its extra portions: the recipe's page starts with as much as the
    * meal cooks.
@@ -873,7 +875,7 @@ function KindTitle({
     servings &&
     cookedServings(servings.planned, servings.extra, (recipe?.servings?.unit ?? null) === null);
   return (
-    <span className={`flex items-start gap-2 leading-snug ${small ? "text-sm" : DISH_SIZE}`}>
+    <span className={`flex items-start gap-2 leading-snug ${size}`}>
       <span
         aria-hidden
         className={`dot dot-first ${(recipe && recipeTone(recipe)?.className) || "kind-none"}`}
