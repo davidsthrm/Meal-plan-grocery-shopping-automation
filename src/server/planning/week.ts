@@ -65,11 +65,15 @@ export async function savePlan(
   weekStart: IsoDate,
   saved: boolean,
 ): Promise<void> {
-  const planId = await ensureWeek(db, householdId, weekStart);
-  const stored = await db
-    .from("week_plan")
-    .update({ saved_at: saved ? new Date().toISOString() : null })
-    .eq("id", planId);
+  // One request: opening the week and then saving it made the tap wait twice.
+  const stored = await db.from("week_plan").upsert(
+    {
+      household_id: householdId,
+      week_start: weekStart,
+      saved_at: saved ? new Date().toISOString() : null,
+    },
+    { onConflict: "household_id,week_start" },
+  );
   if (stored.error) throw new Error(`save plan: ${stored.error.message}`);
 }
 
