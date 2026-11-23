@@ -148,7 +148,11 @@ are in [SHOPPING.md](SHOPPING.md).
   saved plan is read: the meals stand there without the controls for planning, without
   suggestions, and each with a small pen that opens that one meal (`?stift=<date>.<meal>`).
   "Plan bearbeiten" opens the whole plan again. Saving is a decision, not a date: a week
-  that has begun is not locked by itself.
+  that has begun is not locked by itself. A saved meal shows beside its dish for how many it
+  is cooked, a person's sign and the number as on the stepper; a recipe's own unit stands
+  below it. A line under the dish went unseen (23 November 2026). The pens and "Plan
+  bearbeiten" say that the plan is saved: the line "Gespeichert. Der Stift …" stood between
+  the buttons and broke their row.
 - "Woche leeren" empties a week after asking: every meal and the extras (`resetWeek`).
   The rubber makes the sheet invisible with a class that `ResetWeek` takes off again as
   soon as the empty week is drawn; left on, the page stayed blank. Playwright calls an
@@ -172,7 +176,9 @@ are in [SHOPPING.md](SHOPPING.md).
   order is stable between two looks. The best one is found in one pass, not by sorting the
   library, and a recipe's dish and effort are read once per recipe: a week's suggestions
   took 190 ms of the server for the family's 1,146 recipes on every look at the plan, and
-  take 60 (October 2026). The suggestions themselves are the same.
+  take 60 (October 2026). The suggestions themselves are the same. What suits each meal is
+  found once per look, and a wish is looked for only in meals that still have one: an empty
+  week over 1,427 recipes took about 40 ms on a laptop and takes 7 (November 2026).
 - The plan does not fill itself. An open meal has "Planen" and "Was könnten wir kochen?".
   Asked, the meal shows one suggestion with its reasons, "Gute Idee!" to take it and "Was
   anderes" for the next best, in one row; after twelve they come round again. The household found

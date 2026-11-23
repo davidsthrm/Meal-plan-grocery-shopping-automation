@@ -115,7 +115,7 @@ test("screens @look", async ({ page }, info) => {
   const save = page.getByRole("button", { name: "Plan speichern" });
   if (await save.count()) {
     await save.click();
-    await page.getByText("Gespeichert.").waitFor();
+    await page.getByRole("button", { name: "Plan bearbeiten" }).waitFor();
   }
   await shot("2-woche-gespeichert");
   const edit = page.getByRole("button", { name: "Plan bearbeiten" });

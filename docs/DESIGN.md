@@ -22,8 +22,11 @@ them, and how to work on the look. UI text is German; this document is English.
   (`-0.01em`): tight tracking on every heading reads as machine-made. A dish's name on the
   week is 16px on a phone and 19px from `sm` on: beside the stepper, at 19px it broke into
   syllables ("Cur-rysahne"). Text in a field stays 16px at least (see "Controls and sizes").
-  The only sizes outside the scale are drawn inside a chart (the donut's figure, in the
-  units of its SVG) and the root of 17px that the spacing is measured in.
+  The only sizes outside the scale are the greeting on the week plan, 30px (`.greeting`:
+  at 26px it did not read easily on the phone or the iPad, 23 November 2026; the day above
+  it went from 15 to 16px and the week's range below it from 16 to 19px), what is drawn
+  inside a chart (the donut's figure, in the units of its SVG) and the root of 17px that the
+  spacing is measured in.
 - No headings in capitals with wide letter spacing: the household reads them as machine-made.
   A small label (`.eyebrow`) is written as it is spelled.
 - Words on the screen say something concrete or are left out. No filler such as "for
@@ -105,7 +108,11 @@ The paper metaphors in motion:
   the lesser ones are a sign with their words as label and title (the plan's Pinnwand and
   Leeren, the statistics, the week's arrows, all weeks as a month's calendar), and "Plan
   speichern" is "Speichern" (October 2026). The week's row of arrows is one line on every
-  week at 375px too: "Alle Wochen" in words broke it (22 November 2026). A suggestion's two
+  week at 375px too: "Alle Wochen" in words broke it (22 November 2026). The plan's actions
+  too: "Vervollständigen", the pin, the rubber and "Speichern" while planning, the pin and
+  "Plan bearbeiten" once saved. The signs are round and 2.6rem wide, the words hug theirs
+  closer on a phone, and no line stands between them: the household saw them stacked on
+  23 November 2026. `e2e/week-saved.spec.ts` checks it at 375px. A suggestion's two
   buttons share a row the same way: "Gute Idee!" and "Was anderes", which as "Lieber was
   anderes" took a second row.
 - Every control gives a little the moment a finger lands on it (`:active`, a scale of 0.96),

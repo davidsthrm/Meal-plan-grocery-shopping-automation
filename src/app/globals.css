@@ -1046,6 +1046,11 @@ summary,
     letter-spacing: -0.015em;
     text-wrap: balance;
   }
+  /* The greeting a step above every title, the one size outside the scale: at 26px it did not
+     read easily on the phone or the iPad (23 November 2026). */
+  .greeting {
+    font-size: 30px;
+  }
 
   /*
    * A small label above something: "Mittag", "Zutaten", a category. Written as it is

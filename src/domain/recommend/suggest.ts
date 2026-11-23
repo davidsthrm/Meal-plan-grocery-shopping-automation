@@ -316,17 +316,25 @@ export function suggestWeek(
   const usedTags = new Set(context.usedTags);
   const slots = [...open].sort(byDayAndMeal);
   const chosen = new Map<OpenSlot, Suggestion>();
-  const choices = (slot: OpenSlot) =>
-    recipes.filter(
-      (recipe) => suitsMeal(recipe, slot.meal) && suitsDay(recipe, slot) && !planned.has(recipe.id),
-    ).length;
+  // What suits each meal is found once: asked again for every meal after every pick, over a
+  // library of 1,427 recipes, it was most of the time the week plan took to draw (November
+  // 2026).
+  const suits = new Map(
+    slots.map((slot) => [
+      slot,
+      recipes.filter((recipe) => suitsMeal(recipe, slot.meal) && suitsDay(recipe, slot)),
+    ]),
+  );
+  const pool = (slot: OpenSlot) => suits.get(slot) ?? [];
+  const choices = (slot: OpenSlot) => pool(slot).filter((recipe) => !planned.has(recipe.id)).length;
+  const wishLeft = (slot: OpenSlot) =>
+    pool(slot).some((recipe) => recipe.wanted && !planned.has(recipe.id));
 
   // How many more favourites the week takes: its share of every meal, planned or open.
   const onPlan = recipes.filter((recipe) => context.planned.has(recipe.id));
   let favoritesLeft =
     Math.ceil((context.planned.size + slots.length) * FAVORITE_SHARE) -
     onPlan.filter(isPlainFavorite).length;
-  const withoutFavorites = recipes.filter((recipe) => !isPlainFavorite(recipe));
 
   // Each slot draws its own order, or two slots with the same needs would get the same dish.
   const best = (slot: OpenSlot) => {
@@ -345,13 +353,16 @@ export function suggestWeek(
       )[0] as Suggestion | undefined;
     // Once the favourites have their share, the others; a favourite only where nothing else
     // suits the meal.
-    return favoritesLeft > 0 ? among(recipes) : (among(withoutFavorites) ?? among(recipes));
+    const suited = pool(slot);
+    return favoritesLeft > 0
+      ? among(suited)
+      : (among(suited.filter((recipe) => !isPlainFavorite(recipe))) ?? among(suited));
   };
 
   const waiting = [...slots];
   while (waiting.length > 0) {
     // A wish goes to the first meal it leads, as it does when that meal is asked about.
-    let at = waiting.findIndex((slot) => best(slot)?.recipe.wanted);
+    let at = waiting.findIndex((slot) => wishLeft(slot) && best(slot)?.recipe.wanted);
     if (at === -1) {
       // Otherwise in the order of the week, unless a meal could run out: one with fewer
       // suitable recipes left than meals still open goes first, the tightest of them.
