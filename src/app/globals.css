@@ -1345,6 +1345,34 @@ summary,
     stroke-width: 1.5;
   }
 
+  /*
+   * An empty place shows the pictogram of what would be there, large and pale, above what it
+   * says: an empty note, an empty week, no favourites, nothing found (23 November 2026).
+   */
+  .empty-picture {
+    display: block;
+    width: 5.5rem;
+    height: 5.5rem;
+    margin-bottom: 0.4rem;
+    color: var(--color-muted);
+    opacity: 0.32;
+    stroke-width: 1.4;
+  }
+  .note .empty-picture {
+    color: var(--color-note-ink);
+  }
+  /* On an empty week, behind the first day of the sheet, a little askew. */
+  .sheet-picture {
+    pointer-events: none;
+    position: absolute;
+    top: 2.4rem;
+    right: 1rem;
+    width: 7rem;
+    height: 7rem;
+    rotate: -8deg;
+    opacity: 0.22;
+  }
+
   /* A pictogram on its pastel, in front of a name. */
   .badge {
     display: inline-flex;

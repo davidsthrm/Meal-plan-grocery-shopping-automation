@@ -18,6 +18,7 @@ import {
 } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
 import { ResetWeek } from "@/components/reset-week";
+import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ServingsStepper } from "@/components/servings-stepper";
 import { SubmitButton } from "@/components/submit-button";
@@ -539,6 +540,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       {!showExtras && (
         <div className="sheet mt-6">
           <SheetHoles />
+          {/* A week with nothing on it yet: a plate, large and pale, behind its first day. */}
+          {slots.length + extras.length === 0 && (
+            <PictogramIcon name="teller" className="empty-picture sheet-picture" />
+          )}
           <ol id="wochenblatt" className="relative divide-y divide-rule">
             {ahead.map((date) => dayRow(date, false))}
             {/* The days that are over lie at the foot, under a word that says so: the
@@ -835,9 +840,7 @@ function SlotName({
   children: React.ReactNode;
 }) {
   return (
-    <p
-      className={`flex items-start gap-2 ${size} leading-snug ${className}`}
-    >
+    <p className={`flex items-start gap-2 ${size} leading-snug ${className}`}>
       <span aria-hidden className="dot dot-first kind-none" />
       <span className="min-w-0">{children}</span>
     </p>

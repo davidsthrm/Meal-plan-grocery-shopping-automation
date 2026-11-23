@@ -286,6 +286,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
             {!browsing && (
               <section className="mt-6" aria-label="Ergebnisse">
                 <p className="text-muted" role="status">
+                  {results.length === 0 && <PictogramIcon name="buch" className="empty-picture" />}
                   {results.length === 0
                     ? "Kein Rezept passt dazu."
                     : results.length === 1

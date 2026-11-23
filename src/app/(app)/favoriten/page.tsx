@@ -93,13 +93,16 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
       )}
 
       {favorites.length === 0 ? (
-        <p className="mt-8 text-muted">
-          Noch keine Favoriten. Auf jedem Rezept gibt es dafür das Herz:{" "}
-          <Link href="/rezepte" className="link underline">
-            Rezepte entdecken
-          </Link>
-          .
-        </p>
+        <div className="mt-8">
+          <PictogramIcon name="topf" className="empty-picture" />
+          <p className="text-muted">
+            Noch keine Favoriten. Auf jedem Rezept gibt es dafür das Herz:{" "}
+            <Link href="/rezepte" className="link underline">
+              Rezepte entdecken
+            </Link>
+            .
+          </p>
+        </div>
       ) : (
         <div className="mt-6">
           <FilterLayout
@@ -125,6 +128,7 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
 
             {!browsing && (
               <p className="mt-5 text-muted" role="status">
+                {listed.length === 0 && <PictogramIcon name="buch" className="empty-picture" />}
                 {listed.length === 0
                   ? "Kein Favorit passt dazu."
                   : listed.length === 1

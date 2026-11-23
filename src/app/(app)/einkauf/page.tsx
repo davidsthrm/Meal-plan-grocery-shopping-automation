@@ -3,6 +3,7 @@ import { BACK, FORWARD } from "@/lib/transitions";
 import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { ArrowIcon, NoteIcon, TickIcon } from "@/components/icons";
+import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -187,8 +188,9 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         </nav>
       </div>
 
+      {nothing && <PictogramIcon name="wagen" className="empty-picture mt-6" />}
       {nothing && (
-        <p className="mt-6 text-muted">
+        <p className="text-muted">
           {family
             ? `Bei den ${family} steht für diese Woche noch nichts auf den Einkaufszetteln.`
             : "Für diese Woche steht noch nichts auf den Einkaufszetteln."}{" "}
