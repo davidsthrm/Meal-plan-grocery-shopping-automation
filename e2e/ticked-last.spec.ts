@@ -43,7 +43,8 @@ test("in the shop a tick puts a line under Gekauft, in its kind, and a tap bring
   await expect(bought.getByRole("heading", { name: "Gekauft 1" })).toBeVisible();
   await expect(shop.getByText("Weintrauben: unter Gekauft")).toBeAttached();
   // Last of all, under what is still open.
-  expect((await bought.boundingBox())!.y).toBeGreaterThan((await fruit.boundingBox())!.y);
+  const eggs = region(shop, "Eier");
+  expect((await bought.boundingBox())!.y).toBeGreaterThan((await eggs.boundingBox())!.y);
 
   // Tapped again, it is back in its kind at once.
   await bought.getByRole("button", { name: "Weintrauben", exact: true }).click();
@@ -96,7 +97,8 @@ test("two quick ticks go together, and neither the server nor a reload moves the
   // Read again from the server, the view opens with them under "Gekauft" at once.
   await page.reload();
   const again = await openShop(page);
-  await expect(region(again, "Gekauft")).toHaveText(order);
+  await expect(region(again, "Gekauft")).toBeVisible();
+  expect(await region(again, "Gekauft").innerText()).toBe(order);
 });
 
 test("on the note ticked lines go to its very end, and an opened one stays until closed", async ({
