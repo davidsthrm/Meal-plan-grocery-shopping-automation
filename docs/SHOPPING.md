@@ -408,6 +408,21 @@ specification of the receipt upload (not built yet).
   device shows its own tick over a page drawn before the server took it
   (`shownChecked`, `WeekNotes.readAt`). Every tick on a note, also "Einkauf erledigt", goes
   this way; the plain form is the fallback without scripts.
+- A line bought, in full or in part, goes to the end, under "Gekauft" with how many, by the
+  same shop sections and kinds of grocery as what is still open; the open lines keep their
+  place. David, 22 November 2026: "when ticking entries they should drop to the very end of
+  the page. keep the categories tho." One rule for the note and the view for the shop
+  (`TickedLast`, `settleTicked`, `splitByPlaced` in `ticked-last.ts`). In the shop it lies last
+  of all, after "Verschoben" and "Nicht gekaufte Einträge", above "Einkauf erledigt"; on the
+  note at its very end, after "Einkauf erledigt" and "An einem anderen Tag einkaufen", so
+  that "Dazuschreiben" stays next to what is open (picked from drafts). A line goes 450 ms
+  after the last tick in the view, so that quick ticks go together and nothing jumps away
+  under the thumb; one bought when the view was drawn is there at once, and one taken back
+  ("Wieder offen", "Widerrufen") is in its kind again at once. Where a line stands comes
+  from the device's own decisions, ticks waiting for a connection included, never from the
+  server's order: the page read again cannot move a line a second time. A line opened on
+  the note stays where it is until it is closed. A line removed or moved to another note
+  goes to neither part, as before. Paper and PDF show what is still to buy.
 
 The service worker, kept pages and forms without a connection: see [ARCHITECTURE.md](ARCHITECTURE.md#offline).
 
@@ -456,9 +471,9 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
 
 - "Jetzt einkaufen" on a note opens the view for the shop (`StoreView`, a `<dialog>` over
   the whole screen; `#laden` opens it too): the note's lines by supermarket and kind of
-  grocery, each row one large button to tick, how many are ticked of how many, whether
-  ticks wait for a connection ("Offline – 3 Häkchen warten", `SyncStatus`), and "Einkauf
-  erledigt". The screen stays on while it is open (Wake Lock, where the browser has it).
+  grocery, what is bought at the end (above), each row one large button to tick, how many
+  are ticked of how many, whether ticks wait for a connection ("Offline – 3 Häkchen
+  warten", `SyncStatus`), and "Einkauf erledigt". The screen stays on while it is open (Wake Lock, where the browser has it).
 
 ## Export and PDF
 
