@@ -286,6 +286,12 @@ specification of the receipt upload (not built yet).
   it is not shown: Monday's empty dm note said nothing on a Tuesday (October 2026). Nor is
   an empty note while another one of the week has something on it, unless it is there to be
   written on: the drugstore's, or one opened by hand.
+- In the running week the page opens with the next errand that has something open
+  (`nextErrand`), large, in place of its tile: "Nächster Einkauf · Heute", the place or its
+  supermarkets (a tap opens the note), "Jetzt einkaufen" straight into that note's view for
+  the shop (`#laden`) and how many lines are open. The other notes follow as tiles. Chosen on
+  23 November 2026: the household wanted the page to say what is next. Look in
+  [DESIGN.md](DESIGN.md#paper-and-notes).
 
 ## Moving lines between notes
 

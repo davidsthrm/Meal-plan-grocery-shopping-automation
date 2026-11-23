@@ -57,6 +57,23 @@ A few things are borrowed from the handwritten notes the app replaces, and only 
   strip of the sections.
 - No handwriting typeface. On real paper only a note's ruled lines are printed, faint, as in
   its PDF.
+- The page's paper has a fine grain (`--paper-grain`): darker and lighter specks of an SVG
+  noise, one small tiled image, about a tenth visible on a phone. The pad's two sheets under
+  a `.sheet` are a shade darker than the top one, with a soft shadow beneath, and the ruled
+  lines (`--color-rule`) a step stronger. Chosen on 23 November 2026: the household found
+  the white app without life ("add a little bit more life and detail"), and drafts of it
+  injected on the real app were too faint to see on a phone. It stays cheap to draw: a
+  static background, no blur on what scrolls, nothing fixed or animated.
+- An empty place shows the pictogram of what would be there, large and pale
+  (`.empty-picture`), above what it says: an empty note its place's picture, the shopping
+  page with nothing on it the cart, an empty Merkzettel a basket, no favourites a pot,
+  nothing found a book, and an empty week a plate behind the sheet's first day
+  (`.sheet-picture`). Same day, same reason: an empty page read as broken.
+- Einkauf opens with the next errand, large and on the page, not as a tile
+  (`NextErrand`, `.next-errand`): the one strong element of the page, as "Heute" is on the
+  week (`.today-card`: a little shadow, today's dishes at 19px with their kind's dot,
+  breaking between words, not into syllables). The rule is in
+  [SHOPPING.md](SHOPPING.md#when-an-errand-is-done-and-the-order-of-the-notes).
 
 The shopping notes of a week:
 
@@ -232,7 +249,7 @@ The paper metaphors in motion:
   above its three buttons: at its old height they lay under the bar on a 375px phone
   (November 2026). `e2e/small-phone.spec.ts` checks both.
 - The header stays at the top of every page on a strip of the page's paper as wide as the
-  screen (`.app-header`), solid, fading out at its foot instead of ending in a line, so that
+  screen (`.app-header`), in the section's colour (see "Section colours"), solid, fading out at its foot instead of ending in a line, so that
   the Merkzettel and the settings are one tap away halfway down a long list; anchors land
   below it (`scroll-padding-top`), and `body` clips sideways so that the strip does not
   widen the page. It was frosted glass until 22 November 2026.
@@ -250,11 +267,16 @@ The paper metaphors in motion:
 
 ## Section colours
 
-- No section has a colour of its own: every page lies on the paper, and nothing tints the
-  top of a page or the header. From October 2026 each section had a pastel at the top of its
-  pages (`--section-tint`: Woche sage, Einkauf a misty blue, Rezepte peach, Favoriten blush,
-  Import lavender) and a breath of green lay behind the header; on 22 November 2026 the
-  household chose today's colours cleaned up, the paper alone (palette C1).
+- Each section has its pastel as a wash at the top of its pages, fading into the paper over
+  16rem (`.app-shell`, `--section-tint`: Woche sage #e3eee7, Einkauf blue #e2ebf2, Rezepte
+  peach #f6e6da, Favoriten blush #f5e1e6, Import lavender #e9e4f3), and the header's strip
+  in the same colour. It is read from the section the strip marks as current, so it is there
+  from the first paint, and it is not faded: a change of an inherited value recalculates
+  every element in every frame while a tap loads the next page.
+- History: from October 2026 the sections had such a pastel and a breath of green lay
+  behind the header; on 22 November 2026 the household chose the paper alone (palette C1),
+  and on 23 November 2026 asked for the colours back, softly, to give the app more life.
+  No yellow: the household did not like it (October 2026).
 
 ## Colours of kinds
 
@@ -264,12 +286,13 @@ The paper metaphors in motion:
   use it. The same colour marks the kind on a recipe card, next to a planned meal, in the
   week's count and in the goals.
 - The colours of the kinds are small marks only: a dot, a tag, the edge of a planned meal,
-  the square behind a recipe card's pictogram, a part of a chart. No card or tile is filled
-  with one (22 November 2026): the week's count is one row of numbers, each with a dot, its
-  name and its goal in small words, a count over its goal in the warning colour
-  (`.balance-row`); it was four pastel tiles with bars, the loudest thing on the page. The
-  recipe of the day, the tiles beside it and the Rezept-Stapel's cards are paper with the
-  pictogram on its pastel.
+  the square behind a recipe card's pictogram, a recipe card's top edge (its pastel fading
+  into the card, `.kind-edge`; a card of no kind has none, 23 November 2026), a part of a
+  chart. No card or tile is filled with one (22 November 2026): the week's count is one row
+  of numbers, each with a dot, its name and its goal in small words, a count over its goal
+  in the warning colour (`.balance-row`); it was four pastel tiles with bars, the loudest
+  thing on the page. The recipe of the day, the tiles beside it and the Rezept-Stapel's
+  cards are paper with the pictogram on its pastel.
 
 ## App feel and loading
 
