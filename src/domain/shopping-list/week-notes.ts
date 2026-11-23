@@ -91,6 +91,17 @@ export function arrangeNotes<T extends { trip: ShoppingTrip; completed: object |
 }
 
 /**
+ * The errand the shopping page opens with (`toDo` of `arrangeNotes`): the first one from
+ * today on that has something still to buy. None when every one ahead is empty or done.
+ */
+export function nextErrand<T extends { trip: ShoppingTrip; open: number }>(
+  toDo: readonly T[],
+  today: IsoDate,
+): T | undefined {
+  return toDo.find((note) => note.trip.date >= today && note.open > 0);
+}
+
+/**
  * The days of a week a note can be opened on by hand ("Neuer Zettel"): from today on. A week
  * gone by has none.
  */

@@ -7,6 +7,7 @@ import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
+import { ShopLogo } from "@/components/shop-logo";
 import { SubmitButton } from "@/components/submit-button";
 import type { Shop } from "@/domain/catalog";
 import {
@@ -19,10 +20,15 @@ import {
 } from "@/domain/dates";
 import { familyName } from "@/domain/family";
 import { groupAtHome, type AtHomeGroup } from "@/domain/shopping-list/at-home";
-import { marketsOfNote } from "@/domain/shopping-list/supermarkets";
+import { marketsOfNote, namesText } from "@/domain/shopping-list/supermarkets";
 import { noteId } from "@/domain/shopping-list/trips";
-import { arrangeNotes, daysToOpen, justFinished } from "@/domain/shopping-list/week-notes";
-import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
+import {
+  arrangeNotes,
+  daysToOpen,
+  justFinished,
+  nextErrand,
+} from "@/domain/shopping-list/week-notes";
+import { noteName, PLACE_LOOK, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
 import { momentNow, today } from "@/lib/today";
@@ -115,13 +121,17 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     (note) => note.view.groups.every((group) => group.lines.length === 0),
     (note) => note.trip.place === "drugstore" || note.openedByHand,
   );
+  // The running week opens with its next errand, large, a tap away from the shop.
+  const next = week === thisWeek ? nextErrand(arranged.toDo, now) : undefined;
+  const marketsOf = (note: NoteList) =>
+    note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : [];
   const tile = (note: NoteList) => (
     <li key={note.id}>
       <NoteTile
         note={note}
         week={week}
         today={now}
-        markets={note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : []}
+        markets={marketsOf(note)}
         justDone={note.completed !== null && justFinished(note.completed.at, moment)}
       />
     </li>
@@ -203,7 +213,12 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       )}
 
       <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {arranged.toDo.map(tile)}
+        {next && (
+          <li className="next-errand sm:col-span-2 lg:col-span-3">
+            <NextErrand note={next} week={week} today={now} markets={marketsOf(next)} />
+          </li>
+        )}
+        {arranged.toDo.filter((note) => note !== next).map(tile)}
         {noted.length > 0 && (
           <li>
             <a href="#merkzettel" className="note lift flex h-full flex-col px-4 pt-6 pb-4">
@@ -327,6 +342,64 @@ function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; wee
         ))}
       </div>
     </details>
+  );
+}
+
+/**
+ * The next errand, large at the top of the page: where, and "Jetzt einkaufen" straight into
+ * that note's view for the shop. Its name leads to the note itself, as a tile would. Chosen
+ * on 23 November 2026: the household wanted the page to say what is next, not only lay the
+ * notes out.
+ */
+function NextErrand({
+  note,
+  week,
+  today: now,
+  markets,
+}: {
+  note: NoteList;
+  week: IsoDate;
+  today: IsoDate;
+  markets: Shop[];
+}) {
+  const { trip } = note;
+  const look = PLACE_LOOK[trip.place];
+  const href = `/einkauf?w=${week}&zettel=${note.id}`;
+  return (
+    <section aria-labelledby="naechster-einkauf">
+      <h2 id="naechster-einkauf" className="font-semibold">
+        Nächster Einkauf
+        <span className="text-accent"> · {trip.date === now ? "Heute" : whenText(trip)}</span>
+      </h2>
+      <Link
+        href={href}
+        className={`mt-2 flex min-h-11 items-center gap-3 ${look.tone}`}
+        aria-label={`${PLACE_NAME[trip.place]}, ${whenText(trip)}: ${note.open} offen`}
+      >
+        {markets.length > 0 ? (
+          <span className="flex shrink-0 -space-x-2">
+            {markets.slice(0, 3).map((shop) => (
+              <ShopLogo key={shop.id} shop={shop} size={markets.length > 1 ? 44 : 52} />
+            ))}
+          </span>
+        ) : (
+          <span className="badge size-13">
+            <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
+          </span>
+        )}
+        <span className="title min-w-0">
+          {markets.length > 0
+            ? namesText(markets.map((shop) => shop.name))
+            : PLACE_NAME[trip.place]}
+        </span>
+      </Link>
+      <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Link href={`${href}#laden`} className="btn btn-primary">
+          Jetzt einkaufen
+        </Link>
+        <span className="text-muted tabular-nums">{note.open} offen</span>
+      </p>
+    </section>
   );
 }
 

@@ -1017,6 +1017,11 @@ summary,
   .tiles > li > *:focus-visible {
     rotate: 0deg;
   }
+  /* The next errand at the head of the notes lies straight on the page: it is no tile. */
+  .tiles > li.next-errand > * {
+    rotate: none;
+    will-change: auto;
+  }
   @media (hover: hover) and (pointer: fine) {
     .tiles > li > *:hover {
       rotate: 0deg;

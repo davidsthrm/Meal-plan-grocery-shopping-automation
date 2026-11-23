@@ -12,6 +12,7 @@ import {
   extrasToBuy,
   JUST_FINISHED_MS,
   justFinished,
+  nextErrand,
   notesOf,
   notesOfWeek,
 } from "./week-notes";
@@ -194,6 +195,27 @@ describe("justFinished", () => {
 
   it("takes a tick from another device's clock ahead of this one as now", () => {
     expect(justFinished(now + 30_000, now)).toBe(true);
+  });
+});
+
+describe("nextErrand", () => {
+  const TUESDAY = "2026-10-13";
+  const note = (date: string, place: ShoppingTrip["place"], open: number) => ({
+    trip: { date, place },
+    open,
+  });
+
+  it("is the first errand from today on with something open", () => {
+    const next = nextErrand(
+      [note(TUESDAY, "drugstore", 0), note(FRIDAY, "supermarket", 3), note(SATURDAY, "market", 2)],
+      TUESDAY,
+    );
+    expect(next?.trip.place).toBe("supermarket");
+  });
+
+  it("is never an errand whose day is over, nor one when nothing is open", () => {
+    expect(nextErrand([note(MONDAY, "supermarket", 4)], TUESDAY)).toBeUndefined();
+    expect(nextErrand([note(TUESDAY, "bakery", 0)], TUESDAY)).toBeUndefined();
   });
 });
 
