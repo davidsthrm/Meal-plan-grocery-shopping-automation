@@ -354,6 +354,42 @@ summary,
     font-size: var(--text-sm);
   }
 
+  /*
+   * Each section has a pastel of its own at the top of its pages, fading into the paper over
+   * 16rem, and the header's strip in it: Woche sage, Einkauf a misty blue, Rezepte peach,
+   * Favoriten blush, Import lavender. Back on 23 November 2026, softer than in October: the
+   * paper alone (palette C1) was too plain for the household. Read from the section the bar
+   * marks as current, so it is there from the first paint and changes the moment a section is
+   * tapped. Not faded: a change of an inherited value recalculates every element on the page
+   * in every frame, just while a tap loads the next page.
+   */
+  .app-shell {
+    --section-tint: var(--color-paper);
+    background:
+      var(--paper-grain),
+      linear-gradient(var(--section-tint), var(--color-paper) 16rem) no-repeat;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
+    --section-tint: #e3eee7;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
+    --section-tint: #e2ebf2;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
+    --section-tint: #f6e6da;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
+    --section-tint: #f5e1e6;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
+    --section-tint: #e9e4f3;
+  }
+  @media print {
+    .app-shell {
+      background: none;
+    }
+  }
+
   /* The line whose form it is pales with it: the tap was taken, the line is going. */
   .swipe-row:has([data-pending]) .swipe-face > :not(.row-actions) {
     opacity: 0.45;
@@ -751,7 +787,7 @@ summary,
     left: 50%;
     width: 100vw;
     translate: -50% 0;
-    background: var(--color-paper);
+    background: var(--paper-grain) var(--section-tint, var(--color-paper));
     mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
   }
 
