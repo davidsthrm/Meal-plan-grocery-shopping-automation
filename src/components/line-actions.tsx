@@ -38,6 +38,7 @@ import { MoveIcon, PenIcon, ShelfIcon, TickIcon, TrashIcon, UndoIcon } from "./i
 import { SubmitButton } from "./submit-button";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
+import { usePlace } from "./ticked-last";
 import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLine } from "./ticks";
 
 /**
@@ -510,8 +511,23 @@ export function ActionRow({
     },
   });
 
-  // A line removed folds away (`data-gone`): gone at once, the lines below it jumped up.
-  const gone = decision.kind === "removed";
+  // Under "Gekauft" a line goes a moment after it was ticked; opened, it stays until closed.
+  const place = usePlace(line.key);
+  const hold = place?.hold;
+  useEffect(() => {
+    const element = row.current;
+    if (!element || !hold) return;
+    const toggled = () => hold(line.key, element.querySelector("details[open]") !== null);
+    element.addEventListener("toggle", toggled, true);
+    return () => {
+      element.removeEventListener("toggle", toggled, true);
+      hold(line.key, false);
+    };
+  }, [hold, line.key]);
+
+  // A line removed folds away (`data-gone`): gone at once, the lines below it jumped up. A
+  // line ticked folds out of its place the same way, and unfolds under "Gekauft".
+  const gone = decision.kind === "removed" || place?.folding;
   if (decision.kind === "moved" && leavesNote(decision, host.page.note)) {
     const to = readNoteId(decision.to);
     return (
@@ -579,8 +595,10 @@ export function ActionRow({
     <li
       ref={row}
       className={`swipe-row ${variant === "note" ? "tick-line" : ""} ${className}`}
+      data-line={line.key}
       data-at-home={home || undefined}
       data-gone={gone || undefined}
+      data-arrived={place?.arrived || undefined}
     >
       <span className="swipe-under" aria-hidden>
         <span className="swipe-buy">

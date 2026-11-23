@@ -3804,6 +3804,22 @@ details[open] > :not(summary) {
   animation: unfold 200ms var(--ease-out);
 }
 /*
+ * A line ticked off goes under "Gekauft" at the end of its note (`TickedLast`): it folds out
+ * of its place as a removed line does (`data-gone`) and unfolds there. Asked for less
+ * motion, it simply moves. What is bought lies paler, so that what is open is what is read.
+ */
+.swipe-row[data-arrived] {
+  animation: unfold 200ms var(--ease-out);
+}
+.ticked-part .swipe-face {
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .swipe-row[data-arrived] {
+    animation: none;
+  }
+}
+/*
  * Only before and while it runs: kept to its end, the motion left every page on a layer of
  * its own, which the iPhone drew over the bar of the sections (October 2026).
  */

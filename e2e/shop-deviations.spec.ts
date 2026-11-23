@@ -36,15 +36,18 @@ test("the Monday errand closes with what was not bought, and the eggs go to Tues
   await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
   const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
   const row = (text: string | RegExp) => shop.getByRole("listitem").filter({ hasText: text });
+  // A line still to buy has its bin. Once the server has a removal, the line is listed again
+  // under "Nicht gekaufte Einträge": counting every row with its name raced the server.
+  const bin = (name: string) => shop.getByRole("button", { name: `${name} entfernen` });
 
   // The ginger shots are not needed after all: the bin, and nothing asks.
-  await row("Ingwer-Shots").getByRole("button", { name: "Ingwer-Shots entfernen" }).click();
-  await expect(row("Ingwer-Shots")).toHaveCount(0);
+  await bin("Ingwer-Shots").click();
+  await expect(bin("Ingwer-Shots")).toHaveCount(0);
   // Taken back from the bar at the foot, and removed again.
   await page.getByRole("status").getByRole("button", { name: "Widerrufen" }).click();
-  await expect(row("Ingwer-Shots")).toHaveCount(1);
-  await row("Ingwer-Shots").getByRole("button", { name: "Ingwer-Shots entfernen" }).click();
-  await expect(row("Ingwer-Shots")).toHaveCount(0);
+  await expect(bin("Ingwer-Shots")).toHaveCount(1);
+  await bin("Ingwer-Shots").click();
+  await expect(bin("Ingwer-Shots")).toHaveCount(0);
 
   // Three bottles of six, and the rest not bought.
   await row("Ensinger Sport")
@@ -54,7 +57,13 @@ test("the Monday errand closes with what was not bought, and the eggs go to Tues
   for (let time = 0; time < 3; time++) await edit.getByRole("button", { name: "Weniger" }).click();
   await expect(edit).toContainText("Es fehlen noch 3 Stück Ensinger Sport.");
   await edit.getByRole("button", { name: "Rest verwerfen" }).click();
-  await expect(row("Ensinger Sport")).toContainText("3 von 6 Stück · Rest nicht gekauft");
+  // Bought in part, it goes under "Gekauft"; the rest is among what was not bought.
+  await expect(
+    shop
+      .getByRole("region", { name: "Gekauft", exact: true })
+      .getByRole("listitem")
+      .filter({ hasText: "3 von 6 Stück · Rest nicht gekauft" }),
+  ).toHaveCount(1);
 
   // The eggs are sold out: bought on Tuesday instead, the shop stays.
   await row("Eier").getByRole("button", { name: "Eier verschieben" }).click();
@@ -110,10 +119,22 @@ test("a swipe buys a line or removes it, and holding it opens its menu", async (
   };
 
   await swipe("Geschenkpapier", 260);
-  await expect(row("Geschenkpapier").getByRole("button", { pressed: true })).toHaveCount(1);
+  // Bought, it goes under "Gekauft" a moment later. The next swipe waits for that, or the
+  // rows would move under the finger.
+  await expect(
+    shop
+      .getByRole("region", { name: "Gekauft", exact: true })
+      .getByRole("button", { name: "Geschenkpapier", pressed: true }),
+  ).toHaveCount(1);
   await swipe("Kerzen", -260);
-  await expect(row("Kerzen")).toHaveCount(0);
+  // Removed, it is no longer to buy, and once the server has it, it is among what was not
+  // bought. Counting every row named "Kerzen" failed whenever the server was quicker than
+  // the check (November 2026).
+  await expect(shop.getByRole("button", { name: "Kerzen entfernen" })).toHaveCount(0);
   await expect(page.getByRole("status")).toContainText("Kerzen entfernt");
+  await expect(shop.getByRole("region", { name: "Nicht gekaufte Einträge" })).toContainText(
+    "Kerzen",
+  );
 
   // A finger held still on a row: its actions, named.
   const eggs = (await row("Eier").boundingBox())!;

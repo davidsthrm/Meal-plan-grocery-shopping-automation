@@ -321,6 +321,10 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
 - A tick on a note is drawn like a pen stroke in 200ms and goes at once when taken back (a
   transition on `stroke-dashoffset`, the path's length 1).
 - What a fold holds comes out with a short fade and drop (`unfold`).
+- A line ticked off folds out of its place 450ms after the last tick, as a removed line does
+  (`data-gone`, 160ms), and comes out under "Gekauft" at the end with `unfold`
+  (`data-arrived`), so that quick ticks go together and nothing moves under the thumb. What
+  is bought lies paler there. Asked for less motion, it simply moves.
 - The views for the shop and for cooking rise like a sheet (`sheet-up`) and go back down the
   way they came (`leaveSheet`, `sheet-down`, 200ms, as the Merkzettel goes up on its string).
 - The bar of "Alle Rezepte" for ticked recipes rises from the foot and goes back down
