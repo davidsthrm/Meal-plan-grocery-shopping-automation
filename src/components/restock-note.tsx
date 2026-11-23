@@ -6,7 +6,7 @@ import { tellRestock } from "@/app/(app)/merkzettel/actions";
 import { mondayOf } from "@/domain/dates";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayName, noteName } from "@/lib/list-text";
-import { CloseIcon } from "./icons";
+import { CloseIcon, ListIcon, PlusIcon } from "./icons";
 import { SubmitButton } from "./submit-button";
 
 interface Props {
@@ -27,22 +27,25 @@ interface Props {
 }
 
 /**
- * The yellow note for what ran out at home. Anyone writes on it; "Auf den Einkaufszettel"
- * moves an entry to the note of the next errand that sells it.
+ * The yellow note for what ran out at home. Anyone writes on it; the sign of the shopping
+ * notes beside an entry ("Auf den Einkaufszettel") moves it to the note of the next errand
+ * that sells it. As narrow as a real sticky note, each entry one line: its name, where it
+ * will go in small words, and two quiet signs (22 November 2026). Before, every entry had a
+ * pill of its own under it and the note was a page of buttons.
  */
 export function RestockNote({ items, asPage = false, onLeave }: Props) {
   const [state, tell] = useActionState(tellRestock, { moved: [] });
   const quiet = "border-note-line bg-white/60";
   return (
-    <section aria-label="Merkzettel" className="note px-4 pt-6 pb-4 sm:px-5 print:hidden">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        {asPage ? (
-          <h1 className="text-2xl font-bold tracking-tight">Merkzettel</h1>
-        ) : (
-          <h2 className="text-xl font-bold tracking-tight">Merkzettel</h2>
-        )}
-        <p className="muted text-sm">Was zu Hause ausgegangen ist</p>
-      </div>
+    <section
+      aria-label="Merkzettel"
+      className="note mx-auto w-full max-w-[18rem] px-4 pt-6 pb-3 print:hidden"
+    >
+      {asPage ? (
+        <h1 className="text-xl font-bold tracking-tight">Merkzettel</h1>
+      ) : (
+        <h2 className="text-xl font-bold tracking-tight">Merkzettel</h2>
+      )}
 
       <form action={tell} className="mt-3 flex gap-2">
         <input type="hidden" name="do" value="note" />
@@ -56,7 +59,13 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
             placeholder="z. B. Mehl"
           />
         </label>
-        <SubmitButton className={`btn ${quiet}`}>Notieren</SubmitButton>
+        <SubmitButton
+          className={`btn ${quiet} w-11 shrink-0 px-0`}
+          label="Notieren"
+          title="Notieren"
+        >
+          <PlusIcon />
+        </SubmitButton>
       </form>
 
       {state.moved.length > 0 && (
@@ -82,52 +91,49 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
       ) : (
         <ul className="note-lines mt-2">
           {items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
-              <span className="min-w-32 flex-1">
+            <li key={item.id} className="flex items-center gap-1">
+              <span className="min-w-0 flex-1 py-2.5">
                 <span className="font-semibold">{item.text}</span>
                 {item.trip && (
-                  <span className="muted text-sm">
+                  <span className="muted text-xs">
                     {" "}
-                    ·{" "}
                     {item.supermarket
                       ? `${dayName(item.trip.date)} ${item.supermarket}`
                       : noteName(item.trip)}
                   </span>
                 )}
               </span>
-              <span className="flex items-center gap-1">
-                <form action={tell}>
-                  <input type="hidden" name="do" value="list" />
-                  <input type="hidden" name="id" value={item.id} />
-                  <SubmitButton
-                    className={`btn btn-small ${quiet}`}
-                    label={`${item.text} auf den Einkaufszettel`}
-                  >
-                    Auf den Einkaufszettel
-                  </SubmitButton>
-                </form>
-                <form action={tell}>
-                  <input type="hidden" name="do" value="strike" />
-                  <input type="hidden" name="id" value={item.id} />
-                  <SubmitButton
-                    className="muted flex size-11 items-center justify-center rounded-full hover:text-danger"
-                    label={`${item.text} streichen`}
-                  >
-                    <CloseIcon />
-                  </SubmitButton>
-                </form>
-              </span>
+              <form action={tell}>
+                <input type="hidden" name="do" value="list" />
+                <input type="hidden" name="id" value={item.id} />
+                <SubmitButton
+                  className="icon-button text-note-ink"
+                  label={`${item.text} auf den Einkaufszettel`}
+                  title="Auf den Einkaufszettel"
+                >
+                  <ListIcon />
+                </SubmitButton>
+              </form>
+              <form action={tell} className="-mr-2.5">
+                <input type="hidden" name="do" value="strike" />
+                <input type="hidden" name="id" value={item.id} />
+                <SubmitButton
+                  className="icon-button text-note-ink hover:text-danger"
+                  label={`${item.text} streichen`}
+                  title="Streichen"
+                >
+                  <CloseIcon />
+                </SubmitButton>
+              </form>
             </li>
           ))}
         </ul>
       )}
 
       {items.length > 1 && (
-        <form action={tell} className="mt-3">
+        <form action={tell} className="mt-1">
           <input type="hidden" name="do" value="list" />
-          <SubmitButton className="btn btn-primary btn-small">
-            Alles auf den Einkaufszettel
-          </SubmitButton>
+          <SubmitButton className="link min-h-11 text-sm">Alle auf den Einkaufszettel</SubmitButton>
         </form>
       )}
     </section>

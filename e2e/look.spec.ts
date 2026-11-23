@@ -35,7 +35,7 @@ test("screens @look", async ({ page }, info) => {
   if (await ask.count()) {
     await ask.click();
     // A library with nothing left to suggest answers with nothing: then there is no picture.
-    const answer = page.getByText("Vorschlag", { exact: true });
+    const answer = page.getByRole("group", { name: "Vorschlag" }).first();
     const answered = await answer.waitFor({ timeout: 5000 }).then(
       () => true,
       () => false,

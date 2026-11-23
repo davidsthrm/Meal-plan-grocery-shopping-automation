@@ -86,7 +86,7 @@ export function SupermarketMap({
         </ul>
       </div>
       <LiveMap shops={live} />
-      <figcaption className="absolute right-0 bottom-0 z-10 rounded-tl bg-surface/85 px-1.5 text-[11px] text-muted">
+      <figcaption className="absolute right-0 bottom-0 z-10 rounded-tl bg-surface/85 px-1.5 text-xs text-muted">
         ©{" "}
         <a
           href="https://www.openstreetmap.org/copyright"

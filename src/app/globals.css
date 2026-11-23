@@ -46,8 +46,38 @@
   --color-sweet: #eadff0;
   --color-sweet-ink: #6d4c80;
 
-  /* One sans-serif family for everything, from the fonts the devices bring along. */
-  --font-sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /*
+   * One sans-serif family for everything: Figtree, served by the app (`next/font` in the root
+   * layout), in two weights. The household wanted the app not to look like any other app
+   * (22 November 2026); the system's own typeface is what every other app has.
+   */
+  --font-sans: var(--font-figtree), "Avenir Next", system-ui, sans-serif;
+  --font-weight-normal: 500;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 700;
+  --font-weight-bold: 700;
+  /* Headings tighten a little, no more: tight tracking on every heading read as machine-made. */
+  --tracking-tight: -0.01em;
+
+  /*
+   * Five sizes and no others: 26 a title, 19 the name of a dish or a note, 16 the text, 15
+   * what is said beside it, 13 a small label. Tailwind's sizes in use fall onto them
+   * (`text-xl` is a name, `text-3xl` a title). In px: the root is 17px for the spacing.
+   */
+  --text-xs: 13px;
+  --text-xs--line-height: 1.35;
+  --text-sm: 15px;
+  --text-sm--line-height: 1.45;
+  --text-base: 16px;
+  --text-base--line-height: 1.5;
+  --text-lg: 19px;
+  --text-lg--line-height: 1.3;
+  --text-xl: 19px;
+  --text-xl--line-height: 1.3;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 1.15;
+  --text-3xl: 26px;
+  --text-3xl--line-height: 1.15;
 
   /*
    * How things move. Out: in or out of view, fast at first so it answers at once. In-out:
@@ -64,13 +94,6 @@
  * enough for two columns and tall enough to plan in them. Decided by the screen, never by
  * the name of the device.
  */
-/* The pastel of the section (`.app-shell`), registered so that it can fade into the next. */
-@property --section-tint {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #f7f4ee;
-}
-
 @custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
 html {
@@ -91,15 +114,14 @@ html {
 }
 
 body {
-  /* A breath of green at the top of the page, fading into the paper. */
-  background:
-    radial-gradient(60rem 22rem at 50% -8rem, var(--color-accent-soft), transparent 70%),
-    var(--color-paper);
-  background-repeat: no-repeat;
+  /* The page is the paper: no wash of colour at its top (22 November 2026). */
+  background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  line-height: 1.45;
-  /* The frosted strip behind the header reaches the screen's edges without widening it. */
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.5;
+  /* The strip behind the header reaches the screen's edges without widening it. */
   overflow-x: clip;
   overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
@@ -159,7 +181,7 @@ summary,
     border: 1px solid transparent;
     background: rgb(35 33 29 / 0.065);
     padding: 0 1rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-ink);
     transition:
       transform 120ms var(--ease-out),
@@ -297,7 +319,7 @@ summary,
     border-radius: 999px;
     background: var(--color-accent-soft);
     color: var(--color-accent);
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     font-weight: 700;
     transition:
       transform 120ms var(--ease-out),
@@ -320,40 +342,7 @@ summary,
     max-width: 65ch;
     padding-bottom: 0.25rem;
     color: var(--color-muted);
-    font-size: 0.875rem;
-  }
-
-  /*
-   * Each section has a pastel of its own at the top of its pages, fading into the paper:
-   * Woche sage, Einkauf a misty blue, Rezepte peach, Favoriten blush, Import lavender. No
-   * yellow: the household did not like it (October 2026). Read from the section the bar marks as current, so it is there from
-   * the first paint and changes the moment a section is tapped.
-   */
-  .app-shell {
-    --section-tint: var(--color-paper);
-    /* Not faded: a change of an inherited value recalculates every element on the page in
-       every frame, just while a tap loads the next page. The page cross-fades anyway. */
-    background: linear-gradient(var(--section-tint), var(--color-paper) 20rem) no-repeat;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
-    --section-tint: #e3eee7;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
-    --section-tint: #e2ebf2;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
-    --section-tint: #f6e6da;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
-    --section-tint: #f5e1e6;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
-    --section-tint: #e9e4f3;
-  }
-  @media print {
-    .app-shell {
-      background: none;
-    }
+    font-size: var(--text-sm);
   }
 
   /* The line whose form it is pales with it: the tap was taken, the line is going. */
@@ -396,8 +385,8 @@ summary,
   .label {
     display: block;
     margin-bottom: 0.25rem;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: 700;
     color: var(--color-muted);
   }
 
@@ -556,7 +545,7 @@ summary,
     padding: 0.4rem 0.5rem;
     border-bottom: 1px solid var(--color-rule);
     text-align: left;
-    font-size: 1.2rem;
+    font-size: var(--text-lg);
     line-height: 1.3;
     -webkit-tap-highlight-color: transparent;
   }
@@ -604,7 +593,7 @@ summary,
     padding: 0.9rem 0.75rem;
     border-radius: 0.9rem;
     text-align: left;
-    font-size: 1.22rem;
+    font-size: var(--text-lg);
     line-height: 1.5;
     transition:
       background-color 200ms ease,
@@ -635,7 +624,7 @@ summary,
     border-radius: 999px;
     background: var(--color-accent-soft);
     color: var(--color-accent);
-    font-size: 1rem;
+    font-size: var(--text-base);
     font-weight: 700;
   }
   .cook-step[aria-current="step"] .cook-step-number {
@@ -656,7 +645,7 @@ summary,
   }
   .cook-foot .btn {
     min-height: 3.4rem;
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
   }
 
   /* Ticks that wait for a connection: said in a small yellow pill, nothing while all is well. */
@@ -667,57 +656,63 @@ summary,
     border-radius: 999px;
     background: var(--color-warn-soft);
     color: var(--color-warn);
-    font-weight: 600;
+    font-weight: 700;
   }
   .sync-status:empty {
     display: none;
   }
 
   /*
-   * The sections on a phone: a bar floating above the lower edge, clear of the bar the
-   * iPhone keeps there. The safe area (`env(safe-area-inset-bottom)`, which needs
-   * `viewport-fit=cover`) is 34px, more than that bar needs: above the whole inset the
-   * sections floated too high, so they reach half a rem into it.
+   * The sections on a phone: a strip of paper across the foot of the screen, a hairline
+   * above it, nothing floating, no glass. The household wanted the app not to look like any
+   * other app (22 November 2026), and the paper is what is its own. The safe area
+   * (`env(safe-area-inset-bottom)`, which needs `viewport-fit=cover`) is 34px, more than the
+   * iPhone's home bar needs: the signs reach half a rem into it. Right at the edge, a tap on
+   * a section brought up the phone's gestures; above the whole inset, they stood too high
+   * (October 2026). How tall it is (`--tabbar-height`) is what the page leaves free at its
+   * foot, and what a bar at the foot of the screen stands on.
    */
+  :root {
+    --tabbar-height: calc(3.1rem + 1px + max(0px, env(safe-area-inset-bottom) - 0.5rem));
+  }
   .tabbar {
     position: fixed;
-    right: max(0.75rem, env(safe-area-inset-right));
-    bottom: max(1rem, calc(env(safe-area-inset-bottom) - 0.5rem));
-    left: max(0.75rem, env(safe-area-inset-left));
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: 10;
-    max-width: 30rem;
-    margin: 0 auto;
-    border-radius: 999px;
+    padding: 0 env(safe-area-inset-right) max(0px, calc(env(safe-area-inset-bottom) - 0.5rem))
+      env(safe-area-inset-left);
+    border-top: 1px solid var(--color-line);
+    background: var(--color-surface);
     /*
      * A layer of its own: on the iPhone a card that lifts under the finger was drawn over the
-     * blurred bar, which then lay under the page (October 2026).
+     * bar, which then lay under the page (October 2026).
      */
     transform: translateZ(0);
   }
-  /*
-   * Liquid glass (`GlassSurface`): blur, a white tint, a sheen across it and light catching
-   * its rim. Safari cannot bend the page through it as Chrome can; it stays frosted there.
-   */
-  .tabbar-glass > :last-child {
-    padding: 0.3rem;
+  .tabbar > ul {
+    max-width: 30rem;
+    margin: 0 auto;
   }
+  /* The open section: its sign in the green and its name under the highlighter (`.marked`). */
   .tab {
     display: flex;
-    min-height: 3.3rem;
+    min-height: 3.1rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.15rem;
-    border-radius: 999px;
-    /* Darker than muted: on glass the page behind takes contrast away. */
-    color: color-mix(in srgb, var(--color-ink) 72%, transparent);
-    font-size: 0.7rem;
-    font-weight: 600;
+    gap: 0.2rem;
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    line-height: 1.2;
     -webkit-tap-highlight-color: transparent;
     transition: transform 120ms var(--ease-out);
   }
   .tab[aria-current="page"] {
-    background: color-mix(in srgb, var(--color-accent-soft) 85%, transparent);
+    color: var(--color-ink);
+  }
+  .tab[aria-current="page"] > svg {
     color: var(--color-accent);
   }
   .tab:focus-visible {
@@ -726,7 +721,7 @@ summary,
   }
 
   /*
-   * The header stays at the top of every page, on a strip of frosted paper as wide as the
+   * The header stays at the top of every page, on a strip of the page's paper as wide as the
    * screen, so that the Merkzettel and the settings are one tap away also halfway down a
    * long list. The strip fades out at its foot instead of ending in a line.
    */
@@ -746,23 +741,8 @@ summary,
     left: 50%;
     width: 100vw;
     translate: -50% 0;
-    background: color-mix(in srgb, var(--section-tint, var(--color-paper)) 70%, transparent);
-    -webkit-backdrop-filter: blur(18px) saturate(170%);
-    backdrop-filter: blur(18px) saturate(170%);
+    background: var(--color-paper);
     mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
-  }
-  /* Glass only for whoever wants it: asked for less transparency, the bars are solid. */
-  @media (prefers-reduced-transparency: reduce) {
-    .app-header::before,
-    .tabbar-glass > [aria-hidden] {
-      /* The glass draws its layers inline: only this outweighs them. */
-      background: var(--color-surface) !important;
-      -webkit-backdrop-filter: none !important;
-      backdrop-filter: none !important;
-    }
-    .app-header::before {
-      background: var(--color-paper);
-    }
   }
 
   /* Whoever is signed in, by the first letter of their name: the way to the settings. */
@@ -776,7 +756,7 @@ summary,
     border-radius: 999px;
     background: var(--color-accent);
     color: var(--color-accent-ink);
-    font-size: 1.05rem;
+    font-size: var(--text-lg);
     font-weight: 700;
   }
   .account:focus-visible {
@@ -788,7 +768,7 @@ summary,
   .offline-bar {
     position: fixed;
     left: 50%;
-    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    bottom: calc(var(--tabbar-height) + 0.75rem);
     z-index: 20;
     width: max-content;
     max-width: calc(100vw - 2rem);
@@ -798,8 +778,8 @@ summary,
     border-radius: 0.75rem;
     background: var(--color-warn-soft);
     color: var(--color-warn);
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: 700;
     box-shadow: 0 8px 20px -12px rgb(35 33 29 / 0.5);
     /* Comes up a little from below when the connection drops; it goes at once when it is
        back, which needs no telling. */
@@ -830,7 +810,7 @@ summary,
   .selection-bar {
     position: fixed;
     right: max(0.75rem, env(safe-area-inset-right));
-    bottom: calc(4rem + env(safe-area-inset-bottom));
+    bottom: calc(var(--tabbar-height) + 0.5rem);
     left: max(0.75rem, env(safe-area-inset-left));
     z-index: 11;
     max-width: 40rem;
@@ -904,7 +884,7 @@ summary,
    */
   .note-drawer {
     inset: 0 0 auto;
-    width: min(34rem, 100vw - 1.5rem);
+    width: min(19rem, 100vw - 1.5rem);
     max-width: none;
     max-height: 100dvh;
     margin: 0 auto;
@@ -936,14 +916,12 @@ summary,
     height: 1.7rem;
     background: var(--color-note-line);
   }
+  /* Under the note, on the dimmed page: a button of paper, not words floating in the air. */
   .note-drawer-close {
-    display: block;
-    min-height: 2.75rem;
-    margin: 0.4rem auto 0;
-    padding: 0 1rem;
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: #fff;
+    display: flex;
+    width: fit-content;
+    margin: 0.9rem auto 0;
+    background: var(--color-surface);
   }
 
   /* A shopping note picked up from among the others comes closer. */
@@ -1055,44 +1033,27 @@ summary,
     background: color-mix(in srgb, var(--color-accent) 17%, transparent);
   }
 
-  /* The title of a page and of a recipe. */
-  /* A size smaller on a phone, where a long title took two lines of the first screen. */
-  .title {
-    font-size: 1.6rem;
+  /*
+   * The title of a page and of a recipe, and the greeting on the week plan: the largest size
+   * of the scale, set a little tight. One size on every screen: on a phone a larger title
+   * took two lines of the first screen.
+   */
+  .title,
+  .greeting {
+    font-size: var(--text-2xl);
     font-weight: 700;
     line-height: 1.15;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
     text-wrap: balance;
   }
-  @media (width >= 40rem) {
-    .title {
-      font-size: 1.9rem;
-    }
-  }
 
   /*
-   * The greeting on the week plan: a large title as on the first screen of an app, set
-   * tight, larger on a wider screen.
-   */
-  .greeting {
-    font-size: 2.15rem;
-    font-weight: 700;
-    line-height: 1.08;
-    letter-spacing: -0.03em;
-  }
-  @media (width >= 40rem) {
-    .greeting {
-      font-size: 2.75rem;
-    }
-  }
-
-  /*
-   * A small label above something: "Mittag", "Vorschlag", a category. Written as it is
+   * A small label above something: "Mittag", "Zutaten", a category. Written as it is
    * spelled: the household found headings in capitals to look machine-made.
    */
   .eyebrow {
-    font-size: 0.84rem;
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: 700;
     line-height: 1.3;
     color: var(--color-muted);
   }
@@ -1108,8 +1069,8 @@ summary,
     border: 1px solid transparent;
     background: rgb(35 33 29 / 0.065);
     padding: 0 0.9rem;
-    font-size: 0.92rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: 700;
     color: var(--color-ink);
     transition:
       transform 120ms var(--ease-out),
@@ -1207,18 +1168,13 @@ summary,
     background: color-mix(in srgb, var(--kind, #e9e5de) 50%, var(--kind-ink, #5f5a52));
   }
   /*
-   * A suggestion: a box of its own with a dashed edge, so that it does not read as planned.
-   * A class and not utilities, so that the tap on "Gute Idee!" can take the box away.
+   * A suggestion: a line with a dashed rule under it, so that it does not read as planned.
+   * A class and not utilities, so that the tap on "Gute Idee!" can take the rule away.
    */
   .suggestion {
     margin-top: 0.25rem;
-    border: 1px dashed color-mix(in oklab, var(--color-accent) 50%, transparent);
-    border-radius: 0.5rem;
-    background: color-mix(in oklab, var(--color-accent-soft) 40%, transparent);
-    padding: 0.625rem 0.75rem;
-  }
-  .suggestion-title {
-    margin-top: 0.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1.5px dashed color-mix(in oklab, var(--color-accent) 45%, transparent);
   }
 
   /* A card that leads somewhere lifts a little when it is touched or pointed at. */
@@ -1340,7 +1296,7 @@ summary,
     border-radius: 999px;
     background: var(--kind, var(--color-accent-soft));
     padding: 0.1rem 0.6rem;
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     color: var(--kind-ink, var(--color-accent));
   }
@@ -1357,7 +1313,7 @@ summary,
     flex: 1 1 auto;
     gap: 0.25rem;
     padding: 0 0.45rem;
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
     white-space: nowrap;
   }
   .recipe-actions .btn > svg {
@@ -1373,7 +1329,7 @@ summary,
       flex: none;
       gap: 0.5rem;
       padding: 0 1rem;
-      font-size: 1rem;
+      font-size: var(--text-base);
     }
     .recipe-actions .btn > svg {
       width: 1.25rem;
@@ -1390,7 +1346,7 @@ summary,
     border: 1px dashed color-mix(in srgb, var(--color-accent) 45%, transparent);
     border-radius: 999px;
     padding: 0.1rem 0.6rem;
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     color: var(--color-accent);
   }
@@ -1408,65 +1364,66 @@ summary,
     border-radius: 999px;
     background: var(--kind-ink, var(--color-line));
   }
+  /* In front of a name that may take two lines: on the middle of its first. */
+  .dot-first {
+    margin-top: calc(0.5lh - 0.3rem);
+  }
 
   /* Small, but never under 44px, the least a finger needs (2.6rem at a root of 17px). */
   .btn-small {
     min-height: 2.6rem;
     padding: 0 0.8rem;
-    font-size: 0.92rem;
+    font-size: var(--text-sm);
   }
 
   /*
-   * Every button is a pill on a soft tint, and so is an action written as a link: the way
-   * back ("← Wochenplan", `BackLink`) and a standalone link the size of a finger
-   * ("Alle Wochen", "An einem anderen Tag einkaufen"). Their words in the green say they
-   * lead somewhere; the tint says they can be tapped (October 2026). A word inside a row of
-   * signs ("Mehr kochen") or of a panel's head stays a word (`.link-quiet`): as a pill it
-   * outshone the meal and its words ran past the tint.
+   * A way back ("← Wochenplan", `BackLink`) or to another page, and any standalone link the
+   * size of a finger ("Alle Wochen", "An einem anderen Tag einkaufen"), is a plain link: its
+   * words in the green, underlined, as tall as a finger. Pills are for buttons and filter
+   * chips only: in October 2026 these links became pills on the green's pastel so that they
+   * read as tappable, and with every way somewhere a pill, nothing on a screen said which
+   * was a button (22 November 2026). A word inside a row of signs ("Mehr kochen") or of a
+   * panel's head stays a word without a line (`.link-quiet`).
    */
   .back-link,
   .link.min-h-11:not(.link-quiet) {
     display: inline-flex;
     min-height: 2.6rem;
-    font-size: 0.92rem;
     align-items: center;
     gap: 0.35rem;
-    border-radius: 999px;
-    background: var(--color-accent-soft);
-    padding: 0 0.95rem;
     color: var(--color-accent);
-    font-weight: 600;
-    text-decoration: none;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 4px;
     -webkit-tap-highlight-color: transparent;
-    transition:
-      transform 120ms var(--ease-out),
-      background-color 120ms ease;
+    transition: transform 120ms var(--ease-out);
   }
+  /* The arrow of the way back stands without the line under it. */
   .back-link {
-    padding-left: 0.75rem;
-    font-size: 0.92rem;
+    text-decoration: none;
+  }
+  .back-link > span {
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 4px;
   }
   .back-link:active,
   .link.min-h-11:not(.link-quiet):active {
     transform: scale(0.96);
     transition-duration: 60ms;
   }
-  @media (hover: hover) and (pointer: fine) {
-    .back-link:hover,
-    .link.min-h-11:not(.link-quiet):hover {
-      background: color-mix(in srgb, var(--color-accent-soft) 70%, var(--color-accent) 12%);
-      text-decoration: none;
-    }
-  }
   .back-link:focus-visible,
   .link.min-h-11:not(.link-quiet):focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+    border-radius: 0.3rem;
   }
 
   /* An action that should not compete with the content next to it. */
   .link {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-accent);
   }
   @media (hover: hover) and (pointer: fine) {
@@ -1490,8 +1447,8 @@ summary,
     align-items: center;
     gap: 0.35rem;
     padding: 0 0.8rem;
-    font-size: 0.92rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: 700;
     white-space: nowrap;
     transition: transform 120ms var(--ease-out);
   }
@@ -1573,8 +1530,8 @@ summary,
     padding: 0 1.15rem;
     border-radius: 999px;
     color: var(--color-muted);
-    font-size: 0.92rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: 700;
     white-space: nowrap;
     transition: transform 120ms var(--ease-out);
   }
@@ -1605,7 +1562,7 @@ summary,
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
     line-height: 1;
     transition: transform 120ms var(--ease-out);
   }
@@ -1630,7 +1587,7 @@ summary,
    */
   .scaled {
     color: var(--color-accent);
-    font-weight: 600;
+    font-weight: 700;
     text-decoration: underline dotted color-mix(in srgb, var(--color-accent) 45%, transparent);
     text-decoration-thickness: 1.5px;
     text-underline-offset: 0.2em;
@@ -1640,64 +1597,32 @@ summary,
     align-items: center;
     gap: 0.2rem;
     padding-inline: 0.15rem;
-    font-weight: 600;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
   /*
-   * One group of the week's balance: a tile in the kind's pastel with a bar that fills towards
-   * the goal, in the warning colour once there are too many.
+   * The week's balance: one quiet row of counts, each kind a small dot in its colour, with
+   * its goal in small muted words. A count over its goal is in the warning colour. It wraps
+   * on a phone.
    */
-  /*
-   * Four side by side; two by two on a phone narrower than an iPhone 14, where "Vegetarisch"
-   * no longer fits its tile.
-   */
-  .balance-tiles {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.375rem;
-  }
-  @media (width >= 24rem) {
-    .balance-tiles {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-  }
-  @media (width >= 40rem) {
-    .balance-tiles {
-      gap: 0.5rem;
-    }
-  }
-  .balance-tile {
-    position: relative;
+  .balance-row {
     display: flex;
-    min-width: 0;
-    flex-direction: column;
-    padding: 0.55rem 0.5rem 0.85rem;
-    border-radius: 0.9rem;
-    background: color-mix(in srgb, var(--kind) 70%, var(--color-surface));
-    color: var(--kind-ink);
+    flex-wrap: wrap;
+    gap: 0.3rem 1.1rem;
+    font-size: var(--text-sm);
   }
-  .balance-bar {
-    position: absolute;
-    right: 0.5rem;
-    bottom: 0.5rem;
-    left: 0.5rem;
-    height: 0.22rem;
-    overflow: hidden;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--kind-ink) 18%, transparent);
+  .balance-row > li {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    white-space: nowrap;
   }
-  /* Grows when a meal is planned: the page is drawn again and the bar follows. */
-  .balance-bar > span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--kind-ink);
-    transform-origin: left;
-    transition: transform 300ms var(--ease-out);
+  .balance-row .dot {
+    align-self: center;
   }
-  .balance-bar[data-over="true"] > span {
-    background: var(--color-warn);
+  .balance-row > li[data-over] > :is(.font-bold, .text-muted) {
+    color: var(--color-warn);
   }
 
   /*
@@ -1748,22 +1673,17 @@ summary,
   }
   .stat-number {
     display: block;
-    font-size: 2.1rem;
+    font-size: var(--text-2xl);
     font-weight: 700;
     line-height: 1;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.015em;
     font-variant-numeric: tabular-nums;
-  }
-  @media (width >= 40rem) {
-    .stat-number {
-      font-size: 2.5rem;
-    }
   }
   .not-yet {
     border: 1px dashed var(--color-line);
     border-radius: 0.8rem;
     padding: 0.85rem 1rem;
-    font-size: 0.92rem;
+    font-size: var(--text-sm);
     color: var(--color-muted);
   }
   .chart-dot {
@@ -1889,8 +1809,8 @@ summary,
   .column-value {
     height: 1.3rem;
     text-align: center;
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: 700;
     color: var(--color-muted);
   }
   .column-plot {
@@ -1919,8 +1839,8 @@ summary,
     margin-top: 0.35rem;
     overflow: hidden;
     text-align: center;
-    font-size: 0.78rem;
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: 700;
     white-space: nowrap;
     color: var(--color-muted);
   }
@@ -2015,8 +1935,8 @@ summary,
     border-radius: 0.6rem;
     padding: 0.3rem 0.1rem;
     background: rgb(35 33 29 / 0.035);
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     transition: transform 120ms var(--ease-out);
   }
@@ -2097,12 +2017,13 @@ summary,
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }
+  /* An open meal: the ring of a dot with nothing in it yet. */
   .strip-open {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 0.6rem;
+    height: 0.6rem;
     flex: none;
-    border: 1.5px dashed var(--color-line);
-    border-radius: 0.5rem;
+    border: 1.5px solid var(--color-line);
+    border-radius: 999px;
   }
 
   /* A row of cards to swipe through. It reaches to the edge of the screen on a phone. */
@@ -2219,7 +2140,7 @@ summary,
     min-height: 2.9rem;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.92rem;
+    font-size: var(--text-sm);
     font-weight: 700;
     cursor: pointer;
     list-style: none;
@@ -2247,7 +2168,7 @@ summary,
     border-radius: 999px;
     background: var(--color-accent);
     color: var(--color-accent-ink);
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
@@ -2265,8 +2186,8 @@ summary,
   .chip-count {
     margin-left: 0.1rem;
     color: var(--color-muted);
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
   .chip-on .chip-count {
@@ -2348,7 +2269,7 @@ summary,
     border-radius: 0.2rem;
     background: rgb(35 33 29 / 0.05);
     color: rgb(35 33 29 / 0.35);
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     line-height: 1;
   }
@@ -2375,7 +2296,7 @@ summary,
    */
   .add-recipe-done {
     position: sticky;
-    bottom: calc(5.4rem + env(safe-area-inset-bottom));
+    bottom: var(--tabbar-height);
     z-index: 5;
     padding-top: 0.75rem;
     background: linear-gradient(transparent, var(--color-paper) 0.75rem);
@@ -2396,11 +2317,8 @@ summary,
     flex-direction: column;
     gap: 0.9rem;
     padding: 1rem 1.1rem;
-    border: 1px solid color-mix(in srgb, var(--kind) 70%, var(--color-line));
+    border: 1px solid var(--color-line);
     border-radius: 1.25rem;
-    background: color-mix(in srgb, var(--kind) 45%, var(--color-surface));
-  }
-  .featured .badge {
     background: var(--color-surface);
   }
   @media (width >= 40rem) {
@@ -2411,16 +2329,11 @@ summary,
     }
   }
   .featured-title {
-    font-size: 1.35rem;
+    font-size: var(--text-2xl);
     font-weight: 700;
     line-height: 1.15;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
     text-wrap: balance;
-  }
-  @media (width >= 46rem) {
-    .featured-title {
-      font-size: 1.5rem;
-    }
   }
   .side-card {
     display: flex;
@@ -2429,16 +2342,14 @@ summary,
     align-items: center;
     gap: 0.8rem;
     padding: 0.85rem 1rem;
+    border: 1px solid var(--color-line);
     border-radius: inherit;
-    background: color-mix(in srgb, var(--kind) 65%, var(--color-surface));
-  }
-  .side-card > .badge {
     background: var(--color-surface);
   }
   /*
-   * The tiles of what there is to do besides browsing: the blush of the favourites for the
-   * stack (what is kept there becomes a wish), a misty blue for what is left in the fridge,
-   * a warm sand for chance.
+   * The signs of what there is to do besides browsing, each on a pastel of its own: the blush
+   * of the favourites for the stack (what is kept there becomes a wish), a misty blue for
+   * what is left in the fridge, a warm sand for chance. The tiles themselves are paper.
    */
   .tone-stack {
     --kind: #f5e1e6;
@@ -2487,15 +2398,9 @@ summary,
     --kind-ink: #7a5a2e;
   }
   .shelf-title {
-    font-size: 1.25rem;
+    font-size: var(--text-lg);
     font-weight: 700;
     line-height: 1.2;
-    letter-spacing: -0.015em;
-  }
-  @media (width >= 46rem) {
-    .shelf-title {
-      font-size: 1.45rem;
-    }
   }
   .shelf-list {
     display: grid;
@@ -2593,7 +2498,7 @@ summary,
     max-width: 2rem;
     flex: 1;
     overflow: hidden;
-    font-size: 0.86rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     line-height: 1.1;
     text-wrap: balance;
@@ -2601,7 +2506,7 @@ summary,
     rotate: 180deg;
   }
   .spine-count {
-    font-size: 0.72rem;
+    font-size: var(--text-xs);
     font-weight: 700;
   }
   .spine-bar {
@@ -2657,8 +2562,8 @@ summary,
     }
   }
   /*
-   * The recipe stack: one card on the next two, in the pastel of its kind, its pictogram
-   * large and pale behind the words, and a stamp for where it is going that grows as it
+   * The recipe stack: one card on the next two, on paper, its pictogram in the ink of its
+   * kind large and pale behind the words, and a stamp for where it is going that grows as it
    * goes there (`--keep`, `--skip`, `--plan`, set while it is dragged).
    */
   .stack {
@@ -2667,10 +2572,23 @@ summary,
     gap: 1rem;
     margin-top: 1.25rem;
   }
+  /*
+   * On a phone the deck takes what the screen has left above its three buttons and the
+   * strip of the sections: taller, the buttons lay under the strip as the page opened.
+   */
   .stack-deck {
     position: relative;
     width: min(100%, 26rem);
-    height: clamp(19rem, 46dvh, 24rem);
+    height: clamp(
+      14rem,
+      calc(100dvh - var(--tabbar-height) - env(safe-area-inset-top) - 22.5rem),
+      24rem
+    );
+  }
+  @media (width >= 40rem) {
+    .stack-deck {
+      height: clamp(19rem, 46dvh, 24rem);
+    }
   }
   .stack-card {
     position: absolute;
@@ -2679,9 +2597,9 @@ summary,
     flex-direction: column;
     overflow: hidden;
     padding: 1.4rem 1.4rem 1.2rem;
-    border: 1px solid color-mix(in srgb, var(--kind) 70%, var(--color-line));
+    border: 1px solid var(--color-line);
     border-radius: 1.5rem;
-    background: color-mix(in srgb, var(--kind) 50%, var(--color-surface));
+    background: var(--color-surface);
     box-shadow: 0 1.2rem 2.4rem -1.6rem rgb(35 33 29 / 0.45);
     cursor: grab;
     touch-action: none;
@@ -2706,10 +2624,6 @@ summary,
   .stack-card[data-depth="2"] {
     pointer-events: none;
   }
-  .stack-card .badge,
-  .stack-card .tag {
-    background: var(--color-surface);
-  }
   .stack-picture {
     position: absolute;
     right: -1.5rem;
@@ -2723,10 +2637,10 @@ summary,
     pointer-events: none;
   }
   .stack-title {
-    font-size: 1.65rem;
+    font-size: var(--text-2xl);
     font-weight: 700;
-    line-height: 1.12;
-    letter-spacing: -0.02em;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
     text-wrap: balance;
   }
   .stack-ingredients {
@@ -2743,7 +2657,7 @@ summary,
     padding: 0.2rem 0.7rem;
     border: 0.18rem solid currentColor;
     border-radius: 0.55rem;
-    font-weight: 800;
+    font-weight: 700;
     letter-spacing: 0.02em;
     opacity: 0;
     pointer-events: none;
@@ -2786,8 +2700,8 @@ summary,
     display: grid;
     justify-items: center;
     gap: 0.35rem;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: var(--text-xs);
+    font-weight: 700;
     color: var(--color-muted);
   }
   .stack-button > span {
@@ -2798,7 +2712,7 @@ summary,
     border: 1px solid var(--color-line);
     border-radius: 999px;
     background: var(--color-surface);
-    font-size: 1.35rem;
+    font-size: var(--text-2xl);
     font-weight: 700;
     box-shadow: 0 0.5rem 1rem -0.8rem rgb(35 33 29 / 0.4);
     transition: transform 120ms var(--ease-out);
@@ -2827,7 +2741,7 @@ summary,
     min-height: 2.75rem;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
   }
   @media (prefers-reduced-motion: reduce) {
     .stack-card {
@@ -2865,7 +2779,7 @@ summary,
     align-items: center;
     justify-content: space-between;
     padding: 0 0.9rem;
-    font-weight: 600;
+    font-weight: 700;
     text-align: left;
   }
   .fridge-found li + li .fridge-found-row {
@@ -3031,11 +2945,10 @@ summary,
  * layers, as it has to win over the utilities on the same elements. Nothing travels, so less
  * motion changes nothing: a short fade at most, which less motion keeps.
  */
-/* "Gute Idee!": box, label, reasons and buttons go; the title stands on a line as tall as a
-   planned meal's with its stepper, and the row below keeps its height. Edge: `.meal-cell`. */
+/* "Gute Idee!": rule, reasons and buttons go; the title stands on a line as tall as a planned
+   meal's with its stepper, and the row below keeps its height. Edge: `.meal-cell`. */
 .suggestion:has([data-does="plan"] [data-pending]) {
   border-color: transparent;
-  background: none;
   padding: 0;
 }
 .suggestion:has([data-does="plan"] [data-pending]) > :not(.suggestion-title) {
@@ -3045,7 +2958,6 @@ summary,
   display: flex;
   min-height: calc(2.6rem + 4px);
   align-items: center;
-  margin-top: 0;
 }
 .meal-cell:has(.suggestion [data-does="plan"] [data-pending]) > .meal-actions {
   min-height: 2.75rem;
@@ -3077,7 +2989,7 @@ summary,
   display: flex;
   min-height: 2.6rem;
   align-items: center;
-  font-weight: 600;
+  font-weight: 700;
   animation: fade-in 150ms var(--ease-out);
 }
 
@@ -3147,7 +3059,7 @@ summary,
   border-radius: 999px;
   background: var(--color-accent);
   color: var(--color-accent-ink);
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
 }
 .map-button {
   display: flex;
@@ -3159,14 +3071,14 @@ summary,
   border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-ink);
-  font-size: 1.25rem;
+  font-size: var(--text-lg);
   line-height: 1;
   box-shadow: 0 1px 3px rgb(35 33 29 / 0.15);
 }
 /* "Alle": a word, not a sign. */
 .map-button-words {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: 700;
 }
 .map-button:active {
   background: var(--color-accent-soft);
@@ -3243,7 +3155,7 @@ summary,
     align-items: center;
     justify-content: space-between;
     padding-inline: 1rem;
-    font-weight: 600;
+    font-weight: 700;
   }
   .swipe-under > span {
     display: flex;
@@ -3401,7 +3313,7 @@ summary,
     padding: 0.4rem 0.75rem 0.3rem;
     overflow: hidden;
     color: var(--color-muted);
-    font-size: 0.85rem;
+    font-size: var(--text-xs);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -3500,7 +3412,7 @@ summary,
     background: rgb(35 33 29 / 0.05);
   }
   .choice-row:has(input:checked) {
-    font-weight: 600;
+    font-weight: 700;
   }
   .choice-row:has(input:focus-visible) {
     outline: 2px solid var(--color-accent);
@@ -3820,9 +3732,9 @@ html[data-navigating] .nav-progress::before {
   background: rgb(255 253 249 / 0.94);
   box-shadow: 0 18px 40px -18px rgb(35 33 29 / 0.5);
   color: var(--color-accent);
-  font-size: 1.9rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.1;
   text-align: center;
   animation:
@@ -3831,8 +3743,8 @@ html[data-navigating] .nav-progress::before {
 }
 .week-done-stamp small {
   margin-top: 0.25rem;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: 700;
   letter-spacing: 0;
   color: var(--color-ink);
 }
@@ -3893,7 +3805,7 @@ details[open] > :not(summary) {
 }
 /*
  * Only before and while it runs: kept to its end, the motion left every page on a layer of
- * its own, which the iPhone drew over the glass of the bar of the sections (October 2026).
+ * its own, which the iPhone drew over the bar of the sections (October 2026).
  */
 main > *,
 .page > * {
@@ -3981,9 +3893,9 @@ html[data-going="back"] .page > * {
  * new state shows at once, the tapped section already marked.
  */
 /*
- * Named only while a page moves: a named element is a backdrop root, so the glass of the
- * bar and the frosted strip of the header saw nothing behind them to blur, and the bar
- * stood clear as glass on the phone (October 2026).
+ * Named only while a page moves: a named element is a backdrop root, and the glass bar of
+ * October 2026, named for good, saw nothing behind it to blur. The paper strip has no glass;
+ * naming them only for the move costs nothing and was kept.
  */
 :root:active-view-transition .app-header {
   view-transition-name: app-header;
@@ -4003,16 +3915,6 @@ html[data-going="back"] .page > * {
 ::view-transition-new(app-header),
 ::view-transition-new(app-tabbar) {
   animation: none;
-}
-/*
- * Drawn on its own for that moment, a glass sees nothing behind it to blur: it is frosted
- * paper instead, until the page has come.
- */
-:root:active-view-transition .tabbar-glass > [aria-hidden]:first-child {
-  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
-}
-:root:active-view-transition .app-header::before {
-  background: color-mix(in srgb, var(--section-tint, var(--color-paper)) 94%, transparent);
 }
 /* Another section: dozens of times a day, so nearer and quicker, barely there. */
 ::view-transition-new(.nav-tab-forward) {
@@ -4181,8 +4083,7 @@ html[data-going="back"] .page > * {
     transform: none;
   }
   .lift,
-  .tickbox > svg path,
-  .balance-bar > span {
+  .tickbox > svg path {
     transition: none !important;
   }
 }

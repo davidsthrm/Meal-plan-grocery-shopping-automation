@@ -146,7 +146,7 @@ export function AddressField({ defaultValue }: { defaultValue: string }) {
             </li>
           ))}
         </ul>
-        <p className="bg-paper px-3 py-1 text-[11px] text-muted">Vorschläge aus OpenStreetMap</p>
+        <p className="bg-paper px-3 py-1 text-xs text-muted">Vorschläge aus OpenStreetMap</p>
       </div>
     </div>
   );

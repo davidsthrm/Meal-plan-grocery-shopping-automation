@@ -92,6 +92,16 @@ export function WeekIcon() {
   );
 }
 
+/** A calendar of a whole month, its days as dots: all weeks. */
+export function CalendarIcon() {
+  return (
+    <svg {...base}>
+      <rect x="4" y="5.500" width="16" height="14.500" rx="2.500" />
+      <path d="M4 10h16M8.500 3.500v4M15.500 3.500v4M8 13.500h.01M12 13.500h.01M16 13.500h.01M8 17h.01M12 17h.01" />
+    </svg>
+  );
+}
+
 /** Three bars of a chart: the statistics. */
 export function ChartIcon() {
   return (
