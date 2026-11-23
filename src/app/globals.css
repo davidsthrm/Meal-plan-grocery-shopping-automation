@@ -24,7 +24,7 @@
   --color-danger-soft: #f6e1dd;
 
   /* Paper: the ruled lines of a sheet, its margin, and the yellow of a note. */
-  --color-rule: #e7e1d4;
+  --color-rule: #dcd4c3;
   --color-margin: #efcfc9;
   --color-note: #fbf1c2;
   --color-note-line: #ecdf9c;
@@ -96,6 +96,15 @@
  */
 @custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
+/*
+ * The grain of the paper: a fine noise of darker and lighter specks, so that the page reads
+ * as paper and not as a screen's flat colour (23 November 2026). One small static image,
+ * drawn once and tiled: no filter on what scrolls, nothing fixed, nothing that moves.
+ */
+:root {
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .14 0 0 0 0 .12 0 0 0 0 .09 1.1 0 0 0 -.57'/%3E%3C/filter%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 -1.1 0 0 0 .53'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3Crect width='160' height='160' filter='url(%23l)'/%3E%3C/svg%3E");
+}
+
 html {
   font-size: 17px;
   /* Under the page, the paper: nothing else shows where the page ends. */
@@ -114,8 +123,8 @@ html {
 }
 
 body {
-  /* The page is the paper: no wash of colour at its top (22 November 2026). */
-  background: var(--color-paper);
+  /* The page is the paper, with its grain. */
+  background: var(--paper-grain) var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -401,16 +410,17 @@ summary,
    * binding along its top (`SheetHoles`) and two more sheets showing underneath.
    */
   .sheet {
+    /* The two sheets under it a shade darker than the top one, so that they read as a pad. */
     --sheets-under:
-      0 5px 0 -2px var(--color-surface), 0 5px 0 -1px var(--color-line),
-      0 10px 0 -4px var(--color-surface), 0 10px 0 -3px var(--color-line);
+      0 5px 0 -2px #f8f4ec, 0 5px 0 -1px #d3cab8, 0 10px 0 -4px #f3eee4, 0 10px 0 -3px #cfc5b2;
     position: relative;
     border: 1px solid var(--color-line);
     border-radius: 0.3rem;
     background: var(--color-surface);
     box-shadow:
       var(--sheets-under),
-      0 24px 28px -24px rgb(35 33 29 / 0.4);
+      0 2px 4px rgb(35 33 29 / 0.05),
+      0 26px 30px -22px rgb(35 33 29 / 0.38);
   }
   /*
    * Every hole is a box of its own, laid out and drawn like the sheet's edge. Drawn as a
