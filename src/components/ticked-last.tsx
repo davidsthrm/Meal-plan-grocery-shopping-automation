@@ -72,7 +72,8 @@ export function TickedLast({
             row.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING,
         );
         const button = next?.querySelector("button");
-        if (button) button.focus();
+        // Without scrolling: the view jumping to the next line is what the delay avoids.
+        if (button) button.focus({ preventScroll: true });
         else toHeading.current = true;
       }),
     [onMove],
@@ -81,7 +82,7 @@ export function TickedLast({
     const element = toHeading.current ? document.getElementById(heading) : null;
     if (!element) return;
     toHeading.current = false;
-    element.focus();
+    element.focus({ preventScroll: true });
   });
 
   return (
