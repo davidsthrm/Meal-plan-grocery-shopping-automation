@@ -1200,6 +1200,9 @@ function NoteForm({
         event.currentTarget.requestSubmit(save.current);
       }}
       action={async (form) => {
+        // A note left as it was is not sent: another phone may have written one since the
+        // sheet opened, and the field it showed empty erased it (audit, 24 November 2026).
+        if (form.get("text") === edit.note) form.delete("text");
         // The sheet goes once the server has it, and the line under it says the new amount.
         try {
           await editLine(form);

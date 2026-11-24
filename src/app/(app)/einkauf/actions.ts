@@ -165,8 +165,9 @@ export async function editLine(form: FormData): Promise<void> {
       quantity: z.string().max(12).optional(),
       unit: z.string().max(12).optional(),
       reset: z.enum(["1"]).optional(),
-      // Not called "note": that is the shopping note the line is on.
-      text: z.string().trim().max(80),
+      // Not called "note": that is the shopping note the line is on. Sent only when changed:
+      // the note another phone wrote meanwhile stays.
+      text: z.string().trim().max(80).optional(),
       entry: z.guid().optional(),
       kind: z.string().min(1).max(64).optional(),
     }),
@@ -177,7 +178,9 @@ export async function editLine(form: FormData): Promise<void> {
   const trip = noteOf(input.note);
   const amount = amountOf(input);
   if (amount !== undefined) await changeLine(db, household, trip, input.key, { amount });
-  await changeLine(db, household, trip, input.key, { note: input.text });
+  if (input.text !== undefined) {
+    await changeLine(db, household, trip, input.key, { note: input.text });
+  }
   if (input.entry && input.kind) {
     // Row level security lets this find the household's own kinds only.
     const kind = await db.from("aisle_group").select("id").eq("id", input.kind).maybeSingle();

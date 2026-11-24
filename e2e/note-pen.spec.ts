@@ -104,3 +104,29 @@ test("Return in the pen's sheet saves, and keeps an amount changed before @webki
   await expect(pen(page)).toBeHidden();
   await expect(eggs(page)).toContainText("9x Eier Bio (Plan: 20x)");
 });
+
+test("saving only an amount keeps the note another phone wrote meanwhile @webkit", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  // This phone opens the pen while nothing is written beside the eggs.
+  await eggs(page).getByRole("button", { name: "Eier: Menge oder Notiz ändern" }).click();
+  await expect(pen(page).getByLabel("Notiz", { exact: true })).toHaveValue("");
+
+  // Another phone of the household writes a note beside them.
+  const context = await browser.newContext({ baseURL });
+  const other = await context.newPage();
+  await signIn(other);
+  await other.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await eggs(other).getByRole("button", { name: "Eier: Menge oder Notiz ändern" }).click();
+  await pen(other).getByLabel("Notiz", { exact: true }).fill("Freiland");
+  await pen(other).getByRole("button", { name: "Speichern" }).click();
+  await expect(eggs(other)).toContainText("20x Eier Freiland");
+  await context.close();
+
+  // This phone saves its amount: the empty field it showed does not erase that note.
+  await pen(page).getByLabel("Menge von Eier").fill("10");
+  await pen(page).getByRole("button", { name: "Speichern" }).click();
+  await expect(eggs(page)).toContainText("10x Eier Freiland (Plan: 20x)");
+});
