@@ -242,11 +242,12 @@ export function FolderIcon() {
   );
 }
 
-/** A pushpin: the week as a note for the pinboard. */
-export function PinIcon() {
+/** A printer with a sheet coming out: a PDF of the week or of a note, to print or keep. */
+export function PrinterIcon() {
   return (
-    <svg {...base}>
-      <path d="M9 4.5h6l-1 5.5 3 3H7l3-3ZM12 13v7" />
+    <svg {...base} width={18} height={18}>
+      <path d="M7.5 9V4.5h9V9M7 17H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1" />
+      <path d="M7.5 14h9v6h-9ZM16.5 12h.01" />
     </svg>
   );
 }

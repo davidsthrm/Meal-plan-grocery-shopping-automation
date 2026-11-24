@@ -11,12 +11,13 @@ import {
   ChartIcon,
   PenIcon,
   PersonIcon,
-  PinIcon,
   PlusIcon,
+  PrinterIcon,
   TrashIcon,
   WishIcon,
 } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
+import { PdfLink } from "@/components/pdf-link";
 import { ResetWeek } from "@/components/reset-week";
 import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -486,19 +487,21 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                   </SubmitButton>
                 </form>
               )}
-              {/* The plan as a small note to pin up: a PDF the size of a postcard. */}
+              {/* The plan to print and pin up: a PDF the size of a postcard. On a phone beside
+                  "Vervollständigen" it is its sign alone, the word broke the row at 375px. */}
               {slots.length + extras.length > 0 && (
-                <a
+                <PdfLink
                   href={`/woche/pdf?w=${week}`}
+                  name={`Wochenplan ${weekRange(week)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="btn btn-small max-sm:w-[2.6rem] max-sm:px-0"
-                  aria-label="Für die Pinnwand"
-                  title="Für die Pinnwand"
+                  className={`btn btn-small ${picks.length > 0 ? "max-sm:w-[2.6rem] max-sm:px-0 max-sm:[&>span]:hidden" : ""}`}
+                  aria-label="Drucken"
+                  title="Drucken"
                 >
-                  <PinIcon />
-                  <span className="max-sm:hidden">Für die Pinnwand</span>
-                </a>
+                  <PrinterIcon />
+                  <span>Drucken</span>
+                </PdfLink>
               )}
               {/* Done planning: the plan is saved and shown to read. Or the whole week is
                   rubbed out. A saved plan says so by its pens and "Plan bearbeiten": the line

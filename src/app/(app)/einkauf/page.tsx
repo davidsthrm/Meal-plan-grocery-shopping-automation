@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowIcon, NoteIcon, TickIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
+import { PdfLink } from "@/components/pdf-link";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ShopLogo } from "@/components/shop-logo";
@@ -101,9 +102,13 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           <BackLink href={`/einkauf?w=${week}`}>Alle Zettel</BackLink>
           <span className="flex gap-2">
             {picked.open > 0 && <PrintButton />}
-            <a href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`} className="btn btn-small">
+            <PdfLink
+              href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`}
+              name={`Einkaufszettel ${noteName(picked.trip)}`}
+              className="btn btn-small"
+            >
               Als PDF
-            </a>
+            </PdfLink>
           </span>
         </div>
         <NoteSheet
@@ -291,23 +296,18 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
 
       {atHomeGroups.length > 0 && <AtHomeList groups={atHomeGroups} week={week} />}
 
+      {/* One link: a chip for every note wrapped onto three rows on a phone. A note on its
+          own is a PDF from its page. */}
       {open > 0 && (
-        <nav
-          aria-label="Als PDF"
-          className="mt-8 flex flex-wrap items-center gap-2 border-t border-line pt-4"
-        >
-          <span className="eyebrow mr-1">Als PDF</span>
-          <a href={`/einkauf/pdf?w=${week}`} className="chip">
-            Alle Zettel
-          </a>
-          {notes
-            .filter((note) => note.open > 0)
-            .map((note) => (
-              <a key={note.id} href={`/einkauf/pdf?w=${week}&zettel=${note.id}`} className="chip">
-                {noteName(note.trip)}
-              </a>
-            ))}
-        </nav>
+        <p className="mt-8 border-t border-line pt-2">
+          <PdfLink
+            href={`/einkauf/pdf?w=${week}`}
+            name={`Einkaufszettel ${weekRange(week)}`}
+            className="link inline-flex min-h-11 items-center gap-1.5"
+          >
+            Alle Zettel als PDF
+          </PdfLink>
+        </p>
       )}
       {keep && <KeepForTheShop pages={keep} readAt={readAt} />}
     </div>

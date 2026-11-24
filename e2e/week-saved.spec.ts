@@ -23,20 +23,24 @@ test("each set of the plan's buttons is one row, and a saved meal says its perso
   await page.goto("/woche?w=2027-05-10");
   await plan(page, "Montag Mittag", "Pilzrisotto");
 
-  // Planning: complete, pin, rub out and save.
+  // Planning: complete, print, rub out and save. Beside "Vervollständigen" the printer is
+  // its sign alone.
   const planning = await tops(
     page.getByRole("button", { name: "Plan vervollständigen" }),
-    page.getByRole("link", { name: "Für die Pinnwand" }),
+    page.getByRole("link", { name: "Drucken" }),
     page.getByRole("button", { name: "Ganze Woche leeren" }),
     page.getByRole("button", { name: "Plan speichern" }),
   );
   expect(new Set(planning).size).toBe(1);
+  await expect(page.getByRole("link", { name: "Drucken" }).getByText("Drucken")).toBeHidden();
 
-  // Saved: the pin and "Plan bearbeiten".
+  // Saved: "Drucken" in words and "Plan bearbeiten".
   await page.getByRole("button", { name: "Plan speichern" }).click();
   const edit = page.getByRole("button", { name: "Plan bearbeiten" });
   await expect(edit).toBeVisible();
-  const saved = await tops(page.getByRole("link", { name: "Für die Pinnwand" }), edit);
+  const print = page.getByRole("link", { name: "Drucken" });
+  await expect(print.getByText("Drucken")).toBeVisible();
+  const saved = await tops(print, edit);
   expect(new Set(saved).size).toBe(1);
 
   // The meal says for how many it is cooked, beside the dish.

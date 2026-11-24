@@ -292,12 +292,17 @@ are in [SHOPPING.md](SHOPPING.md).
 
 ## Pinboard note
 
-- "Für die Pinnwand" (in the row of the plan's actions, once anything is planned) opens the
-  week as a PDF the size of a postcard (A6) to pin up (`planNote` in `src/lib/plan-note.ts`,
+- "Drucken" (a printer, in the row of the plan's actions once anything is planned) makes the
+  week a PDF the size of a postcard (A6) to pin up (`planNote` in `src/lib/plan-note.ts`,
   `planNotePdf`): every day a row with its lunch and dinner, Sunday's coffee only when
   planned, leftovers as "Reste vom Di", a meal with several recipes joined by "+", at most
   two lines a meal, an open meal a faint line to write on, and the extras at the foot.
-  Black on white like the shopping notes. It opens in the browser (`inline`), to print.
+  Black on white like the shopping notes. In a browser it opens in a tab of its own
+  (`inline`), to print or keep from there; in the installed app it goes to the share sheet
+  (`PdfLink`, see [ARCHITECTURE.md](ARCHITECTURE.md#installed-app-pwa)). Until
+  24 November 2026 it was a pushpin, "Für die Pinnwand": David found it confusing, it did
+  not say what it does. When it shows its word on a phone: see
+  [DESIGN.md](DESIGN.md#controls-and-sizes).
 
 ## Ways back from a recipe
 

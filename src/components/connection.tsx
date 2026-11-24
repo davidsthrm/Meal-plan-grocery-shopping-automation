@@ -24,27 +24,33 @@ export function useOnline(): boolean {
 /**
  * Says so while the device is offline, on every page. Every button of the app is a form
  * sent to the server; without a connection it would fail with an error page. So a form is
- * not sent then, and the bar says why. Only ticks on a shopping note (`data-offline-ok`)
- * work without a connection: they are kept and sent later.
+ * not sent then, and the bar says why; nor is a link to a PDF followed (`data-online-only`).
+ * Only ticks on a shopping note (`data-offline-ok`) work without a connection: they are kept
+ * and sent later.
  */
 export function ConnectionGuard() {
   const online = useOnline();
   const [refused, setRefused] = useState(false);
 
   useEffect(() => {
-    const stop = (event: SubmitEvent) => {
+    const stop = (event: Event) => {
       if (navigator.onLine) return;
-      const form = event.target;
-      if (form instanceof HTMLFormElement && form.hasAttribute("data-offline-ok")) return;
+      const target = event.target;
+      if (event.type === "submit") {
+        if (target instanceof HTMLFormElement && target.hasAttribute("data-offline-ok")) return;
+        // A link only when it asks the server for something made on the spot, such as a PDF.
+      } else if (!(target instanceof Element && target.closest("a[data-online-only]"))) return;
       event.preventDefault();
       event.stopPropagation();
       setRefused(true);
     };
     const back = () => setRefused(false);
     document.addEventListener("submit", stop, true);
+    document.addEventListener("click", stop, true);
     window.addEventListener("online", back);
     return () => {
       document.removeEventListener("submit", stop, true);
+      document.removeEventListener("click", stop, true);
       window.removeEventListener("online", back);
     };
   }, []);

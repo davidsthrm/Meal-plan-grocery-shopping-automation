@@ -526,6 +526,13 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
   in `src/lib/note-paper.ts`, with A6, A5 and A4 laid out). A note taken to several
   supermarkets has a section per supermarket in the PDF too, its name once above its kinds
   of grocery (`pdfSections`), not in front of every heading.
+- A note picked up has "Als PDF" beside "Drucken"; all notes with something to buy are one
+  link at the end of the notes, "Alle Zettel als PDF". Until 24 November 2026 that end was
+  a chip for all and one for every note, which wrapped onto three rows on a phone. In a
+  browser the PDF comes as a file (`attachment`); in the installed app it goes to the share
+  sheet (`PdfLink`, see [ARCHITECTURE.md](ARCHITECTURE.md#installed-app-pwa)). The note's
+  "Drucken" opens the browser's print dialog (`window.print()`); whether it does in the
+  installed app is still to be checked ([STATUS.md](STATUS.md)).
 
 ## Acceptance test
 

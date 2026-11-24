@@ -84,6 +84,21 @@ decisions, code layout, routes, data access and tests of Essensplan.
   is told where Teilen and "Zum Home-Bildschirm" are, Android gets its install prompt, and
   both say that the installed app asks for the login once more. It goes once used or put
   away (`installieren-weg` in the device's storage).
+- The PDFs (the plan's "Drucken", a note's "Als PDF", "Alle Zettel als PDF") go to the share
+  sheet in the installed app, where it can share files: printing, Dateien, AirDrop
+  (`PdfLink`, `navigator.share` with the file). The installed app has no browser bar, so a
+  PDF opened inside it could be neither printed nor saved (David, 24 November 2026).
+  Everywhere else the link opens the PDF as before, and the browser's viewer prints and
+  keeps it. Safari shares only during the tap's user activation, and the PDF is made on the
+  server: it is fetched as the finger lands (`pointerdown`), never with the page. Should it
+  still come too late (`NotAllowedError`), the link says "PDF teilen" and its next tap
+  shares the PDF already there; a sheet closed without a choice (`AbortError`) is no error.
+  A PDF kept for that tap goes once a form is sent, which may have changed the plan or the
+  note. Where no PDF comes (weak signal, the login run out, a failure on the server), the
+  link opens as in a browser, so the page the service worker shows without a connection, the
+  login page or the server's answer stands there: shared silently, the login page went to
+  the share sheet as the plan's PDF, and a failed fetch did nothing at all (review of
+  24 November 2026).
 
 ## Offline
 
@@ -108,7 +123,8 @@ decisions, code layout, routes, data access and tests of Essensplan.
 - Ticks and decisions in the shop (the queue in IndexedDB, the server's rule, offline use): see
   [SHOPPING.md](SHOPPING.md#ticks-and-decisions).
 - Without a connection every other form is stopped before it is sent and a bar says so
-  (`ConnectionGuard`); only forms marked `data-offline-ok` go. Import and settings say at
+  (`ConnectionGuard`); only forms marked `data-offline-ok` go. A link marked
+  `data-online-only` (the PDFs) is stopped the same way. Import and settings say at
   the top that they need a connection (`NeedsConnection`), and the batch page carries on by
   itself once the connection is back. Signing out (`data-sign-out`) makes the login page
   forget the kept pages and the waiting ticks of the device.
