@@ -144,6 +144,8 @@ interface Bucket {
   shopId: string | null;
   contributions: Contribution[];
   notes: string[];
+  /** Words typed in front of the name that describe it: "Grüne" Weintrauben. */
+  described: string[];
 }
 
 function neededBy(contributions: Contribution[]): IsoDate | null {
@@ -248,7 +250,11 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     ingredient,
     bucket.contributions,
   );
-  const forms = { one: nameForOne(ingredient), many: ingredient.name };
+  // What describes a typed thing stands in front of its name, as written: "Grüne Weintrauben"
+  // read "Weintrauben Grüne" (November 2026).
+  const before = bucket.described.join(", ");
+  const named = (name: string) => (before ? `${before} ${name}` : name);
+  const forms = { one: named(nameForOne(ingredient)), many: named(ingredient.name) };
   const common = {
     ingredientId: ingredient.id,
     forms,
@@ -413,6 +419,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     contribution: Contribution,
     note?: string,
     shop?: string | null,
+    described?: string,
   ) => {
     // A shop that is the catalog's own is no exception.
     const shopId = shop && shop !== ingredient.preferredShopId ? shop : null;
@@ -427,12 +434,14 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       shopId,
       contributions: [],
       notes: [],
+      described: [],
     };
     bucket.contributions.push({
       ...contribution,
       origin: { date: origin.date, place: origin.place },
     });
     if (note && !bucket.notes.includes(note)) bucket.notes.push(note);
+    if (described && !bucket.described.includes(described)) bucket.described.push(described);
     buckets.set(key, bucket);
   };
 
@@ -671,7 +680,8 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       trip: "main",
     };
     if (parsed.ingredient) {
-      add(parsed.ingredient, on, contribution, parsed.note ?? undefined);
+      const { note, described } = parsed;
+      add(parsed.ingredient, on, contribution, note ?? undefined, null, described ?? undefined);
     } else {
       addLoose(`manual:${entry.id}`, parsed.label, on, contribution, entry);
     }

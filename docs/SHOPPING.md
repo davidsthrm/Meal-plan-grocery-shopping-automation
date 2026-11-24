@@ -332,7 +332,10 @@ specification of the receipt upload (not built yet).
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
   the rest as a note. Where the ingredient is named after what describes it ("grüne
   Trauben"), the longest run of words anywhere that names one wins, in the singular or the
-  plural too, and the other words are the note: the grapes are fruit (`parseFreeEntry`).
+  plural too: the grapes are fruit (`parseFreeEntry`). The describing words stay in front of
+  the name, as written, and only what follows the name is the note: "Grüne Trauben" is
+  "Grüne Weintrauben", "Bio Karotten vom Hof" stays so (David, 24 November 2026; it read
+  "Weintrauben Grüne" and "Karotten Bio vom Hof").
   Text that matches nothing stays a free line under "Sonstiges", until the household puts
   it under a kind of grocery with the line's pen ("Gehört zu", `editLine`,
   `shopping_manual_entry.aisle_group_id`). Every entry of the same text goes with it, and

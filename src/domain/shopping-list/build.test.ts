@@ -428,6 +428,26 @@ describe("buildShoppingList", () => {
       expect(lines.get("eier@main")!.purchase).toEqual({ quantity: 20, unit: "Stück" });
     });
 
+    it("says the words that describe a typed line before its name", () => {
+      // "Grüne Trauben" read "Weintrauben Grüne" (November 2026).
+      const lines = build(
+        [],
+        [],
+        [
+          { id: "m1", text: "Grüne Trauben" },
+          { id: "m2", text: "Bio Karotten vom Hof" },
+        ],
+      );
+      expect(resolveLine(lines.get("weintrauben@main")!).text).toBe("Grüne Weintrauben");
+      const carrots = lines.get("karotten@main")!;
+      expect(resolveLine(carrots).text).toBe("Bio Karotten vom Hof");
+      // One piece in the singular, also where the amount was changed on the note.
+      const one = build([], [], [{ id: "m1", text: "1 Bio Karotte" }]).get("karotten@main")!;
+      expect(resolveLine(one).text).toBe("1x Bio Karotte");
+      const two = resolveLine(one, { amount: { quantity: 2, unit: "Stück" } });
+      expect(two.text).toBe("2x Bio Karotten");
+    });
+
     it("keeps text that matches nothing as a free line in the chosen or default shop", () => {
       const lines = build(
         [],

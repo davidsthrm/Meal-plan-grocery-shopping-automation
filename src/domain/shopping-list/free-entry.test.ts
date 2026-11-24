@@ -57,22 +57,26 @@ describe("parseFreeEntry", () => {
     });
   });
 
-  it("finds an ingredient behind the words that only describe it", () => {
+  it("finds an ingredient behind the words that only describe it, and keeps them", () => {
     expect(parseFreeEntry("grüne Trauben", testIndex)).toMatchObject({
       ingredient: { id: "weintrauben" },
       label: "Weintrauben",
       amount: null,
-      note: "grüne",
+      described: "grüne",
+      note: null,
     });
     expect(parseFreeEntry("500 g kernlose grüne Traube", testIndex)).toMatchObject({
       ingredient: { id: "weintrauben" },
       amount: { quantity: 500, unit: "g" },
-      note: "kernlose grüne",
+      described: "kernlose grüne",
+      note: null,
     });
     expect(parseFreeEntry("Bio Karotten vom Hof", testIndex)).toMatchObject({
       ingredient: { id: "karotten" },
-      note: "Bio vom Hof",
+      described: "Bio",
+      note: "vom Hof",
     });
+    expect(parseFreeEntry("Milch WS 1.29", testIndex).described).toBeNull();
   });
 
   it("does not take another product for the one it is made from", () => {
@@ -84,6 +88,7 @@ describe("parseFreeEntry", () => {
       ingredient: null,
       label: "Ingwer-Shots",
       amount: { quantity: 4, unit: "Stück" },
+      described: null,
       note: null,
     });
     expect(parseFreeEntry("4x Ingwer-Shots", testIndex)).toMatchObject({
@@ -101,6 +106,7 @@ describe("parseFreeEntry", () => {
       ingredient: null,
       label: "Katzenfutter",
       amount: { quantity: 2, unit: "Dose" },
+      described: null,
       note: null,
     });
     expect(parseFreeEntry("Geschenkpapier", testIndex).label).toBe("Geschenkpapier");
@@ -111,6 +117,7 @@ describe("parseFreeEntry", () => {
       ingredient: null,
       label: "7",
       amount: null,
+      described: null,
       note: null,
     });
   });
