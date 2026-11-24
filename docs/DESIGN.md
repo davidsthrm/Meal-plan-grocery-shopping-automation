@@ -130,14 +130,17 @@ The paper metaphors in motion:
   that with every way somewhere a pill, nothing on a screen said which was a button. A word
   inside a row of signs ("Mehr kochen") stays a word without a line (`.link-quiet`).
 - Buttons that belong together stand in one row, also on a phone: where words would break it,
-  the lesser ones are a sign with their words as label and title (the plan's Pinnwand and
-  Leeren, the statistics, the week's arrows, all weeks as a month's calendar), and "Plan
-  speichern" is "Speichern" (October 2026). The week's row of arrows is one line on every
-  week at 375px too: "Alle Wochen" in words broke it (22 November 2026). The plan's actions
-  too: "Vervollständigen", the pin, the rubber and "Speichern" while planning, the pin and
-  "Plan bearbeiten" once saved. The signs are round and 2.6rem wide, the words hug theirs
-  closer on a phone, and no line stands between them: the household saw them stacked on
-  23 November 2026. `e2e/week-saved.spec.ts` checks it at 375px. A suggestion's two
+  the lesser ones are a sign with their words as label and title (the plan's Leeren, the
+  statistics, the week's arrows, all weeks as a month's calendar), and "Plan speichern" is
+  "Speichern" (October 2026). The week's row of arrows is one line on every week at 375px
+  too: "Alle Wochen" in words broke it (22 November 2026). The plan's actions too:
+  "Vervollständigen", the printer, the rubber and "Speichern" while planning, "Drucken" and
+  "Plan bearbeiten" once saved. The printer says "Drucken" in words wherever the row has
+  room for it and is its sign alone on a phone only beside "Vervollständigen": with the word
+  that row was 400px wide, at 375px a phone has 343 (24 November 2026). The signs are round
+  and 2.6rem wide, the words hug theirs closer on a phone, and no line stands between them:
+  the household saw them stacked on 23 November 2026. `e2e/week-saved.spec.ts` checks it at
+  375px. A suggestion's two
   buttons share a row the same way: "Gute Idee!" and "Was anderes", which as "Lieber was
   anderes" took a second row.
 - Every control gives a little the moment a finger lands on it (`:active`, a scale of 0.96),
