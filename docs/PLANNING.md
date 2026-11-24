@@ -93,7 +93,10 @@ are in [SHOPPING.md](SHOPPING.md).
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
 - What the household aims for per week (`DEFAULT_TARGETS`): at least 3 vegetarian meals and
   1 fish meal, at most 2 with poultry and 2 with red meat. The household sets its own on
-  `/woche/ziele` (`household.balance_targets`, read with `readTargets`). Every device is shown
+  `/woche/ziele` (`household.balance_targets`, read with `readTargets`). "höchstens" offers
+  nothing below "mindestens" and rises with it (`TargetsFields`): a pair that did not fit was
+  refused only after "Speichern", and the page came back without every other change (audit,
+  24 November 2026). Every device is shown
   that page once before the plan, remembered in the cookie `ziele-gesehen`: each person
   should see the goals and be able to change them, but they belong to the household. The
   admin is asked on `/woche/ziele?start=1`; every other member is welcomed on `/willkommen`.

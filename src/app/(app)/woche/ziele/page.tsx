@@ -23,8 +23,9 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
   return (
     <div className="mx-auto max-w-xl">
       {!first && <BackLink href="/woche">Wochenplan</BackLink>}
-      <p className="eyebrow mt-3">{first ? "Bevor es losgeht" : "Wochenplan"}</p>
-      <h1 className="title mt-1">Ziele der Woche</h1>
+      {/* "Wochenplan" said again right under "← Wochenplan" (audit, 24 November 2026). */}
+      {first && <p className="eyebrow mt-3">Bevor es losgeht</p>}
+      <h1 className={`title ${first ? "mt-1" : "mt-3"}`}>Ziele der Woche</h1>
       <p className="mt-2 text-muted">
         Wie oft soll es in einer Woche was geben? Die Vorschläge richten sich danach.
       </p>

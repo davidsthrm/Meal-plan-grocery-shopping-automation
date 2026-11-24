@@ -13,11 +13,13 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   await signIn(page, "first");
   await expect(page.getByRole("heading", { name: "Ziele der Woche" })).toBeVisible();
 
-  // What makes no sense is refused with a reason.
+  // "höchstens" offers nothing below "mindestens", and rises with it: a pair that did not
+  // fit was refused only after "Speichern" (audit, 24 November 2026).
+  const most = page.getByLabel("Fisch höchstens");
+  await most.selectOption("2");
   await page.getByLabel("Fisch mindestens").selectOption("5");
-  await page.getByLabel("Fisch höchstens").selectOption("2");
-  await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
+  await expect(most).toHaveValue("5");
+  await expect(most.locator("option", { hasText: /^2 mal$/ })).toHaveCount(0);
 
   await page.getByLabel("Fisch mindestens").selectOption("2");
   await page.getByLabel("Fisch höchstens").selectOption("");
@@ -35,6 +37,21 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   await expect(page).toHaveURL(/\/woche$/);
   await page.getByRole("link", { name: "Ziele ändern" }).click();
   await expect(page.getByLabel("Fisch mindestens")).toHaveValue("2");
+});
+
+// Before the page's script has run, "höchstens" still offers what lies below a new
+// "mindestens": the server refuses such a pair (review, 24 November 2026).
+test.describe("without the page's script", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("goals that do not fit together are refused with a reason", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/woche/ziele");
+    await page.getByLabel("Fisch mindestens").selectOption("5");
+    await page.getByLabel("Fisch höchstens").selectOption("2");
+    await page.getByRole("button", { name: "Speichern" }).click();
+    await expect(page.getByText("Das passt nicht zusammen")).toBeVisible();
+  });
 });
 
 test("the goals can be left as they are", async ({ page }) => {
