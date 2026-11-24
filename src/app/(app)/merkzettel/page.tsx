@@ -22,7 +22,11 @@ export default async function RestockPage() {
         Was hier steht, ist noch auf keinem Einkaufszettel. Mit dem Knopf daneben kommt es auf den
         Zettel des nächsten Einkaufs; welcher das ist, steht dabei.
       </p>
-      <Link href={`/einkauf?w=${planningWeek(now)}`} className="btn btn-small mt-4">
+      {/* A way to another page is a plain link, not a pill. */}
+      <Link
+        href={`/einkauf?w=${planningWeek(now)}`}
+        className="link mt-4 inline-flex min-h-11 items-center"
+      >
         Zu den Einkaufszetteln
       </Link>
     </div>
