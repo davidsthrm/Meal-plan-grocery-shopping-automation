@@ -51,7 +51,7 @@ test("the Rezept-Stapel's three buttons stand above the strip as the page opens 
   }
 });
 
-test("the meal chooser names a long dish whole, on two lines at most", async ({ page }) => {
+test("the meal chooser names a long dish whole, on two lines at most @webkit", async ({ page }) => {
   await page.goto("/woche/auswahl?w=2027-03-01&ziel=extra&q=mohn");
   const name = page
     .getByRole("region", { name: "Ergebnisse" })
@@ -66,7 +66,7 @@ test("the meal chooser names a long dish whole, on two lines at most", async ({ 
   expect(cut).toBe(false);
 });
 
-test("the meal chooser keeps a dish's facts to one line, leaving out whole what does not fit", async ({
+test("the meal chooser keeps a dish's facts to one line, leaving out whole what does not fit @webkit", async ({
   page,
 }) => {
   await page.goto("/woche/auswahl?w=2027-03-01&ziel=extra&q=e");
