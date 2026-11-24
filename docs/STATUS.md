@@ -17,6 +17,7 @@ The app is live at https://familyessensplan.vercel.app for the family since 19 O
 - A recipe whose steps run on to a page that was not photographed has the steps up to there and a doubt; the rest can be typed on `/rezepte/[id]/bearbeiten`.
 - A recipe's own view of its page can miss the end of its steps where the text runs on in the next column: one of 24 views looked at. The whole page is linked below the view.
 - Cheese and antipasti come from the market in this household, but the catalog keeps cheese with the dairy and antipasti with the jars. The settings choose per kind of grocery, not per ingredient, so they stay on the supermarket's notes unless each line is moved.
+- The rest of a "Zitrone Bio" line moved to another note arrives without "Bio": a carried rest keeps its ingredient and amount, not the line's note. Keeping it needs an additive column (`shopping_manual_entry.carried_note`); left open by the audit of 24 November 2026 as optional.
 - Markets close together lie on top of each other on the map until it is zoomed in.
 - An errand counts as done from its last tick. Ticks are made on the device's clock and planning on the server's, so a meal planned within a minute or two of the last tick may be counted to either side.
 - An upload started from a meal plans nothing when its page holds several recipes and none is named like the meal. The recipes are in the library and are planned by hand then.
@@ -59,6 +60,7 @@ has to wait stands here, with a recommendation; once answered, the answer goes i
 it belongs to and the question goes.
 
 - The drugstore's note: its pen now changes the amount and the note of a line like on any note (without "Gehört zu"). Before, it had no such forms and its pen opened the shop's sheet. Recommendation: keep it; the alternative is no pen on the drugstore's note.
+- Leaves, pieces or grams beside a bunch (24 November 2026) count as "some" for everything the catalog keeps by the bunch, also Schnittlauch or Suppengrün, which have no yield of sprigs, and only where a recipe asks for them: a typed "2 Basilikum" keeps its line. Recommendation: keep it so; the alternative is only the herbs and vegetables with a yield (`per_whole`).
 
 ## Open questions and things to check by hand
 
