@@ -2701,9 +2701,14 @@ summary,
   .tab-row > * {
     flex: none;
   }
+  /*
+   * The open tab looks like a chip that is on: solid green, it stood right above the one
+   * green button of the page, "Einplanen" (November 2026).
+   */
   .tab-row > [aria-current] {
-    background: var(--color-accent);
-    color: var(--color-accent-ink);
+    border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
   }
   .tab-row > [aria-current] .chip-picture {
     color: currentColor;
