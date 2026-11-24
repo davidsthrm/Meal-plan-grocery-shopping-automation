@@ -87,10 +87,8 @@ export default async function FieldChecksPage(props: PageProps<"/import/pruefen/
       <BackLink href="/import">Import</BackLink>
       <h1 className="title mt-2">Angaben prüfen</h1>
       <p className="mt-1 text-muted">
-        Art, Kategorie, Zeit und Portionen hat beim Einlesen das Modell eingetragen. Wie sicher es
-        war, ist nicht gespeichert. Darum wird verglichen, was eingetragen ist, mit Zutaten und
-        Titel: ein Fischrezept ohne Fisch, eine Suppe als Hauptgericht. Was am wenigsten passt,
-        steht oben.
+        Verglichen wird, was beim Einlesen eingetragen wurde, mit Zutaten und Titel: ein Fischrezept
+        ohne Fisch, eine Suppe als Hauptgericht. Was am wenigsten passt, steht oben.
       </p>
       <p className="mt-2 text-muted">
         „Übernehmen“ und eine Auswahl ändern das Rezept. „Stimmt so“ ändert nichts: Der Hinweis

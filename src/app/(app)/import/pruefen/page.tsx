@@ -25,7 +25,6 @@ export default async function ReviewQueuePage() {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-semibold">Alles geprüft</h1>
-      <p className="mt-2 text-muted">Im Moment wartet kein eingelesenes Rezept auf dich.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Link href="/import/pruefen/angaben" className="btn">
           Angaben der Bibliothek prüfen
