@@ -728,6 +728,11 @@ describe("parts become the whole", () => {
         defaultUnit: "Bund",
         whole: { ingredientId: null, unit: "Bund", parts: { Zweig: 10, Stängel: 10 } },
       }),
+      like("basilikum", "Basilikum", {
+        synonyms: ["Basilikumblätter"],
+        defaultUnit: "Bund",
+        whole: { ingredientId: null, unit: "Bund", parts: { Zweig: 10, Stängel: 10 } },
+      }),
       like("fruehlingszwiebeln", "Frühlingszwiebeln", {
         defaultUnit: "Bund",
         whole: { ingredientId: null, unit: "Bund", parts: { Stück: 7 } },
@@ -799,6 +804,41 @@ describe("parts become the whole", () => {
     ]);
     const radishes = lines(recipe("a", [line("radieschen", 12, "Stück")]));
     expect(radishes.get("radieschen@main")!.purchase).toEqual({ quantity: 1, unit: "Bund" });
+  });
+
+  it("counts leaves, pieces or grams a recipe asks of a bunch as some on its line", () => {
+    // "10x Basilikum" stood beside "1 Bund Basilikum" (November 2026).
+    const leaves = lines(
+      recipe("a", [line("basilikum", 1, "Bund")]),
+      recipe("b", [line("basilikum", 10, "Blatt")]),
+      recipe("c", [line("basilikum", 6, "Stück")]),
+    );
+    expect([...leaves.keys()]).toEqual(["basilikum@main"]);
+    expect(text(leaves.get("basilikum@main"))).toBe("1 Bund Basilikum");
+    expect(leaves.get("basilikum@main")).toMatchObject({
+      amounts: [{ quantity: 1, unit: "Bund" }],
+      hasUnquantified: true,
+    });
+    expect(leaves.get("basilikum@main")!.contributions).toHaveLength(3);
+    const onions = lines(
+      recipe("a", [line("fruehlingszwiebeln", 1, "Bund")]),
+      recipe("b", [line("fruehlingszwiebeln", 50, "g")]),
+    );
+    expect([...onions.keys()]).toEqual(["fruehlingszwiebeln@main"]);
+    expect(text(onions.get("fruehlingszwiebeln@main"))).toBe("1 Bund Frühlingszwiebeln");
+    // Alone, they are some basil.
+    const alone = lines(recipe("a", [line("basilikum", 10, "Blatt")]));
+    expect([...alone.keys()]).toEqual(["basilikum@main"]);
+    expect(text(alone.get("basilikum@main"))).toBe("Basilikum");
+    // A number typed onto a note keeps its line.
+    const typed = buildShoppingList({
+      index: wholes,
+      recipes: [],
+      slots: [],
+      trips: singleTrip(MONDAY),
+      manualEntries: [{ id: "m1", text: "2 Basilikum" }],
+    });
+    expect(typed.map((each) => resolveLine(each).text)).toEqual(["2x Basilikum"]);
   });
 
   it("counts a bare number typed or given to a food in pieces of the bunch", () => {

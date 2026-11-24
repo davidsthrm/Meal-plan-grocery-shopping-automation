@@ -18,9 +18,10 @@ after.
   Handvoll Rucola" beside the rocket (November 2026). So do pieces of something measured by
   volume or by the spoon and bought as it is: "Saft von 1 Zitrone" is read as one piece of
   lemon juice and was "1x Zitronensaft" (November 2026). A bottle or a packet of it keeps its
-  line. This is about recipe lines only: a number typed onto a note or given to a food of a
-  meal buys that many, "2 Orangensaft" is "2x Orangensaft" (it read "Orangensaft" until
-  November 2026).
+  line. So do leaves, pieces or grams of what is kept by the bunch
+  ([SHOPPING.md](SHOPPING.md#lines-and-amounts)). This is about recipe lines only: a number
+  typed onto a note or given to a food of a meal buys that many, "2 Orangensaft" is "2x
+  Orangensaft" (it read "Orangensaft" until November 2026).
 - The other exception: slices of something bought by the piece that the catalog cannot weigh
   buy whole pieces, one for every eight slices (`SLICES_PER_PIECE`, `shoppingAmount`).
   "2 Zitronenscheiben" are "1x Zitrone"; the line was "2 Scheiben Zitronenscheiben"

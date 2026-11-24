@@ -102,21 +102,23 @@ export function toDefaultUnit(
 const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp", "Handvoll"]);
 
 /**
- * Whether pieces of something measured by volume or by the spoon, and bought as it is, say
- * only "some": the juice of a lemon is read as one piece of lemon juice and was "1x
- * Zitronensaft", eight juniper berries "8x Wacholderbeeren" (November 2026). A bottle, a jar
- * or a packet is bought whole and keeps its line: "1x Rotwein". Only a recipe reads pieces
- * so: "2 Orangensaft" typed onto a note, or two for a Vesper, buy two (November 2026).
+ * Whether a recipe's amount that cannot be added to the rest says only "some". So do pieces
+ * of something measured by volume or by the spoon, and bought as it is: the juice of a lemon
+ * is read as one piece of lemon juice and was "1x Zitronensaft", eight juniper berries "8x
+ * Wacholderbeeren" (November 2026). A bottle, a jar or a packet is bought whole and keeps
+ * its line: "1x Rotwein". And so do leaves, pieces or grams of what is bought by the bunch:
+ * "10x Basilikum" stood beside "1 Bund Basilikum" (David, 24 November 2026). Only a recipe
+ * reads amounts so: "2 Orangensaft" typed onto a note, or two for a Vesper, buy two.
  */
 function countsAsSome(ingredient: Ingredient, contribution: Contribution): boolean {
   const { amount, source } = contribution;
+  if (!amount || (source.type !== "recipe" && source.type !== "extra")) return false;
   const measured =
     dimensionOf(ingredient.defaultUnit) === "volume" || SPOONFULS.has(ingredient.defaultUnit);
+  if (amount.unit === "Stück" && measured && ingredient.buyingMode === "none") return true;
   return (
-    (source.type === "recipe" || source.type === "extra") &&
-    amount?.unit === "Stück" &&
-    measured &&
-    ingredient.buyingMode === "none"
+    ingredient.defaultUnit === "Bund" &&
+    (amount.unit === "Blatt" || amount.unit === "Stück" || dimensionOf(amount.unit) === "mass")
   );
 }
 

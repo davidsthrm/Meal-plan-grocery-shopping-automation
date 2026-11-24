@@ -44,7 +44,12 @@ specification of the receipt upload (not built yet).
   Knoblauch" is "1 Knolle Knoblauch"), fresh herbs 10 Zweige or Stängel a Bund ("12 Zweige
   Thymian" are "2 Bund Thymian"), Frühlingszwiebeln 7 and Radieschen 12 a Bund. Counted
   pieces add up with the bunches: "1 Bund Frühlingszwiebeln" and "4x Frühlingszwiebeln" were
-  two lines and are "2 Bund". Zest is bought as the household's fruit of that kind, with the
+  two lines and are "2 Bund". Leaves, pieces or grams a recipe asks of what is kept by the
+  bunch, which no bunch can add up, count as "some" on the bunch's line: "10
+  Basilikumblätter" and "1 Bund Basilikum" are "1 Bund Basilikum", 50 g of spring onions
+  stand on their bunch, and alone they are the name, "Basilikum" (David, 24 November 2026;
+  "10x Basilikum" stood beside the bunch). A number typed onto a note keeps its line, "2x
+  Basilikum". Zest is bought as the household's fruit of that kind, with the
   note "Bio", because zest is grated from an untreated fruit: 3 TL a lemon, 2 TL a lime,
   1 EL an orange. A piece of zest, or a zest read without an amount, is one fruit: "Schale
   von 1 Zitrone" is "1x Zitrone Bio". A packet of zest has no fruit to count and stays as it
