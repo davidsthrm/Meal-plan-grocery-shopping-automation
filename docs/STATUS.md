@@ -60,7 +60,7 @@ has to wait stands here, with a recommendation; once answered, the answer goes i
 it belongs to and the question goes.
 
 - The drugstore's note: its pen now changes the amount and the note of a line like on any note (without "Gehört zu"). Before, it had no such forms and its pen opened the shop's sheet. Recommendation: keep it; the alternative is no pen on the drugstore's note.
-- Leaves, pieces or grams beside a bunch (24 November 2026) count as "some" for everything the catalog keeps by the bunch, also Schnittlauch or Suppengrün, which have no yield of sprigs, and only where a recipe asks for them: a typed "2 Basilikum" keeps its line. Recommendation: keep it so; the alternative is only the herbs and vegetables with a yield (`per_whole`).
+- Leaves, pieces or grams beside a bunch (24 November 2026) count as "some" for everything the catalog keeps by the bunch, also Schnittlauch, which has no yield of sprigs, and only where a recipe asks for them: a typed "2 Basilikum" keeps its line. Recommendation: keep it so; the alternative is only the herbs and vegetables with a yield (`per_whole`).
 
 ## Open questions and things to check by hand
 
