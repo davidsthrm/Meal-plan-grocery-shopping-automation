@@ -81,7 +81,10 @@ are in [SHOPPING.md](SHOPPING.md).
   recorded.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
-  for the month most of its days are in. The week being planned is always listed.
+  for the month most of its days are in. The week being planned is always listed. Its days
+  stand in seven columns only from `lg` on; below, each day is a line: on an iPad upright a
+  column cut nearly every dish to seven to nine letters, "Käsespät…" (audit, 24 November
+  2026).
 
 ### The week's balance
 
