@@ -59,8 +59,7 @@ export default async function TagsPage(props: PageProps<"/rezepte/stichworte">) 
       <BackLink href="/import/rezepte">Alle Rezepte</BackLink>
       <h1 className="title mt-3">Stichworte</h1>
       <p className="mt-2 text-muted">
-        Umbenennen lässt sich jedes Stichwort: Die App erkennt ihre eigenen auch unter einem neuen
-        Namen. Zusammenführen, verschieben und löschen lässt sich, was ihr selbst angelegt habt.
+        Jedes Stichwort lässt sich umbenennen, die App erkennt ihre eigenen auch unter neuem Namen.
       </p>
       {said && (
         <p
