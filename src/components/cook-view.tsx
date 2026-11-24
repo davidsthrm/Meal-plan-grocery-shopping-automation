@@ -136,9 +136,7 @@ export function CookView({
                   Arbeitsschritte
                 </h3>
                 {steps.length === 0 ? (
-                  <p className="mx-2 mt-2 text-muted">
-                    Keine Arbeitsschritte vorhanden. Gekocht wird aus dem Buch.
-                  </p>
+                  <p className="mx-2 mt-2 text-muted">Keine Arbeitsschritte.</p>
                 ) : (
                   <ol className="mt-2 space-y-2">
                     {steps.map((text, at) => (
