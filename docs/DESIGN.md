@@ -132,10 +132,14 @@ The paper metaphors in motion:
 - Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`).
 - Going on to the next meal tears the meal's page off like a sheet of a pad (a React
   `<ViewTransition>` keyed by the meal, `.note-off` and `.note-on`, started only by that
-  link's `transitionTypes`).
+  link's `transitionTypes`), 240ms on `--ease-out`, the next page settling in at once: on
+  curves of its own it took 460ms, on the step a week is planned with up to fourteen times
+  in a row (D20, audit, 24 November 2026).
 - Asked for less motion, the Merkzettel fades in and out in 160ms without its swing, and
   goes once it has faded: less motion is not none (David, 24 November 2026; it was off, and
-  still waited 220ms for a swing it did not make). The rubber and the tear-off are off.
+  still waited 220ms for a swing it did not make). The rubber is off. The next meal's page
+  fades in, 160ms, without travel, where the tear-off was a cut (D18, audit, 24 November
+  2026).
 
 ## Controls and sizes
 
