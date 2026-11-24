@@ -17,6 +17,7 @@ import {
   WishIcon,
 } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
+import { PdfLink } from "@/components/pdf-link";
 import { ResetWeek } from "@/components/reset-week";
 import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
@@ -488,8 +489,9 @@ export default async function WeekPage(props: PageProps<"/woche">) {
               )}
               {/* The plan as a small note to pin up: a PDF the size of a postcard. */}
               {slots.length + extras.length > 0 && (
-                <a
+                <PdfLink
                   href={`/woche/pdf?w=${week}`}
+                  name={`Wochenplan ${weekRange(week)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="btn btn-small max-sm:w-[2.6rem] max-sm:px-0"
@@ -498,7 +500,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
                 >
                   <PinIcon />
                   <span className="max-sm:hidden">Für die Pinnwand</span>
-                </a>
+                </PdfLink>
               )}
               {/* Done planning: the plan is saved and shown to read. Or the whole week is
                   rubbed out. A saved plan says so by its pens and "Plan bearbeiten": the line

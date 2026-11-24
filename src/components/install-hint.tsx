@@ -20,12 +20,17 @@ function wasDismissed(): boolean {
 
 const nothingToFollow = () => () => {};
 
+/** Opened from the home screen: without the browser's bars. */
+export function isInstalled(): boolean {
+  return (
+    matchMedia("(display-mode: standalone)").matches ||
+    (navigator as { standalone?: boolean }).standalone === true
+  );
+}
+
 /** The browser in one word: opened from the home screen, put away, Safari, or another. */
 function browserSituation(): "installed" | "dismissed" | "safari" | "other" {
-  const installed =
-    matchMedia("(display-mode: standalone)").matches ||
-    (navigator as { standalone?: boolean }).standalone === true;
-  if (installed) return "installed";
+  if (isInstalled()) return "installed";
   if (wasDismissed()) return "dismissed";
   return "standalone" in navigator ? "safari" : "other";
 }

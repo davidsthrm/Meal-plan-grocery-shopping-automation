@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowIcon, NoteIcon, TickIcon } from "@/components/icons";
 import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
+import { PdfLink } from "@/components/pdf-link";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ShopLogo } from "@/components/shop-logo";
@@ -101,9 +102,13 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           <BackLink href={`/einkauf?w=${week}`}>Alle Zettel</BackLink>
           <span className="flex gap-2">
             {picked.open > 0 && <PrintButton />}
-            <a href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`} className="btn btn-small">
+            <PdfLink
+              href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`}
+              name={`Einkaufszettel ${noteName(picked.trip)}`}
+              className="btn btn-small"
+            >
               Als PDF
-            </a>
+            </PdfLink>
           </span>
         </div>
         <NoteSheet
@@ -297,15 +302,24 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           className="mt-8 flex flex-wrap items-center gap-2 border-t border-line pt-4"
         >
           <span className="eyebrow mr-1">Als PDF</span>
-          <a href={`/einkauf/pdf?w=${week}`} className="chip">
+          <PdfLink
+            href={`/einkauf/pdf?w=${week}`}
+            name={`Einkaufszettel ${weekRange(week)}`}
+            className="chip"
+          >
             Alle Zettel
-          </a>
+          </PdfLink>
           {notes
             .filter((note) => note.open > 0)
             .map((note) => (
-              <a key={note.id} href={`/einkauf/pdf?w=${week}&zettel=${note.id}`} className="chip">
+              <PdfLink
+                key={note.id}
+                href={`/einkauf/pdf?w=${week}&zettel=${note.id}`}
+                name={`Einkaufszettel ${noteName(note.trip)}`}
+                className="chip"
+              >
                 {noteName(note.trip)}
-              </a>
+              </PdfLink>
             ))}
         </nav>
       )}
