@@ -99,6 +99,30 @@ test("the Monday errand closes with what was not bought, and the eggs go to Tues
   await expect(sheet(page, MONDAY).getByRole("status")).toHaveCount(0);
 });
 
+test("the rest of a typed line moved to Tuesday keeps its unit", async ({ page }) => {
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await write(page, "500 g Lakritzschnecken");
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  await shop.getByRole("button", { name: "Lakritzschnecken: Menge oder Produkt ändern" }).click();
+  const edit = page.getByRole("dialog", { name: "Lakritzschnecken" });
+  await edit.getByLabel("Menge von Lakritzschnecken").fill("200");
+  await expect(edit).toContainText("Es fehlen noch 300 g Lakritzschnecken.");
+  await edit.getByRole("button", { name: "Rest verschieben" }).click();
+  const move = page.getByRole("dialog", { name: "Rest: 300 g Lakritzschnecken" });
+  await move.getByRole("button", { name: "Di 2.", exact: true }).click();
+  await move.getByRole("button", { name: "Rest auf Di 2." }).click();
+  await expect(
+    shop.getByRole("region", { name: "Gekauft", exact: true }).getByRole("listitem"),
+  ).toContainText("Rest → Di 2.");
+
+  // On Tuesday's note the rest is weighed: it read "300x Lakritzschnecken" (November 2026).
+  await expect(async () => {
+    await page.goto(`/einkauf?w=${WEEK}&zettel=2027-03-02.supermarket`);
+    await expect(sheet(page, TUESDAY)).toContainText("300 g Lakritzschnecken", { timeout: 2000 });
+  }).toPass();
+});
+
 test("a swipe buys a line or removes it, and holding it opens its menu", async ({ page }) => {
   await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
   await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
