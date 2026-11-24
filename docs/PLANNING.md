@@ -373,7 +373,11 @@ are in [SHOPPING.md](SHOPPING.md).
   "Zum ersten Mal" four weeks of plans before the period, "Mal wieder" eight weeks of plans.
 - Charts are HTML drawn on the server in the kinds' pastels (`stats-charts.tsx`), the
   supermarket a warm grey beside the market's green. Nothing grows or counts up: the
-  figures are read. A new period or view fades in where the old one stood (`.stats-in`).
+  figures are read. A figure is its number on the paper with what it is muted below
+  (`Figure`), a weekly goal a row as the week's count is, with a 44px dot per week, and a
+  statistic with too little behind it one muted line, without the kinds' pastels (why:
+  [DESIGN.md](DESIGN.md#colours-of-kinds)). The arrows of the period stand beside its
+  name, as the week's beside its range: on a phone they took a third row of controls. A new period or view fades in where the old one stood (`.stats-in`).
   Not counted yet: wishes fulfilled (the mark goes when a recipe is planned), amounts bought,
   spending, and what ran out at home.
 - "Entdeckt", as wide as the large cards (`discoveryStats`, `src/domain/stats/discovery.ts`):

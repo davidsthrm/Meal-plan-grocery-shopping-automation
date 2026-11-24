@@ -101,7 +101,6 @@ export function MealsView({
           value={variety ? String(variety.distinct) : "–"}
           label="Verschiedene Gerichte"
           detail={variety ? `in ${variety.meals} Mahlzeiten` : "ab 4 Mahlzeiten"}
-          tone="kind-fish"
         />
         <Figure
           value={String(stats.meatFree.days)}
@@ -111,7 +110,6 @@ export function MealsView({
               ? `von ${stats.meatFree.ofDays} · längste Serie ${stats.meatFree.longestRun}`
               : null
           }
-          tone="kind-vegetarian"
         />
         <Figure
           value={without ? String(without.total) : "–"}
@@ -121,7 +119,6 @@ export function MealsView({
               ? `am häufigsten ${without.rows[0].label}`
               : "Vesper, Reste, auswärts"
           }
-          tone="kind-poultry"
         />
       </div>
       {stats.ahead > 0 && (
@@ -135,65 +132,64 @@ export function MealsView({
         {stats.goals.enough ? (
           <>
             <ShareBar parts={kindParts(stats.kinds)} label="Gekochte Mahlzeiten nach Art" />
-            <ul className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Each goal is a row as the week's count is: its dot, the number, its name and
+                its goal in small words, and a dot per week. They were tiles filled with the
+                kinds' pastels inside the card (audit, 24 November 2026). */}
+            <ul className="mt-4 divide-y divide-line">
               {stats.goals.value.summary.map((line) => {
                 const weeks = stats.goals.enough ? stats.goals.value.weeks : [];
                 const hasGoal = line.min !== null || line.max !== null;
                 return (
-                  <li key={line.group} className={`stat-figure ${KIND_TONE[line.group]}`}>
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="font-semibold">{GROUP_NAME[line.group]}</span>
-                      <span className="text-sm opacity-80">
+                  <li
+                    key={line.group}
+                    className={`flex flex-wrap items-center justify-between gap-x-3 py-1 ${KIND_TONE[line.group]}`}
+                  >
+                    <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 py-1.5 text-sm">
+                      <span className="dot self-center" aria-hidden />
+                      <span className="font-bold tabular-nums">{num(line.average)}</span>
+                      <span>{GROUP_NAME[line.group]} pro Woche</span>
+                      <span className="text-xs text-muted">
                         {hasGoal ? `Ziel ${targetText({ ...line, count: 0 })}` : "Kein Ziel"}
-                      </span>
-                    </span>
-                    <span className="mt-2 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-                      <span>
-                        <span className="flex items-baseline gap-1.5">
-                          <span className="stat-number">{num(line.average)}</span>
-                          <span className="text-sm">pro Woche</span>
-                        </span>
-                        {hasGoal && (
-                          <span className="mt-1 block text-sm">
-                            {line.weeks === 0
+                        {hasGoal &&
+                          ` · ${
+                            line.weeks === 0
                               ? "Die Woche läuft noch"
-                              : `${line.met} von ${line.weeks} ${line.weeks === 1 ? "Woche" : "Wochen"} im Ziel`}
-                          </span>
-                        )}
+                              : `${line.met} von ${line.weeks} ${line.weeks === 1 ? "Woche" : "Wochen"} im Ziel`
+                          }`}
                       </span>
-                      {period.kind === "year" ? (
-                        <span className="goal-strip" aria-hidden>
-                          {weeks.map((week) => (
-                            <span
-                              key={week.weekStart}
-                              data-ok={
-                                hasGoal && week.lines.find((each) => each.group === line.group)!.ok
-                              }
-                            />
-                          ))}
-                        </span>
-                      ) : (
-                        <span className="-mr-2 -mb-2 flex flex-wrap justify-end">
-                          {weeks.map((week) => {
-                            const entry = week.lines.find((each) => each.group === line.group)!;
-                            return (
-                              <Link
-                                key={week.weekStart}
-                                href={`/woche?w=${week.weekStart}`}
-                                className="goal-dot"
-                                data-ok={hasGoal && entry.ok}
-                                data-running={week.running}
-                                aria-label={`Woche ab ${dayAndMonth(week.weekStart)}: ${entry.count} ${GROUP_NAME[line.group]}${
-                                  hasGoal ? (entry.ok ? ", im Ziel" : ", nicht im Ziel") : ""
-                                }${week.running ? ", läuft noch" : ""}`}
-                              >
-                                <span />
-                              </Link>
-                            );
-                          })}
-                        </span>
-                      )}
                     </span>
+                    {period.kind === "year" ? (
+                      <span className="goal-strip" aria-hidden>
+                        {weeks.map((week) => (
+                          <span
+                            key={week.weekStart}
+                            data-ok={
+                              hasGoal && week.lines.find((each) => each.group === line.group)!.ok
+                            }
+                          />
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="-mr-2 flex flex-wrap justify-end">
+                        {weeks.map((week) => {
+                          const entry = week.lines.find((each) => each.group === line.group)!;
+                          return (
+                            <Link
+                              key={week.weekStart}
+                              href={`/woche?w=${week.weekStart}`}
+                              className="goal-dot"
+                              data-ok={hasGoal && entry.ok}
+                              data-running={week.running}
+                              aria-label={`Woche ab ${dayAndMonth(week.weekStart)}: ${entry.count} ${GROUP_NAME[line.group]}${
+                                hasGoal ? (entry.ok ? ", im Ziel" : ", nicht im Ziel") : ""
+                              }${week.running ? ", läuft noch" : ""}`}
+                            >
+                              <span />
+                            </Link>
+                          );
+                        })}
+                      </span>
+                    )}
                   </li>
                 );
               })}
@@ -469,7 +465,6 @@ export function MealsView({
               <Figure
                 value={String(stats.leftovers.extraPortions)}
                 label={stats.leftovers.extraPortions === 1 ? "Extra-Portion" : "Extra-Portionen"}
-                tone="kind-poultry"
               />
               <Figure
                 value={String(stats.leftovers.leftoverMeals)}
@@ -479,7 +474,6 @@ export function MealsView({
                     ? `${stats.leftovers.linked} davon von einer geplanten Mahlzeit`
                     : null
                 }
-                tone="kind-other"
               />
             </div>
           )}
@@ -575,7 +569,6 @@ function DiscoveryCard({ discovery }: { discovery: DiscoveryStats }) {
         <Figure
           value={String(discovery.newDishes)}
           label={discovery.newDishes === 1 ? "Gericht zum ersten Mal" : "Gerichte zum ersten Mal"}
-          tone="kind-vegetarian"
         />
         <Figure
           value={`${Math.round(share * 100)} %`}
@@ -586,7 +579,6 @@ function DiscoveryCard({ discovery }: { discovery: DiscoveryStats }) {
         <Figure
           value={`${discovery.cuisines.cooked} von ${discovery.cuisines.of}`}
           label="Küchen gekocht"
-          tone="kind-fish"
         />
       </div>
       <ul className="badges mt-4" aria-label="Abzeichen">

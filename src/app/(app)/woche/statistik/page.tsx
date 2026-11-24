@@ -123,8 +123,9 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
         ))}
       </nav>
 
-      {/* For when: a week, a month or a year, and which one. */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3">
+      {/* For when: a week, a month or a year. A row of its own, also from sm on, where a
+          segmented control stands inline. */}
+      <div className="mt-3">
         <nav aria-label="Zeitraum" className="segmented sm:w-auto">
           <SegmentPill
             name="pill-zeitraum"
@@ -143,6 +144,19 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
             </Link>
           ))}
         </nav>
+      </div>
+
+      {/* Which one, with back and forward beside it, as the week has its capsule beside its
+          range: on a phone the arrows had a row of their own, the third row of controls
+          before any figure (audit, 24 November 2026). Where both do not fit, the weeks go
+          under the name. */}
+      <div className="mt-6 flex items-center justify-between gap-x-4">
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+          <span className="text-2xl font-bold tracking-tight">{periodTitle(period)}</span>
+          <span className="text-muted">
+            {period.kind === "week" ? weekRange(period.start) : periodWeeksText(period)}
+          </span>
+        </p>
         <nav aria-label="Zeitraum wechseln" className="capsule">
           {hasPeriodBefore(period, first) ? (
             <Link
@@ -177,13 +191,6 @@ export default async function StatisticsPage(props: PageProps<"/woche/statistik"
           )}
         </nav>
       </div>
-
-      <p className="mt-6 flex flex-wrap items-baseline gap-x-3">
-        <span className="text-2xl font-bold tracking-tight">{periodTitle(period)}</span>
-        <span className="text-muted">
-          {period.kind === "week" ? weekRange(period.start) : periodWeeksText(period)}
-        </span>
-      </p>
 
       {/* A new period or area fades in where the old one stood, so the change is seen. */}
       <div key={`${area}-${period.kind}-${period.key}`} className="stats-in mt-4">

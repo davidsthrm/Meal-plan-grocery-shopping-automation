@@ -338,7 +338,10 @@ The paper metaphors in motion:
   of numbers, each with a dot, its name and its goal in small words, a count over its goal
   in the warning colour (`.balance-row`); it was four pastel tiles with bars, the loudest
   thing on the page. The recipe of the day, the tiles beside it and the Rezept-Stapel's
-  cards are paper with the pictogram on its pastel.
+  cards are paper with the pictogram on its pastel. The statistics' figures and weekly goals
+  followed on 24 November 2026 (audit): their tiles and boxes in the kinds' pastels marked
+  things that are no kind, the blue of fish on "Verschiedene Gerichte" and the red of meat
+  on "Nicht gekauft"; the pastels stay inside the charts.
 
 ## App feel and loading
 

@@ -192,3 +192,15 @@ test("a row's menu stays on the screen wherever the row is held @webkit", async 
     await expect(menu).toBeHidden();
   }
 });
+
+// Audit, 24 November 2026: the statistics' arrows had a row of their own, the third row of
+// controls before any figure.
+test("the statistics' arrows stand beside the period's name @webkit", async ({ page }) => {
+  await page.goto("/woche/statistik");
+  const arrows = page.getByRole("navigation", { name: "Zeitraum wechseln" });
+  const name = page.getByText(/^[A-ZÄÖÜ][a-zäöü]+ \d{4}$/).first();
+  const [box, title] = [await arrows.boundingBox(), await name.boundingBox()];
+  // Side by side: the arrows overlap the name's line.
+  expect(box!.y).toBeLessThan(title!.y + title!.height);
+  expect(box!.y + box!.height).toBeGreaterThan(title!.y);
+});
