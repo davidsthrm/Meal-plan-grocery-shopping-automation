@@ -51,7 +51,6 @@ export function CookMore({
       className="mt-2 rounded-lg border border-accent/30 bg-accent-soft/40 p-3"
     >
       <Where week={week} date={date} meal={meal} />
-      <p className="text-sm font-semibold">Mehr kochen für Reste</p>
       <div className="mt-2 flex flex-wrap items-end gap-3">
         <label className="w-28">
           <span className="label">Extra-Portionen</span>
