@@ -26,14 +26,6 @@ export const MONTH_NAME: Record<Month, string> = {
 
 export type FoodKind = "gemuese" | "salat" | "obst" | "kraeuter" | "pilze";
 
-export const FOOD_KIND_NAME: Record<FoodKind, string> = {
-  gemuese: "Gemüse",
-  salat: "Salat",
-  obst: "Obst",
-  kraeuter: "Kräuter",
-  pilze: "Pilze",
-};
-
 export interface SeasonalFood {
   /** Stable, for the address and for other data to refer to: "kuerbis". */
   key: string;

@@ -8,7 +8,6 @@ import { RecipeCard } from "@/components/recipe-card";
 import { NO_FILTER } from "@/domain/library/filter";
 import {
   availability,
-  FOOD_KIND_NAME,
   MONTH_NAME,
   MONTHS,
   monthInSeason,
@@ -106,15 +105,11 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
       ...(food ? { zutat: food } : {}),
     })}`;
 
-  const sections: { title: string; foods: SeasonalFood[]; note: string }[] = [
-    { title: `Neu im ${MONTH_NAME[month]}`, foods: season.arriving, note: "Die Ernte beginnt." },
-    { title: "Gerade reif", foods: season.ripe, note: "Frisch vom Feld oder vom Baum." },
-    {
-      title: "Letzte Wochen",
-      foods: season.leaving,
-      note: `Nach dem ${MONTH_NAME[month]} ist die Ernte vorbei.`,
-    },
-    { title: "Vom Lager", foods: season.stored, note: "Aus der Ernte davor, gut gelagert." },
+  const sections: { title: string; foods: SeasonalFood[] }[] = [
+    { title: `Neu im ${MONTH_NAME[month]}`, foods: season.arriving },
+    { title: "Gerade reif", foods: season.ripe },
+    { title: "Letzte Wochen", foods: season.leaving },
+    { title: "Vom Lager", foods: season.stored },
   ];
 
   return (
@@ -158,7 +153,6 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
         .map((section) => (
           <section key={section.title} className="mt-8" aria-label={section.title}>
             <h2 className="text-xl font-bold tracking-tight">{section.title}</h2>
-            <p className="text-sm text-muted">{section.note}</p>
             <ul className="season-list mt-2">
               {/* What the library cooks with first: those are the ones to tap. */}
               {[...section.foods]
@@ -255,8 +249,6 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
       )}
 
       <p className="mt-10 text-sm text-muted">
-        {FOOD_KIND_NAME.gemuese}, {FOOD_KIND_NAME.salat}, {FOOD_KIND_NAME.obst},{" "}
-        {FOOD_KIND_NAME.kraeuter} und {FOOD_KIND_NAME.pilze} aus Freiland und Lager in Deutschland.
         Was hier nicht wächst, wie Zitronen oder Bananen, steht nicht im Kalender.
       </p>
     </div>
