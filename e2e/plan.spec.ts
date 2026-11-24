@@ -191,6 +191,8 @@ test("a recipe found while browsing is put on the plan from its own page", async
   await expect(page.getByRole("link", { name: "Einplanen" })).toHaveCount(0);
   // Planned for a day still to come is not cooked yet.
   await expect(page.getByText("Noch nie gekocht")).toBeVisible();
+  // Where, said under it: the button "Eingeplant" said only that it was.
+  await expect(page.getByText(/^Eingeplant: Sonntag Abend, \d+\. \p{L}+$/u)).toBeVisible();
   await page.getByRole("link", { name: "Eingeplant" }).click();
   await expect(meal(page, "Sonntag Abend")).toContainText("Pfeffersteak");
 });
