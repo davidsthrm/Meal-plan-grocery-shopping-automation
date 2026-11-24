@@ -14,7 +14,7 @@ import { decideInStack, type StackDecision } from "@/app/(app)/rezepte/actions";
 import type { Pictogram } from "@/domain/library/pictogram";
 import { FROM_STACK } from "@/lib/origin";
 import { FORWARD } from "@/lib/transitions";
-import { CloseIcon, HeartIcon } from "./icons";
+import { ArrowIcon, CloseIcon, WishIcon } from "./icons";
 import { PictogramIcon } from "./pictogram";
 
 /** A recipe of the stack as its card shows it. */
@@ -327,7 +327,9 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
           onClick={() => decide("up")}
           disabled={left === 0}
         >
-          <span aria-hidden>↑</span>
+          <span aria-hidden>
+            <ArrowIcon />
+          </span>
           Einplanen
         </button>
         <button
@@ -336,8 +338,9 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
           onClick={() => decide("right")}
           disabled={left === 0}
         >
+          {/* The wish's sign, as everywhere a wish is: the heart is a favourite's. */}
           <span aria-hidden>
-            <HeartIcon filled />
+            <WishIcon filled />
           </span>
           Vormerken
         </button>

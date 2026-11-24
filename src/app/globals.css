@@ -2798,14 +2798,14 @@ summary,
   }
   .stack-stamp-skip {
     right: 1.1rem;
-    color: #86423a;
+    color: var(--color-muted);
     opacity: var(--skip, 0);
     rotate: 10deg;
   }
   .stack-stamp-plan {
     left: 50%;
     translate: -50% 0;
-    color: #7f5318;
+    color: var(--color-accent);
     opacity: var(--plan, 0);
   }
   .stack-empty {
@@ -2851,11 +2851,23 @@ summary,
   .stack-button:disabled {
     opacity: 0.4;
   }
+  /*
+   * Planned in the green, as everywhere, and put aside in the muted ink: they were the inks
+   * of meat and poultry, which say a kind of meal everywhere else.
+   */
   .stack-button-skip > span {
-    color: #86423a;
+    color: var(--color-muted);
   }
   .stack-button-plan > span {
-    color: #7f5318;
+    color: var(--color-accent);
+  }
+  .stack-button svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+  /* The arrow points where the card goes. */
+  .stack-button-plan svg {
+    rotate: -90deg;
   }
   .stack-button-keep > span {
     color: var(--color-accent);
