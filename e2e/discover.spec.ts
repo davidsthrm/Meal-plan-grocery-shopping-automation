@@ -72,6 +72,25 @@ test("the library has a recipe of the day, themes and shelves to browse", async 
   await expect(page.getByRole("link", { name: /Pilzrisotto/ })).toBeVisible();
 });
 
+test("two filters tapped quickly one after the other are both on", async ({ page }) => {
+  await page.goto("/rezepte?kategorie=hauptgericht");
+  await expect(page.getByRole("status")).toHaveText("14 Rezepte passen dazu");
+  const close = await openFilters(page);
+  const panel = page.getByLabel("Filter", { exact: true });
+  const fish = panel.getByRole("link", { name: /^Fisch \d+$/ });
+  const quick = panel.getByRole("link", { name: /^bis 20 Min\. \d+$/ });
+  // The second before the server has answered the first: it used to keep only the second.
+  await fish.click();
+  await page.waitForTimeout(80);
+  await quick.click();
+  await expect(page).toHaveURL(/kost=fisch/);
+  await expect(page).toHaveURL(/zeit=20/);
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+  await expect(fish).toHaveAttribute("aria-pressed", "true");
+  await expect(quick).toHaveAttribute("aria-pressed", "true");
+  await close();
+});
+
 test.describe("on an iPad", () => {
   test.use({ viewport: { width: 810, height: 1080 } });
 

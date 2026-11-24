@@ -116,6 +116,7 @@ export default async function ShelfPage(props: PageProps<"/import/rezepte">) {
   const lacking: PanelGroup = {
     key: "ohne",
     title: "Was fehlt",
+    single: true,
     options: LACKS.map((lack) => {
       const on = view.lacks === lack;
       return {

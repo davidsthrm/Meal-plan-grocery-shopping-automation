@@ -5,7 +5,7 @@ import { filterParams, type RecipeFilter } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
 import { monthOf, seasonTagOf } from "@/domain/season/calendar";
 import { today } from "@/lib/today";
-import { FilterFrame } from "./filter-choices";
+import { ChoiceLink, FilterFrame } from "./filter-choices";
 import { ClockIcon, CloseIcon, FilterIcon, HeartIcon } from "./icons";
 import { LiveSearch } from "./live-search";
 import { PictogramIcon } from "./pictogram";
@@ -19,7 +19,8 @@ import { PictogramIcon } from "./pictogram";
  *
  * Every choice is a link that changes the address, so it works before any script has
  * loaded; the sheet is a popover of the browser's own and opens without one too. It stays
- * open while choices are tapped, and "… anzeigen" closes it.
+ * open while choices are tapped, and "… anzeigen" closes it. A choice is on the moment it
+ * is tapped, and the next one leads where both lead (`FilterFrame`).
  */
 
 /** A choice of the panel, with where it leads. */
@@ -36,6 +37,8 @@ export interface PanelGroup {
   key: string;
   title: string;
   options: PanelOption[];
+  /** At most one of its options is on; another replaces it. */
+  single: boolean;
 }
 
 /** The groups that are open at first; the others open with a tap, or when one of theirs is on. */
@@ -65,6 +68,7 @@ export function panelGroups(
   return groups.map((group) => ({
     key: group.key,
     title: group.title,
+    single: group.single,
     options: group.options.map((option) => ({
       key: option.key,
       label: option.label,
@@ -124,7 +128,7 @@ function Picture({ picture }: { picture: FacetPicture }) {
 }
 
 /** One choice: a link while something is behind it or it is on, otherwise a pale word. */
-function Choice({ option }: { option: PanelOption }) {
+function Choice({ group, option }: { group: string; option: PanelOption }) {
   const content = (
     <>
       <Picture picture={option.picture} />
@@ -140,14 +144,9 @@ function Choice({ option }: { option: PanelOption }) {
     );
   }
   return (
-    <Link
-      href={option.href}
-      scroll={false}
-      className={`chip ${option.on ? "chip-on" : ""}`}
-      aria-pressed={option.on}
-    >
+    <ChoiceLink group={group} choice={option.key}>
       {content}
-    </Link>
+    </ChoiceLink>
   );
 }
 
@@ -175,7 +174,15 @@ export function FilterPanel({
   reset,
 }: PanelProps) {
   return (
-    <FilterFrame id={id} layout={layout}>
+    <FilterFrame
+      id={id}
+      layout={layout}
+      groups={groups.map((group) => ({
+        key: group.key,
+        single: group.single,
+        choices: group.options.map(({ key, on, href }) => ({ key, on, href })),
+      }))}
+    >
       <div className="filter-head">
         <span aria-hidden className="action-sheet-grip filter-only-sheet" />
         <div className="flex items-center justify-between gap-3">
@@ -214,7 +221,7 @@ export function FilterPanel({
               </summary>
               <div role="group" aria-label={group.title} className="flex flex-wrap gap-2 pb-3">
                 {group.options.map((option) => (
-                  <Choice key={option.key} option={option} />
+                  <Choice key={option.key} group={group.key} option={option} />
                 ))}
               </div>
             </details>
