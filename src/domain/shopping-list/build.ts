@@ -272,7 +272,11 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     (c) => c.source.type === "manual" || c.source.type === "food",
   );
   const defaultAtHome = ingredient.isPantryStaple && !askedFor;
-  const note = bucket.notes.length > 0 ? bucket.notes.join(", ") : null;
+  // A note that a describing word in front already says is said once: typed "Bio Zitronen"
+  // and a recipe's zest read "1x Bio Zitrone Bio" (November 2026).
+  const said = bucket.described.join(" ").toLowerCase().split(" ");
+  const notes = bucket.notes.filter((each) => !said.includes(each.toLowerCase()));
+  const note = notes.length > 0 ? notes.join(", ") : null;
   const key = bucketKey(ingredient, trip, bucket.shopId);
   // The day it is needed is said only for what goes bad: tomatoes and yoghurt are bought
   // close to their meal, flour is simply on the list.

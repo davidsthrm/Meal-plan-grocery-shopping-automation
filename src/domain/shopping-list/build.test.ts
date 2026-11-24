@@ -900,6 +900,18 @@ describe("parts become the whole", () => {
     ]);
   });
 
+  it("says Bio once where typed Bio lemons meet a recipe's zest", () => {
+    // It read "1x Bio Zitrone Bio" (November 2026).
+    const week = buildShoppingList({
+      index: wholes,
+      recipes: [recipe("a", [line("zitronenschale", 2, "TL")])],
+      slots: [slot(MONDAY, "a")],
+      trips: singleTrip(MONDAY),
+      manualEntries: [{ id: "m1", text: "Bio Zitronen" }],
+    });
+    expect(week.map((each) => resolveLine(each).text)).toEqual(["1x Bio Zitrone"]);
+  });
+
   it("keeps a zest that does not say how much fruit it is: a packet of it", () => {
     const packet = lines(recipe("a", [line("zitronenschale", 1, "Packung")]));
     expect([...packet.keys()]).toEqual(["zitronenschale@main#Packung"]);
