@@ -105,12 +105,19 @@ const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp", "Handv
  * Whether pieces of something measured by volume or by the spoon, and bought as it is, say
  * only "some": the juice of a lemon is read as one piece of lemon juice and was "1x
  * Zitronensaft", eight juniper berries "8x Wacholderbeeren" (November 2026). A bottle, a jar
- * or a packet is bought whole and keeps its line: "1x Rotwein".
+ * or a packet is bought whole and keeps its line: "1x Rotwein". Only a recipe reads pieces
+ * so: "2 Orangensaft" typed onto a note, or two for a Vesper, buy two (November 2026).
  */
-function countsAsSome(ingredient: Ingredient, amount: Amount): boolean {
+function countsAsSome(ingredient: Ingredient, contribution: Contribution): boolean {
+  const { amount, source } = contribution;
   const measured =
     dimensionOf(ingredient.defaultUnit) === "volume" || SPOONFULS.has(ingredient.defaultUnit);
-  return amount.unit === "Stück" && measured && ingredient.buyingMode === "none";
+  return (
+    (source.type === "recipe" || source.type === "extra") &&
+    amount?.unit === "Stück" &&
+    measured &&
+    ingredient.buyingMode === "none"
+  );
 }
 
 /**
@@ -209,7 +216,7 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
     // about what to buy, nor does the juice of a lemon where the juice is bought as it is.
     // It counts as "some", and does not become a line of its own that would read "55 ml
     // Butter" or "1x Zitronensaft".
-    if (spoonful || countsAsSome(ingredient, amount)) {
+    if (spoonful || countsAsSome(ingredient, contribution)) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;

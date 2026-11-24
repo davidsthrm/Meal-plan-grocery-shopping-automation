@@ -576,6 +576,7 @@ describe("what cannot be bought in parts", () => {
       like("limettensaft", "Limettensaft", { defaultUnit: "EL" }),
       like("zitronenschale", "Zitronenschale", { defaultUnit: "TL" }),
       like("zitronensaft", "Zitronensaft", { defaultUnit: "ml" }),
+      like("orangensaft", "Orangensaft", { defaultUnit: "ml" }),
       like("rucola", "Rucola", { buyingMode: "pack", packSize: 125 }),
     ],
   });
@@ -641,6 +642,35 @@ describe("what cannot be bought in parts", () => {
     const cream = lines(recipe("a", [line("sahne", 1, "Becher"), line("ingwer", 1, "Stück")]));
     expect(cream.get("sahne@main#Becher")!.purchase).toEqual({ quantity: 1, unit: "Becher" });
     expect(cream.get("ingwer@main#Stück")!.purchase).toEqual({ quantity: 1, unit: "Stück" });
+  });
+
+  it("buys as many of a juice as were typed onto a note or counted for a meal", () => {
+    // "2 Orangensaft" read "Orangensaft", as did a Vesper's Orangensaft ×2 (November 2026).
+    const week = (slots: PlanSlot[], manualEntries: ManualEntry[] = []) =>
+      buildShoppingList({
+        index: parts,
+        recipes: [],
+        slots,
+        trips: singleTrip(MONDAY),
+        onDemand: [],
+        manualEntries,
+      }).map((each) => resolveLine(each).text);
+    expect(week([], [{ id: "m1", text: "2 Orangensaft" }])).toEqual(["2x Orangensaft"]);
+    const vesper: PlanSlot = {
+      id: "vesper",
+      date: MONDAY,
+      meal: "dinner",
+      kind: "free_text",
+      label: "Vesper",
+      foods: [{ label: "Orangensaft", quantity: 2, ingredientId: "orangensaft", shopId: null }],
+    };
+    expect(week([vesper])).toEqual(["2x Orangensaft"]);
+    // The juice of an orange in a recipe still counts as some.
+    const juice = line("orangensaft", 1, "Stück", { originalText: "Saft von 1 Orange" });
+    expect(lines(recipe("a", [juice])).get("orangensaft@main")).toMatchObject({
+      purchase: null,
+      hasUnquantified: true,
+    });
   });
 
   it("counts a handful as some, not as a line of its own", () => {
