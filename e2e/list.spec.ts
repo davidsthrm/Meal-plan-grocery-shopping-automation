@@ -524,3 +524,22 @@ test("writing on a note keeps it as it is: a line opened, the field ready @webki
     await expect(write).toHaveValue("");
   }
 });
+
+test("Doch kaufen keeps the page at what is at home @webkit", async ({ page }) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  const write = page.getByLabel("Auf den Zettel schreiben");
+  await write.fill("Kerzen");
+  await write.press("Enter");
+  for (const name of ["Eier", "Kerzen"]) {
+    const shelf = sheet(page, MONDAY).getByRole("button", { name: `${name}: haben wir schon` });
+    await shelf.click();
+    await expect(shelf).toHaveCount(0);
+  }
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await page.getByText("Haben wir schon", { exact: true }).click();
+  await page.getByRole("button", { name: "Eier doch kaufen" }).click();
+  // It landed at the top of the page, far from the list it was tapped in.
+  await expect(page).toHaveURL(/#haben-wir-schon$/);
+  await expect(page.getByRole("button", { name: "Kerzen doch kaufen" })).toBeInViewport();
+});

@@ -70,9 +70,11 @@ function backToList(input: z.infer<typeof place>): void {
 }
 
 /** To the page of a note, or of all notes: where a form leads elsewhere. */
-function goTo(input: z.infer<typeof place>): never {
+function goTo(input: z.infer<typeof place>, hash = ""): never {
   revalidatePath("/einkauf");
-  redirect(`/einkauf?w=${input.week}${input.back === "note" ? `&zettel=${input.note}` : ""}`);
+  redirect(
+    `/einkauf?w=${input.week}${input.back === "note" ? `&zettel=${input.note}` : ""}${hash}`,
+  );
 }
 
 /** Adds a line typed by hand to a note. Nothing typed adds nothing. */
@@ -142,7 +144,8 @@ export async function buyAfterAll(form: FormData): Promise<void> {
   const db = await createSessionClient();
   const { atHome, index } = await loadShoppingNotes(db, household, input.week);
   const now = today();
-  for (const value of form.getAll("line").map(String)) {
+  const lines = form.getAll("line").map(String);
+  for (const value of lines) {
     const [note, key] = value.split("|");
     const entry = atHome.find(
       ({ trip, line: view }) => noteId(trip) === note && view.line.key === key,
@@ -160,7 +163,12 @@ export async function buyAfterAll(form: FormData): Promise<void> {
     );
     await changeLine(db, household, target, view.line.key, { atHome: false });
   }
-  backToList(input);
+  // Back at what is at home while something is left there: the page started at its top,
+  // far from the list "Doch kaufen" was tapped in (audit, 24 November 2026).
+  const left = atHome.some(
+    ({ trip, line: view }) => !lines.includes(`${noteId(trip)}|${view.line.key}`),
+  );
+  goTo(input, left ? "#haben-wir-schon" : "");
 }
 
 /**

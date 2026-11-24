@@ -320,7 +320,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
  */
 function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; week: IsoDate }) {
   return (
-    <details className="card mt-8 px-4 py-2">
+    <details id="haben-wir-schon" className="card mt-8 px-4 py-2">
       <summary className="flex min-h-11 items-center justify-between gap-3 font-semibold">
         <span>Haben wir schon</span>
         <span className="text-sm font-normal text-muted tabular-nums">
