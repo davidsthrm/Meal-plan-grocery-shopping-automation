@@ -76,7 +76,7 @@ export function NeedsConnection({ children }: { children: string }) {
   return (
     <div className="card mx-auto mb-6 max-w-5xl border-warn bg-warn-soft px-4 py-3 text-warn">
       <p className="font-semibold">Keine Verbindung</p>
-      <p className="mt-1">{children} Sobald wieder Netz da ist, geht es hier weiter.</p>
+      <p className="mt-1">{children}</p>
     </div>
   );
 }

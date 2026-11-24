@@ -103,9 +103,7 @@ export function InstallHintCard() {
           </p>
         ) : (
           <>
-            <p className="mt-1">
-              Sie öffnet sich dann ohne Browserleiste. In der App meldest du dich einmal neu an.
-            </p>
+            <p className="mt-1">In der App meldest du dich einmal neu an.</p>
             <button
               type="button"
               className="btn btn-primary btn-small mt-2"
