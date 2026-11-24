@@ -128,9 +128,10 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
             <li key={item.id} className="flex items-center gap-1">
               <span className="min-w-0 flex-1 py-2.5">
                 <span className="font-semibold">{item.text}</span>
+                {/* Where it goes stays together: "Sa / 28. dm" broke inside it. */}
+                {item.trip && " "}
                 {item.trip && (
-                  <span className="muted text-xs">
-                    {" "}
+                  <span className="muted text-xs whitespace-nowrap">
                     {item.supermarket
                       ? `${dayName(item.trip.date)} ${item.supermarket}`
                       : noteName(item.trip)}

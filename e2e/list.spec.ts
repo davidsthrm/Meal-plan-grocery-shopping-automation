@@ -586,6 +586,9 @@ test("an entry struck from the Merkzettel can be taken back @webkit", async ({ p
   await write.press("Enter");
   const entry = note.getByRole("listitem").filter({ hasText: "Spülmaschinentabs" });
   await expect(entry).toHaveCount(1);
+  // Where it goes stays together: "Sa / 28. dm" broke in the middle.
+  const where = entry.locator(".muted");
+  expect(await where.evaluate((element) => element.getClientRects().length)).toBe(1);
 
   // A cross tapped by mistake lost the entry for good.
   await note.getByRole("button", { name: "Spülmaschinentabs streichen" }).click();
