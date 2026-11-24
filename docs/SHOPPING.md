@@ -71,6 +71,10 @@ specification of the receipt upload (not built yet).
   in a recipe a number counts pieces, and "4 Riesengarnelen" are four prawns, a line of
   their own beside any grams other recipes need, not four packs of 225 g. A prawn's weight
   varies too much to guess one from a count.
+- For an ingredient bought by the bunch, a bare number counts pieces, also where it was typed
+  onto a note or given to a food of a meal: "2 Radieschen" are "1 Bund Radieschen", and the
+  line says "Genau: 2 Stück". A bunch is about ten radishes, so two of them are not two
+  bunches (David, 23 November 2026). "2 Bund Radieschen" buys two.
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`), which is unique on one note. Notes, shop overrides, at-home marks
   and check-offs belong to the note and the key and survive. A meal moved to another

@@ -781,6 +781,34 @@ describe("parts become the whole", () => {
     expect(radishes.get("radieschen@main")!.purchase).toEqual({ quantity: 1, unit: "Bund" });
   });
 
+  it("counts a bare number typed or given to a food in pieces of the bunch", () => {
+    // "2 Radieschen" is one bunch, a bunch is about ten (David, 23 November 2026).
+    const week = (slots: PlanSlot[], manualEntries: ManualEntry[] = []) =>
+      buildShoppingList({
+        index: wholes,
+        recipes: [],
+        slots,
+        trips: singleTrip(MONDAY),
+        onDemand: [],
+        manualEntries,
+      });
+    const typed = week([], [{ id: "m1", text: "2 Radieschen" }]);
+    expect(typed.map((each) => resolveLine(each).text)).toEqual(["1 Bund Radieschen"]);
+    expect(typed[0].amounts).toEqual([{ quantity: 2, unit: "Stück" }]);
+    const vesper: PlanSlot = {
+      id: "vesper",
+      date: MONDAY,
+      meal: "dinner",
+      kind: "free_text",
+      label: "Vesper",
+      foods: [{ label: "Radieschen", quantity: 2, ingredientId: "radieschen", shopId: null }],
+    };
+    expect(week([vesper]).map((each) => resolveLine(each).text)).toEqual(["1 Bund Radieschen"]);
+    // Asked for by the bunch, it buys bunches.
+    const bunches = week([], [{ id: "m1", text: "2 Bund Radieschen" }]);
+    expect(bunches.map((each) => resolveLine(each).text)).toEqual(["2 Bund Radieschen"]);
+  });
+
   it("buys the fruit for its zest, organic, together with the other lemons", () => {
     const cake = lines(recipe("a", [line("zitronenschale", 2, "TL")]));
     expect([...cake.keys()]).toEqual(["zitronen@main"]);
