@@ -154,16 +154,22 @@ export function RecipeRow({
         className="flex min-w-0 flex-1 items-center gap-3"
       >
         <RecipeBadge recipe={recipe} />
+        {/* The name, which a recipe is chosen by, has two lines and breaks where a compound
+            joins; the facts keep to one line, where a fact that does not fit is left out
+            whole, the kind of dish first (the line is one line high, the rest wraps out of
+            sight); the reasons are quiet, as on the plan. Cut to one line, "Spinat-Cannell…"
+            said less than three lines of facts and four of green reasons under it, and a line
+            cut at its edge read "4 Portion" (audit, 24 November 2026). */}
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate font-semibold">{recipe.title}</span>
+          <span className="flex items-start gap-2">
+            <span className="dish-name line-clamp-2 min-w-0 font-semibold">{recipe.title}</span>
             <Marks recipe={recipe} />
           </span>
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-sm text-muted">
-            {category && <span>{category}</span>}
+          <span className="mt-0.5 flex max-h-[1lh] flex-wrap items-center gap-x-3 overflow-hidden text-sm whitespace-nowrap text-muted [&_span]:truncate [&>:first-child]:contents">
             <RecipeFacts recipe={recipe} />
+            {category && <span>{category}</span>}
           </span>
-          {note && <span className="mt-0.5 block text-sm text-accent">{note}</span>}
+          {note && <span className="mt-0.5 block text-sm text-muted">{note}</span>}
         </span>
       </Link>
       {children}

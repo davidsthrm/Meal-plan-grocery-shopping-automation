@@ -144,6 +144,13 @@ are in [SHOPPING.md](SHOPPING.md).
   what it holds, Sunday's coffee when planned or being chosen for, the meal being chosen for
   marked, each a link to choose for it instead. It stays while the meal's page is torn off
   and scrolls on its own, so that a week is planned with the library open.
+- A recipe in the chooser is a row (`RecipeRow`, also in the search as one types): its name
+  on two lines at most, breaking where a compound joins (`.dish-name`); time, servings and
+  kind of dish on one line, where a fact that does not fit is left out whole, the kind
+  first, then the servings; the reasons quiet, as on the plan. Cut to one line,
+  "Spinat-Cannell…" said less than the three lines of facts and the four green lines of
+  reasons under it, green read as a link, and a line of facts cut at its edge read
+  "4 Portion" (audit, 24 November 2026).
 
 ## Saved plans
 
