@@ -875,11 +875,11 @@ summary,
     outline-offset: 2px;
   }
 
-  /* Offline, on every page: above the navigation on a phone, at the foot of the screen otherwise. */
+  /* Offline, on every page: at the foot of the screen, clear of the iPhone's home bar. */
   .offline-bar {
     position: fixed;
     left: 50%;
-    bottom: calc(var(--tabbar-height) + 0.75rem);
+    bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
     z-index: 20;
     width: max-content;
     max-width: calc(100vw - 2rem);
@@ -914,18 +914,18 @@ summary,
   }
 
   /*
-   * What is done with the recipes ticked in the Regal: a bar at the foot of the screen, above
-   * the sections on a phone, that opens upwards. It stays out of sight while nothing is
-   * ticked; without a script it is always there.
+   * What is done with the recipes ticked in the Regal: a bar at the foot of the screen that
+   * opens upwards, at most to a little below the header. It stays out of sight while nothing
+   * is ticked; without a script it is always there.
    */
   .selection-bar {
     position: fixed;
     right: max(0.75rem, env(safe-area-inset-right));
-    bottom: calc(var(--tabbar-height) + 0.5rem);
+    bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
     left: max(0.75rem, env(safe-area-inset-left));
     z-index: 11;
     max-width: 40rem;
-    max-height: calc(100dvh - 9rem);
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8rem);
     margin: 0 auto;
     overflow-y: auto;
     border: 1px solid var(--color-accent);
@@ -956,6 +956,7 @@ summary,
   @media (width >= 40rem) {
     .selection-bar {
       bottom: 1rem;
+      max-height: calc(100dvh - 9rem);
     }
   }
 
