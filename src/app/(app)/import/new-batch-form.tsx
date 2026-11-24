@@ -86,7 +86,7 @@ export function NewBatchForm({
             ),
           )}
         </datalist>
-        <SourcePlacement text={book} sources={sources} />
+        <SourcePlacement text={book} sources={sources} batch />
       </div>
 
       <div>
