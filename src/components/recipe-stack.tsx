@@ -231,6 +231,22 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
 
   return (
     <div className="stack">
+      {/* Above the card: below its three buttons, the only way to take a swipe back lay under
+          the strip of the sections on a phone (November 2026). */}
+      <p className="stack-status" aria-live="polite">
+        {failed ? (
+          <span className="font-semibold text-warn">Nicht gespeichert. Bitte noch einmal.</span>
+        ) : (
+          <span className="text-muted tabular-nums">
+            {left === 1 ? "1 Karte" : `${left} Karten`} · {kept} vorgemerkt
+          </span>
+        )}
+        {done.length > 0 && (
+          <button type="button" className="link link-quiet -my-3 min-h-11 px-2" onClick={undo}>
+            Zurück
+          </button>
+        )}
+      </p>
       <div className="stack-deck">
         {left === 0 ? (
           <div className="stack-empty">
@@ -326,21 +342,6 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
           Vormerken
         </button>
       </div>
-
-      <p className="stack-foot" aria-live="polite">
-        {failed ? (
-          <span className="font-semibold text-warn">Nicht gespeichert. Bitte noch einmal.</span>
-        ) : (
-          <span className="text-muted tabular-nums">
-            {left === 1 ? "1 Karte" : `${left} Karten`} · {kept} vorgemerkt
-          </span>
-        )}
-        {done.length > 0 && (
-          <button type="button" className="link link-quiet min-h-11 px-2" onClick={undo}>
-            Zurück
-          </button>
-        )}
-      </p>
     </div>
   );
 }

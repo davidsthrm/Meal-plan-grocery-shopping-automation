@@ -2697,18 +2697,19 @@ summary,
     display: grid;
     justify-items: center;
     gap: 1rem;
-    margin-top: 1.25rem;
+    margin-top: 0.5rem;
   }
   /*
-   * On a phone the deck takes what the screen has left above its three buttons and the
-   * strip of the sections: taller, the buttons lay under the strip as the page opened.
+   * On a phone the deck takes what the screen has left between the line above it and its
+   * three buttons above the strip of the sections: taller, the buttons lay under the strip
+   * as the page opened.
    */
   .stack-deck {
     position: relative;
     width: min(100%, 26rem);
     height: clamp(
       14rem,
-      calc(100dvh - var(--tabbar-height) - env(safe-area-inset-top) - 22.5rem),
+      calc(100dvh - var(--tabbar-height) - env(safe-area-inset-top) - 24rem),
       24rem
     );
   }
@@ -2863,11 +2864,19 @@ summary,
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
-  .stack-foot {
+  /*
+   * How many cards are left and kept, and "Zurück", as tall as the words and close to the
+   * card: its button reaches above and below them, so that the three buttons under the deck
+   * stay above the strip on a 375px phone.
+   */
+  .stack-status {
     display: flex;
-    min-height: 2.75rem;
+    width: min(100%, 26rem);
+    min-height: 1.25rem;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
+    margin-bottom: -0.5rem;
     font-size: var(--text-sm);
   }
   @media (prefers-reduced-motion: reduce) {

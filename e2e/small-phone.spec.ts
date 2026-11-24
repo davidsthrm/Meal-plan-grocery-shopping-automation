@@ -86,3 +86,20 @@ test("the meal chooser keeps a dish's facts to one line, leaving out whole what 
   );
   expect(cut).toEqual([]);
 });
+
+test("the Rezept-Stapel's Zurück stands above the strip after a decision", async ({ page }) => {
+  await page.goto("/rezepte/stapel");
+  await page.getByRole("button", { name: "Nicht jetzt" }).click();
+  // The only way to take a swipe back lay below the three buttons, under the strip on an
+  // iPhone, with the count beside it. It stands above the card now.
+  const back = page.getByRole("button", { name: "Zurück" });
+  await expect(back).toBeVisible();
+  const box = await back.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(await stripTop(page));
+  const count = page.getByText(/· 0 vorgemerkt/);
+  await expect(count).toBeVisible();
+  const card = (await page.locator(".stack-deck").boundingBox())!.y;
+  expect((await count.boundingBox())!.y).toBeLessThan(card);
+  expect(box!.y + box!.height / 2).toBeLessThan(card);
+});
