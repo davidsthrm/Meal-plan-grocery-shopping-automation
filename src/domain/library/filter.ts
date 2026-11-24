@@ -34,6 +34,9 @@ export interface RecipeFilter {
 /** More tags than this do not narrow a library down any further. */
 const MAX_TAGS = 6;
 
+/** The address parameter of the tags, several separated by commas. */
+export const TAG_PARAM = "tag";
+
 export const NO_FILTER: RecipeFilter = {
   text: "",
   category: null,
@@ -83,7 +86,7 @@ export function readFilter(params: Params): RecipeFilter {
     favorites: one(params.favoriten) === "1",
     tags: [
       ...new Set(
-        one(params.tag)
+        one(params[TAG_PARAM])
           .split(",")
           .map((tag) => tag.trim())
           .filter((tag) => /^[a-z0-9-]{1,40}$/.test(tag)),
@@ -104,7 +107,7 @@ export function filterParams(filter: RecipeFilter): Record<string, string> {
   if (filter.book) params.buch = filter.book;
   if (filter.book && filter.edition) params.ausgabe = filter.edition;
   if (filter.favorites) params.favoriten = "1";
-  if (filter.tags.length > 0) params.tag = filter.tags.join(",");
+  if (filter.tags.length > 0) params[TAG_PARAM] = filter.tags.join(",");
   if (filter.season) params.saison = "1";
   if (filter.longAgo) params.lange = "1";
   return params;

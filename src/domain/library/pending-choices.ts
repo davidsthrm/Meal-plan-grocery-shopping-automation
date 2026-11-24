@@ -1,3 +1,5 @@
+import { TAG_PARAM } from "./filter";
+
 /**
  * The choices of the filter tapped before the server has answered (`FilterPanel`). A tap
  * shows at once, and the next one builds on those before it: every choice was a plain link
@@ -26,9 +28,6 @@ export interface ChoiceGroup {
 
 /** What is on in each group tapped, the group tapped last at the end. */
 export type Tapped = readonly { group: string; on: readonly string[] }[];
-
-/** The parameter that holds a list. */
-const LIST = "tag";
 
 function onIn(tapped: Tapped, group: ChoiceGroup): readonly string[] {
   return (
@@ -62,7 +61,7 @@ function change(params: URLSearchParams, from: URLSearchParams, to: URLSearchPar
     const after = to.get(key);
     if (before === after) continue;
     let value = after;
-    if (key === LIST) {
+    if (key === TAG_PARAM) {
       const gone = listOf(before).filter((entry) => !listOf(after).includes(entry));
       const kept = listOf(params.get(key)).filter((entry) => !gone.includes(entry));
       const added = listOf(after).filter(
