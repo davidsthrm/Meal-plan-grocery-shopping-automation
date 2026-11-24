@@ -70,7 +70,11 @@ specification of the receipt upload (not built yet).
   `editLine`, `LineState.amount`, `shopping_line_state.quantity` and `unit`). The line then
   says what the plan has, and "Wie geplant" takes the change back, as does setting the
   plan's amount again. A note saved alone leaves the amount to the plan. The change stays
-  when the plan changes.
+  when the plan changes. Return in a field of the sheet saves, as "Speichern" does: left to
+  the browser, it pressed the sheet's first button, "Wie geplant", and a changed amount
+  quietly went back to the plan's. The note is sent only where it was changed: the sheet's
+  field, empty when it opened, erased a note another phone wrote meanwhile (audit, 24
+  November 2026).
 - A line does not say on which other notes of the week the same thing stands. "Auch auf:
   Di 27. Supermarkt" with "Dort mitkaufen" under the lines was taken out: the household did
   not need it (October 2026). The arrow of a line moves it.
@@ -349,7 +353,9 @@ specification of the receipt upload (not built yet).
   be on (`groupAtHome`). "Doch kaufen" puts every line it stands for back on its note while
   that errand is still to come, otherwise on the next note from today on that sells it and
   is in time for its meal, and where none is, on a supermarket note today (`noteToBuyOn`).
-  It is not at home there either. The server chooses the note.
+  It is not at home there either. The server chooses the note. The page comes back at
+  "Haben wir schon" while something is left there (`#haben-wir-schon`): it started at its
+  top, far from the list the button was tapped in (audit, 24 November 2026).
 - "Haben wir schon?": pantry staples are pre-ticked as at home. A line the user added by hand
   is never pre-ticked. The staples are the household's to change: a tile in the settings
   opens `/einstellungen/vorrat` (`ingredient.is_pantry_staple`), the staples by kind of
@@ -373,6 +379,15 @@ specification of the receipt upload (not built yet).
 - A typed line the catalog does not know gets its kind of grocery guessed once as it is
   written, from the end of its last word (`guessKind`: "Bio-Heumilch" is dairy,
   "Ingwer-Shots" stay unsorted), and "Gehört zu" corrects it.
+- What is written on a note ("Dazuschreiben", the dm's "Hinzufügen"), and every other form
+  on a note, is answered on the page where it stands (`backToList`): the page is read again
+  in place, an opened line stays open and the field keeps the keyboard. Only what leads
+  elsewhere goes to another address: another day for the errand, a note opened or put away.
+  Sent to its own address again, the page was drawn anew after every line written, and the
+  iPhone's keyboard went down each time. Return writes a word the field offers too
+  (`SuggestingField`, also "Was" and "Für wen" on the dm's note and the field of a meal's
+  foods): in Safari the offers took the key, and "Spülmittel" was not written at all (audit,
+  24 November 2026).
 
 ## Extras and foods of meals without a recipe
 
@@ -423,6 +438,10 @@ specification of the receipt upload (not built yet).
   is bought at ("TK-Beeren", in small words "Mo 19. Aldi", `restockSupermarket`). Entries written before
   the kind was kept name the main one. While it has
   entries, the Merkzettel also lies among the shopping notes.
+- An entry struck from the Merkzettel says so on the note for five seconds ("Kaffeefilter
+  gestrichen"), with "Widerrufen" writing it again: the cross tapped by mistake lost it for
+  good, and a bar at the foot of the screen would lie under the note's dim. For the same
+  reason the note says itself that it needs a connection (audit, 24 November 2026).
 
 ## Ticks and decisions
 
@@ -461,7 +480,13 @@ specification of the receipt upload (not built yet).
   from the device's own decisions, ticks waiting for a connection included, never from the
   server's order: the page read again cannot move a line a second time. A line opened on
   the note stays where it is until it is closed. A line removed or moved to another note
-  goes to neither part, as before. Paper and PDF show what is still to buy.
+  goes to neither part, as before; one bought and removed afterwards folds away under
+  "Gekauft" and is no longer counted there (`boughtCount`): it read "Gekauft 1" over
+  nothing until the page was read again (audit, 24 November 2026). Paper and PDF show what
+  is still to buy.
+- The note, its tile and the head of the page count what is "offen" and "gekauft" ("3
+  offen, 2 gekauft"), and a line's box is named "gekauft": they said "erledigt" above the
+  lines' own "Gekauft" (audit, 24 November 2026). A note whose errand is done is "Erledigt".
 
 The service worker, kept pages and forms without a connection: see [ARCHITECTURE.md](ARCHITECTURE.md#offline).
 
@@ -470,21 +495,32 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
 - Every row of a note and of the view for the shop has its actions at its end, quiet and
   without words (`ActionRow`, `src/components/line-actions.tsx`): the arrow moves it, the
   pen changes it, the bin removes it without asking. In the shop the pen says what was
-  bought (a stepper "3 von 6", another product). On a note it changes how much is to be
+  bought (a stepper "3 von 6", another product), its amount read as it is typed: read at
+  every key, "1,5" kg became 15 (audit, 24 November 2026). On a note it changes how much is to be
   bought and the note beside it, in one sheet saved with "Speichern" (Menge, Notiz, and
   "Gehört zu" for a typed line the catalog does not know; not on the drugstore's note,
   whose sections come from what was written), and needs a connection like every form but
   a tick. There it opened the shop's sheet and bought the line: what was bought is said in
   "Jetzt einkaufen" only (David, 21 November 2026). A swipe to the right buys, to the left
   removes; a finger held still opens the same as a menu, on a note with "Menge oder Notiz
-  ändern …". On a note, planned and looked over before the shop, the shelf
-  takes the bin's place ("Haben wir schon", `ShelfIcon`, the `markAtHome` form, so it works
+  ändern …". The menu stands where it fits by its own size, below the row, above it or over
+  it, and never past the screen's edges; a tap beside it only closes it. It ran off the top
+  above a row in the middle of a phone, a long name made it wider than the screen, and the
+  click of the tap that closed it bought the row under it in the shop, unseen (audit, 24
+  November 2026). On a note, planned and looked over before the shop, the shelf
+  takes the bin's place ("Haben wir schon", `ShelfIcon`, a shelf with a box on each board,
+  lighter since the audit of 24 November 2026; the `markAtHome` form, so it works
   before any script): a swipe to the left and the menu say the same, on a calm grey instead
   of the warning red. Only a line written by hand can still be removed there, from the
   menu, for a slip of the pen; the drugstore's note, which has no "Haben wir schon", keeps
   the bin. The household found the bin there meant "not bought", which is decided in the
   shop (October 2026). Each decision can be taken back for five seconds from the bar
-  at the foot ("Widerrufen"). The bar rises when it first appears and then stays, the next
+  at the foot ("Widerrufen"): also "Haben wir schon" ("Salz: haben wir schon", put back on
+  the note), a swipe to the right and the menu's "Gekauft" ("Kartoffeln gekauft"), and
+  "Einkauf erledigt", which opens exactly the lines it ticked ("7 Einträge als gekauft");
+  only the box is a quiet tick. A line put on the shelf was gone from the note, and "Einkauf
+  erledigt" ticked a whole note for good (audit, 24 November 2026). On the note "Einkauf
+  erledigt" is a plain button: "Jetzt einkaufen" is the one green one there. The bar rises when it first appears and then stays, the next
   decision only changing its words (a transition, not keyframes): shown afresh for each, it
   jumped under quick swipes. A line removed folds away (`data-gone`: its height closes and
   it fades in 160ms) instead of making the lines below it jump. The view for the shop has its own menu, sheets and bar
@@ -493,7 +529,10 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
   the note under them; beside them it was a narrow column on a phone. The line's text stops
   short of them, and they keep a little room apart, each 44px: the text ran on under them,
   so that a tap beside a short line hit a sign instead of opening the line, and the three
-  touched (November 2026).
+  touched (November 2026). A long word breaks as a dish's name does, four letters at least
+  on either side of the break (`.tick-text`, `.store-text`), and a row is never wider than
+  the note: "Frühlingszwiebeln" widened its text's column on a 375px phone and pushed the
+  signs out by up to 29px, the shelf cut off (audit, 24 November 2026).
 
 ## Not bought
 
