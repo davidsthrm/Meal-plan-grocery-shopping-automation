@@ -826,10 +826,11 @@ describe("parts become the whole", () => {
     );
     expect([...onions.keys()]).toEqual(["fruehlingszwiebeln@main"]);
     expect(text(onions.get("fruehlingszwiebeln@main"))).toBe("1 Bund Frühlingszwiebeln");
-    // Alone, they are some basil.
-    const alone = lines(recipe("a", [line("basilikum", 10, "Blatt")]));
-    expect([...alone.keys()]).toEqual(["basilikum@main"]);
-    expect(text(alone.get("basilikum@main"))).toBe("Basilikum");
+    // Without a bunch's line they keep their amount.
+    const alone = lines(recipe("a", [line("fruehlingszwiebeln", 200, "g")]));
+    expect([...alone.values()].map(text)).toEqual(["200 g Frühlingszwiebeln"]);
+    const leavesAlone = lines(recipe("a", [line("basilikum", 10, "Blatt")]));
+    expect([...leavesAlone.values()].map(text)).toEqual(["10 Blätter Basilikum"]);
     // A number typed onto a note keeps its line.
     const typed = buildShoppingList({
       index: wholes,

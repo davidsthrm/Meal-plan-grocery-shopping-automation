@@ -106,17 +106,23 @@ const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp", "Handv
  * of something measured by volume or by the spoon, and bought as it is: the juice of a lemon
  * is read as one piece of lemon juice and was "1x Zitronensaft", eight juniper berries "8x
  * Wacholderbeeren" (November 2026). A bottle, a jar or a packet is bought whole and keeps
- * its line: "1x Rotwein". And so do leaves, pieces or grams of what is bought by the bunch:
- * "10x Basilikum" stood beside "1 Bund Basilikum" (David, 24 November 2026). Only a recipe
- * reads amounts so: "2 Orangensaft" typed onto a note, or two for a Vesper, buy two.
+ * its line: "1x Rotwein". And so do leaves, pieces or grams of what is bought by the bunch,
+ * where the line has bunches (`bunched`): "10x Basilikum" stood beside "1 Bund Basilikum"
+ * (David, 24 November 2026). Alone, "200 g Frühlingszwiebeln" keep their amount. Only a
+ * recipe reads amounts so: "2 Orangensaft" typed onto a note, or two for a Vesper, buy two.
  */
-function countsAsSome(ingredient: Ingredient, contribution: Contribution): boolean {
+function countsAsSome(
+  ingredient: Ingredient,
+  contribution: Contribution,
+  bunched: boolean,
+): boolean {
   const { amount, source } = contribution;
   if (!amount || (source.type !== "recipe" && source.type !== "extra")) return false;
   const measured =
     dimensionOf(ingredient.defaultUnit) === "volume" || SPOONFULS.has(ingredient.defaultUnit);
   if (amount.unit === "Stück" && measured && ingredient.buyingMode === "none") return true;
   return (
+    bunched &&
     ingredient.defaultUnit === "Bund" &&
     (amount.unit === "Blatt" || amount.unit === "Stück" || dimensionOf(amount.unit) === "mass")
   );
@@ -190,6 +196,11 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
   let bySpoonOnly = true;
   const asked = new Map<string, ShoppingLine["amounts"][number]>();
   const apart = new Map<Dimension, { sum: number; contributions: Contribution[] }>();
+  // Whether something on the line adds up in the default unit: a bunch's line has bunches.
+  const bunched = contributions.some(
+    ({ amount, source }) =>
+      amount !== null && toDefaultUnit(ingredient, amount, source.type === "manual") !== null,
+  );
 
   for (const contribution of contributions) {
     const { amount } = contribution;
@@ -220,7 +231,7 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
     // about what to buy, nor does the juice of a lemon where the juice is bought as it is.
     // It counts as "some", and does not become a line of its own that would read "55 ml
     // Butter" or "1x Zitronensaft".
-    if (spoonful || countsAsSome(ingredient, contribution)) {
+    if (spoonful || countsAsSome(ingredient, contribution, bunched)) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;
