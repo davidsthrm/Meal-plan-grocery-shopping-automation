@@ -65,6 +65,15 @@ describe("purchaseFor", () => {
     expect(purchaseFor(meat, 610)).toEqual({ quantity: 650, unit: "g" });
   });
 
+  it("rounds a weight without a step of its own only as far as it reads well", () => {
+    // 1,2 kg read "2 kg", 500 g of mussels weighed in kg "1 kg", 134 g lentils stayed so.
+    const mussels: Ingredient = { ...base, defaultUnit: "kg", buyingMode: "weight" };
+    expect(purchaseFor(mussels, 1.2)).toEqual({ quantity: 1.2, unit: "kg" });
+    expect(purchaseFor(mussels, 0.5)).toEqual({ quantity: 0.5, unit: "kg" });
+    const lentils: Ingredient = { ...base, buyingMode: "weight" };
+    expect(purchaseFor(lentils, 134)).toEqual({ quantity: 140, unit: "g" });
+  });
+
   it("rounds spoons and pinches to whole ones, not like grams", () => {
     // 6 EL Limettensaft stood on the note as "10 EL" (November 2026).
     const lime: Ingredient = { ...base, defaultUnit: "EL", buyingMode: "none" };

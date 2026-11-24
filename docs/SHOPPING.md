@@ -10,11 +10,13 @@ specification of the receipt upload (not built yet).
   sum, then round for purchase.
 - Every line shows the amount needed in the ingredient's own unit, whatever its buying mode
   (`purchaseFor`): "200 g Crème fraîche", "400 g Champignons", "1 Bund Petersilie", pieces as
-  "1x Schalotte", as on the dm note. `count` and `weight` round to the catalog's step,
-  everything else to whole pieces or just enough to read well (`naturalStep`: 137,5 g is
-  140 g). The steps of 5, 10 and 50 are for g and ml; kg and l are stepped as their g and
-  ml, spoons and every other unit to whole ones. Until November 2026 six tablespoons read
-  "10 EL" and 150 ml of a drink kept in litres "5 l". A line without a catalog ingredient
+  "1x Schalotte", as on the dm note. Every line rounds to the catalog's step where it has
+  one; without one, `count` rounds to whole pieces and everything else just enough to read
+  well (`naturalStep`: 137,5 g is 140 g). The steps of 5, 10 and 50 are for g and ml; kg
+  and l are stepped as their g and ml, spoons and every other unit to whole ones. Until
+  November 2026 six tablespoons read "10 EL", 150 ml of a drink kept in litres "5 l", and
+  what is bought by weight without a step was rounded to whole grams or kilos: "134 g
+  Belugalinsen", and "1 kg Miesmuscheln" for 500 g. A line without a catalog ingredient
   is rounded the same way ("0,13 l Hühnerbrühe" was ⅛ l). The household found "Champignons"
   one week and "4x Champignons" the next, and had to open "Crème fraîche" to learn it was
   200 g. What comes in packs says how many packs with the exact amount, on tap (`packsFor`).
