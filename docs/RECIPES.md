@@ -119,7 +119,8 @@ after.
   large writing, the one being cooked marked, "Zurück" and "Weiter" large at the foot
   (`stepAfter`), and the screen stays on (`useWakeLock`, shared with the view for the
   shop). Nothing of it is stored. The steps matter most for recipes that came in as text. A
-  recipe without any says "Keine Arbeitsschritte vorhanden". A part the model could not read
+  recipe without any says "Keine Arbeitsschritte." there and "Keine Arbeitsschritte vorhanden"
+  on its page. A part the model could not read
   is "[…]", never a guess. Steps are typed and corrected one per line, on the review screen,
   on `/rezepte/[id]/bearbeiten` and in the form for a typed or pasted recipe
   (`readTypedSteps`); nothing typed there keeps them unknown. On the recipe's page they are
