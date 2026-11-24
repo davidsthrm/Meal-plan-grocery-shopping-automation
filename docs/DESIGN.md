@@ -175,7 +175,10 @@ The paper metaphors in motion:
 - What is done with the recipes ticked in "Alle Rezepte" is a bar at the foot of the screen
   that opens upwards (`.selection-bar`, `SelectionBar`), out of sight while nothing is
   ticked. It is put directly into the body: every page comes in with a transform (`page-in`),
-  and inside a transformed element "fixed" is fixed to that element, not to the screen.
+  and inside a transformed element "fixed" is fixed to that element, not to the screen. The
+  recipe form's "Speichern" bar (`.save-bar`) is put there too: inside the page it stood
+  narrower and off the strip while the page came in, and jumped into place (24 November
+  2026).
 
 ## Layout and screens
 
