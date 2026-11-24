@@ -388,11 +388,14 @@ export function useAllTicked(page: NotePage, lines: readonly PageLine[]): boolea
 export function CompleteNote({
   page,
   lines,
-  className = "btn btn-primary w-full sm:w-auto",
+  className,
+  onComplete,
 }: {
   page: NotePage;
   lines: readonly PageLine[];
-  className?: string;
+  className: string;
+  /** Told which lines it ticked: the bar at the foot takes them back. */
+  onComplete: (keys: string[]) => void;
 }) {
   const shown = useDecisions(page, lines).map((decision) => decision.kind !== "open");
   if (lines.length === 0 || shown.every(Boolean)) return null;
@@ -404,17 +407,18 @@ export function CompleteNote({
         event.preventDefault();
         const queue = tickQueue();
         const at = Date.now();
-        lines.forEach((line, index) => {
-          if (!shown[index])
-            void queue.add({
-              id: newId(),
-              note: page.note,
-              key: line.key,
-              checked: true,
-              decision: { kind: "bought" },
-              at,
-            });
-        });
+        const open = lines.filter((_, index) => !shown[index]).map((line) => line.key);
+        for (const key of open) {
+          void queue.add({
+            id: newId(),
+            note: page.note,
+            key,
+            checked: true,
+            decision: { kind: "bought" },
+            at,
+          });
+        }
+        onComplete(open);
       }}
     >
       <input type="hidden" name="week" value={page.week} />

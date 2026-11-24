@@ -6,6 +6,7 @@ import type { Pictogram } from "@/domain/library/pictogram";
 import type { ShoppingTrip } from "@/domain/shopping-list/trips";
 import {
   ActionRow,
+  CompleteLines,
   LineActionsHere,
   MovedAwayRow,
   NotBoughtRow,
@@ -17,7 +18,7 @@ import { ShopLogo } from "./shop-logo";
 import { leaveSheet } from "./sheet";
 import { TickedLast, TickedPart, type TickedSection } from "./ticked-last";
 import { useWakeLock } from "./wake-lock";
-import { CompleteNote, SyncStatus, TickProgress, useAllTicked, type NotePage } from "./ticks";
+import { SyncStatus, TickProgress, useAllTicked, type NotePage } from "./ticks";
 
 /** A supermarket as the view shows it: its logo and its name. */
 type Market = Pick<Shop, "id" | "name" | "logoUrl">;
@@ -177,7 +178,7 @@ export function StoreView({ page, note }: { page: NotePage; note: StoreNote }) {
                     Fertig
                   </button>
                 ) : (
-                  <CompleteNote page={page} lines={lines} className="btn w-full" />
+                  <CompleteLines lines={lines} className="btn w-full" />
                 )}
               </footer>
             </div>

@@ -79,7 +79,10 @@ test("the week becomes a note for every errand, to pick up and work through @web
   await expect(sheet(page, MARKET_ON_FRIDAY)).toContainText("2x Karotten");
   // Done there: one tap ticks everything, and the note says so.
   await page.getByRole("button", { name: "Einkauf erledigt" }).click();
-  await expect(sheet(page, MARKET_ON_FRIDAY).getByRole("status")).toContainText("Erledigt");
+  // Beside it, the bar that takes "Einkauf erledigt" back.
+  await expect(
+    sheet(page, MARKET_ON_FRIDAY).getByRole("status").filter({ hasText: "Erledigt" }),
+  ).toBeVisible();
   await all(page).click();
   await expect(tile(page, MARKET)).toHaveCount(0);
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
@@ -197,7 +200,10 @@ test("a meal planned after the shopping leaves the errand done @webkit", async (
   await tile(page, MONDAY).click();
   await expect(sheet(page, MONDAY)).toContainText("Sahne");
   await page.getByRole("button", { name: "Einkauf erledigt" }).click();
-  await expect(sheet(page, MONDAY).getByRole("status")).toContainText("Erledigt");
+  // Beside it, the bar that takes "Einkauf erledigt" back.
+  await expect(
+    sheet(page, MONDAY).getByRole("status").filter({ hasText: "Erledigt" }),
+  ).toBeVisible();
   // Back home, the soup is planned for Wednesday too. Monday's errand has not bought its
   // cream, and Monday stays done. The week lies ahead, so the Friday before it is still to
   // come and buys it.
@@ -523,6 +529,33 @@ test("writing on a note keeps it as it is: a line opened, the field ready @webki
     await expect(write).toBeFocused();
     await expect(write).toHaveValue("");
   }
+});
+
+test("what is at home, and Einkauf erledigt, can be taken back from the bar @webkit", async ({
+  page,
+}) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  const row = (text: string) =>
+    sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: text });
+  const bar = (text: string) => page.getByRole("status").filter({ hasText: text });
+
+  await row("Eier").getByRole("button", { name: "Eier: haben wir schon" }).click();
+  await expect(row("Eier")).toHaveCount(0);
+  await bar("Eier: haben wir schon").getByRole("button", { name: "Widerrufen" }).click();
+  await expect(row("Eier")).toHaveCount(1);
+  await page.reload();
+  await expect(row("Eier")).toHaveCount(1);
+
+  // A quiet button beside "Jetzt einkaufen", the one green button.
+  const done = sheet(page, MONDAY).getByRole("button", { name: "Einkauf erledigt" });
+  await expect(done).not.toHaveClass(/btn-primary/);
+  const count = sheet(page, MONDAY).getByText(/^\d+ offen/);
+  const open = Number((await count.textContent())!.match(/^(\d+)/)![1]);
+  await done.click();
+  await expect(count).toHaveText(`0 offen, ${open} gekauft`);
+  await bar(`${open} Einträge als gekauft`).getByRole("button", { name: "Widerrufen" }).click();
+  await expect(count).toHaveText(`${open} offen`);
 });
 
 test("Doch kaufen keeps the page at what is at home @webkit", async ({ page }) => {

@@ -40,7 +40,15 @@ import { SubmitButton } from "./submit-button";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
 import { usePlace } from "./ticked-last";
-import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLine } from "./ticks";
+import {
+  CompleteNote,
+  decide,
+  deviceId,
+  TickButton,
+  useDecisions,
+  type NotePage,
+  type PageLine,
+} from "./ticks";
 
 /**
  * What can happen to a line in the shop besides a tick, with one hand on the trolley: the
@@ -123,6 +131,8 @@ interface Host {
     before: Decision,
     text: string | null,
   ): void;
+  /** Says what was just done at the foot, with "Widerrufen" doing `undo`. */
+  say(text: string, undo: () => void): void;
 }
 
 /** What a row's menu offers besides buying, moving and changing it. */
@@ -260,6 +270,7 @@ export function LineActions({
       open: setSheet,
       menu: (line, anchor, choices) => setMenu({ line, anchor, choices }),
       act,
+      say: (text, undo) => setToast({ id: Date.now(), text, undo }),
     }),
     [page, note, today, choices, act],
   );
@@ -293,6 +304,35 @@ export function LineActionsHere({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * "Einkauf erledigt": every line still open is bought, and the bar at the foot opens exactly
+ * those again. It ticked a whole note with no way back (audit, 24 November 2026).
+ */
+export function CompleteLines({
+  lines,
+  className,
+}: {
+  lines: readonly PageLine[];
+  className: string;
+}) {
+  const host = useHost();
+  return (
+    <CompleteNote
+      page={host.page}
+      lines={lines}
+      className={className}
+      onComplete={(keys) =>
+        host.say(
+          `${keys.length === 1 ? "1 Eintrag" : `${keys.length} Einträge`} als gekauft`,
+          () => {
+            for (const key of keys) void decide(host.page, key, { kind: "open" });
+          },
+        )
+      }
+    />
+  );
+}
+
 /** The decision a line shows on this device, and what to do about it. */
 function useLine(line: ActionLine) {
   const host = useHost();
@@ -300,8 +340,11 @@ function useLine(line: ActionLine) {
   const bought = isBought(decision);
   const toggle = () =>
     host.act(line, bought ? { kind: "open" } : { kind: "bought" }, decision, null);
+  // A swipe and the menu say so, to take it back; the box is a tick, quiet (audit, 24
+  // November 2026).
+  const buy = () => host.act(line, { kind: "bought" }, decision, `${line.label} gekauft`);
   const remove = () => host.act(line, { kind: "removed" }, decision, `${line.label} entfernt`);
-  return { host, decision, bought, toggle, remove };
+  return { host, decision, bought, toggle, buy, remove };
 }
 
 /**
@@ -485,7 +528,7 @@ export function ActionRow({
   className?: string;
   children?: ReactNode;
 }) {
-  const { host, decision, bought, toggle, remove } = useLine(line);
+  const { host, decision, bought, toggle, buy, remove } = useLine(line);
   const row = useRef<HTMLLIElement>(null);
   const face = useRef<HTMLDivElement>(null);
   const homeForm = useRef<HTMLFormElement>(null);
@@ -499,7 +542,7 @@ export function ActionRow({
   };
   useRowGesture(row, face, {
     right: () => {
-      if (!bought) toggle();
+      if (!bought) buy();
     },
     left: home ? toHome : remove,
     press: () => {
@@ -567,7 +610,18 @@ export function ActionRow({
         <PenIcon />
       </button>
       {home ? (
-        <form ref={homeForm} action={atHome.action} className="contents">
+        <form
+          ref={homeForm}
+          action={atHome.action}
+          className="contents"
+          // The line leaves the note: the bar says so, and puts it back. Without it, getting
+          // it back took the page of all notes and "Doch kaufen" (audit, 24 November 2026).
+          onSubmit={(event) => {
+            const back = new FormData(event.currentTarget);
+            back.set("atHome", "0");
+            host.say(`${line.label}: haben wir schon`, () => void atHome.action(back));
+          }}
+        >
           {atHome.fields}
           <input type="hidden" name="atHome" value="1" />
           <SubmitButton
@@ -776,7 +830,7 @@ function RowMenu({
   choices: MenuChoices;
   onClose: () => void;
 }) {
-  const { host, decision, bought, toggle, remove } = useLine(line);
+  const { host, decision, bought, toggle, buy, remove } = useLine(line);
   const menu = useRef<HTMLDivElement>(null);
   // The day after the note, or tomorrow where its day is over.
   const next = nextMoveDay(host.note.date, host.today);
@@ -844,7 +898,7 @@ function RowMenu({
   return (
     <div ref={menu} popover="manual" role="menu" className="row-menu" aria-label={line.label}>
       <p className="row-menu-title">{line.text}</p>
-      <button type="button" role="menuitem" onClick={run(toggle)}>
+      <button type="button" role="menuitem" onClick={run(bought ? toggle : buy)}>
         <TickIcon />
         {bought ? "Wieder offen" : "Gekauft"}
       </button>

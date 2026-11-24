@@ -220,3 +220,30 @@ test("a tap beside a row's menu only closes it, and buys nothing", async ({ page
   await expect(shop.locator('button.store-row[aria-pressed="true"]')).toHaveCount(0);
   await expect(progress).toHaveText(before!);
 });
+
+test("a swipe or the menu that buys a line says so, to take it back", async ({ page }) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await write(page, "Geschenkpapier");
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  const row = (text: string) => shop.getByRole("listitem").filter({ hasText: text });
+  const box = (await row("Geschenkpapier").boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.down();
+  for (let step = 1; step <= 8; step++) {
+    await page.mouse.move(box.x + box.width / 2 + (260 * step) / 8, y);
+  }
+  await page.mouse.up();
+  const bar = page.getByRole("status").filter({ hasText: "Geschenkpapier gekauft" });
+  await bar.getByRole("button", { name: "Widerrufen" }).click();
+  await expect(
+    shop.getByRole("button", { name: "Geschenkpapier", exact: true, pressed: false }),
+  ).toBeVisible();
+
+  // Held, the menu's "Gekauft" says it too.
+  await row("Eier").click({ button: "right" });
+  await page.getByRole("menu", { name: "Eier" }).getByRole("menuitem", { name: "Gekauft" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Eier gekauft" })).toBeVisible();
+});
