@@ -1028,7 +1028,7 @@ summary,
   .tiles > li > *:focus-visible {
     rotate: 0deg;
   }
-  /* The next errand at the head of the notes lies straight on the page: it is no tile. */
+  /* The next errand's note, first among the notes, lies straight: it is the one to pick up. */
   .tiles > li.next-errand > * {
     rotate: none;
     will-change: auto;
@@ -1334,7 +1334,8 @@ summary,
   }
 
   /* A sheet lifts together with the pad it belongs to: the sheets underneath stay. */
-  .sheet.lift:focus-visible {
+  .sheet.lift:focus-visible,
+  .sheet.lift:has(> a:focus-visible) {
     box-shadow:
       var(--sheets-under),
       0 10px 22px -14px rgb(35 33 29 / 0.45);
