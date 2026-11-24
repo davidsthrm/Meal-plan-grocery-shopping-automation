@@ -84,7 +84,8 @@ decisions, code layout, routes, data access and tests of Essensplan.
   is told where Teilen and "Zum Home-Bildschirm" are, Android gets its install prompt, and
   both say that the installed app asks for the login once more. It goes once used or put
   away (`installieren-weg` in the device's storage).
-- The PDFs (the plan's "Drucken", a note's "Als PDF", "Alle Zettel als PDF") go to the share
+- The PDFs (the plan's "Drucken", a note's "Als PDF" and "Drucken", "Alle Zettel als PDF")
+  go to the share
   sheet in the installed app, where it can share files: printing, Dateien, AirDrop
   (`PdfLink`, `navigator.share` with the file). The installed app has no browser bar, so a
   PDF opened inside it could be neither printed nor saved (David, 24 November 2026).

@@ -531,8 +531,9 @@ The service worker, kept pages and forms without a connection: see [ARCHITECTURE
   a chip for all and one for every note, which wrapped onto three rows on a phone. In a
   browser the PDF comes as a file (`attachment`); in the installed app it goes to the share
   sheet (`PdfLink`, see [ARCHITECTURE.md](ARCHITECTURE.md#installed-app-pwa)). The note's
-  "Drucken" opens the browser's print dialog (`window.print()`); whether it does in the
-  installed app is still to be checked ([STATUS.md](STATUS.md)).
+  "Drucken" opens the browser's print dialog (`window.print()`) in a browser; in the
+  installed app it hands the note's PDF to the share sheet too (`PrintButton`), since iOS
+  ignores the print dialog there (David, 24 November 2026).
 
 ## Acceptance test
 
