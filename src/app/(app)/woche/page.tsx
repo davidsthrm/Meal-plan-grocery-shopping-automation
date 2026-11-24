@@ -794,8 +794,10 @@ function Today({
           "Heute"
         )}
       </h2>
-      {/* At 19px in two columns, a dish's name breaks between its words, not into syllables. */}
-      <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2.5 [&_a]:hyphens-manual">
+      {/* On a phone today's dishes stand one under the other, each on a whole line at 19px
+          and breaking between its words only: side by side, a column of 125 to 150px cut
+          "Kartoffelsupp|e" (audit, 24 November 2026). From sm on they stand side by side. */}
+      <ul className="mt-1.5 grid gap-x-4 gap-y-2.5 sm:grid-cols-2 max-sm:[&_a]:hyphens-manual">
         {mealsOn(now).map((which) => meal(now, which, "text-lg"))}
       </ul>
       {weekend.length > 0 && (
@@ -888,7 +890,7 @@ function KindTitle({
         href={`/rezepte/${id}${fromPlan(week, day, cooked)}`}
         prefetch
         transitionTypes={[FORWARD]}
-        className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
+        className="dish-name min-w-0 font-semibold decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
       </Link>

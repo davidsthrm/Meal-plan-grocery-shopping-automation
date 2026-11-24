@@ -21,7 +21,9 @@ them, and how to work on the look. UI text is German; this document is English.
   (`text-xl` is 19, `text-2xl` and `text-3xl` are 26), and `tracking-tight` is a hair
   (`-0.01em`): tight tracking on every heading reads as machine-made. A dish's name on the
   week is 16px on a phone and 19px from `sm` on: beside the stepper, at 19px it broke into
-  syllables ("Cur-rysahne"). Text in a field stays 16px at least (see "Controls and sizes").
+  syllables ("Cur-rysahne"). It breaks only where a compound joins, "Kartoffel-suppe", with
+  four letters at least on either side (`.dish-name`), never "Lasa-gne". Text in a field
+  stays 16px at least (see "Controls and sizes").
   The only sizes outside the scale are the greeting on the week plan, 30px (`.greeting`:
   at 26px it did not read easily on the phone or the iPad, 23 November 2026; the day above
   it went from 15 to 16px and the week's range below it from 16 to 19px), what is drawn
@@ -71,8 +73,9 @@ A few things are borrowed from the handwritten notes the app replaces, and only 
   (`.sheet-picture`). Same day, same reason: an empty page read as broken.
 - Einkauf opens with the next errand, large and on the page, not as a tile
   (`NextErrand`, `.next-errand`): the one strong element of the page, as "Heute" is on the
-  week (`.today-card`: a little shadow, today's dishes at 19px with their kind's dot,
-  breaking between words, not into syllables). The rule is in
+  week (`.today-card`: a little shadow, today's dishes at 19px with their kind's dot; on a
+  phone one under the other, each on a whole line and breaking between words only, side by
+  side from `sm` on). The rule is in
   [SHOPPING.md](SHOPPING.md#when-an-errand-is-done-and-the-order-of-the-notes).
 
 The shopping notes of a week:

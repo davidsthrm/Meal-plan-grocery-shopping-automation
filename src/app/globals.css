@@ -441,6 +441,21 @@ summary,
     background: var(--color-surface);
   }
 
+  /*
+   * A dish's name breaks where a compound joins, "Kartoffel-suppe", never into short
+   * syllables, "Lasa-gne", "Currysah-ne": four letters at least on either side, and a word
+   * of fewer than ten letters not at all. WebKit reads the -webkit- limits, Chromium the
+   * last one. A word that still does not fit breaks anywhere, as the last resort. Plain
+   * `hyphens: auto` broke "Gemüse-Lasa-gne" and "Currysah-ne" (audit, 24 November 2026).
+   */
+  .dish-name {
+    overflow-wrap: break-word;
+    hyphens: auto;
+    -webkit-hyphenate-limit-before: 4;
+    -webkit-hyphenate-limit-after: 4;
+    hyphenate-limit-chars: 10 4 4;
+  }
+
   /* Today on the week stands a little above the page: the first thing read there. */
   .today-card {
     border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-line));

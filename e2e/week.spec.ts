@@ -66,6 +66,50 @@ test("a saved plan is read, with what there is today on top and a pen for a chan
   await expect(page.getByRole("button", { name: `${lunch} leeren` })).toBeVisible();
 });
 
+/** The Monday `weeks` weeks after `monday`. */
+function weeksOn(monday: string, weeks: number): string {
+  return new Date(Date.parse(`${monday}T00:00:00Z`) + weeks * 7 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+test("today's dishes on a small phone break between words, not into a letter or two", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  const now = today();
+  await page.goto(`/woche?w=${now.monday}`);
+  await plan(page, `${now.weekday} Mittag`, "Kartoffelsuppe");
+  await plan(page, `${now.weekday} Abend`, "Schweinemedaillons");
+  const card = page.getByRole("region", { name: "Heute" });
+  await expect(card).toContainText("Schweinemedaillons");
+
+  // The lines each dish's name takes, as laid out: "Kartoffelsupp|e" left an "e" alone.
+  const lines = await card
+    .getByRole("link", { name: /^(Kartoffelsuppe|Schweinemedaillons)$/ })
+    .evaluateAll((links) =>
+      links.map((link) => {
+        const text = link.firstChild as Text;
+        const parts: string[] = [];
+        let top: number | null = null;
+        for (let at = 0; at < text.length; at++) {
+          const range = document.createRange();
+          range.setStart(text, at);
+          range.setEnd(text, at + 1);
+          const rect = range.getBoundingClientRect();
+          if (top === null || Math.abs(rect.top - top) > 4) parts.push("");
+          top = rect.top;
+          parts[parts.length - 1] += text.data[at];
+        }
+        return parts;
+      }),
+    );
+  expect(lines).toHaveLength(2);
+  for (const parts of lines) {
+    for (const part of parts) expect(part.trim().length, parts.join("|")).toBeGreaterThan(2);
+  }
+});
+
 test("a recipe opened from the plan leads back to the plan", async ({ page }) => {
   await page.goto("/woche?w=2027-03-01");
   await plan(page, "Montag Mittag", "Pilzrisotto");
