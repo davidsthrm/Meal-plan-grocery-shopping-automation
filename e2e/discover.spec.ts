@@ -376,10 +376,22 @@ test("the season page shows what is harvested and the recipes made with it", asy
   await page.getByRole("link", { name: /^Zurück zum / }).click();
   await expect(page.getByRole("heading", { name: "Was hat gerade Saison?" })).toBeVisible();
 
-  // In a month with pumpkins, the made-up Kürbisgnocchi are made with them.
-  await page.goto("/rezepte/saison?monat=10&zutat=kuerbis");
+  // In a month with pumpkins, the made-up Kürbisgnocchi are made with them. They open under
+  // the pumpkin, where it was tapped: the page jumped to its top for them.
+  await page.goto("/rezepte/saison?monat=10");
+  const row = page.getByRole("link", { name: /^Kürbis / });
+  await row.scrollIntoViewIfNeeded();
+  const before = (await row.boundingBox())!.y;
+  await row.click();
   const pumpkin = page.getByRole("region", { name: "Rezepte mit Kürbis" });
   await expect(pumpkin.getByRole("link", { name: /Kürbisgnocchi/ })).toBeVisible();
+  await expect(page).toHaveURL(/zutat=kuerbis/);
+  expect(Math.abs((await row.boundingBox())!.y - before)).toBeLessThan(2);
+  expect((await pumpkin.boundingBox())!.y).toBeGreaterThan(before);
+
+  // The way back is the app's way back, the page coming in from the left.
+  await page.getByRole("link", { name: "← Entdecken" }).click();
+  await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
 });
 
 test("a phone held across asks to be turned upright", async ({ page, isMobile }) => {

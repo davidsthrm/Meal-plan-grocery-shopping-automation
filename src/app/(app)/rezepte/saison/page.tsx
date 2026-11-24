@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { BACK, FORWARD } from "@/lib/transitions";
 import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { ArrowIcon } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
-import { PictogramIcon } from "@/components/pictogram";
 import { RecipeCard } from "@/components/recipe-card";
 import { NO_FILTER } from "@/domain/library/filter";
-import type { Pictogram } from "@/domain/library/pictogram";
 import {
   availability,
   FOOD_KIND_NAME,
@@ -31,16 +30,7 @@ export const metadata: Metadata = { title: "Saison" };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-/** The picture of a food: its own where there is one, else its kind's. */
-const KIND_PICTURE: Record<FoodKind, Pictogram> = {
-  gemuese: "gemuese",
-  salat: "salat",
-  obst: "apfel",
-  kraeuter: "spross",
-  pilze: "pilz",
-};
-const FOOD_PICTURE: Record<string, Pictogram> = { tomaten: "tomate", kartoffeln: "kartoffel" };
-/** The pastel of a kind: green for what grows in a bed, warm for fruit and mushrooms. */
+/** The colour of a kind's months: green for what grows in a bed, warm for fruit and mushrooms. */
 const KIND_TONE: Record<FoodKind, string> = {
   gemuese: "kind-vegetarian",
   salat: "kind-vegetarian",
@@ -70,7 +60,10 @@ const FITTING = 12;
 /**
  * "Was hat gerade Saison?": what is harvested in Germany this month, what arrives, what
  * leaves and what comes from storage, each with the recipes of the library that use it. A
- * month before or after is a tap away, to plan ahead.
+ * month before or after is a tap away, to plan ahead. Each part is one ruled list; a food's
+ * recipes open under its row, where it was tapped. Until November 2026 every food was a card
+ * with a square of its kind (a carrot for a pumpkin), its months in words were cut off, the
+ * page was about 4000px long on a phone, and a tap jumped to its top for the recipes.
  */
 export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
   const params = await props.searchParams;
@@ -127,10 +120,7 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
   return (
     <div className="mx-auto max-w-5xl">
       <ListMemory />
-      <Link href="/rezepte" className="link inline-flex min-h-11 items-center gap-1 text-sm">
-        <ArrowIcon back />
-        Entdecken
-      </Link>
+      <BackLink href="/rezepte">Entdecken</BackLink>
       <p className="eyebrow mt-1">Saisonkalender · Anbau in Deutschland</p>
       <h1 className="title mt-1">
         {month === now ? "Was hat gerade Saison?" : `Saison im ${MONTH_NAME[month]}`}
@@ -163,82 +153,66 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
         )}
       </nav>
 
-      {chosen && (
-        <section id="rezepte" className="mt-7" aria-label={`Rezepte mit ${chosen.name}`}>
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-xl font-bold tracking-tight">
-              Mit {chosen.name}{" "}
-              <span className="text-base font-normal text-muted tabular-nums">
-                {withChosen.length}
-              </span>
-            </h2>
-            <Link
-              href={link(month)}
-              scroll={false}
-              className="link inline-flex min-h-11 items-center text-sm"
-            >
-              Schließen
-            </Link>
-          </div>
-          {withChosen.length === 0 ? (
-            <p className="mt-2 text-muted">Noch kein Rezept im Kochbuch.</p>
-          ) : (
-            <div className="shelf mt-1">
-              {withChosen.slice(0, WITH_FOOD).map((recipe) => (
-                <RecipeCard
-                  key={recipe.id}
-                  recipe={recipe}
-                  category={nameOf(recipe.category)}
-                  className="w-60"
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
       {sections
         .filter((section) => section.foods.length > 0)
         .map((section) => (
           <section key={section.title} className="mt-8" aria-label={section.title}>
             <h2 className="text-xl font-bold tracking-tight">{section.title}</h2>
             <p className="text-sm text-muted">{section.note}</p>
-            <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="season-list mt-2">
               {/* What the library cooks with first: those are the ones to tap. */}
               {[...section.foods]
                 .sort(
                   (a, b) =>
                     (recipesWith.get(b.key)?.length ?? 0) - (recipesWith.get(a.key)?.length ?? 0),
                 )
-                .map((food) => {
+                .flatMap((food) => {
                   const count = recipesWith.get(food.key)?.length ?? 0;
                   const on = chosen?.key === food.key;
-                  return (
-                    <li key={food.key}>
+                  const row = (
+                    <li key={food.key} className={KIND_TONE[food.kind]}>
                       <Link
-                        href={`${link(month, on ? undefined : food.key)}${on ? "" : "#rezepte"}`}
-                        scroll={!on}
+                        href={link(month, on ? undefined : food.key)}
+                        scroll={false}
                         aria-current={on ? "true" : undefined}
-                        className={`card lift flex h-full items-center gap-3 px-3 py-2.5 ${KIND_TONE[food.kind]} ${on ? "ring-2 ring-accent" : ""}`}
+                        className="season-row"
                       >
-                        <span className="badge h-11 w-11">
-                          <PictogramIcon
-                            name={FOOD_PICTURE[food.key] ?? KIND_PICTURE[food.kind]}
-                            className="h-[68%] w-[68%]"
-                          />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="truncate font-semibold">{food.name}</span>
-                            <span className="shrink-0 text-sm text-muted tabular-nums">
-                              {count === 0 ? "–" : count === 1 ? "1 Rezept" : `${count} Rezepte`}
+                        <span className="season-name">
+                          {food.name}
+                          {count > 0 && (
+                            <span className="font-normal text-muted tabular-nums">
+                              {" "}
+                              · {count === 1 ? "1 Rezept" : `${count} Rezepte`}
                             </span>
-                          </span>
-                          <MonthBar food={food} month={month} />
+                          )}
                         </span>
+                        <MonthBar food={food} month={month} />
+                        <span className="season-words">{monthsInWords(food)}</span>
                       </Link>
                     </li>
                   );
+                  if (!on) return [row];
+                  return [
+                    row,
+                    <li key={`${food.key}-rezepte`} className="season-open">
+                      <section aria-label={`Rezepte mit ${food.name}`}>
+                        {withChosen.length === 0 ? (
+                          <p className="text-muted">Noch kein Rezept im Kochbuch.</p>
+                        ) : (
+                          <div className="shelf">
+                            {withChosen.slice(0, WITH_FOOD).map((recipe) => (
+                              <RecipeCard
+                                key={recipe.id}
+                                recipe={recipe}
+                                category={nameOf(recipe.category)}
+                                className="w-60"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    </li>,
+                  ];
                 })}
             </ul>
           </section>
@@ -291,26 +265,24 @@ export default async function SeasonPage(props: PageProps<"/rezepte/saison">) {
 
 /** A food's year at a glance: twelve months, filled where it is harvested, paler where stored. */
 function MonthBar({ food, month }: { food: SeasonalFood; month: Month }) {
-  const fresh = monthsText(food.fresh);
-  const stored = food.stored ? monthsText(food.stored) : "";
   return (
-    <span className="mt-1 block">
-      <span className="season-bar" aria-hidden>
-        {MONTHS.map((entry) => (
-          <span
-            key={entry}
-            className="season-cell"
-            data-state={availability(food, entry) ?? "none"}
-            data-now={entry === month ? "true" : undefined}
-          >
-            {LETTER[entry]}
-          </span>
-        ))}
-      </span>
-      <span className="mt-0.5 block truncate text-xs text-muted">
-        {fresh}
-        {stored && ` · Lager ${stored}`}
-      </span>
+    <span className="season-bar" aria-hidden>
+      {MONTHS.map((entry) => (
+        <span
+          key={entry}
+          className="season-cell"
+          data-state={availability(food, entry) ?? "none"}
+          data-now={entry === month ? "true" : undefined}
+        >
+          {LETTER[entry]}
+        </span>
+      ))}
     </span>
   );
+}
+
+/** "Oktober bis Dezember · Lager Januar bis März": as long as it is, never cut off. */
+function monthsInWords(food: SeasonalFood): string {
+  const fresh = monthsText(food.fresh);
+  return food.stored ? `${fresh} · Lager ${monthsText(food.stored)}` : fresh;
 }
