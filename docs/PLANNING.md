@@ -252,13 +252,15 @@ are in [SHOPPING.md](SHOPPING.md).
   forward), with "Alle Wochen" and "Statistik" next to it, on a phone as signs (a month's
   calendar, a chart), so that the row is one line on every week (22 November 2026).
 - Above the plan of the running week stands what there is to eat today and what the weekend
-  holds (`Today`), also while the page already shows the coming week. Once something is
-  planned for those days, it stands next to the greeting like a widget on a large screen,
-  and under it on a phone; otherwise the header is the greeting alone. Saturday and Sunday
-  stand in two plain columns with a hairline between them, each meal on a line of its own
-  with its kind's dot: the weekend was one grey sentence (October 2026). They were two
-  small tinted cards until the audit of 24 November 2026: a box inside a box, and beside a
-  longer Saturday an empty tinted block.
+  holds (`Today`), and above the week the planner opens on, which from Saturday on (from
+  Thursday with nothing more planned) is the coming week. Not on another week: a tap
+  forward to next week on a Tuesday showed the card again (audit, 24 November 2026). Once
+  something is planned for those days, it stands next to the greeting like a widget on a
+  large screen, and under it on a phone; otherwise the header is the greeting alone.
+  Saturday and Sunday stand in two plain columns with a hairline between them, each meal on
+  a line of its own with its kind's dot: the weekend was one grey sentence (October 2026).
+  They were two small tinted cards until the audit of 24 November 2026: a box inside a box,
+  and beside a longer Saturday an empty tinted block.
 - Every planned meal on the plan carries the kind of its first dish as a coloured edge, a
   stronger shade of the kind's pastel (`.meal-cell`), and a grey one where its dish has no
   kind or it has no recipe. A meal without a recipe has a picture where it has one

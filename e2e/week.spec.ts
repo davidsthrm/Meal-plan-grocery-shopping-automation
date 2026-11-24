@@ -110,6 +110,22 @@ test("today's dishes on a small phone break between words, not into a letter or 
   }
 });
 
+test("today's dishes stand on the week the plan opens on, not on the week after", async ({
+  page,
+}) => {
+  const now = today();
+  await page.goto(`/woche?w=${now.monday}`);
+  await plan(page, `${now.weekday} Mittag`, "Pilzrisotto");
+  await expect(page.getByRole("region", { name: "Heute" })).toContainText("Pilzrisotto");
+
+  // From Saturday on the plan opens on the week ahead, which says what there is today too.
+  const weekend = ["Samstag", "Sonntag"].includes(now.weekday);
+  const opening = weekend ? weeksOn(now.monday, 1) : now.monday;
+  await page.goto(`/woche?w=${weeksOn(opening, 1)}`);
+  await expect(page.getByRole("link", { name: "Montag Mittag planen" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Heute" })).toHaveCount(0);
+});
+
 test("a recipe opened from the plan leads back to the plan", async ({ page }) => {
   await page.goto("/woche?w=2027-03-01");
   await plan(page, "Montag Mittag", "Pilzrisotto");

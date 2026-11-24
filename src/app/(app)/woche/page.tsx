@@ -238,10 +238,11 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
   const weekLink = (monday: IsoDate) =>
     `/woche?w=${monday}${placing ? `&rezept=${placing.id}` : ""}${showExtras ? "&t=extra" : ""}`;
-  // "What is there to eat today?" is asked of the week that is running, also while the page
-  // already shows the next one, as it does from Saturday on.
+  // "What is there to eat today?" is asked of the week that is running, and on the week the
+  // planner opens on, which from Saturday on is the next one. Not on any other: tapping
+  // forward to next week on a Tuesday showed the card again (audit, 24 November 2026).
   const showToday =
-    (week === running || addDays(week, -7) === running) &&
+    (week === running || week === thisWeek) &&
     !placing &&
     !showExtras &&
     hasToday(runningSlots, now);
