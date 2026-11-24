@@ -329,9 +329,7 @@ export function NoteSheet({
                 className="empty-picture"
               />
               <p className="text-muted">
-                {drugstore
-                  ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
-                  : "Nichts zu kaufen."}
+                {drugstore ? "Noch nichts notiert." : "Nichts zu kaufen."}
               </p>
             </div>
           )}

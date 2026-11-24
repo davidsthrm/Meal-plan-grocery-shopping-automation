@@ -61,23 +61,36 @@ A few things are borrowed from the handwritten notes the app replaces, and only 
   strip of the sections.
 - No handwriting typeface. On real paper only a note's ruled lines are printed, faint, as in
   its PDF.
-- The page's paper has a fine grain (`--paper-grain`): darker and lighter specks of an SVG
-  noise, one small tiled image, about a tenth visible on a phone. The pad's two sheets under
-  a `.sheet` are a shade darker than the top one, with a soft shadow beneath, and the ruled
-  lines (`--color-rule`) a step stronger. Chosen on 23 November 2026: the household found
-  the white app without life ("add a little bit more life and detail"), and drafts of it
-  injected on the real app were too faint to see on a phone. It stays cheap to draw: a
-  static background, no blur on what scrolls, nothing fixed or animated.
+- The pad's two sheets under a `.sheet` are a shade darker than the top one, with a soft
+  shadow beneath, and the ruled lines (`--color-rule`) a step stronger. Chosen on 23
+  November 2026: the household found the white app without life ("add a little bit more
+  life and detail"), and drafts of it injected on the real app were too faint to see on a
+  phone.
+- The paper has no grain. A fine noise of darker and lighter specks (`--paper-grain`) came
+  with the sheets on 23 November 2026; on 24 November David found the grain together with
+  the sections' colours too much, even fainter, and it went.
 - An empty place shows the pictogram of what would be there, large and pale
   (`.empty-picture`), above what it says: an empty note its place's picture, the shopping
   page with nothing on it the cart, an empty Merkzettel a basket, no favourites a pot,
-  nothing found a book, and an empty week a plate behind the sheet's first day
-  (`.sheet-picture`). Same day, same reason: an empty page read as broken.
-- Einkauf opens with the next errand, large and on the page, not as a tile
-  (`NextErrand`, `.next-errand`): the one strong element of the page, as "Heute" is on the
-  week (`.today-card`: a little shadow, today's dishes at 19px with their kind's dot; on a
-  phone one under the other, each on a whole line and breaking between words only, side by
-  side from `sm` on). The rule is in
+  nothing found a book. Same day, same reason: an empty page read as broken. An empty week
+  has none: a plate behind the sheet's first day ran into the suggestion's text, and an
+  empty week shows its suggestions anyway (David, 24 November 2026).
+- Beside such a pictogram stands only what a person needs, and a way on: "Nichts ist
+  ausgegangen.", "Noch nichts notiert.", "Kein Rezept passt dazu.", a link "Rezepte
+  entdecken" under the pot. No sentence that says the obvious, repeats the heading or the
+  picture, or describes the screen's buttons (David, 24 November 2026: the Merkzettel page
+  explained its buttons in two sentences under the note).
+- The week's "Heute" stands a little above the page, the one strong element there
+  (`.today-card`: a little shadow, today's dishes at 19px with their kind's dot; on a phone
+  one under the other, each on a whole line and breaking between words only, side by side
+  from `sm` on).
+- Einkauf opens with the next errand's own note, first, as the other notes look (holes,
+  its supermarkets or place, its day, how much is open, its first lines), under a small
+  "Nächster Einkauf" and with "Jetzt einkaufen" on the note (`NoteTile` with the button as
+  its child, beside its link as the heart beside a recipe card's; `.next-errand`). It lies
+  straight, in a row of its own, as wide as one of the notes. On 23 November 2026 the next
+  errand was a large block of its own above the notes; David (24 November) could not see
+  which note it meant. The rule is in
   [SHOPPING.md](SHOPPING.md#when-an-errand-is-done-and-the-order-of-the-notes).
 
 The shopping notes of a week:
@@ -94,7 +107,7 @@ The shopping notes of a week:
   made the shopping page twice as long as it needed to be (October 2026). Such a strip is
   shown only where it is to be written on (dm, a note opened by hand) or in a week with
   nothing on any note (`arrangeNotes`).
-- A screen reader names a note's tile, and the next errand, by what it shows: "Aldi &
+- A screen reader names a note's tile, the next errand's too, by what it shows: "Aldi &
   Rewe, Montag, 23. November", not "Supermarkt", which is nowhere on it (`shownName`;
   audit, 24 November 2026).
 - "Neuer Zettel" and "Haben wir schon" under the notes are rows to open, 44px tall under a
@@ -290,15 +303,19 @@ The paper metaphors in motion:
 ## Section colours
 
 - Each section has its pastel as a wash at the top of its pages, fading into the paper over
-  16rem (`.app-shell`, `--section-tint`: Woche sage #e3eee7, Einkauf blue #e2ebf2, Rezepte
-  peach #f6e6da, Favoriten blush #f5e1e6, Import lavender #e9e4f3), and the header's strip
+  22rem (`.app-shell`, `--section`: Woche sage #dbf1e3, Einkauf blue #daecfa, Rezepte
+  peach #ffdfc7, Favoriten blush #ffd8e2, Import lavender #ebe1ff), and the header's strip
   in the same colour. It is read from the section the strip marks as current, so it is there
-  from the first paint, and it is not faded: a change of an inherited value recalculates
-  every element in every frame while a tap loads the next page.
+  from the first paint, and on a tap it fades over to the next section's in 300ms while the
+  page loads (David, 24 November 2026). Only the two layers that draw it fade: each fades its
+  own `--section-tint`, registered with `@property` and not inherited, towards `--section`.
+  Fading an inherited value would recalculate every element of the page in every frame.
 - History: from October 2026 the sections had such a pastel and a breath of green lay
   behind the header; on 22 November 2026 the household chose the paper alone (palette C1),
   and on 23 November 2026 asked for the colours back, softly, to give the app more life.
-  No yellow: the household did not like it (October 2026).
+  On 24 November David chose the clearer of the drafts shot on the real app (each pastel's
+  chroma doubled, reaching 22rem instead of 16rem), on paper without grain. No yellow: the
+  household did not like it (October 2026).
 
 ## Colours of kinds
 
@@ -308,9 +325,9 @@ The paper metaphors in motion:
   use it. The same colour marks the kind on a recipe card, next to a planned meal, in the
   week's count and in the goals.
 - The colours of the kinds are small marks only: a dot, a tag, the edge of a planned meal,
-  the square behind a recipe card's pictogram, a recipe card's top edge (its pastel fading
-  into the card, `.kind-edge`; a card of no kind has none, 23 November 2026), a part of a
-  chart. No card or tile is filled with one (22 November 2026): the week's count is one row
+  the square behind a recipe card's pictogram, the thin band along a recipe card's top, a
+  part of a chart. The band stays thin: its pastel fading down into the card was tried on 23
+  November 2026, and David kept the cards as they were (24 November). No card or tile is filled with one (22 November 2026): the week's count is one row
   of numbers, each with a dot, its name and its goal in small words, a count over its goal
   in the warning colour (`.balance-row`); it was four pastel tiles with bars, the loudest
   thing on the page. The recipe of the day, the tiles beside it and the Rezept-Stapel's

@@ -318,7 +318,7 @@ test("what was not bought at the drugstore comes along to its next note @webkit"
   await expect(dm).toContainText("0 offen, 1 gekauft");
 });
 
-test("the page opens with the next errand, a tap from the shop and from its note @webkit", async ({
+test("the page opens with the next errand's own note, a tap from the shop @webkit", async ({
   page,
 }) => {
   // The next dm is today or later, the only note with something on it. On a Saturday it is
@@ -330,22 +330,36 @@ test("the page opens with the next errand, a tap from the shop and from its note
   await expect(page.getByRole("button", { name: "Zahnpasta: gekauft" })).toBeVisible();
 
   await page.goto("/einkauf");
-  const errand = page.getByRole("region", { name: /^Nächster Einkauf/ });
-  await expect(errand.getByRole("link", { name: "Jetzt einkaufen" })).toBeVisible();
-  // Beside it the page never says that nothing is on the notes: from Saturday on the week
-  // ahead it shows can still be empty.
-  await expect(page.getByText(/noch nichts auf den Einkaufszetteln/)).toHaveCount(0);
-  await errand.getByRole("link", { name: "Zettel ansehen" }).click();
+  // First among the notes, under "Nächster Einkauf": the note itself, by the name, the day,
+  // the count and the lines a tile shows, with "Jetzt einkaufen" on it.
+  const first = page.getByRole("list", { name: "Zettel" }).getByRole("listitem").first();
+  const errand = first.getByRole("region", { name: "Nächster Einkauf" });
+  const note = errand.getByRole("link", { name: /^dm, .+: 1 offen$/ });
+  await expect(note).toContainText("Zahnpasta");
+  await expect(note).toContainText("1 offen");
+  await expect(errand.getByRole("link")).toHaveCount(2);
+  // It stands there once, not again as a tile, and the page never says that nothing is on
+  // the notes: from Saturday on the week ahead it shows can still be empty.
+  await expect(
+    page.getByRole("list", { name: "Zettel" }).getByRole("link", { name: /^dm, .+: 1 offen$/ }),
+  ).toHaveCount(1);
+  await expect(page.getByText(/nichts auf den Einkaufszetteln/)).toHaveCount(0);
+  // A tap on the note opens it, to write on it.
+  await note.click();
   await expect(page.getByRole("region", { name: /^dm, / })).toContainText("Zahnpasta");
+
+  // "Jetzt einkaufen" goes straight into that note's view for the shop.
+  await page.goto("/einkauf");
+  await errand.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  await expect(page).toHaveURL(new RegExp(`zettel=${next.date}\\.drugstore`));
+  await expect(page.getByRole("dialog", { name: /^Einkaufen: / })).toContainText("Zahnpasta");
 });
 
 test("a week with nothing planned has empty notes that say where they come from @webkit", async ({
   page,
 }) => {
   await page.goto(`/einkauf?w=${WEEK}`);
-  await expect(
-    page.getByText("Für diese Woche steht noch nichts auf den Einkaufszetteln."),
-  ).toBeVisible();
+  await expect(page.getByText("Noch nichts auf den Einkaufszetteln.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Alle Zettel als PDF" })).toHaveCount(0);
 });
 

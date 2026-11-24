@@ -8,7 +8,6 @@ import { PrintButton } from "@/components/print-button";
 import { PdfLink } from "@/components/pdf-link";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
-import { ShopLogo } from "@/components/shop-logo";
 import { SubmitButton } from "@/components/submit-button";
 import type { Shop } from "@/domain/catalog";
 import {
@@ -31,7 +30,7 @@ import {
   nextErrand,
   nothingOnTheNotes,
 } from "@/domain/shopping-list/week-notes";
-import { noteName, PLACE_LOOK, PLACE_NAME, whenText } from "@/lib/list-text";
+import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
 import { momentNow, today } from "@/lib/today";
@@ -230,8 +229,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       {nothing && (
         <p className="text-muted">
           {family
-            ? `Bei den ${family} steht für diese Woche noch nichts auf den Einkaufszetteln.`
-            : "Für diese Woche steht noch nichts auf den Einkaufszetteln."}{" "}
+            ? `Bei den ${family} steht noch nichts auf den Einkaufszetteln.`
+            : "Noch nichts auf den Einkaufszetteln."}{" "}
           Sie füllen sich aus dem{" "}
           <Link href={`/woche?w=${week}`} className="link underline">
             Wochenplan
@@ -241,14 +240,36 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       )}
 
       <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* The next errand is its note itself, first and in a row of its own, as wide as
+            the other notes, with "Jetzt einkaufen" on it: one tap from the page to the shop.
+            Chosen on 24 November 2026: large and apart from the notes, it did not show which
+            note was meant. */}
         {next && (
           <li className="next-errand sm:col-span-2 lg:col-span-3">
-            <NextErrand
-              note={next.note}
-              week={next.week}
-              today={now}
-              markets={marketsOf(next.note)}
-            />
+            <section
+              aria-labelledby="naechster-einkauf"
+              className="sm:w-[calc(50%-0.75rem)] lg:w-[calc((100%-3rem)/3)]"
+            >
+              <h2 id="naechster-einkauf" className="eyebrow mb-2">
+                Nächster Einkauf
+              </h2>
+              <NoteTile
+                note={next.note}
+                week={next.week}
+                today={now}
+                markets={marketsOf(next.note)}
+                justDone={false}
+              >
+                <p className="px-4 pt-1 pb-4">
+                  <Link
+                    href={`/einkauf?w=${next.week}&zettel=${next.note.id}#laden`}
+                    className="btn btn-primary"
+                  >
+                    Jetzt einkaufen
+                  </Link>
+                </p>
+              </NoteTile>
+            </section>
           </li>
         )}
         {arranged.toDo.filter((note) => note.id !== next?.note.id).map(tile)}
@@ -386,71 +407,17 @@ function shownName(note: NoteList, markets: Shop[]): string {
 }
 
 /**
- * The next errand, large at the top of the page: where, and "Jetzt einkaufen" straight into
- * that note's view for the shop. Its name leads to the note itself, as a tile would. Chosen
- * on 23 November 2026: the household wanted the page to say what is next, not only lay the
- * notes out.
+ * A note as it lies among the others: its heading, its first lines, and how much is open.
+ * The next errand carries "Jetzt einkaufen" on it (`children`): beside the note's link, not in
+ * it, as the heart on a recipe card, and both on the sheet that lifts.
  */
-function NextErrand({
-  note,
-  week,
-  today: now,
-  markets,
-}: {
-  note: NoteList;
-  week: IsoDate;
-  today: IsoDate;
-  markets: Shop[];
-}) {
-  const { trip } = note;
-  const look = PLACE_LOOK[trip.place];
-  const href = `/einkauf?w=${week}&zettel=${note.id}`;
-  return (
-    <section aria-labelledby="naechster-einkauf">
-      <h2 id="naechster-einkauf" className="font-semibold">
-        Nächster Einkauf
-        <span className="text-accent"> · {trip.date === now ? "Heute" : whenText(trip)}</span>
-      </h2>
-      <Link
-        href={href}
-        className={`mt-2 flex min-h-11 items-center gap-3 ${look.tone}`}
-        aria-label={`${shownName(note, markets)}, ${whenText(trip)}`}
-      >
-        {markets.length > 0 ? (
-          <span className="flex shrink-0 -space-x-2">
-            {markets.slice(0, 3).map((shop) => (
-              <ShopLogo key={shop.id} shop={shop} size={markets.length > 1 ? 44 : 52} />
-            ))}
-          </span>
-        ) : (
-          <span className="badge size-13">
-            <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
-          </span>
-        )}
-        <span className="title min-w-0">{shownName(note, markets)}</span>
-      </Link>
-      <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Link href={`${href}#laden`} className="btn btn-primary">
-          Jetzt einkaufen
-        </Link>
-        <span className="text-muted tabular-nums">{note.open} offen</span>
-        {/* The note has no tile of its own here, and the view for the shop cannot add a
-            line: its name alone, unmarked, was the only way to write on it. */}
-        <Link href={href} className="link inline-flex min-h-11 items-center">
-          Zettel ansehen
-        </Link>
-      </p>
-    </section>
-  );
-}
-
-/** A note as it lies among the others: its heading, its first lines, and how much is open. */
 function NoteTile({
   note,
   week,
   today: now,
   markets,
   justDone,
+  children,
 }: {
   note: NoteList;
   week: IsoDate;
@@ -459,17 +426,17 @@ function NoteTile({
   markets: Shop[];
   /** Finished moments ago: its stamp is pressed on (`justFinished`). */
   justDone: boolean;
+  children?: React.ReactNode;
 }) {
   const lines = note.view.groups.flatMap((group) => group.lines);
   const more = lines.length - PREVIEW;
-  return (
-    <Link
-      href={`/einkauf?w=${week}&zettel=${note.id}`}
-      className={`sheet lift relative flex h-full flex-col ${note.completed ? "done-sheet" : ""}`}
-      aria-label={`${shownName(note, markets)}, ${whenText(note.trip)}: ${
-        note.completed ? "erledigt" : `${note.open} offen`
-      }`}
-    >
+  const href = `/einkauf?w=${week}&zettel=${note.id}`;
+  const label = `${shownName(note, markets)}, ${whenText(note.trip)}: ${
+    note.completed ? "erledigt" : `${note.open} offen`
+  }`;
+  const sheet = `sheet lift relative flex h-full flex-col ${note.completed ? "done-sheet" : ""}`;
+  const face = (
+    <>
       <SheetHoles />
       {lines.length === 0 ? (
         // Nothing to buy: a slim strip with its place, its day and that it is empty. A full
@@ -512,6 +479,18 @@ function NoteTile({
         </span>
       )}
       {note.completed && <Stamp by={note.completed.by} pressed={justDone} />}
+    </>
+  );
+  return children ? (
+    <div className={sheet}>
+      <Link href={href} aria-label={label} className="flex flex-1 flex-col">
+        {face}
+      </Link>
+      {children}
+    </div>
+  ) : (
+    <Link href={href} className={sheet} aria-label={label}>
+      {face}
     </Link>
   );
 }
