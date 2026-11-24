@@ -3686,10 +3686,13 @@ summary,
     opacity: 1;
   }
 
-  /* What was just decided, with "Widerrufen", for a few seconds at the foot of the screen. */
+  /*
+   * What was just decided, with "Widerrufen", for a few seconds at the foot of the screen,
+   * clear of the iPhone's home bar.
+   */
   .undo-bar {
     position: fixed;
-    inset: auto max(0.75rem, env(safe-area-inset-right)) calc(5.25rem + env(safe-area-inset-bottom))
+    inset: auto max(0.75rem, env(safe-area-inset-right)) calc(0.75rem + env(safe-area-inset-bottom))
       max(0.75rem, env(safe-area-inset-left));
     width: auto;
     max-width: 30rem;
@@ -3700,6 +3703,11 @@ summary,
     background: var(--color-ink);
     color: var(--color-surface);
     box-shadow: 0 14px 30px -14px rgb(35 33 29 / 0.6);
+  }
+  @media (width >= 40rem) {
+    .undo-bar {
+      bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    }
   }
   /*
    * It rises when it first appears and goes down when it goes. While it stays, the next
