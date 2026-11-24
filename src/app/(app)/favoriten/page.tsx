@@ -95,13 +95,10 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
       {favorites.length === 0 ? (
         <div className="mt-8">
           <PictogramIcon name="topf" className="empty-picture" />
-          <p className="text-muted">
-            Noch keine Favoriten. Auf jedem Rezept gibt es dafür das Herz:{" "}
-            <Link href="/rezepte" className="link underline">
-              Rezepte entdecken
-            </Link>
-            .
-          </p>
+          {/* "0 Favoriten" stands above and the pot says it: the way to the hearts is enough. */}
+          <Link href="/rezepte" className="link min-h-11">
+            Rezepte entdecken
+          </Link>
         </div>
       ) : (
         <div className="mt-6">

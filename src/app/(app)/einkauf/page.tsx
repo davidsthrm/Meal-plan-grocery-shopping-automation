@@ -230,8 +230,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       {nothing && (
         <p className="text-muted">
           {family
-            ? `Bei den ${family} steht für diese Woche noch nichts auf den Einkaufszetteln.`
-            : "Für diese Woche steht noch nichts auf den Einkaufszetteln."}{" "}
+            ? `Bei den ${family} steht noch nichts auf den Einkaufszetteln.`
+            : "Noch nichts auf den Einkaufszetteln."}{" "}
           Sie füllen sich aus dem{" "}
           <Link href={`/woche?w=${week}`} className="link underline">
             Wochenplan
