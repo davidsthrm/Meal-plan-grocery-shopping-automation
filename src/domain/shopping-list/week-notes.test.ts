@@ -200,9 +200,10 @@ describe("justFinished", () => {
 
 describe("nextErrand", () => {
   const TUESDAY = "2026-10-13";
-  const note = (date: string, place: ShoppingTrip["place"], open: number) => ({
+  const note = (date: string, place: ShoppingTrip["place"], open: number, done = false) => ({
     trip: { date, place },
     open,
+    completed: done ? { at: 1, by: null } : null,
   });
 
   const NEXT_MONDAY = "2026-10-19";
@@ -243,6 +244,19 @@ describe("nextErrand", () => {
     const next = nextErrand(
       [
         week(MONDAY, note(SATURDAY, "drugstore", 0)),
+        week(NEXT_MONDAY, note(NEXT_MONDAY, "supermarket", 5)),
+      ],
+      SATURDAY,
+    );
+    expect(next).toEqual({ week: NEXT_MONDAY, note: note(NEXT_MONDAY, "supermarket", 5) });
+  });
+
+  it("is never an errand that is done, though lines on it are still open", () => {
+    // What was planned after the shopping is open on a done errand (`completion`): on a
+    // Saturday the running week's dm, done, was named before Monday's supermarket.
+    const next = nextErrand(
+      [
+        week(MONDAY, note(SATURDAY, "drugstore", 2, true)),
         week(NEXT_MONDAY, note(NEXT_MONDAY, "supermarket", 5)),
       ],
       SATURDAY,

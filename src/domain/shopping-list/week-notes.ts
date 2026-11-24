@@ -92,20 +92,24 @@ export function arrangeNotes<T extends { trip: ShoppingTrip; completed: object |
 
 /**
  * The errand the shopping page opens with, and the week it is a note of: the first one from
- * today on that has something still to buy, in the weeks given (their notes, or `toDo` of
- * `arrangeNotes`). None when every one ahead is empty or done. From
- * Saturday on the page shows the week ahead while that day's market and dm are notes of the
- * running week: looking at the week ahead alone, it named Monday's supermarket on the
- * household's Saturday (audit, 24 November 2026).
+ * today on that is not done and has something still to buy, in the weeks given (their
+ * notes, or `toDo` of `arrangeNotes`). None when every one ahead is empty or done. A done
+ * errand can still have lines open, planned after its shopping (`completion`); it is left
+ * out as `arrangeNotes` leaves it out of `toDo`, since the running week's notes come as
+ * they are read. From Saturday on the page shows the week ahead while that day's market and
+ * dm are notes of the running week: looking at the week ahead alone, it named Monday's
+ * supermarket on the household's Saturday (audit, 24 November 2026).
  */
-export function nextErrand<T extends { trip: ShoppingTrip; open: number }>(
+export function nextErrand<
+  T extends { trip: ShoppingTrip; open: number; completed: object | null },
+>(
   weeks: readonly { week: IsoDate; notes: readonly T[] }[],
   today: IsoDate,
 ): { week: IsoDate; note: T } | undefined {
   return weeks
     .flatMap(({ week, notes }) =>
       notes
-        .filter((note) => note.trip.date >= today && note.open > 0)
+        .filter((note) => note.trip.date >= today && note.open > 0 && note.completed === null)
         .map((note) => ({ week, note })),
     )
     .sort((a, b) => a.note.trip.date.localeCompare(b.note.trip.date))[0];
