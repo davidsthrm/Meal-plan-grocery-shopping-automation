@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ComponentProps, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type MouseEvent } from "react";
 import { ShareIcon } from "./icons";
 import { isInstalled } from "./install-hint";
 
@@ -69,6 +69,17 @@ export function PdfLink({
   // The link whose PDF came too late for its tap and waits for the next one.
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const ready = readyFor === link.href;
+
+  // A form sent may change the plan or the note: the PDF kept for the next tap goes.
+  useEffect(() => {
+    if (!ready) return;
+    const drop = () => {
+      fetched.current = null;
+      setReadyFor(null);
+    };
+    document.addEventListener("submit", drop);
+    return () => document.removeEventListener("submit", drop);
+  }, [ready]);
 
   // A PDF that waits for its tap is kept; otherwise each tap fetches the plan as it is now.
   function fetchAhead() {

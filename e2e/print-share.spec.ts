@@ -99,7 +99,7 @@ test("in the installed app the PDFs go to the share sheet, to print or keep", as
 
 test("a PDF that came too late for its tap is shared by the next one", async ({ page }) => {
   // Safari refuses a share once the tap's moment has run out; closing the sheet is no error.
-  await installed(page, ["NotAllowedError", "", "AbortError"]);
+  await installed(page, ["NotAllowedError", "", "AbortError", "NotAllowedError"]);
   const errors: Error[] = [];
   page.on("pageerror", (error) => errors.push(error));
   await page.goto(`/woche?w=${WEEK}`);
@@ -123,6 +123,15 @@ test("a PDF that came too late for its tap is shared by the next one", async ({ 
   // The sheet closed without anything chosen: the plan's button is as it was.
   await print.click();
   await expect.poll(() => asked).toBe(2);
+  await expect(print).toHaveAttribute("aria-busy", "false");
+  await expect(ready).toHaveCount(0);
+
+  // A PDF kept for the next tap is the plan as it was then: anything sent to the server
+  // drops it, and the next tap asks for the plan as it is now.
+  await print.click();
+  await expect(ready).toBeVisible();
+  await page.getByRole("button", { name: "Plan speichern" }).click();
+  await expect(page.getByRole("button", { name: "Plan bearbeiten" })).toBeVisible();
   await expect(print).toBeVisible();
   await expect(ready).toHaveCount(0);
   expect(errors).toEqual([]);
