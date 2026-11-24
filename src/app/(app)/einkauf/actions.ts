@@ -58,7 +58,19 @@ function noteOf(id: string): ShoppingTrip {
   return trip;
 }
 
-function backToList(input: z.infer<typeof place>): never {
+/**
+ * Back where the form stands. On the note itself the page is read again where it is: sent to
+ * the same address once more, it was drawn anew, the note zoomed in again, an opened line
+ * closed and the iPhone's keyboard went down after every line written (audit, 24 November
+ * 2026). Without scripts the form's answer is that page too.
+ */
+function backToList(input: z.infer<typeof place>): void {
+  if (input.back !== "note") goTo(input);
+  revalidatePath("/einkauf");
+}
+
+/** To the page of a note, or of all notes: where a form leads elsewhere. */
+function goTo(input: z.infer<typeof place>): never {
   revalidatePath("/einkauf");
   redirect(`/einkauf?w=${input.week}${input.back === "note" ? `&zettel=${input.note}` : ""}`);
 }
@@ -232,7 +244,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
   const db = await createSessionClient();
   const { notes, index } = await loadShoppingNotes(db, household, input.week);
   const note = notes.find((entry) => entry.id === input.note);
-  if (!note) backToList(input);
+  if (!note) goTo(input);
   const lines = note.view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
   const target = { date: input.day, place: note.trip.place };
   const now = today();
@@ -240,7 +252,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
     !noteDays(note.trip.date, now).includes(input.day) ||
     dayProblems(lines, target, now, index).some(blocks)
   ) {
-    backToList(input);
+    goTo(input);
   }
   // The lines go, and so does the errand: what the plan needs later is bought on the new day
   // by itself, and what keeps from there, such as milk for Sunday, needs no errand of its own.
@@ -251,7 +263,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
     target,
   );
   await moveErrand(db, household, note.trip, input.day);
-  backToList({ ...input, note: noteId(target) });
+  goTo({ ...input, note: noteId(target) });
 }
 
 /**
@@ -289,5 +301,5 @@ export async function putAwayListNote(form: FormData): Promise<void> {
     note.view.groups.every((group) => group.lines.length === 0) &&
     note.view.notBought.length === 0;
   if (note?.openedByHand && empty) await putAwayNote(db, note.trip);
-  backToList({ ...input, back: "all" });
+  goTo({ ...input, back: "all" });
 }

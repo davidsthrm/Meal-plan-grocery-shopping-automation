@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { planAsExtra, resetHousehold, resetLibrary, signIn } from "./fixtures";
 import { plan, sheet, tile } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
@@ -499,4 +499,26 @@ test("a typed line goes under its kind of grocery @webkit", async ({ page }) => 
   await write.fill("Lakritzschnecken");
   await write.press("Enter");
   await expect(group(page, FRIDAY, "Süßes & Snacks")).toContainText("Lakritzschnecken");
+});
+
+test("writing on a note keeps it as it is: a line opened, the field ready @webkit", async ({
+  page,
+}) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await sheet(page, MONDAY).locator("li.swipe-row summary").filter({ hasText: "Eier" }).click();
+  const opened = sheet(page, MONDAY).locator("details[open]");
+  await expect(opened).toHaveCount(1);
+  const write = page.getByLabel("Auf den Zettel schreiben");
+  for (const text of ["Kerzen"]) {
+    await write.fill(text);
+    await write.press("Enter");
+    await expect(sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: text })).toHaveCount(
+      1,
+    );
+    // The page was drawn anew: the opened line closed and the keyboard went down.
+    await expect(opened).toHaveCount(1);
+    await expect(write).toBeFocused();
+    await expect(write).toHaveValue("");
+  }
 });
