@@ -1007,6 +1007,17 @@ summary,
     margin: 0.9rem auto 0;
     background: var(--color-surface);
   }
+  /* From `sm` on, under its button in the header, the string from the button's middle
+     (`NoteDrawer` measures both): from the middle of an iPad it hung far from the button. */
+  @media (width >= 40rem) {
+    .note-drawer {
+      margin-right: var(--note-right, auto);
+      transform-origin: var(--string-x, 50%) 0;
+    }
+    .note-drawer-string {
+      left: var(--string-x, 50%);
+    }
+  }
 
   /* A shopping note picked up from among the others comes closer. */
   .zoom-in {

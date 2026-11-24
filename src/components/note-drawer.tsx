@@ -17,6 +17,7 @@ const FADE_MS = 160;
  */
 export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote>["items"] }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const button = useRef<HTMLAnchorElement>(null);
   // The note is part of the page only while it is down: what is written on it is not
   // mistaken for something the page says.
   const [down, setDown] = useState(false);
@@ -41,7 +42,18 @@ export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote
 
   useEffect(() => {
     const note = dialog.current;
-    if (down && note && !note.open) note.showModal();
+    if (!down || !note || note.open) return;
+    // From `sm` on it hangs under its button, its string from the button's middle: from the
+    // middle of an iPad it hung far from the button, over the sections (audit, 24 November
+    // 2026). The stylesheet reads these only there.
+    const from = button.current?.getBoundingClientRect();
+    const right = from ? window.innerWidth - from.right : 0;
+    note.style.setProperty("--note-right", `${right}px`);
+    note.showModal();
+    if (from) {
+      const left = window.innerWidth - right - note.offsetWidth;
+      note.style.setProperty("--string-x", `${from.left + from.width / 2 - left}px`);
+    }
   }, [down]);
 
   useEffect(() => {
@@ -59,6 +71,7 @@ export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote
   return (
     <>
       <a
+        ref={button}
         href="/merkzettel"
         className="btn min-h-11 gap-1.5 border-note-line bg-note px-3 text-sm"
         aria-haspopup="dialog"
