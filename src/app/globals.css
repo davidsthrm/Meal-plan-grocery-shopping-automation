@@ -3526,7 +3526,7 @@ summary,
     margin: 0;
     width: max-content;
     min-width: 14rem;
-    max-width: calc(100vw - 1.5rem);
+    max-width: min(20rem, 100vw - 1.5rem);
     padding: 0.35rem;
     border: 1px solid var(--color-line);
     border-radius: 1rem;
@@ -3539,7 +3539,11 @@ summary,
   .row-menu:popover-open {
     animation: menu-in 160ms var(--ease-out) both;
   }
+  /* The line's name takes the menu's width and does not set it: a long one made the menu
+     wider than the screen. */
   .row-menu-title {
+    width: 0;
+    min-width: 100%;
     padding: 0.4rem 0.75rem 0.3rem;
     overflow: hidden;
     color: var(--color-muted);

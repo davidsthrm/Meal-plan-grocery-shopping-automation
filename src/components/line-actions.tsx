@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -781,10 +782,30 @@ function RowMenu({
   const next = nextMoveDay(host.note.date, host.today);
   const nextWord = dayWord(next, host.today);
 
-  useEffect(() => {
+  // Placed by its own size where it fits: below the row, else above it, else over it, and
+  // never past the screen's edges. Guessed at 320 by 290 pixels, it ran off the top above a
+  // row in the middle of a phone, and a long name made it wider than the screen (audit, 24
+  // November 2026).
+  useLayoutEffect(() => {
     const element = menu.current;
     if (!element) return;
     if (!element.matches(":popover-open")) element.showPopover();
+    const { innerWidth, innerHeight } = window;
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
+    const fitsBelow = anchor.bottom - 4 + height <= innerHeight - 8;
+    const fitsAbove = anchor.top + 4 - height >= 8;
+    const below = fitsBelow || (!fitsAbove && innerHeight - anchor.bottom >= anchor.top);
+    const top = below ? anchor.bottom - 4 : anchor.top + 4 - height;
+    element.style.top = `${Math.max(8, Math.min(top, innerHeight - 8 - height))}px`;
+    element.style.left = `${Math.max(12, Math.min(anchor.left + 12, innerWidth - 12 - width))}px`;
+    // It grows out of the row's side.
+    element.style.transformOrigin = below ? "top left" : "bottom left";
+  }, [anchor]);
+
+  useEffect(() => {
+    const element = menu.current;
+    if (!element) return;
     // Closed by a tap beside it or by Escape. Not by the browser's own light dismiss: the
     // finger that held the row still lifts after the menu opened, and that closed it again.
     // The tap only closes it: its click reached the row under it, and in the shop that
@@ -814,14 +835,6 @@ function RowMenu({
     };
   }, [onClose]);
 
-  // Below the row where it fits, else above it; from the row's side, as it grows out of it.
-  const below = anchor.bottom + 320 < window.innerHeight;
-  const style = {
-    top: below ? anchor.bottom - 4 : undefined,
-    bottom: below ? undefined : window.innerHeight - anchor.top - 4,
-    left: Math.min(Math.max(12, anchor.left + 12), window.innerWidth - 290),
-    transformOrigin: below ? "top left" : "bottom left",
-  };
   const run = (action: () => void) => () => {
     onClose();
     action();
@@ -829,14 +842,7 @@ function RowMenu({
   const here = host.choices.find((choice) => choice.id === line.about.shop);
 
   return (
-    <div
-      ref={menu}
-      popover="manual"
-      role="menu"
-      className="row-menu"
-      style={style}
-      aria-label={line.label}
-    >
+    <div ref={menu} popover="manual" role="menu" className="row-menu" aria-label={line.label}>
       <p className="row-menu-title">{line.text}</p>
       <button type="button" role="menuitem" onClick={run(toggle)}>
         <TickIcon />
