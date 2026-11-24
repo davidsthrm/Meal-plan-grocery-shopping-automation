@@ -153,6 +153,15 @@ export function settleTicked(
 }
 
 /**
+ * How many lines "Gekauft" holds. One removed from there since folds away and is not
+ * counted: it read "Gekauft 1" over nothing until the page was read again, offline the whole
+ * errand (audit, 24 November 2026). One moved to another note stays there and says where.
+ */
+export function boughtCount(lines: readonly ShownLine[], placed: ReadonlySet<string>): number {
+  return lines.filter((line) => placed.has(line.key) && line.decision.kind !== "removed").length;
+}
+
+/**
  * The open part of a view and its "Gekauft", each by the same shop sections and kinds of
  * grocery, in their order, without a kind or a section left empty.
  */

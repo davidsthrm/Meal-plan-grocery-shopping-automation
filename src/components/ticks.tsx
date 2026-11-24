@@ -10,6 +10,7 @@ import {
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
 import {
+  boughtCount,
   FOLD_MS,
   settleTicked,
   type Settled,
@@ -234,7 +235,12 @@ export function useTickedLast(page: NotePage, lines: readonly PageLine[]) {
   const [placing] = useState(() => new Placing(shown, Date.now()));
   const settled = useSyncExternalStore(placing.subscribe, placing.get, placing.get);
   useLayoutEffect(() => placing.see(shown));
-  return { settled, hold: placing.hold, onMove: placing.onMove };
+  return {
+    settled,
+    bought: boughtCount(shown, settled.placed),
+    hold: placing.hold,
+    onMove: placing.onMove,
+  };
 }
 
 /** Whether each line shows as ticked: bought, in full or in part. */
