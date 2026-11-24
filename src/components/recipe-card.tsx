@@ -104,7 +104,8 @@ export function RecipeCard({
         transitionTypes={[FORWARD]}
         className="flex flex-1 flex-col"
       >
-        {tone && <span aria-hidden className="kind-edge" />}
+        {/* A band in the colour of the kind: a shelf can be read at a glance. */}
+        <span aria-hidden className="h-1.5 bg-(--kind,var(--color-line))" />
         <PictogramIcon name={pictogramFor(recipe)} className="watermark" />
         <span className="relative flex flex-1 flex-col gap-2 p-4">
           {/* Room on the right for the heart; a line of its own also without a category, so

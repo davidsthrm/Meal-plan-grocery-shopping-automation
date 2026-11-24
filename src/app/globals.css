@@ -462,18 +462,6 @@ summary,
   }
 
   /*
-   * A recipe card of a kind has its pastel along its top edge, fading into the card: a shelf
-   * reads at a glance. A card of no kind has none (23 November 2026; a grey band before).
-   */
-  .kind-edge {
-    pointer-events: none;
-    position: absolute;
-    inset: 0 0 auto;
-    height: 3.5rem;
-    background: linear-gradient(var(--kind), transparent);
-  }
-
-  /*
    * A sheet of a pad: the week plan, a shopping list. Barely rounded, with the holes of the
    * binding along its top (`SheetHoles`) and two more sheets showing underneath.
    */
