@@ -254,7 +254,11 @@ are in [SHOPPING.md](SHOPPING.md).
 - "Mehr kochen" on a planned meal cooks extra portions for leftovers. They are the meal's own
   number (`plan_slot.extra_servings`, `PlanSlot.extra`), apart from its persons: the meal
   shows "4 Personen" and below "2 Extra-Portionen" with minus and plus, so a third person at
-  the leftovers makes it 3; zero cooks the meal as planned again. The list buys them with
+  the leftovers makes it 3; zero cooks the meal as planned again. They stand over a dashed
+  rule with the meal they are for beside them, and "Mehr kochen" opens under a dashed rule
+  with its two fields in one row: a dashed box and a tinted card were boxes in the sheet,
+  and the card's fields stacked and pushed "Übernehmen" under the strip (audit, 24 November
+  2026). The list buys them with
   every recipe of the meal that is cooked for persons (`cookedServings`); a cake for one tin
   is not baked twice. The later meal picked for the leftovers, an open lunch or dinner of the
   next three days (`openMealsAfter`, `LEFTOVER_DAYS`), becomes "Reste" with the meal it is

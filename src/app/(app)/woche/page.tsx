@@ -437,7 +437,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
               <input type="hidden" name="recipe" value={placing.id} />
               <SubmitButton className="btn btn-small">Zu keiner Mahlzeit</SubmitButton>
             </form>
-            <Link href={`/woche?w=${week}`} className="link">
+            <Link href={`/woche?w=${week}`} className="link min-h-11">
               Abbrechen
             </Link>
           </span>
@@ -470,7 +470,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           {!showExtras && (
             /* One row at 375px too: the signs are round and as wide as a finger, the words
                 hug theirs closer, and nothing stands between them (23 November 2026). */
-            <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end sm:gap-2">
+            <div className="plan-actions flex flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end sm:gap-2">
               {picks.length > 0 && (
                 <form action={acceptSuggestions}>
                   <input type="hidden" name="week" value={week} />
@@ -1199,7 +1199,13 @@ function MealCell({
       <p className="eyebrow flex items-center justify-between gap-2">
         {MEAL_NAME[meal]}
         {withPen && (
-          <Link href={`/woche?w=${week}#tag-${date}`} scroll={false} className="link">
+          // As tall as a finger, as the pen it stands for: at 36 by 17 it was the smallest
+          // way out of the meal (audit, 24 November 2026).
+          <Link
+            href={`/woche?w=${week}#tag-${date}`}
+            scroll={false}
+            className="link link-quiet -my-2 inline-flex min-h-11 items-center px-2"
+          >
             Fertig
           </Link>
         )}
@@ -1327,8 +1333,11 @@ function MealCell({
               {where}
               <input type="hidden" name="recipe" value={shown.recipe.id} />
               <input type="hidden" name="mode" value="replace" />
+              {/* Green words on the green's pastel: as a solid green button it stood up to five
+                  times on an empty week, and "Speichern" was no longer the one (D9, audit, 24
+                  November 2026). Still apart from the grey "Was anderes". */}
               <SubmitButton
-                className="btn btn-primary btn-small"
+                className="btn btn-small bg-accent-soft text-accent"
                 label={`${what}: ${shown.recipe.title} einplanen`}
               >
                 Gute Idee!

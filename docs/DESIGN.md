@@ -47,7 +47,9 @@ them, and how to work on the look. UI text is German; this document is English.
 A few things are borrowed from the handwritten notes the app replaces, and only these:
 
 - The week plan and every shopping list are a sheet of a pad (`.sheet`: holes along the top,
-  two more sheets underneath).
+  two more sheets underneath). A hole that does not fit whole is left out, with the same
+  margin on both sides: at most widths the last one was cut in half at the right edge
+  (audit, 24 November 2026).
 - A list has ruled lines and a margin (`.ruled`) with a tick made by a pen (`.tickbox`).
 - What ran out at home is written on a yellow note stuck on with tape (`.note`), as narrow
   as a real sticky note (`RestockNote`, 18rem, about 300px). "+" writes on it; each entry
@@ -160,8 +162,13 @@ The paper metaphors in motion:
   that row was 400px wide, at 375px a phone has 343 (24 November 2026). The signs are round
   and 2.6rem wide, the words hug theirs closer on a phone, and no line stands between them:
   the household saw them stacked on 23 November 2026. `e2e/week-saved.spec.ts` checks it at
-  375px. A suggestion's two buttons share a row the same way: "Gute Idee!" and "Was
-  anderes", which as "Lieber was anderes" took a second row.
+  375px. While "Woche leeren?" is asked, the question and its two answers stand in place of
+  the other actions: beside them they broke the row onto four (audit, 24 November 2026). A
+  suggestion's two buttons share a row the same way: "Gute Idee!" and "Was anderes", which
+  as "Lieber was anderes" took a second row. "Gute Idee!" is green words on the green's
+  pastel, apart from the grey "Was anderes": as a solid green button it stood up to five
+  times on an empty week, and "Speichern" was no longer the one green button (D9, audit, 24
+  November 2026).
 - Every control gives a little the moment a finger lands on it (`:active`, a scale of 0.96),
   not only when it lifts, also for whoever asked for less motion: nothing travels. Hover is
   for a mouse or trackpad only, and a press answers on every screen (`:active`).

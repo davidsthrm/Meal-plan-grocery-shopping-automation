@@ -57,6 +57,7 @@ export function ResetWeek({
       ref={form}
       action={action}
       className="flex flex-wrap items-center gap-2"
+      data-asking={asking || undefined}
       onSubmit={(event) => {
         if (done.current) return;
         const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -43,7 +43,9 @@ const mealText = (slot: { date: IsoDate; meal: Meal }) =>
  * with it, and the leftovers are planned for a later meal that is still open, which the
  * household picks. The button in the meal's row of actions opens this under the row
  * (`?mehr=<date>.<meal>`), the way "Was könnten wir kochen?" opens a suggestion: the
- * household found it squeezed into the row of signs.
+ * household found it squeezed into the row of signs. Under a dashed rule, its two fields in
+ * one row: as a tinted card with an edge it was a box in the sheet, and its padding stacked
+ * the fields and pushed "Übernehmen" under the strip (audit, 24 November 2026).
  */
 export function CookMore({
   week,
@@ -69,11 +71,11 @@ export function CookMore({
   return (
     <form
       action={cookMoreOfMeal}
-      className="mt-2 rounded-lg border border-accent/30 bg-accent-soft/40 p-3"
+      className="mt-2 border-t-[1.5px] border-dashed border-accent/45 pt-2.5"
     >
       <Where week={week} date={date} meal={meal} pen={pen} />
-      <div className="mt-2 flex flex-wrap items-end gap-3">
-        <label className="w-28">
+      <div className="mt-2 flex items-end gap-3">
+        <label className="w-28 flex-none">
           <span className="label">Extra-Portionen</span>
           <input
             name="extra"
@@ -85,7 +87,7 @@ export function CookMore({
             className="field"
           />
         </label>
-        <label className="min-w-36 flex-1">
+        <label className="min-w-0 flex-1">
           <span className="label">Reste am</span>
           <select name="reste" defaultValue={later[0] ? slotValue(later[0]) : ""} className="field">
             {later.map((option) => (
@@ -99,7 +101,7 @@ export function CookMore({
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <SubmitButton className="btn btn-primary btn-small">Übernehmen</SubmitButton>
-        <Link href={close} scroll={false} className="link text-sm">
+        <Link href={close} scroll={false} className="link min-h-11">
           Abbrechen
         </Link>
       </div>
@@ -114,7 +116,9 @@ const MOST_EXTRA = 20;
 
 /**
  * The extra portions of a meal cooked for leftovers, apart from its persons: "2 Extra-
- * Portionen", with minus and plus. Zero cooks the meal as planned again.
+ * Portionen", with minus and plus, and beside them for which meal they are. Zero cooks the
+ * meal as planned again. Over the suggestion's dashed rule, without a box: on a dashed note
+ * it was a box in the sheet (audit, 24 November 2026).
  *
  * One form, as the persons' stepper (`ServingsStepper`): each tap sends the number it leads
  * to and shows it at once. A form per sign, with a number worked out on the server, refused
@@ -141,13 +145,12 @@ export function ExtraPortions({
   pen: string | null;
 }) {
   return (
-    // The same small stepper as the persons of a meal, on a dashed note: it is for later.
-    <div className="mt-1.5 rounded-lg border border-dashed border-accent/40 px-2 py-1.5">
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-b-[1.5px] border-dashed border-accent/45 pb-2">
       <form action={changeExtraPortions} className="stepper">
         <Where week={week} date={date} meal={meal} pen={pen} />
         <ExtraSteps extra={extra} what={what} />
       </form>
-      <p className="mt-0.5 text-xs text-muted">
+      <p className="text-xs text-muted">
         {leftoversOn ? `Für Reste am ${mealText(leftoversOn)}` : "Für Reste"}
       </p>
     </div>

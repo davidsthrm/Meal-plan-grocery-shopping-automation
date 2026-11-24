@@ -502,12 +502,16 @@ summary,
     display: flex;
     height: 1.5rem;
     flex: none;
-    align-items: center;
+    /* A hole that does not fit whole goes to a second row, which is cut off: at most widths
+       the last hole was cut in half at the sheet's right edge (audit, 24 November 2026). The
+       row stays at the height it had when centred. */
+    flex-wrap: wrap;
+    align-content: flex-start;
     gap: 1.04rem;
     /* As wide as the sheet: the holes that do not fit neither show nor widen it. */
     contain: inline-size;
     overflow: hidden;
-    padding: 0.15rem 0 0 0.72rem;
+    padding: calc((1.5rem + 0.15rem - 1px - 0.66rem) / 2) 0.72rem 0;
     border-bottom: 1px solid var(--color-rule);
   }
   .sheet-holes > span {
@@ -1054,6 +1058,13 @@ summary,
     .tiles > li > *:hover {
       rotate: 0deg;
     }
+  }
+
+  /* While "Woche leeren?" is asked, the question and its two answers stand in place of the
+     plan's other actions: beside them they broke the row onto four (audit, 24 November
+     2026). */
+  .plan-actions:has(> [data-asking]) > :not([data-asking]) {
+    display: none;
   }
 
   /*
