@@ -26,7 +26,10 @@ function fetchPdf(href: string, name: string): Fetched {
     href,
     file: null,
     coming: fetch(href).then(async (response) => {
-      if (!response.ok) throw new Error(`${href}: ${response.status}`);
+      // Signed out, the server answers with the login page, which is no PDF to share.
+      if (!response.headers.get("content-type")?.startsWith("application/pdf")) {
+        throw new Error(`${href}: ${response.status}`);
+      }
       return new File([await response.blob()], `${name}.pdf`, { type: "application/pdf" });
     }),
   };
@@ -48,8 +51,9 @@ function fetchPdf(href: string, name: string): Fetched {
  *
  * Safari shares only right after a tap, and the PDF can take longer to come: it is fetched
  * the moment the finger lands. Should it still come too late, the link says "PDF teilen",
- * and its next tap shares at once. Offline the bar at the foot says that it needs a
- * connection (`ConnectionGuard`, `data-online-only`).
+ * and its next tap shares at once. Where no PDF comes, the link opens as in a browser, to
+ * show why. Offline the bar at the foot says that it needs a connection (`ConnectionGuard`,
+ * `data-online-only`).
  */
 export function PdfLink({
   name,
@@ -85,8 +89,11 @@ export function PdfLink({
       await navigator.share({ files: [pdf.file ?? (await pdf.coming)], title: name });
     } catch (error) {
       late = error instanceof DOMException && error.name === "NotAllowedError";
-      // The sheet closed without anything chosen is no error.
-      if (!late && !(error instanceof DOMException && error.name === "AbortError")) throw error;
+      // The sheet closed without anything chosen is no error. Where no PDF came (weak signal,
+      // the login run out, the server failed), the link opens as in a browser, to show why.
+      if (!late && !(error instanceof DOMException && error.name === "AbortError")) {
+        window.location.assign(link.href);
+      }
     } finally {
       setBusy(false);
       setReadyFor(late ? link.href : null);

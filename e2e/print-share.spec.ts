@@ -128,6 +128,19 @@ test("a PDF that came too late for its tap is shared by the next one", async ({ 
   expect(errors).toEqual([]);
 });
 
+test("signed out, a PDF opens the login page instead of going to the share sheet", async ({
+  page,
+}) => {
+  await installed(page);
+  await page.goto(`/woche?w=${WEEK}`);
+  await plan(page, "Dienstag Abend", "Pfeffersteak");
+  // The login gone, as when it ran out on the phone: the server answers with the login page,
+  // which must not be shared as the plan's PDF.
+  await page.context().clearCookies();
+  await page.getByRole("link", { name: "Drucken" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
+
 test("in a browser the PDFs open as before", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Dienstag Abend", "Pfeffersteak");
