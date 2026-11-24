@@ -114,3 +114,10 @@ test("a recipe cooked before says on the Regal when, the whole date", async ({ p
   const date = row.getByText(/^Zuletzt am/);
   expect(await date.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
+
+test("a title in Alle Rezepte is as tall as a finger", async ({ page }) => {
+  await page.goto("/import/rezepte");
+  // It was 19px tall, right above the line that folds the row open.
+  const title = page.getByRole("link", { name: "Kartoffelsuppe", exact: true });
+  expect((await title.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+});
