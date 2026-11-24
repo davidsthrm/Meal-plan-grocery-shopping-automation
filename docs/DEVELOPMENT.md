@@ -47,9 +47,10 @@ that cost time before.
   the height of a select, the Vorrat's columns) while every Chromium test passed. Tag a test
   `@webkit` when it is about the shopping notes and their sheets, the keyboard, or the
   layout on a small screen. Each tagged test runs twice more, so not every test is tagged:
-  the 15 tagged in November 2026 add about seven minutes to a run (28 runs, 7.1 minutes on
-  24 November 2026). The narrowest phone's two run on the phone only: they set its 375px for
-  their whole file, so `tablet-webkit` leaves them out. The tagged tests do not yet test
+  the 24 tagged in November 2026 add about nine minutes to a run (32 runs took 8.6 minutes
+  on 24 November 2026, before four more narrow-phone tests were tagged). The narrowest
+  phone's tests run on the phone only: they set its 375px for their whole file, so
+  `tablet-webkit` leaves them out. The tagged tests do not yet test
   Enter on a word of a datalist; later branches add those tests. One project alone:
   `npm run e2e -- --project phone-webkit`.
 - The WebKit projects start with the hint to install the app put away (`storageState` in

@@ -87,7 +87,9 @@ test("the meal chooser keeps a dish's facts to one line, leaving out whole what 
   expect(cut).toEqual([]);
 });
 
-test("the Rezept-Stapel's Zurück stands above the strip after a decision", async ({ page }) => {
+test("the Rezept-Stapel's Zurück stands above the strip after a decision @webkit", async ({
+  page,
+}) => {
   await page.goto("/rezepte/stapel");
   await page.getByRole("button", { name: "Nicht jetzt" }).click();
   // The only way to take a swipe back lay below the three buttons, under the strip on an
@@ -105,7 +107,7 @@ test("the Rezept-Stapel's Zurück stands above the strip after a decision", asyn
   expect(box!.y + box!.height).toBeLessThanOrEqual(card);
 });
 
-test("a recipe cooked before says on the Regal when, the whole date", async ({ page }) => {
+test("a recipe cooked before says on the Regal when, the whole date @webkit", async ({ page }) => {
   await planHistory();
   await page.goto(`/rezepte/regal?buch=${encodeURIComponent("E2E Kochbuch")}`);
   const row = page.getByRole("region", { name: "Schon gekocht" }).getByRole("link").first();
@@ -116,14 +118,14 @@ test("a recipe cooked before says on the Regal when, the whole date", async ({ p
   expect(await date.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
-test("a title in Alle Rezepte is as tall as a finger", async ({ page }) => {
+test("a title in Alle Rezepte is as tall as a finger @webkit", async ({ page }) => {
   await page.goto("/import/rezepte");
   // It was 19px tall, right above the line that folds the row open.
   const title = page.getByRole("link", { name: "Kartoffelsuppe", exact: true });
   expect((await title.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
 
-test("the recipe form's Speichern is a bar standing on the strip", async ({ page }) => {
+test("the recipe form's Speichern is a bar standing on the strip @webkit", async ({ page }) => {
   await page.goto("/rezepte?q=kartoffelsuppe");
   await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
   await page.getByRole("link", { name: "Rezept ändern" }).click();
