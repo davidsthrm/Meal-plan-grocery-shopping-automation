@@ -49,13 +49,13 @@ specification of the receipt upload (not built yet).
   Basilikumblätter" and "1 Bund Basilikum" are "1 Bund Basilikum", 50 g of spring onions
   stand on their bunch, and alone they are the name, "Basilikum" (David, 24 November 2026;
   "10x Basilikum" stood beside the bunch). A number typed onto a note keeps its line, "2x
-  Basilikum". Zest is bought as the household's fruit of that kind, with the
-  note "Bio", because zest is grated from an untreated fruit: 3 TL a lemon, 2 TL a lime,
-  1 EL an orange. A piece of zest, or a zest read without an amount, is one fruit: "Schale
-  von 1 Zitrone" is "1x Zitrone Bio". A packet of zest has no fruit to count and stays as it
-  is. An opened line says what it was asked for in ("Genau: 8 Zehen", "Genau: 2 Stück + 2 TL
-  Bio-Zitronenschale"), a zest without an amount as the one fruit it buys ("Genau: 2 Stück +
-  1 Stück Bio-Zitronenschale"; it was missing there until November 2026). Lemon and lime juice are not turned into fruit: the household uses
+  Basilikum". Zest is bought as the household's fruit of that kind, with the note "Bio", because
+  zest is grated from an untreated fruit: 3 TL a lemon, 2 TL a lime, 1 EL an orange. A piece of
+  zest, or a zest read without an amount, is one fruit: "Schale von 1 Zitrone" is "1x Zitrone
+  Bio". A packet of zest has no fruit to count and stays as it is. An opened line says what it
+  was asked for in ("Genau: 8 Zehen", "Genau: 2 Stück + 2 TL Bio-Zitronenschale"), a zest without
+  an amount as the one fruit it buys ("Genau: 2 Stück + 1 Stück Bio-Zitronenschale"; it was missing
+  there until November 2026). Lemon and lime juice are not turned into fruit: the household uses
   bottled juice it has at home, so Zitronensaft and Limettensaft are pantry staples and
   stand under "Haben wir schon"; orange juice is bought as juice. The yields are estimates.
   A herb kept by the leaf (Salbei) or dried (Majoran, Oregano) has no bunch its sprigs can
