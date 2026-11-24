@@ -74,9 +74,7 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
 
       {months.map(({ month, weeks: entries }) => (
         <section key={month} className="mt-8" aria-label={monthAndYear(month)}>
-          <h2 className="border-b border-line pb-2 text-xl font-bold tracking-tight">
-            {monthAndYear(month)}
-          </h2>
+          <h2 className="text-xl font-bold tracking-tight">{monthAndYear(month)}</h2>
           <ul className="mt-3 space-y-3">
             {entries.map((week) => {
               const meals = week.slots.filter((slot) => slot.meal !== "coffee").length;
@@ -94,7 +92,7 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
                     className="card lift block overflow-hidden"
                     aria-label={`Kalenderwoche ${isoWeek(week.weekStart)}, ${weekRange(week.weekStart)}`}
                   >
-                    <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
                       <span className="flex flex-wrap items-baseline gap-x-3">
                         <span className="text-lg font-bold tracking-tight">
                           KW {isoWeek(week.weekStart)}
@@ -102,29 +100,27 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
                         <span className="text-muted">{weekRange(week.weekStart)}</span>
                         {mark && <span className="tag">{mark}</span>}
                       </span>
-                      <span className="flex items-center gap-3 text-sm text-muted">
-                        {meals === 0 ? (
-                          "Noch nichts geplant"
-                        ) : (
-                          <>
-                            {balance
-                              .filter((line) => line.count > 0)
-                              .map((line) => (
-                                <span
-                                  key={line.group}
-                                  className={`kind-${line.group} inline-flex items-center gap-1`}
-                                  title={GROUP_NAME[line.group]}
-                                >
-                                  <span className="dot" />
-                                  {line.count}
-                                  <span className="sr-only"> {GROUP_NAME[line.group]}</span>
-                                </span>
-                              ))}
-                            <span>{meals === 1 ? "1 Mahlzeit" : `${meals} Mahlzeiten`}</span>
-                          </>
-                        )}
-                      </span>
-                    </span>
+                      {/* The week's kinds as the plan counts them, each its dot, number and
+                          name: bare dots with numbers said little (audit, 24 November 2026). */}
+                      {meals === 0 ? (
+                        <span className="text-sm text-muted">Noch nichts geplant</span>
+                      ) : (
+                        <ul className="balance-row">
+                          {balance
+                            .filter((line) => line.count > 0)
+                            .map((line) => (
+                              <li key={line.group} className={`kind-${line.group}`}>
+                                <span className="dot" aria-hidden />
+                                <span className="font-bold tabular-nums">{line.count}</span>
+                                <span>{GROUP_NAME[line.group]}</span>
+                              </li>
+                            ))}
+                          <li className="text-muted">
+                            {meals === 1 ? "1 Mahlzeit" : `${meals} Mahlzeiten`}
+                          </li>
+                        </ul>
+                      )}
+                    </div>
                     {/* Seven columns only from lg on: on an iPad upright a column had room
                         for seven to nine letters of a dish, as on the week (DESIGN.md). */}
                     {week.slots.length > 0 && (

@@ -80,7 +80,10 @@ are in [SHOPPING.md](SHOPPING.md).
   the moment of what was there (`plannedWhen`). Null for what was planned before each was
   recorded.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
-  first, with its calendar week, its meals day by day and its count per kind. A week counts
+  first, with its calendar week, its meals day by day and its count per kind, as the week's
+  count says it: a dot, the number and the kind's name (`.balance-row`); bare dots with
+  numbers said little, and a rule under each month's name was one line more (audit, 24
+  November 2026). A week counts
   for the month most of its days are in. The week being planned is always listed. Its days
   stand in seven columns only from `lg` on; below, each day is a line: on an iPad upright a
   column cut nearly every dish to seven to nine letters, "Käsespät…" (audit, 24 November
