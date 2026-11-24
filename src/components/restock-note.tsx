@@ -7,6 +7,7 @@ import { mondayOf } from "@/domain/dates";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayName, noteName } from "@/lib/list-text";
 import { CloseIcon, ListIcon, PlusIcon } from "./icons";
+import { PictogramIcon } from "./pictogram";
 import { SubmitButton } from "./submit-button";
 
 interface Props {
@@ -87,7 +88,10 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
       )}
 
       {items.length === 0 ? (
-        <p className="muted mt-3 text-sm">Nichts ist ausgegangen.</p>
+        <>
+          <PictogramIcon name="korb" className="empty-picture mt-3" />
+          <p className="muted text-sm">Nichts ist ausgegangen.</p>
+        </>
       ) : (
         <ul className="note-lines mt-2">
           {items.map((item) => (

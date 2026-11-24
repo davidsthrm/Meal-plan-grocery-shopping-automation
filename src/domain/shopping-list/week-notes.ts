@@ -91,6 +91,46 @@ export function arrangeNotes<T extends { trip: ShoppingTrip; completed: object |
 }
 
 /**
+ * The errand the shopping page opens with, and the week it is a note of: the first one from
+ * today on that is not done and has something still to buy, in the weeks given (their
+ * notes, or `toDo` of `arrangeNotes`). None when every one ahead is empty or done. A done
+ * errand can still have lines open, planned after its shopping (`completion`); it is left
+ * out as `arrangeNotes` leaves it out of `toDo`, since the running week's notes come as
+ * they are read. From Saturday on the page shows the week ahead while that day's market and
+ * dm are notes of the running week: looking at the week ahead alone, it named Monday's
+ * supermarket on the household's Saturday (audit, 24 November 2026).
+ */
+export function nextErrand<
+  T extends { trip: ShoppingTrip; open: number; completed: object | null },
+>(
+  weeks: readonly { week: IsoDate; notes: readonly T[] }[],
+  today: IsoDate,
+): { week: IsoDate; note: T } | undefined {
+  return weeks
+    .flatMap(({ week, notes }) =>
+      notes
+        .filter((note) => note.trip.date >= today && note.open > 0 && note.completed === null)
+        .map((note) => ({ week, note })),
+    )
+    .sort((a, b) => a.note.trip.date.localeCompare(b.note.trip.date))[0];
+}
+
+/**
+ * Whether the shopping page says that nothing is on the notes yet, with the empty cart: no
+ * line on a note of the week shown (`lines`, open and done), nothing at home for it, and no
+ * errand to open with (`next`). From Saturday on that errand can be today's market or dm of
+ * the running week while the week ahead is still empty: the page showed the empty cart
+ * beside it (review, 24 November 2026).
+ */
+export function nothingOnTheNotes(
+  lines: number,
+  atHome: number,
+  next: object | undefined,
+): boolean {
+  return lines === 0 && atHome === 0 && next === undefined;
+}
+
+/**
  * The days of a week a note can be opened on by hand ("Neuer Zettel"): from today on. A week
  * gone by has none.
  */

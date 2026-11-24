@@ -12,8 +12,10 @@ import {
   extrasToBuy,
   JUST_FINISHED_MS,
   justFinished,
+  nextErrand,
   notesOf,
   notesOfWeek,
+  nothingOnTheNotes,
 } from "./week-notes";
 
 const SAT_BEFORE = "2026-10-10";
@@ -194,6 +196,86 @@ describe("justFinished", () => {
 
   it("takes a tick from another device's clock ahead of this one as now", () => {
     expect(justFinished(now + 30_000, now)).toBe(true);
+  });
+});
+
+describe("nextErrand", () => {
+  const TUESDAY = "2026-10-13";
+  const note = (date: string, place: ShoppingTrip["place"], open: number, done = false) => ({
+    trip: { date, place },
+    open,
+    completed: done ? { at: 1, by: null } : null,
+  });
+
+  const NEXT_MONDAY = "2026-10-19";
+  const week = (monday: string, ...notes: ReturnType<typeof note>[]) => ({ week: monday, notes });
+
+  it("is the first errand from today on with something open", () => {
+    const next = nextErrand(
+      [
+        week(
+          MONDAY,
+          note(TUESDAY, "drugstore", 0),
+          note(FRIDAY, "supermarket", 3),
+          note(SATURDAY, "market", 2),
+        ),
+      ],
+      TUESDAY,
+    );
+    expect(next?.note.trip.place).toBe("supermarket");
+  });
+
+  it("is never an errand whose day is over, nor one when nothing is open", () => {
+    expect(nextErrand([week(MONDAY, note(MONDAY, "supermarket", 4))], TUESDAY)).toBeUndefined();
+    expect(nextErrand([week(MONDAY, note(TUESDAY, "bakery", 0))], TUESDAY)).toBeUndefined();
+  });
+
+  it("on Saturday is today's dm of the running week, not Monday's supermarket ahead", () => {
+    const next = nextErrand(
+      [
+        week(MONDAY, note(FRIDAY, "supermarket", 0), note(SATURDAY, "drugstore", 2)),
+        week(NEXT_MONDAY, note(SATURDAY, "market", 0), note(NEXT_MONDAY, "supermarket", 5)),
+      ],
+      SATURDAY,
+    );
+    expect(next).toEqual({ week: MONDAY, note: note(SATURDAY, "drugstore", 2) });
+  });
+
+  it("is the week ahead's errand, with its week, once the running week has none open", () => {
+    const next = nextErrand(
+      [
+        week(MONDAY, note(SATURDAY, "drugstore", 0)),
+        week(NEXT_MONDAY, note(NEXT_MONDAY, "supermarket", 5)),
+      ],
+      SATURDAY,
+    );
+    expect(next).toEqual({ week: NEXT_MONDAY, note: note(NEXT_MONDAY, "supermarket", 5) });
+  });
+
+  it("is never an errand that is done, though lines on it are still open", () => {
+    // What was planned after the shopping is open on a done errand (`completion`): on a
+    // Saturday the running week's dm, done, was named before Monday's supermarket.
+    const next = nextErrand(
+      [
+        week(MONDAY, note(SATURDAY, "drugstore", 2, true)),
+        week(NEXT_MONDAY, note(NEXT_MONDAY, "supermarket", 5)),
+      ],
+      SATURDAY,
+    );
+    expect(next).toEqual({ week: NEXT_MONDAY, note: note(NEXT_MONDAY, "supermarket", 5) });
+  });
+});
+
+describe("nothingOnTheNotes", () => {
+  it("is so for a week with nothing on its notes, nothing at home and no errand ahead", () => {
+    expect(nothingOnTheNotes(0, 0, undefined)).toBe(true);
+    expect(nothingOnTheNotes(3, 0, undefined)).toBe(false);
+    expect(nothingOnTheNotes(0, 2, undefined)).toBe(false);
+  });
+
+  it("is not while the page opens with an errand, though the week shown is empty", () => {
+    // Saturday: the week ahead is empty, today's dm of the running week opens the page.
+    expect(nothingOnTheNotes(0, 0, { week: MONDAY })).toBe(false);
   });
 });
 

@@ -24,7 +24,7 @@
   --color-danger-soft: #f6e1dd;
 
   /* Paper: the ruled lines of a sheet, its margin, and the yellow of a note. */
-  --color-rule: #e7e1d4;
+  --color-rule: #dcd4c3;
   --color-margin: #efcfc9;
   --color-note: #fbf1c2;
   --color-note-line: #ecdf9c;
@@ -96,6 +96,15 @@
  */
 @custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
+/*
+ * The grain of the paper: a fine noise of darker and lighter specks, so that the page reads
+ * as paper and not as a screen's flat colour (23 November 2026). One small static image,
+ * drawn once and tiled: no filter on what scrolls, nothing fixed, nothing that moves.
+ */
+:root {
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .14 0 0 0 0 .12 0 0 0 0 .09 1.1 0 0 0 -.57'/%3E%3C/filter%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 -1.1 0 0 0 .53'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3Crect width='160' height='160' filter='url(%23l)'/%3E%3C/svg%3E");
+}
+
 html {
   font-size: 17px;
   /* Under the page, the paper: nothing else shows where the page ends. */
@@ -114,8 +123,8 @@ html {
 }
 
 body {
-  /* The page is the paper: no wash of colour at its top (22 November 2026). */
-  background: var(--color-paper);
+  /* The page is the paper, with its grain. */
+  background: var(--paper-grain) var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: var(--text-base);
@@ -267,19 +276,22 @@ summary,
   }
 
   /*
-   * The weekend on the card of today: Saturday and Sunday side by side, each a small card
-   * of its own on the green's pastel; one alone takes the whole width.
+   * The weekend on the card of today: Saturday and Sunday side by side in two plain columns
+   * with a hairline between them, on a small phone too; one alone takes the whole width.
+   * Each was a small tinted card: a box inside a box, and beside a longer Saturday an empty
+   * tinted block (audit, 24 November 2026).
    */
   .weekend-days {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: 0.5rem;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
   }
-  .weekend-day {
-    min-width: 0;
-    border-radius: 0.9rem;
-    background: color-mix(in srgb, var(--color-accent-soft) 70%, transparent);
-    padding: 0.6rem 0.75rem 0.7rem;
+  .weekend-day:not(:last-child) {
+    padding-right: 1rem;
+  }
+  .weekend-day + .weekend-day {
+    border-left: 1px solid var(--color-line);
+    padding-left: 1rem;
   }
 
   /* The week's count is the way to the goals: it gives under the finger like a button. */
@@ -345,6 +357,42 @@ summary,
     font-size: var(--text-sm);
   }
 
+  /*
+   * Each section has a pastel of its own at the top of its pages, fading into the paper over
+   * 16rem, and the header's strip in it: Woche sage, Einkauf a misty blue, Rezepte peach,
+   * Favoriten blush, Import lavender. Back on 23 November 2026, softer than in October: the
+   * paper alone (palette C1) was too plain for the household. Read from the section the bar
+   * marks as current, so it is there from the first paint and changes the moment a section is
+   * tapped. Not faded: a change of an inherited value recalculates every element on the page
+   * in every frame, just while a tap loads the next page.
+   */
+  .app-shell {
+    --section-tint: var(--color-paper);
+    background:
+      var(--paper-grain),
+      linear-gradient(var(--section-tint), var(--color-paper) 16rem) no-repeat;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
+    --section-tint: #e3eee7;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
+    --section-tint: #e2ebf2;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
+    --section-tint: #f6e6da;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
+    --section-tint: #f5e1e6;
+  }
+  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
+    --section-tint: #e9e4f3;
+  }
+  @media print {
+    .app-shell {
+      background: none;
+    }
+  }
+
   /* The line whose form it is pales with it: the tap was taken, the line is going. */
   .swipe-row:has([data-pending]) .swipe-face > :not(.row-actions) {
     opacity: 0.45;
@@ -397,20 +445,56 @@ summary,
   }
 
   /*
+   * A dish's name breaks where a compound joins, "Kartoffel-suppe", never into short
+   * syllables, "Lasa-gne", "Currysah-ne": four letters at least on either side, and a word
+   * of fewer than ten letters not at all. WebKit reads the -webkit- limits, Chromium the
+   * last one. A word that still does not fit breaks anywhere, as the last resort. Plain
+   * `hyphens: auto` broke "Gemüse-Lasa-gne" and "Currysah-ne" (audit, 24 November 2026).
+   */
+  .dish-name {
+    overflow-wrap: break-word;
+    hyphens: auto;
+    -webkit-hyphenate-limit-before: 4;
+    -webkit-hyphenate-limit-after: 4;
+    hyphenate-limit-chars: 10 4 4;
+  }
+
+  /* Today on the week stands a little above the page: the first thing read there. */
+  .today-card {
+    border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-line));
+    box-shadow:
+      0 1px 2px rgb(35 33 29 / 0.05),
+      0 14px 26px -18px rgb(35 33 29 / 0.35);
+  }
+
+  /*
+   * A recipe card of a kind has its pastel along its top edge, fading into the card: a shelf
+   * reads at a glance. A card of no kind has none (23 November 2026; a grey band before).
+   */
+  .kind-edge {
+    pointer-events: none;
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3.5rem;
+    background: linear-gradient(var(--kind), transparent);
+  }
+
+  /*
    * A sheet of a pad: the week plan, a shopping list. Barely rounded, with the holes of the
    * binding along its top (`SheetHoles`) and two more sheets showing underneath.
    */
   .sheet {
+    /* The two sheets under it a shade darker than the top one, so that they read as a pad. */
     --sheets-under:
-      0 5px 0 -2px var(--color-surface), 0 5px 0 -1px var(--color-line),
-      0 10px 0 -4px var(--color-surface), 0 10px 0 -3px var(--color-line);
+      0 5px 0 -2px #f8f4ec, 0 5px 0 -1px #d3cab8, 0 10px 0 -4px #f3eee4, 0 10px 0 -3px #cfc5b2;
     position: relative;
     border: 1px solid var(--color-line);
     border-radius: 0.3rem;
     background: var(--color-surface);
     box-shadow:
       var(--sheets-under),
-      0 24px 28px -24px rgb(35 33 29 / 0.4);
+      0 2px 4px rgb(35 33 29 / 0.05),
+      0 26px 30px -22px rgb(35 33 29 / 0.38);
   }
   /*
    * Every hole is a box of its own, laid out and drawn like the sheet's edge. Drawn as a
@@ -741,7 +825,7 @@ summary,
     left: 50%;
     width: 100vw;
     translate: -50% 0;
-    background: var(--color-paper);
+    background: var(--paper-grain) var(--section-tint, var(--color-paper));
     mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
   }
 
@@ -950,6 +1034,11 @@ summary,
   }
   .tiles > li > *:focus-visible {
     rotate: 0deg;
+  }
+  /* The next errand at the head of the notes lies straight on the page: it is no tile. */
+  .tiles > li.next-errand > * {
+    rotate: none;
+    will-change: auto;
   }
   @media (hover: hover) and (pointer: fine) {
     .tiles > li > *:hover {
@@ -1277,6 +1366,34 @@ summary,
     color: var(--kind-ink, var(--color-muted));
     opacity: 0.18;
     stroke-width: 1.5;
+  }
+
+  /*
+   * An empty place shows the pictogram of what would be there, large and pale, above what it
+   * says: an empty note, an empty week, no favourites, nothing found (23 November 2026).
+   */
+  .empty-picture {
+    display: block;
+    width: 5.5rem;
+    height: 5.5rem;
+    margin-bottom: 0.4rem;
+    color: var(--color-muted);
+    opacity: 0.32;
+    stroke-width: 1.4;
+  }
+  .note .empty-picture {
+    color: var(--color-note-ink);
+  }
+  /* On an empty week, behind the first day of the sheet, a little askew. */
+  .sheet-picture {
+    pointer-events: none;
+    position: absolute;
+    top: 2.4rem;
+    right: 1rem;
+    width: 7rem;
+    height: 7rem;
+    rotate: -8deg;
+    opacity: 0.22;
   }
 
   /* A pictogram on its pastel, in front of a name. */

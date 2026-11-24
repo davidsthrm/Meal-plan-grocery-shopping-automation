@@ -18,6 +18,7 @@ import {
 } from "@/components/icons";
 import { ListMemory } from "@/components/list-return";
 import { ResetWeek } from "@/components/reset-week";
+import { PictogramIcon } from "@/components/pictogram";
 import { SheetHoles } from "@/components/sheet-holes";
 import { ServingsStepper } from "@/components/servings-stepper";
 import { SubmitButton } from "@/components/submit-button";
@@ -237,10 +238,11 @@ export default async function WeekPage(props: PageProps<"/woche">) {
 
   const weekLink = (monday: IsoDate) =>
     `/woche?w=${monday}${placing ? `&rezept=${placing.id}` : ""}${showExtras ? "&t=extra" : ""}`;
-  // "What is there to eat today?" is asked of the week that is running, also while the page
-  // already shows the next one, as it does from Saturday on.
+  // "What is there to eat today?" is asked of the week that is running, and on the week the
+  // planner opens on, which from Saturday on is the next one. Not on any other: tapping
+  // forward to next week on a Tuesday showed the card again (audit, 24 November 2026).
   const showToday =
-    (week === running || addDays(week, -7) === running) &&
+    (week === running || week === thisWeek) &&
     !placing &&
     !showExtras &&
     hasToday(runningSlots, now);
@@ -539,6 +541,10 @@ export default async function WeekPage(props: PageProps<"/woche">) {
       {!showExtras && (
         <div className="sheet mt-6">
           <SheetHoles />
+          {/* A week with nothing on it yet: a plate, large and pale, behind its first day. */}
+          {slots.length + extras.length === 0 && (
+            <PictogramIcon name="teller" className="empty-picture sheet-picture" />
+          )}
           <ol id="wochenblatt" className="relative divide-y divide-rule">
             {ahead.map((date) => dayRow(date, false))}
             {/* The days that are over lie at the foot, under a word that says so: the
@@ -713,9 +719,10 @@ function slotSaid(slot: PlanSlot | undefined, recipeOf: ReadonlyMap<string, Reci
 }
 
 /**
- * Today's meals, and below them Saturday and Sunday as two small cards, each meal on a line
- * of its own with the dot of its kind: the weekend was one grey sentence the household did
- * not read (October 2026).
+ * Today's meals, and below them Saturday and Sunday in two plain columns, each meal on a
+ * line of its own with the dot of its kind: the weekend was one grey sentence the household
+ * did not read (October 2026). Today's dishes are named at 19px, the strongest thing on the page
+ * after the greeting (`.today-card`, 23 November 2026).
  */
 function Today({
   now,
@@ -739,7 +746,7 @@ function Today({
   // Coffee on Sunday is said only when there is some.
   const mealsOn = (date: IsoDate) =>
     mealsOf(date).filter((meal) => meal !== "coffee" || at(date, meal));
-  const meal = (date: IsoDate, which: Meal, small: boolean) => {
+  const meal = (date: IsoDate, which: Meal, size: string) => {
     const slot = at(date, which);
     return (
       <li key={which} className="min-w-0">
@@ -753,7 +760,7 @@ function Today({
                   id={item.recipeId}
                   week={week}
                   day={date}
-                  small={small}
+                  size={size}
                   servings={{ planned: item.servings, extra: slot.extra }}
                 />
               </li>
@@ -766,7 +773,7 @@ function Today({
             )}
           </ul>
         ) : slot ? (
-          <SlotName small={small} className="font-semibold">
+          <SlotName size={size} className="font-semibold">
             {slotSaid(slot, recipeOf)}
           </SlotName>
         ) : (
@@ -777,7 +784,7 @@ function Today({
   };
 
   return (
-    <section aria-label="Heute" className="card px-4 py-3.5 sm:px-5">
+    <section aria-label="Heute" className="card today-card px-4 py-3.5 sm:px-5">
       <h2 className="text-lg font-bold tracking-tight">
         {dated ? (
           <>
@@ -788,8 +795,11 @@ function Today({
           "Heute"
         )}
       </h2>
-      <ul className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-2.5">
-        {mealsOn(now).map((which) => meal(now, which, false))}
+      {/* On a phone today's dishes stand one under the other, each on a whole line at 19px
+          and breaking between its words only: side by side, a column of 125 to 150px cut
+          "Kartoffelsupp|e" (audit, 24 November 2026). From sm on they stand side by side. */}
+      <ul className="mt-1.5 grid gap-x-4 gap-y-2.5 sm:grid-cols-2 max-sm:[&_a]:hyphens-manual">
+        {mealsOn(now).map((which) => meal(now, which, "text-lg"))}
       </ul>
       {weekend.length > 0 && (
         <section aria-label="Am Wochenende" className="mt-3.5">
@@ -801,7 +811,7 @@ function Today({
                   {weekdayLong(date)}
                 </Link>
                 <ul className="mt-1 space-y-1.5">
-                  {mealsOn(date).map((which) => meal(date, which, true))}
+                  {mealsOn(date).map((which) => meal(date, which, "text-sm"))}
                 </ul>
               </div>
             ))}
@@ -824,18 +834,17 @@ const DISH_SIZE = "text-base sm:text-lg";
  * front, so that it lines up with the names of dishes.
  */
 function SlotName({
-  small = false,
+  size = DISH_SIZE,
   className = "",
   children,
 }: {
-  small?: boolean;
+  /** The size of its words: smaller in a card of the weekend, larger for today. */
+  size?: string;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <p
-      className={`flex items-start gap-2 ${small ? "text-sm" : DISH_SIZE} leading-snug ${className}`}
-    >
+    <p className={`flex items-start gap-2 ${size} leading-snug ${className}`}>
       <span aria-hidden className="dot dot-first kind-none" />
       <span className="min-w-0">{children}</span>
     </p>
@@ -852,7 +861,7 @@ function KindTitle({
   id,
   week,
   day,
-  small = false,
+  size = DISH_SIZE,
   servings,
 }: {
   recipe: RecipeSummary | undefined;
@@ -861,8 +870,8 @@ function KindTitle({
   week: IsoDate;
   /** The day it stands on, where the way back lands when it cannot step back. */
   day?: IsoDate;
-  /** Smaller, in a card of the weekend. */
-  small?: boolean;
+  /** The size of its words: smaller in a card of the weekend, larger for today. */
+  size?: string;
   /**
    * The meal's servings and its extra portions: the recipe's page starts with as much as the
    * meal cooks.
@@ -873,7 +882,7 @@ function KindTitle({
     servings &&
     cookedServings(servings.planned, servings.extra, (recipe?.servings?.unit ?? null) === null);
   return (
-    <span className={`flex items-start gap-2 leading-snug ${small ? "text-sm" : DISH_SIZE}`}>
+    <span className={`flex items-start gap-2 leading-snug ${size}`}>
       <span
         aria-hidden
         className={`dot dot-first ${(recipe && recipeTone(recipe)?.className) || "kind-none"}`}
@@ -882,7 +891,7 @@ function KindTitle({
         href={`/rezepte/${id}${fromPlan(week, day, cooked)}`}
         prefetch
         transitionTypes={[FORWARD]}
-        className="min-w-0 font-semibold break-words hyphens-auto decoration-line underline-offset-4 hover:underline"
+        className="dish-name min-w-0 font-semibold decoration-line underline-offset-4 hover:underline"
       >
         {recipe?.title ?? "Rezept"}
       </Link>

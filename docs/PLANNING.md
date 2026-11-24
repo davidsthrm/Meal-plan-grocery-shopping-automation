@@ -81,7 +81,10 @@ are in [SHOPPING.md](SHOPPING.md).
   recorded.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
   first, with its calendar week, its meals day by day and its count per kind. A week counts
-  for the month most of its days are in. The week being planned is always listed.
+  for the month most of its days are in. The week being planned is always listed. Its days
+  stand in seven columns only from `lg` on; below, each day is a line: on an iPad upright a
+  column cut nearly every dish to seven to nine letters, "Käsespät…" (audit, 24 November
+  2026).
 
 ### The week's balance
 
@@ -141,6 +144,13 @@ are in [SHOPPING.md](SHOPPING.md).
   what it holds, Sunday's coffee when planned or being chosen for, the meal being chosen for
   marked, each a link to choose for it instead. It stays while the meal's page is torn off
   and scrolls on its own, so that a week is planned with the library open.
+- A recipe in the chooser is a row (`RecipeRow`, also in the search as one types): its name
+  on two lines at most, breaking where a compound joins (`.dish-name`); time, servings and
+  kind of dish on one line, where a fact that does not fit is left out whole, the kind
+  first, then the servings; the reasons quiet, as on the plan. Cut to one line,
+  "Spinat-Cannell…" said less than the three lines of facts and the four green lines of
+  reasons under it, green read as a link, and a line of facts cut at its edge read
+  "4 Portion" (audit, 24 November 2026).
 
 ## Saved plans
 
@@ -249,11 +259,15 @@ are in [SHOPPING.md](SHOPPING.md).
   forward), with "Alle Wochen" and "Statistik" next to it, on a phone as signs (a month's
   calendar, a chart), so that the row is one line on every week (22 November 2026).
 - Above the plan of the running week stands what there is to eat today and what the weekend
-  holds (`Today`), also while the page already shows the coming week. Once something is
-  planned for those days, it stands next to the greeting like a widget on a large screen,
-  and under it on a phone; otherwise the header is the greeting alone. Today's lunch and
-  dinner stand side by side, and Saturday and Sunday are two small cards, each meal on a
-  line of its own with its pictogram: the weekend was one grey sentence (October 2026).
+  holds (`Today`), and above the week the planner opens on, which from Saturday on (from
+  Thursday with nothing more planned) is the coming week. Not on another week: a tap
+  forward to next week on a Tuesday showed the card again (audit, 24 November 2026). Once
+  something is planned for those days, it stands next to the greeting like a widget on a
+  large screen, and under it on a phone; otherwise the header is the greeting alone.
+  Saturday and Sunday stand in two plain columns with a hairline between them, each meal on
+  a line of its own with its kind's dot: the weekend was one grey sentence (October 2026).
+  They were two small tinted cards until the audit of 24 November 2026: a box inside a box,
+  and beside a longer Saturday an empty tinted block.
 - Every planned meal on the plan carries the kind of its first dish as a coloured edge, a
   stronger shade of the kind's pastel (`.meal-cell`), and a grey one where its dish has no
   kind or it has no recipe. A meal without a recipe has a picture where it has one

@@ -125,17 +125,19 @@ export default async function HistoryPage(props: PageProps<"/woche/verlauf">) {
                         )}
                       </span>
                     </span>
+                    {/* Seven columns only from lg on: on an iPad upright a column had room
+                        for seven to nine letters of a dish, as on the week (DESIGN.md). */}
                     {week.slots.length > 0 && (
-                      <span className="grid border-t border-line sm:grid-cols-7 sm:divide-x sm:divide-line">
+                      <span className="grid border-t border-line lg:grid-cols-7 lg:divide-x lg:divide-line">
                         {daysOfWeek(week).map((day) => (
                           <span
                             key={day.date}
-                            className="grid grid-cols-[2.2rem_1fr] gap-x-2 px-4 py-1.5 sm:block sm:px-2.5 sm:py-2"
+                            className="grid grid-cols-[2.2rem_1fr] gap-x-2 px-4 py-1.5 lg:block lg:px-2.5 lg:py-2"
                           >
                             <span className={`eyebrow ${day.date === now ? "text-accent" : ""}`}>
                               {weekdayShort(day.date)}
                             </span>
-                            <span className="min-w-0 space-y-0.5 text-sm sm:mt-1 sm:block">
+                            <span className="min-w-0 space-y-0.5 text-sm lg:mt-1 lg:block">
                               <Meal slot={day.meals.lunch} recipeOf={recipeOf} />
                               <Meal slot={day.meals.dinner} recipeOf={recipeOf} />
                             </span>

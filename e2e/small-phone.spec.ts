@@ -50,3 +50,39 @@ test("the Rezept-Stapel's three buttons stand above the strip as the page opens"
     expect(box!.y + box!.height).toBeLessThanOrEqual(top);
   }
 });
+
+test("the meal chooser names a long dish whole, on two lines at most", async ({ page }) => {
+  await page.goto("/woche/auswahl?w=2027-03-01&ziel=extra&q=mohn");
+  const name = page
+    .getByRole("region", { name: "Ergebnisse" })
+    .getByText("Zitronen-Mohn-Kuchen", { exact: true });
+  await expect(name).toBeVisible();
+  // Cut to one line, a dish was chosen by "Spinat-Cannell…" (audit, 24 November 2026).
+  const cut = await name.evaluate(
+    (element) =>
+      element.scrollWidth > element.clientWidth + 1 ||
+      element.scrollHeight > element.clientHeight + 1,
+  );
+  expect(cut).toBe(false);
+});
+
+test("the meal chooser keeps a dish's facts to one line, leaving out whole what does not fit", async ({
+  page,
+}) => {
+  await page.goto("/woche/auswahl?w=2027-03-01&ziel=extra&q=e");
+  const results = page.getByRole("region", { name: "Ergebnisse" });
+  await expect(results.getByText("Kartoffelsuppe", { exact: true })).toBeVisible();
+  // A fact shown on the line ends inside it: "4 Portion" was cut in the word.
+  const cut = await results.locator(".dish-name").evaluateAll((names) =>
+    names.flatMap((name) => {
+      const line = name.parentElement!.nextElementSibling!;
+      const box = line.getBoundingClientRect();
+      return [...line.querySelectorAll("span")]
+        .map((fact) => ({ text: fact.textContent, rect: fact.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.width > 0 && rect.top < box.bottom - 1)
+        .filter(({ rect }) => rect.right > box.right + 1)
+        .map(({ text }) => `${name.textContent}: ${text}`);
+    }),
+  );
+  expect(cut).toEqual([]);
+});

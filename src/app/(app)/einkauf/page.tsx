@@ -3,13 +3,16 @@ import { BACK, FORWARD } from "@/lib/transitions";
 import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { ArrowIcon, NoteIcon, TickIcon } from "@/components/icons";
+import { PictogramIcon } from "@/components/pictogram";
 import { PrintButton } from "@/components/print-button";
 import { KeepForTheShop } from "@/components/service-worker";
 import { SheetHoles } from "@/components/sheet-holes";
+import { ShopLogo } from "@/components/shop-logo";
 import { SubmitButton } from "@/components/submit-button";
 import type { Shop } from "@/domain/catalog";
 import {
   addDays,
+  mondayOf,
   planningWeek,
   weekRange,
   type IsoDate,
@@ -18,10 +21,16 @@ import {
 } from "@/domain/dates";
 import { familyName } from "@/domain/family";
 import { groupAtHome, type AtHomeGroup } from "@/domain/shopping-list/at-home";
-import { marketsOfNote } from "@/domain/shopping-list/supermarkets";
+import { marketsOfNote, namesText } from "@/domain/shopping-list/supermarkets";
 import { noteId } from "@/domain/shopping-list/trips";
-import { arrangeNotes, daysToOpen, justFinished } from "@/domain/shopping-list/week-notes";
-import { noteName, PLACE_NAME, whenText } from "@/lib/list-text";
+import {
+  arrangeNotes,
+  daysToOpen,
+  justFinished,
+  nextErrand,
+  nothingOnTheNotes,
+} from "@/domain/shopping-list/week-notes";
+import { noteName, PLACE_LOOK, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
 import { printRules } from "@/lib/note-paper";
 import { momentNow, today } from "@/lib/today";
@@ -51,16 +60,28 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const now = today();
   const moment = momentNow();
   const thisWeek = planningWeek(now);
+  const running = mondayOf(now);
   const week = weekShown(one(params.w), thisWeek, household.firstWeek);
+  // From Saturday on the page opens on the week ahead, while that day's market and dm are
+  // notes of the running week: its notes are read too, for the next errand.
+  const readRunning = week === thisWeek && week !== running && !one(params.zettel);
   const db = await createSessionClient();
-  const [{ notes, atHome, index, members, supermarkets, readAt, choices, history }, noted] =
-    await Promise.all([loadShoppingNotes(db, household, week), loadOwnRestock(now)]);
+  const [
+    { notes, atHome, index, members, supermarkets, readAt, choices, history },
+    noted,
+    runningNotes,
+  ] = await Promise.all([
+    loadShoppingNotes(db, household, week),
+    loadOwnRestock(now),
+    readRunning ? loadShoppingNotes(db, household, running).then((read) => read.notes) : [],
+  ]);
   const picked = notes.find((note) => note.id === one(params.zettel));
   // The notes of the running week are kept on the device for the shop, and the next errand
-  // with them when it lies in the week after.
+  // with them when it lies in the week after. From Saturday on the week ahead keeps today's
+  // notes of the running week with its own.
   const trips = notes.map((note) => note.trip);
   const keep =
-    week === thisWeek &&
+    (week === thisWeek || week === running) &&
     pagesForTheShop(
       week,
       trips,
@@ -68,6 +89,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       hasErrandFrom(trips, now)
         ? []
         : (await loadShoppingNotes(db, household, addDays(week, 7))).notes.map((note) => note.trip),
+      runningNotes.map((note) => note.trip),
     );
 
   if (picked) {
@@ -105,7 +127,6 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   // "Bei den Stührmanns": the household's name where it is a family name.
   const family = familyName(household.name);
   const done = notes.reduce((sum, note) => sum + note.done, 0);
-  const nothing = open + done + atHome.length === 0;
   // What is still to do first; an errand done goes to the foot. A note with nothing on it to
   // buy is not shown while others have something, unless it is there to be written on.
   const arranged = arrangeNotes(
@@ -114,13 +135,28 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     (note) => note.view.groups.every((group) => group.lines.length === 0),
     (note) => note.trip.place === "drugstore" || note.openedByHand,
   );
+  // The week the page opens on starts with its next errand, large, a tap away from the shop.
+  // From Saturday on that is the week ahead, and the errand can be a note of the week before.
+  const next =
+    week === thisWeek
+      ? nextErrand(
+          [
+            { week: running, notes: runningNotes },
+            { week, notes: arranged.toDo },
+          ],
+          now,
+        )
+      : undefined;
+  const nothing = nothingOnTheNotes(open + done, atHome.length, next);
+  const marketsOf = (note: NoteList) =>
+    note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : [];
   const tile = (note: NoteList) => (
     <li key={note.id}>
       <NoteTile
         note={note}
         week={week}
         today={now}
-        markets={note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : []}
+        markets={marketsOf(note)}
         justDone={note.completed !== null && justFinished(note.completed.at, moment)}
       />
     </li>
@@ -132,7 +168,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         <div>
           <p className="eyebrow">
             Einkaufszettel
-            {!nothing && (
+            {open + done + atHome.length > 0 && (
               <span className="font-normal">
                 {" "}
                 · {open} offen{done > 0 ? `, ${done} erledigt` : ""}
@@ -187,8 +223,9 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         </nav>
       </div>
 
+      {nothing && <PictogramIcon name="wagen" className="empty-picture mt-6" />}
       {nothing && (
-        <p className="mt-6 text-muted">
+        <p className="text-muted">
           {family
             ? `Bei den ${family} steht für diese Woche noch nichts auf den Einkaufszetteln.`
             : "Für diese Woche steht noch nichts auf den Einkaufszetteln."}{" "}
@@ -201,7 +238,17 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       )}
 
       <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {arranged.toDo.map(tile)}
+        {next && (
+          <li className="next-errand sm:col-span-2 lg:col-span-3">
+            <NextErrand
+              note={next.note}
+              week={next.week}
+              today={now}
+              markets={marketsOf(next.note)}
+            />
+          </li>
+        )}
+        {arranged.toDo.filter((note) => note.id !== next?.note.id).map(tile)}
         {noted.length > 0 && (
           <li>
             <a href="#merkzettel" className="note lift flex h-full flex-col px-4 pt-6 pb-4">
@@ -328,6 +375,75 @@ function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; wee
   );
 }
 
+/**
+ * A note's name as it shows: its supermarkets, "Aldi & Rewe", or its place. A link to the note
+ * starts its name for a screen reader with it, so that what is read out is what is seen.
+ */
+function shownName(note: NoteList, markets: Shop[]): string {
+  return markets.length > 0
+    ? namesText(markets.map((shop) => shop.name))
+    : PLACE_NAME[note.trip.place];
+}
+
+/**
+ * The next errand, large at the top of the page: where, and "Jetzt einkaufen" straight into
+ * that note's view for the shop. Its name leads to the note itself, as a tile would. Chosen
+ * on 23 November 2026: the household wanted the page to say what is next, not only lay the
+ * notes out.
+ */
+function NextErrand({
+  note,
+  week,
+  today: now,
+  markets,
+}: {
+  note: NoteList;
+  week: IsoDate;
+  today: IsoDate;
+  markets: Shop[];
+}) {
+  const { trip } = note;
+  const look = PLACE_LOOK[trip.place];
+  const href = `/einkauf?w=${week}&zettel=${note.id}`;
+  return (
+    <section aria-labelledby="naechster-einkauf">
+      <h2 id="naechster-einkauf" className="font-semibold">
+        Nächster Einkauf
+        <span className="text-accent"> · {trip.date === now ? "Heute" : whenText(trip)}</span>
+      </h2>
+      <Link
+        href={href}
+        className={`mt-2 flex min-h-11 items-center gap-3 ${look.tone}`}
+        aria-label={`${shownName(note, markets)}, ${whenText(trip)}`}
+      >
+        {markets.length > 0 ? (
+          <span className="flex shrink-0 -space-x-2">
+            {markets.slice(0, 3).map((shop) => (
+              <ShopLogo key={shop.id} shop={shop} size={markets.length > 1 ? 44 : 52} />
+            ))}
+          </span>
+        ) : (
+          <span className="badge size-13">
+            <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
+          </span>
+        )}
+        <span className="title min-w-0">{shownName(note, markets)}</span>
+      </Link>
+      <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Link href={`${href}#laden`} className="btn btn-primary">
+          Jetzt einkaufen
+        </Link>
+        <span className="text-muted tabular-nums">{note.open} offen</span>
+        {/* The note has no tile of its own here, and the view for the shop cannot add a
+            line: its name alone, unmarked, was the only way to write on it. */}
+        <Link href={href} className="link inline-flex min-h-11 items-center">
+          Zettel ansehen
+        </Link>
+      </p>
+    </section>
+  );
+}
+
 /** A note as it lies among the others: its heading, its first lines, and how much is open. */
 function NoteTile({
   note,
@@ -350,7 +466,7 @@ function NoteTile({
     <Link
       href={`/einkauf?w=${week}&zettel=${note.id}`}
       className={`sheet lift relative flex h-full flex-col ${note.completed ? "done-sheet" : ""}`}
-      aria-label={`${PLACE_NAME[note.trip.place]}, ${whenText(note.trip)}: ${
+      aria-label={`${shownName(note, markets)}, ${whenText(note.trip)}: ${
         note.completed ? "erledigt" : `${note.open} offen`
       }`}
     >

@@ -327,11 +327,17 @@ export function NoteSheet({
             </p>
           )}
           {view.groups.length === 0 && (
-            <p className="mt-4 text-muted print:hidden">
-              {drugstore
-                ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
-                : "Nichts zu kaufen."}
-            </p>
+            <div className="mt-4 print:hidden">
+              <PictogramIcon
+                name={PLACE_LOOK[note.trip.place].pictogram}
+                className="empty-picture"
+              />
+              <p className="text-muted">
+                {drugstore
+                  ? "Noch nichts notiert. Was aus der Drogerie gebraucht wird, kommt von Hand hierher."
+                  : "Nichts zu kaufen."}
+              </p>
+            </div>
           )}
           {/* Opened by hand and still empty: it can go again. */}
           {note.openedByHand && view.groups.length === 0 && notBought.length === 0 && (
