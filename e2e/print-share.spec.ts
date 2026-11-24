@@ -68,7 +68,13 @@ test("in the installed app the PDFs go to the share sheet, to print or keep", as
   await installed(page);
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Dienstag Abend", "Pfeffersteak");
-  await page.getByRole("link", { name: "Drucken" }).click();
+  // The PDF is asked for as the finger lands, to be here when the tap ends: Safari shares
+  // only right after a tap.
+  const print = page.getByRole("link", { name: "Drucken" });
+  const asked = page.waitForRequest((request) => request.url().includes("/woche/pdf"));
+  await print.dispatchEvent("pointerdown");
+  await asked;
+  await print.click();
   await expect.poll(() => shared(page)).toEqual([pdf("Wochenplan 1.–7. März")]);
   // Nothing opened inside the app.
   expect(page.context().pages()).toHaveLength(1);
