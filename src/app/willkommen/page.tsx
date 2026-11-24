@@ -72,7 +72,7 @@ export default async function WelcomePage(props: PageProps<"/willkommen">) {
                 role="alert"
                 className="mt-4 rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn"
               >
-                Das passt nicht zusammen: „mindestens“ darf nicht größer sein als „höchstens“.
+                „mindestens“ darf nicht größer sein als „höchstens“.
               </p>
             )}
             {error === "tage" && (

@@ -26,12 +26,11 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
       <p className="eyebrow mt-3">{first ? "Bevor es losgeht" : "Wochenplan"}</p>
       <h1 className="title mt-1">Ziele der Woche</h1>
       <p className="mt-2 text-muted">
-        Wie oft soll es in einer Woche was geben? Die Vorschläge im Wochenplan richten sich danach,
-        und die Zeile über dem Plan zählt mit.
+        Wie oft soll es in einer Woche was geben? Die Vorschläge richten sich danach.
       </p>
       {one(params.fehler) === "1" && (
         <p role="alert" className="mt-4 rounded-lg bg-warn-soft px-4 py-3 font-semibold text-warn">
-          Das passt nicht zusammen: „mindestens“ darf nicht größer sein als „höchstens“.
+          „mindestens“ darf nicht größer sein als „höchstens“.
         </p>
       )}
       {one(params.fehler) === "tage" && (
@@ -48,8 +47,8 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
               Für wie viele kocht ihr?
             </h2>
             <p className="mt-1 mb-3 text-muted">
-              So viele Portionen plant jede Mahlzeit, außer ein Rezept zählt etwas anderes, wie ein
-              Blech oder eine Springform. Das lässt sich später in den Einstellungen ändern.
+              So viele Portionen plant jede Mahlzeit. Das lässt sich später in den Einstellungen
+              ändern.
             </p>
             <FamilySizeField size={household.defaultServings} />
           </section>
@@ -62,10 +61,7 @@ export default async function TargetsPage(props: PageProps<"/woche/ziele">) {
             <h2 id="einkaufstage" className="text-xl font-bold tracking-tight">
               Einkaufstage
             </h2>
-            <p className="mt-1 mb-3 text-muted">
-              Wann kauft ihr wo ein? Jeder Einkauf bekommt seinen eigenen Zettel. Das lässt sich
-              später in den Einstellungen ändern.
-            </p>
+            <p className="mt-1 mb-3 text-muted">Jeder Einkauf bekommt seinen eigenen Zettel.</p>
             <input type="hidden" name="mit-einkaufstagen" value="1" />
             <ShoppingDaysFields days={household.shoppingDays} />
           </section>

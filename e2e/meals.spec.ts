@@ -17,7 +17,7 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   await page.getByLabel("Fisch mindestens").selectOption("5");
   await page.getByLabel("Fisch höchstens").selectOption("2");
   await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByText("Das passt nicht zusammen")).toBeVisible();
+  await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
 
   await page.getByLabel("Fisch mindestens").selectOption("2");
   await page.getByLabel("Fisch höchstens").selectOption("");
