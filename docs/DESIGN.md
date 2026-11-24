@@ -256,7 +256,8 @@ The paper metaphors in motion:
   photographed recipe, "Speichern" of the recipe form) stands on it. The Rezept-Stapel's
   deck takes what the screen has left above its three buttons: at its old height they lay
   under the bar on a 375px phone (November 2026); its "Zurück" stands above the card for the
-  same reason. `e2e/small-phone.spec.ts` checks them.
+  same reason, all of its 44px: its foot lay over the card, and a tap there opened the
+  recipe. `e2e/small-phone.spec.ts` checks them.
 - The header stays at the top of every page on a strip of the page's paper as wide as the
   screen (`.app-header`), in the section's colour (see "Section colours"), solid, fading out at its foot instead of ending in a line, so that
   the Merkzettel and the settings are one tap away halfway down a long list; anchors land

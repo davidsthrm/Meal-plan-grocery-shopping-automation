@@ -101,7 +101,8 @@ test("the Rezept-Stapel's Zurück stands above the strip after a decision", asyn
   await expect(count).toBeVisible();
   const card = (await page.locator(".stack-deck").boundingBox())!.y;
   expect((await count.boundingBox())!.y).toBeLessThan(card);
-  expect(box!.y + box!.height / 2).toBeLessThan(card);
+  // All of it: its foot lay over the card, and a tap there opened the recipe.
+  expect(box!.y + box!.height).toBeLessThanOrEqual(card);
 });
 
 test("a recipe cooked before says on the Regal when, the whole date", async ({ page }) => {

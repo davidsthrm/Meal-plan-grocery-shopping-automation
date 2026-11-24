@@ -2960,7 +2960,8 @@ summary,
   /*
    * How many cards are left and kept, and "Zurück", as tall as the words and close to the
    * card: its button reaches above and below them, so that the three buttons under the deck
-   * stay above the strip on a 375px phone.
+   * stay above the strip on a 375px phone. Below, it reaches 0.75rem, and no further than the
+   * card's top: its foot lay over the card, and a tap there opened the recipe (November 2026).
    */
   .stack-status {
     display: flex;
@@ -2969,7 +2970,7 @@ summary,
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    margin-bottom: -0.5rem;
+    margin-bottom: -0.25rem;
     font-size: var(--text-sm);
   }
   @media (prefers-reduced-motion: reduce) {
