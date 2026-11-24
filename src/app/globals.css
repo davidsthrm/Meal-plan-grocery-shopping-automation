@@ -450,8 +450,12 @@ summary,
    * of fewer than ten letters not at all. WebKit reads the -webkit- limits, Chromium the
    * last one. A word that still does not fit breaks anywhere, as the last resort. Plain
    * `hyphens: auto` broke "Gemüse-Lasa-gne" and "Currysah-ne" (audit, 24 November 2026).
+   * A line of a shopping note breaks the same way: "Frühlingszwiebeln" did not, and pushed
+   * the line's signs out of their column on a phone (`.swipe-row`, same audit).
    */
-  .dish-name {
+  .dish-name,
+  .tick-text,
+  .store-text {
     overflow-wrap: break-word;
     hyphens: auto;
     -webkit-hyphenate-limit-before: 4;
@@ -3359,6 +3363,9 @@ summary,
   .swipe-row {
     position: relative;
     display: grid;
+    /* As wide as the row, whatever its words: a word wider than the text's column widened
+       the column, and the signs moved out by up to 29px and were cut off at 375px. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 1fr;
     overflow-x: clip;
     touch-action: pan-y;

@@ -157,6 +157,18 @@ async function writeOnNote(page: Page, ...lines: string[]) {
   }
 }
 
+test("a long word on a note keeps the line's signs in their column @webkit", async ({ page }) => {
+  await writeOnNote(page, "500 g Rinderhackfleisch", "Spülmaschinentabs");
+  // The last sign of every line ends where the others do: a word wider than the text's
+  // column pushed them out by up to 29px, and cut the shelf off (audit, 24 November 2026).
+  const ends = await page
+    .locator("li.tick-line .row-actions")
+    .evaluateAll((signs) => signs.map((sign) => Math.round(sign.getBoundingClientRect().right)));
+  expect(ends.length).toBeGreaterThan(2);
+  expect(new Set(ends).size).toBe(1);
+  expect(ends[0]).toBeLessThanOrEqual(375);
+});
+
 test("a row's menu stays on the screen wherever the row is held @webkit", async ({ page }) => {
   await writeOnNote(page, "2x Bio-Heumilch 3,8% laktosefrei Berchtesgadener Land");
   const row = page.locator("li.swipe-row").filter({ hasText: "Bio-Heumilch" });
