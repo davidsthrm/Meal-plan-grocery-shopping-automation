@@ -39,6 +39,25 @@ that cost time before.
   without calling a model; `e2e/teardown.ts` empties it after every run.
 - The config of the browser tests is `e2e/playwright.config.ts`, of the unit tests
   `tests/vitest.config.mts`; the npm scripts name them.
+- The browser tests run in Chromium, on a phone (`phone`) and a desktop (`desktop`). Tests
+  with `@webkit` in their title run in WebKit too, on an iPhone 14 (`phone-webkit`, 390px)
+  and an iPad (`tablet-webkit`, 810px): `npm run e2e` runs them, `npm run e2e:look` takes
+  their pictures. Every device of the family draws with WebKit, and the audit of November
+  2026 found bugs that only it shows (Enter on a word of a datalist, focus rings on sheets,
+  the height of a select, the Vorrat's columns) while every Chromium test passed. Tag a test
+  `@webkit` when it is about the shopping notes and their sheets, the keyboard, or the
+  layout on a small screen. Each tagged test runs twice more, so not every test is tagged:
+  the 24 tagged in November 2026 add about nine minutes to a run (32 runs took 8.6 minutes
+  on 24 November 2026, before four more narrow-phone tests were tagged). The narrowest
+  phone's tests run on the phone only: they set its 375px for their whole file, so
+  `tablet-webkit` leaves them out. The tagged tests do not yet test
+  Enter on a word of a datalist; later branches add those tests. One project alone:
+  `npm run e2e -- --project phone-webkit`.
+- The WebKit projects start with the hint to install the app put away (`storageState` in
+  the config): the family opens the installed app, and in Safari the hint stood above every
+  page and pushed the Rezept-Stapel's buttons under the strip of the sections.
+- WebKit for Playwright lives in `~/Library/Caches/ms-playwright/webkit-*`. After an update
+  of `@playwright/test` it may need `npx playwright install webkit`; the run says so.
 - A test that fails at a step that passed before, or a run that takes far longer than its
   tests add up to, is often the Mac asleep, not the app: compare `date` before and after and
   look at `pmset -g log | grep -E "Entering Sleep|Wake from"`. On battery with the lid

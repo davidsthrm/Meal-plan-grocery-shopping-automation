@@ -429,8 +429,9 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
   on press, track drags 1:1, decide a release by projected momentum, keep origins and exits
   symmetric, keep controls quiet. Say in the summary which principles were applied, and name
   where the house rules deviate (see "Skills to use"). Check the result in screenshots.
-- Reproduce iPhone motion and layering bugs in WebKit. The e2e projects run Chromium only;
-  iPhone bugs need WebKit (`~/Library/Caches/ms-playwright/webkit-*` is installed).
+- Reproduce iPhone motion and layering bugs in WebKit. Only the e2e tests tagged `@webkit`
+  run in it ([DEVELOPMENT.md](DEVELOPMENT.md#testing)); the others run in Chromium, which
+  misses iPhone bugs.
   - Build for production (`npx next build && npx next start --port 3100`): dev timing
     differs.
   - Probe scripts use `webkit` + `devices["iPhone 14"]`, kept in `node_modules/.probe/` (the

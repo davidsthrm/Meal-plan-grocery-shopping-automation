@@ -19,7 +19,9 @@ const eggs = (page: Page) =>
   sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: "Eier" });
 const pen = (page: Page) => page.getByRole("dialog", { name: "Eier" });
 
-test("on a note the pen changes how many and the note, and buys nothing", async ({ page }) => {
+test("on a note the pen changes how many and the note, and buys nothing @webkit", async ({
+  page,
+}) => {
   test.setTimeout(90_000);
   // At home the pen says how many to buy, not what was bought.
   await eggs(page).getByRole("button", { name: "Eier: Menge oder Notiz ändern" }).click();
@@ -73,7 +75,7 @@ test("on a note the pen changes how many and the note, and buys nothing", async 
   await expect(eggs(page)).not.toContainText("Plan:");
 });
 
-test("held, a line on a note offers the same as its pen", async ({ page }) => {
+test("held, a line on a note offers the same as its pen @webkit", async ({ page }) => {
   await eggs(page).click({ button: "right" });
   const menu = page.getByRole("menu", { name: "Eier" });
   await expect(menu.getByRole("menuitem", { name: "Menge oder Notiz ändern …" })).toBeVisible();

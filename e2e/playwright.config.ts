@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { INSTALL_HINT_KEY } from "../src/lib/install-hint";
 
 // The test login lives in .env.local (created by `npm run e2e:setup`).
 process.loadEnvFile(path.join(__dirname, "..", ".env.local"));
@@ -10,6 +11,13 @@ const PORT = Number(process.env.E2E_PORT ?? 3100);
 // A deployment to test instead of a local server: the smoke test of production
 // (`npm run e2e:production`). It signs in as the test household like every other test.
 const DEPLOYED = process.env.E2E_BASE_URL;
+const BASE_URL = DEPLOYED ?? `http://localhost:${PORT}`;
+// The family opens the app from the home screen, where it shows no hint to install it. In
+// WebKit the page is Safari's, which shows that hint above every page: it starts put away.
+const INSTALLED = {
+  cookies: [],
+  origins: [{ origin: BASE_URL, localStorage: [{ name: INSTALL_HINT_KEY, value: "1" }] }],
+};
 
 export default defineConfig({
   testDir: ".",
@@ -21,7 +29,7 @@ export default defineConfig({
   reporter: "list",
   timeout: 60_000,
   use: {
-    baseURL: DEPLOYED ?? `http://localhost:${PORT}`,
+    baseURL: BASE_URL,
     locale: "de-DE",
     trace: "retain-on-failure",
   },
@@ -39,6 +47,22 @@ export default defineConfig({
       name: "tablet-landscape",
       use: { ...devices["iPad (gen 7) landscape"], browserName: "chromium" },
       grep: /@look/,
+    },
+    // The family's iPhones and iPads draw with WebKit, and some bugs show only there: Enter on
+    // a word of a datalist, focus rings on sheets, the height of a select, the Vorrat's columns
+    // (audit of November 2026). The tests tagged @webkit run in it too.
+    {
+      name: "phone-webkit",
+      use: { ...devices["iPhone 14"], browserName: "webkit", storageState: INSTALLED },
+      grep: /@webkit/,
+    },
+    {
+      name: "tablet-webkit",
+      use: { ...devices["iPad (gen 7)"], browserName: "webkit", storageState: INSTALLED },
+      grep: /@webkit/,
+      // The narrowest phone's tests set its 375px for the whole file: on the iPad they would
+      // only test that phone again.
+      testIgnore: /small-phone\.spec\.ts/,
     },
   ],
   webServer: DEPLOYED

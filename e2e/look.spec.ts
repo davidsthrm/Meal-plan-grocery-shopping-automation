@@ -3,7 +3,7 @@ import { resetLibrary } from "./fixtures";
 
 // Not a test of behaviour: walks through the screens and saves pictures of them, to look at
 // what was built. Run with `npm run e2e:look`.
-test("screens @look", async ({ page }, info) => {
+test("screens @look @webkit", async ({ page }, info) => {
   const shot = async (name: string) =>
     page.screenshot({ path: `test-results/look/${info.project.name}-${name}.png`, fullPage: true });
 

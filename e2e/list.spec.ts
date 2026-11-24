@@ -24,7 +24,9 @@ const BAKERY = "Bäcker, Montag, 1. März";
 const MARKET_ON_FRIDAY = "Markt, Freitag, 26. Februar";
 const DRUGSTORE = "dm, Samstag, 6. März";
 
-test("the week becomes a note for every errand, to pick up and work through", async ({ page }) => {
+test("the week becomes a note for every errand, to pick up and work through @webkit", async ({
+  page,
+}) => {
   // A long walk: planning, seven notes, ticking, moving, and the plan changed again.
   test.setTimeout(150_000);
   await page.goto(`/woche?w=${WEEK}`);
@@ -186,7 +188,7 @@ test("the week becomes a note for every errand, to pick up and work through", as
   }
 });
 
-test("a meal planned after the shopping leaves the errand done", async ({ page }) => {
+test("a meal planned after the shopping leaves the errand done @webkit", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Montag Abend", "Kartoffelsuppe");
   await page.goto(`/einkauf?w=${WEEK}`);
@@ -205,7 +207,9 @@ test("a meal planned after the shopping leaves the errand done", async ({ page }
   await expect(tile(page, "Supermarkt, Freitag, 26. Februar")).toContainText("Sahne");
 });
 
-test("the drugstore's note is written by hand: what, how many, for whom", async ({ page }) => {
+test("the drugstore's note is written by hand: what, how many, for whom @webkit", async ({
+  page,
+}) => {
   await page.goto(`/einkauf?w=${WEEK}`);
   await tile(page, DRUGSTORE).click();
   const dm = sheet(page, DRUGSTORE);
@@ -244,7 +248,7 @@ function fromToday(days: (weekday: number) => number): { date: string; monday: s
   return { date: day.toISOString().slice(0, 10), monday: monday.toISOString().slice(0, 10) };
 }
 
-test("a note for any place is opened on a day of choice, and put away while empty", async ({
+test("a note for any place is opened on a day of choice, and put away while empty @webkit", async ({
   page,
 }) => {
   const WEDNESDAY_DM = "dm, Mittwoch, 3. März";
@@ -281,7 +285,9 @@ test("a note for any place is opened on a day of choice, and put away while empt
   await expect(sheet(page, "Bäcker, Donnerstag, 4. März")).toContainText("Nichts zu kaufen.");
 });
 
-test("what was not bought at the drugstore comes along to its next note", async ({ page }) => {
+test("what was not bought at the drugstore comes along to its next note @webkit", async ({
+  page,
+}) => {
   // dm is on Saturdays: the last one is over, the next one is today or later.
   const last = fromToday((weekday) => -((weekday - 6 + 7) % 7 || 7));
   const next = fromToday((weekday) => (6 - weekday + 7) % 7);
@@ -304,7 +310,7 @@ test("what was not bought at the drugstore comes along to its next note", async 
   await expect(dm).toContainText("0 offen, 1 erledigt");
 });
 
-test("the page opens with the next errand, a tap from the shop and from its note", async ({
+test("the page opens with the next errand, a tap from the shop and from its note @webkit", async ({
   page,
 }) => {
   // The next dm is today or later, the only note with something on it. On a Saturday it is
@@ -325,7 +331,7 @@ test("the page opens with the next errand, a tap from the shop and from its note
   await expect(page.getByRole("region", { name: /^dm, / })).toContainText("Zahnpasta");
 });
 
-test("a week with nothing planned has empty notes that say where they come from", async ({
+test("a week with nothing planned has empty notes that say where they come from @webkit", async ({
   page,
 }) => {
   await page.goto(`/einkauf?w=${WEEK}`);
@@ -335,7 +341,9 @@ test("a week with nothing planned has empty notes that say where they come from"
   await expect(page.getByRole("navigation", { name: "Als PDF" })).toHaveCount(0);
 });
 
-test("what ran out at home is noted on a note pulled down over any page", async ({ page }) => {
+test("what ran out at home is noted on a note pulled down over any page @webkit", async ({
+  page,
+}) => {
   await page.goto("/rezepte");
   const note = page.getByRole("dialog", { name: "Merkzettel" });
   await expect(note).toBeHidden();
@@ -381,7 +389,7 @@ test("what ran out at home is noted on a note pulled down over any page", async 
   await expect(note).toBeHidden();
 });
 
-test("what one device changes shows on another without reloading", async ({
+test("what one device changes shows on another without reloading @webkit", async ({
   page,
   browser,
   baseURL,
@@ -411,7 +419,7 @@ test("what one device changes shows on another without reloading", async ({
   await context.close();
 });
 
-test("a note written next to a line stays with it", async ({ page }) => {
+test("a note written next to a line stays with it @webkit", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Dienstag Abend", "Pfeffersteak");
   await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
@@ -430,7 +438,7 @@ test("a note written next to a line stays with it", async ({ page }) => {
   await expect(sheet(page, MONDAY)).toContainText("Angebot 1,29");
 });
 
-test("on a note the shelf says what is at home; only a typed line can be removed", async ({
+test("on a note the shelf says what is at home; only a typed line can be removed @webkit", async ({
   page,
 }) => {
   await page.goto(`/woche?w=${WEEK}`);
@@ -465,7 +473,7 @@ test("on a note the shelf says what is at home; only a typed line can be removed
   await expect(page.getByRole("button", { name: "Sahne doch kaufen" })).toBeVisible();
 });
 
-test("a typed line goes under its kind of grocery", async ({ page }) => {
+test("a typed line goes under its kind of grocery @webkit", async ({ page }) => {
   await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
   const write = page.getByLabel("Auf den Zettel schreiben");
   // Named after what describes it, the grapes are still fruit, and still green.
