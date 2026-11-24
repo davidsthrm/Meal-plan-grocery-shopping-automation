@@ -116,6 +116,21 @@ export function nextErrand<
 }
 
 /**
+ * Whether the shopping page says that nothing is on the notes yet, with the empty cart: no
+ * line on a note of the week shown (`lines`, open and done), nothing at home for it, and no
+ * errand to open with (`next`). From Saturday on that errand can be today's market or dm of
+ * the running week while the week ahead is still empty: the page showed the empty cart
+ * beside it (review, 24 November 2026).
+ */
+export function nothingOnTheNotes(
+  lines: number,
+  atHome: number,
+  next: object | undefined,
+): boolean {
+  return lines === 0 && atHome === 0 && next === undefined;
+}
+
+/**
  * The days of a week a note can be opened on by hand ("Neuer Zettel"): from today on. A week
  * gone by has none.
  */

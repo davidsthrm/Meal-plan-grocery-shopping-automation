@@ -28,6 +28,7 @@ import {
   daysToOpen,
   justFinished,
   nextErrand,
+  nothingOnTheNotes,
 } from "@/domain/shopping-list/week-notes";
 import { noteName, PLACE_LOOK, PLACE_NAME, whenText } from "@/lib/list-text";
 import { hasErrandFrom, pagesForTheShop } from "@/lib/offline-pages";
@@ -126,7 +127,6 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   // "Bei den Stührmanns": the household's name where it is a family name.
   const family = familyName(household.name);
   const done = notes.reduce((sum, note) => sum + note.done, 0);
-  const nothing = open + done + atHome.length === 0;
   // What is still to do first; an errand done goes to the foot. A note with nothing on it to
   // buy is not shown while others have something, unless it is there to be written on.
   const arranged = arrangeNotes(
@@ -135,8 +135,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     (note) => note.view.groups.every((group) => group.lines.length === 0),
     (note) => note.trip.place === "drugstore" || note.openedByHand,
   );
-  // The running week opens with its next errand, large, a tap away from the shop. From
-  // Saturday on that can be a note of the week before the one shown.
+  // The week the page opens on starts with its next errand, large, a tap away from the shop.
+  // From Saturday on that is the week ahead, and the errand can be a note of the week before.
   const next =
     week === thisWeek
       ? nextErrand(
@@ -147,6 +147,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
           now,
         )
       : undefined;
+  const nothing = nothingOnTheNotes(open + done, atHome.length, next);
   const marketsOf = (note: NoteList) =>
     note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : [];
   const tile = (note: NoteList) => (
@@ -167,7 +168,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         <div>
           <p className="eyebrow">
             Einkaufszettel
-            {!nothing && (
+            {open + done + atHome.length > 0 && (
               <span className="font-normal">
                 {" "}
                 · {open} offen{done > 0 ? `, ${done} erledigt` : ""}

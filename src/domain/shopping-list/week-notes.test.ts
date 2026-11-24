@@ -15,6 +15,7 @@ import {
   nextErrand,
   notesOf,
   notesOfWeek,
+  nothingOnTheNotes,
 } from "./week-notes";
 
 const SAT_BEFORE = "2026-10-10";
@@ -262,6 +263,19 @@ describe("nextErrand", () => {
       SATURDAY,
     );
     expect(next).toEqual({ week: NEXT_MONDAY, note: note(NEXT_MONDAY, "supermarket", 5) });
+  });
+});
+
+describe("nothingOnTheNotes", () => {
+  it("is so for a week with nothing on its notes, nothing at home and no errand ahead", () => {
+    expect(nothingOnTheNotes(0, 0, undefined)).toBe(true);
+    expect(nothingOnTheNotes(3, 0, undefined)).toBe(false);
+    expect(nothingOnTheNotes(0, 2, undefined)).toBe(false);
+  });
+
+  it("is not while the page opens with an errand, though the week shown is empty", () => {
+    // Saturday: the week ahead is empty, today's dm of the running week opens the page.
+    expect(nothingOnTheNotes(0, 0, { week: MONDAY })).toBe(false);
   });
 });
 

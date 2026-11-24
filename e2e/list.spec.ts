@@ -318,6 +318,9 @@ test("the page opens with the next errand, a tap from the shop and from its note
   await page.goto("/einkauf");
   const errand = page.getByRole("region", { name: /^Nächster Einkauf/ });
   await expect(errand.getByRole("link", { name: "Jetzt einkaufen" })).toBeVisible();
+  // Beside it the page never says that nothing is on the notes: from Saturday on the week
+  // ahead it shows can still be empty.
+  await expect(page.getByText(/noch nichts auf den Einkaufszetteln/)).toHaveCount(0);
   await errand.getByRole("link", { name: "Zettel ansehen" }).click();
   await expect(page.getByRole("region", { name: /^dm, / })).toContainText("Zahnpasta");
 });
