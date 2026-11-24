@@ -81,7 +81,10 @@ export function RecipeCard({
   note,
 }: {
   recipe: RecipeSummary;
-  /** The category as the household named it. */
+  /**
+   * The category as the household named it, above the title. Not "Hauptgericht", which most
+   * recipes are and which said nothing, and none inside a group named after it already.
+   */
   category: string | null;
   className?: string;
   /** What puts it where it stands: "Mit Kürbis, Lauch" on the season's shelf. */
@@ -90,6 +93,7 @@ export function RecipeCard({
   from?: string;
 }) {
   const tone = recipeTone(recipe);
+  const eyebrow = recipe.category === "hauptgericht" ? null : category;
   return (
     <div
       className={`card lift relative flex min-h-44 flex-col overflow-hidden ${tone?.className ?? ""} ${className}`}
@@ -103,15 +107,17 @@ export function RecipeCard({
         {tone && <span aria-hidden className="kind-edge" />}
         <PictogramIcon name={pictogramFor(recipe)} className="watermark" />
         <span className="relative flex flex-1 flex-col gap-2 p-4">
-          {/* Room on the right for the heart. */}
+          {/* Room on the right for the heart; a line of its own also without a category, so
+              that the titles of a shelf stand at one height. */}
           <span className="flex items-start justify-between gap-2 pr-9">
-            <span className="eyebrow">{category ?? "Rezept"}</span>
+            <span className="eyebrow">{eyebrow ?? "\u00a0"}</span>
             <Marks recipe={recipe} heart={false} />
           </span>
           <span className="line-clamp-3 text-lg leading-snug font-semibold">{recipe.title}</span>
           {note && <span className="line-clamp-1 text-sm font-semibold text-accent">{note}</span>}
           <span className="mt-auto space-y-1.5 pt-2">
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {/* Clear of the pictogram in the corner. */}
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pr-16">
               {tone?.label && <span className="tag">{tone.label}</span>}
               <RecipeFacts recipe={recipe} />
             </span>

@@ -159,10 +159,11 @@ export default async function FavoritesPage(props: PageProps<"/favoriten">) {
                 </h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {group.recipes.map((recipe) => (
+                    // The group is named after the category already.
                     <RecipeCard
                       key={recipe.id}
                       recipe={recipe}
-                      category={nameOf(recipe.category)}
+                      category={null}
                       from={FROM_FAVORITES}
                     />
                   ))}
