@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
-import { tellRestock } from "@/app/(app)/merkzettel/actions";
+import { useActionState, useEffect, useState } from "react";
+import { tellRestock, type RestockState } from "@/app/(app)/merkzettel/actions";
 import { mondayOf } from "@/domain/dates";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayName, noteName } from "@/lib/list-text";
 import { CloseIcon, ListIcon, PlusIcon } from "./icons";
 import { PictogramIcon } from "./pictogram";
 import { SubmitButton } from "./submit-button";
+
+/** How long an entry struck can be written again with one tap. */
+const UNDO_MS = 5000;
 
 interface Props {
   /**
@@ -36,6 +39,16 @@ interface Props {
  */
 export function RestockNote({ items, asPage = false, onLeave }: Props) {
   const [state, tell] = useActionState(tellRestock, { moved: [] });
+  // The entry struck last says so on the note for a few seconds, to write it again: the cross
+  // tapped by mistake lost it for good. A bar at the foot would lie under the note's dim
+  // (audit, 24 November 2026).
+  const [over, setOver] = useState<RestockState | null>(null);
+  useEffect(() => {
+    if (!state.struck) return;
+    const timer = setTimeout(() => setOver(state), UNDO_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+  const struck = over === state ? null : state.struck;
   const quiet = "border-note-line bg-white/60";
   return (
     <section
@@ -68,6 +81,16 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
           <PlusIcon />
         </SubmitButton>
       </form>
+      {struck && (
+        <div role="status" className="mt-2 flex flex-wrap items-center gap-x-3 text-sm">
+          <span>{struck} gestrichen</span>
+          <form action={tell}>
+            <input type="hidden" name="do" value="note" />
+            <input type="hidden" name="text" value={struck} />
+            <SubmitButton className="link min-h-11">Widerrufen</SubmitButton>
+          </form>
+        </div>
+      )}
 
       {state.moved.length > 0 && (
         <p role="status" className="mt-3 text-sm font-semibold">

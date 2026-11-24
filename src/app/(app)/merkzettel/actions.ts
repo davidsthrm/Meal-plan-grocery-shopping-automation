@@ -8,9 +8,13 @@ import { requireHousehold } from "@/server/auth";
 import { addRestock, moveToList, removeRestock } from "@/server/shopping/restock";
 import { createSessionClient } from "@/server/supabase/server";
 
-/** What the note says back after it was told something: the errands entries were put on. */
+/**
+ * What the note says back after it was told something: the errands entries were put on, or
+ * the entry struck, to be written again.
+ */
 export interface RestockState {
   moved: ShoppingTrip[];
+  struck?: string | null;
 }
 
 const told = z.discriminatedUnion("do", [
@@ -32,9 +36,10 @@ export async function tellRestock(_: RestockState, form: FormData): Promise<Rest
   const household = await requireHousehold();
   const db = await createSessionClient();
   let moved: ShoppingTrip[] = [];
+  let struck: string | null = null;
   if (input.do === "note") await addRestock(db, household, input.text);
-  if (input.do === "strike") await removeRestock(db, input.id);
+  if (input.do === "strike") struck = await removeRestock(db, input.id);
   if (input.do === "list") moved = await moveToList(db, household, today(), input.id ?? null);
   revalidatePath("/", "layout");
-  return { moved };
+  return { moved, struck };
 }

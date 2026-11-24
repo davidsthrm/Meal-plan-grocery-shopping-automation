@@ -576,3 +576,21 @@ test("Doch kaufen keeps the page at what is at home @webkit", async ({ page }) =
   await expect(page).toHaveURL(/#haben-wir-schon$/);
   await expect(page.getByRole("button", { name: "Kerzen doch kaufen" })).toBeInViewport();
 });
+
+test("an entry struck from the Merkzettel can be taken back @webkit", async ({ page }) => {
+  await page.goto("/einkauf");
+  await page.getByRole("link", { name: /^Merkzettel, / }).click();
+  const note = page.getByRole("dialog", { name: "Merkzettel" });
+  const write = note.getByLabel("Auf den Merkzettel schreiben");
+  await write.fill("Spülmaschinentabs");
+  await write.press("Enter");
+  const entry = note.getByRole("listitem").filter({ hasText: "Spülmaschinentabs" });
+  await expect(entry).toHaveCount(1);
+
+  // A cross tapped by mistake lost the entry for good.
+  await note.getByRole("button", { name: "Spülmaschinentabs streichen" }).click();
+  await expect(entry).toHaveCount(0);
+  const struck = note.getByRole("status").filter({ hasText: "Spülmaschinentabs gestrichen" });
+  await struck.getByRole("button", { name: "Widerrufen" }).click();
+  await expect(entry).toHaveCount(1);
+});

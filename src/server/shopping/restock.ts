@@ -104,9 +104,11 @@ export async function addRestock(
   }
 }
 
-export async function removeRestock(db: Db, id: string): Promise<void> {
-  const removed = await db.from("restock_item").delete().eq("id", id);
+/** Strikes an entry from the note. Answers with what it said, to write it again. */
+export async function removeRestock(db: Db, id: string): Promise<string | null> {
+  const removed = await db.from("restock_item").delete().eq("id", id).select("text");
   if (removed.error) throw new Error(`strike from the note: ${removed.error.message}`);
+  return removed.data[0]?.text ?? null;
 }
 
 /**
