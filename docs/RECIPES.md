@@ -84,6 +84,10 @@ after.
   The lines are the rows of the import's review (`IngredientRows`, shared by both forms):
   amount, unit, ingredient and note per row, the printed line shown above it. What is typed
   is checked on the server by `readReview`, and saving replaces the recipe's lines.
+  "Speichern" stands in a bar of its own at the foot of the screen, on the strip of the
+  sections on a phone, and the form ends above it (`.save-bar`): as a pill floating over
+  the form it lay on a field at most places of a long recipe, and a tap meant for the field
+  saved and left the form (November 2026).
 - A recipe typed in by hand (`readTypedRecipe`) has one ingredient per line, written as on a
   shopping note: "200 g Spaghetti", "2-3 Tomaten", "Parmesan". A number without a unit counts
   pieces, what follows a comma is a note. It is approved at once, and a quick meal unless a
@@ -224,9 +228,15 @@ after.
   its own (`86dvh`) and its list `flex: 1 1 auto`: on the iPhone, a sheet limited by a
   maximum alone showed its head and button with no filters between them. The sheet is the
   browser's own popover: it opens without a script and stays open while choices are tapped,
-  "N Rezepte anzeigen" closes it. Every choice says how many recipes it would leave with the
-  rest of the filter; one with none is pale and not a link. In a group of one (Zeit,
-  Ernährung, Art, Aufwand, Küche, Kochbuch) another choice replaces the one that is on. What
+  "N Rezepte anzeigen" closes it. On an iPad the first choice on Entdecken puts the panel
+  beside the list, and the sheet closes then (`FilterFrame`): it stayed open in the
+  browser's top layer, across the page and see-through, with neither its cross nor its
+  button (November 2026). A choice is on the moment it is tapped, and the next one tapped
+  before the server has answered leads where both lead (`pending-choices.ts`): each was a
+  link from the page as it was drawn, and a second chip tapped quickly dropped the first.
+  Every choice says how many recipes it would leave with the rest of the filter; one with
+  none is pale and not a link. In a group of one (Zeit, Ernährung, Art, Aufwand, Küche,
+  Kochbuch) another choice replaces the one that is on. What
   is on stands above the list as chips to take away, and an empty list offers each filter
   left out with its count ("Ohne „Salat“: 2 Rezepte"). The words searched narrow first, the
   choices count within what they found.
@@ -252,7 +262,12 @@ after.
 - "Was hat gerade Saison?" (`/rezepte/saison`, linked from the top of Entdecken) lists what
   arrives this month, what is ripe, what leaves and what comes from storage, each food with
   its year as twelve small months (`.season-bar`) and its recipes, those the library uses
-  most first; a tap shows them. Any month is a tap away.
+  most first; a tap shows them. Any month is a tap away. Each part is one ruled list: a
+  food's name with how many recipes use it (none said, when none does), its months in the
+  colour of its kind, and the months in words below, as long as they are. A food's recipes
+  open under its row (`?zutat=`), where it was tapped. Until November 2026 every food was a
+  card with a square of its kind (a carrot for a pumpkin), the months in words were cut
+  off, the page was about 4000px long on a phone, and a tap jumped to its top.
 
 ## Sources and magazines
 
@@ -277,8 +292,11 @@ after.
 - Without a filter Entdecken has the whole width, the filters a sheet behind "Filter", and is
   made for the iPad, where the family browses (October 2026). One row of tabs: "Für euch" and
   every category with at least four recipes nobody marked (`categoryTabs`), each a page of
-  its own inside its category. On each, the recipe of the day as one band (`recipeOfTheDay`:
-  a meal that fits the season where there is one, its tags, "Einplanen"), then shelves that
+  its own inside its category. The open tab looks like a chip that is on, the green's
+  pastel, as in every row of tabs (the Stapel's, a magazine's editions): solid green, it
+  stood right above the one green button, "Einplanen" (November 2026). On each, the recipe
+  of the day as one band (`recipeOfTheDay`: a meal that fits the season where there is one,
+  its tags, "Einplanen"), then shelves that
   change with the day (`discover`): "Passt zur Saison" (wider cards), "Schnell" and "Noch
   nie gekocht" as rows three to a column (`look: "list"`), "Wie eure Favoriten" (meals
   sharing enough with a favourite: main ingredient 2, dish 1, cuisine 1, the same kind of
@@ -302,7 +320,11 @@ after.
   (`bookshelf`), each as tall as it has recipes, its name along it and a bar for how much of
   it was cooked (on a plan before today). The book of the day lies open below unless one is
   tapped (`?buch=`): its editions as chips, then what of it fits the season, what was never
-  cooked from it (by page) and what was, with the day it was last cooked (`openBook`).
+  cooked from it (by page) and what was, with the day it was last cooked (`openBook`). A row
+  of what was cooked says that day instead of the time: on a phone there was no room for
+  both, and "20 Min." stood over a dot of its own while the day was cut off (November 2026).
+  Above the shelf stands how many recipes the library has, as on Entdecken, so that the
+  switch between the two stays where it is.
 
 ## Recipe stack
 
@@ -314,7 +336,13 @@ after.
   where it was taken, gives less and less downwards, and the swipe decides by where it would
   come to rest (Apple's projection), not where the finger let go; a tap opens the recipe.
   The three are round buttons as well and the arrow keys; "Zurück" takes the last back, and
-  the card returns the way it left. Asked for less motion, cards only fade.
+  the card returns the way it left. Asked for less motion, cards only fade. "Zurück" and the
+  count of cards and wishes stand right above the card: below the three buttons they lay
+  under the strip of the sections on a phone, the only way to take a swipe back (November
+  2026).
+  "Vormerken" carries the wish's sign (the pot, as everywhere a wish is), "Einplanen" an
+  arrow upwards in the green, and "Nicht jetzt" its cross in the muted ink; they were a
+  favourite's heart, a typed arrow and the inks of meat and poultry.
 
 ## Was ist noch da?
 
@@ -334,11 +362,16 @@ after.
 - A recipe card has a heart in its corner (`FavoriteHeart`): a tap makes the recipe a
   favourite or takes the mark away, without opening it. The heart is a form next to the
   card's link, not inside it, and both lie in the card that lifts. A recipe made a favourite
-  on "Entdecken" leaves its shelves.
+  on "Entdecken" leaves its shelves. Above its title a card names its category, but not
+  "Hauptgericht", which most recipes are and which said nothing, and not inside a group of
+  "Favoriten" that is named after it already; a recipe without a category says nothing
+  there (it said "Rezept"). Its facts keep clear of the pictogram in its corner.
 - A recipe's page offers "Einplanen", "Möchte ich kochen" and "Kochen", in that order and in
   one row on a phone ("Vormerken" there), each as wide as its sign and words
-  (`.recipe-actions`): three equal columns were too narrow, and the words ran past the
-  pills. A sign in a narrow button keeps its size (`flex-shrink: 0`). Its tags are changed
+  (`.recipe-actions`, for the row's own buttons only: the cooking view opens from inside the
+  row and took them over, a "Fertig" 199px wide and steps' buttons at 15px, November 2026):
+  three equal columns were too narrow, and the words ran past the pills. A sign in a narrow
+  button keeps its size (`flex-shrink: 0`). Its tags are changed
   from a dashed pill as small as a tag (`.tag-edit`, "Ändern"), not a button of its own row.
   The favourite is the same heart as on a card, next to its title, and a pen next to
   "Zutaten" opens the form to change it ("Rezept ändern"). Under its facts it says when it
@@ -347,7 +380,10 @@ after.
   them: `recipe_ingredient.position`, written in reading order by every way a recipe is
   saved. A recipe on the plan of the week the household is in (`currentWeeks`: the running
   week, from Thursday on also the coming one), as a meal or as an extra, says "Eingeplant"
-  instead, grey with green writing, and leads to where it stands (`plannedAt`).
+  instead, grey with green writing, and leads to where it stands (`plannedAt`). A muted line
+  under the one of the last time cooked says where: "Eingeplant: Sonntag Abend, 29.
+  November" (`plannedAtText`); the button itself stays short, or the row of three breaks at
+  375px.
 
 ## Favoriten
 
@@ -369,6 +405,9 @@ after.
   under every recipe), and above the list one row each for the views with the tags as a
   sign, the count with "Alle wählen", and the four ways to sort without "Sortiert nach"; an
   iPad drops book, servings and tags into the title cell; a large screen shows every column.
+  On a phone the title is a link as tall as a finger, and the line of facts breaks between
+  facts, never inside "25 Min." or before a dot: the title was 19px tall right above the
+  line that folds the row open, and taps landed on the other (November 2026).
 - Ticked recipes (or "Alle auf dieser Seite") are changed together: a tag added (typed, as
   above) or taken away, a category or an effort set (`changeSeveral`). A tag added in a
   group that allows one replaces the one a recipe had there. Category and effort set this

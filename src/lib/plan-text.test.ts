@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { targetText } from "./plan-text";
+import { plannedAtText, targetText } from "./plan-text";
+
+describe("plannedAtText", () => {
+  it("names the meal and its day", () => {
+    expect(plannedAtText({ week: "2026-11-23", date: "2026-11-29", meal: "dinner" })).toBe(
+      "Eingeplant: Sonntag Abend, 29. November",
+    );
+  });
+
+  it("names the week of a recipe needed besides the meals", () => {
+    expect(plannedAtText({ week: "2026-11-30", date: null, meal: null })).toBe(
+      "Eingeplant: Außerdem in der Woche vom 30. November",
+    );
+  });
+});
 
 describe("targetText", () => {
   const line = (count: number, min: number | null, max: number | null) => ({

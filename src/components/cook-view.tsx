@@ -99,7 +99,9 @@ export function CookView({
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-xl leading-tight font-bold tracking-tight">{title}</h2>
                 <p className="text-muted" aria-live="polite">
-                  {[servings, facts, stepText(step, steps.length)].filter(Boolean).join(" · ")}
+                  {[servings, facts].filter(Boolean).map((text) => `${text} · `)}
+                  {/* "Schritt 3 von / 3" broke apart beside a "Fertig" 199px wide. */}
+                  <span className="whitespace-nowrap">{stepText(step, steps.length)}</span>
                 </p>
               </div>
               <button type="button" className="btn shrink-0" onClick={close}>

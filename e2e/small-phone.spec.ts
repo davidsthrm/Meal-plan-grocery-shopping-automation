@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resetLibrary, signIn } from "./fixtures";
+import { planHistory, resetLibrary, signIn } from "./fixtures";
 
 // The narrowest phone of the household's: 375 by 667 pixels, an iPhone SE. On it the week's
 // arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the bar of the
@@ -85,4 +85,60 @@ test("the meal chooser keeps a dish's facts to one line, leaving out whole what 
     }),
   );
   expect(cut).toEqual([]);
+});
+
+test("the Rezept-Stapel's Zurück stands above the strip after a decision", async ({ page }) => {
+  await page.goto("/rezepte/stapel");
+  await page.getByRole("button", { name: "Nicht jetzt" }).click();
+  // The only way to take a swipe back lay below the three buttons, under the strip on an
+  // iPhone, with the count beside it. It stands above the card now.
+  const back = page.getByRole("button", { name: "Zurück" });
+  await expect(back).toBeVisible();
+  const box = await back.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(await stripTop(page));
+  const count = page.getByText(/· 0 vorgemerkt/);
+  await expect(count).toBeVisible();
+  const card = (await page.locator(".stack-deck").boundingBox())!.y;
+  expect((await count.boundingBox())!.y).toBeLessThan(card);
+  // All of it: its foot lay over the card, and a tap there opened the recipe.
+  expect(box!.y + box!.height).toBeLessThanOrEqual(card);
+});
+
+test("a recipe cooked before says on the Regal when, the whole date", async ({ page }) => {
+  await planHistory();
+  await page.goto(`/rezepte/regal?buch=${encodeURIComponent("E2E Kochbuch")}`);
+  const row = page.getByRole("region", { name: "Schon gekocht" }).getByRole("link").first();
+  await expect(row).toContainText("Zuletzt am");
+  // The date instead of the time: there is no room for both, and the date was cut off.
+  await expect(row).not.toContainText("Min.");
+  const date = row.getByText(/^Zuletzt am/);
+  expect(await date.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+});
+
+test("a title in Alle Rezepte is as tall as a finger", async ({ page }) => {
+  await page.goto("/import/rezepte");
+  // It was 19px tall, right above the line that folds the row open.
+  const title = page.getByRole("link", { name: "Kartoffelsuppe", exact: true });
+  expect((await title.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+});
+
+test("the recipe form's Speichern is a bar standing on the strip", async ({ page }) => {
+  await page.goto("/rezepte?q=kartoffelsuppe");
+  await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
+  await page.getByRole("link", { name: "Rezept ändern" }).click();
+  await expect(page.getByRole("heading", { name: "Rezept ändern" })).toBeVisible();
+  // A pill floating over the fields: a tap meant for a field saved and left the form.
+  const bar = page.locator(".save-bar");
+  await expect(bar.getByRole("button", { name: "Speichern" })).toBeVisible();
+  for (const y of [0, 600]) {
+    await page.evaluate((to) => window.scrollTo(0, to), y);
+    const box = await bar.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(374);
+    expect(Math.abs(box!.y + box!.height - (await stripTop(page)))).toBeLessThan(1.5);
+  }
+  // At the end nothing lies under it.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const steps = await page.getByLabel("Arbeitsschritte, einer pro Zeile").boundingBox();
+  expect(steps!.y + steps!.height).toBeLessThanOrEqual((await bar.boundingBox())!.y);
 });

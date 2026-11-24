@@ -1,4 +1,6 @@
+import { dayAndMonth, weekdayLong } from "@/domain/dates";
 import type { Diet } from "@/domain/library/filter";
+import type { PlannedAt } from "@/domain/planned";
 import { VOLUME_UNIT } from "@/domain/import/servings";
 import { volumeText } from "./recipe-text";
 import type { RecipeKindGroup } from "@/domain/library/grouping";
@@ -176,6 +178,16 @@ export function plannedText(servings: number, unit: string | null): string {
   if (unit === VOLUME_UNIT) return volumeText(servings);
   if (unit !== null) return `${servings} ${unit}`;
   return servings === 1 ? "1 Person" : `${servings} Personen`;
+}
+
+/**
+ * Where a recipe is planned, as its page says it under when it was last cooked:
+ * "Eingeplant: Sonntag Abend, 29. November". The button "Eingeplant" said only that it was.
+ */
+export function plannedAtText(planned: PlannedAt): string {
+  if (planned.date === null)
+    return `Eingeplant: Außerdem in der Woche vom ${dayAndMonth(planned.week)}`;
+  return `Eingeplant: ${weekdayLong(planned.date)} ${MEAL_NAME[planned.meal]}, ${dayAndMonth(planned.date)}`;
 }
 
 /** What a meal without a recipe says on the plan. */

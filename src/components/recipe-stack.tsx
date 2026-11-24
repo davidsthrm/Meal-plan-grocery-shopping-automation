@@ -14,7 +14,7 @@ import { decideInStack, type StackDecision } from "@/app/(app)/rezepte/actions";
 import type { Pictogram } from "@/domain/library/pictogram";
 import { FROM_STACK } from "@/lib/origin";
 import { FORWARD } from "@/lib/transitions";
-import { CloseIcon, HeartIcon } from "./icons";
+import { ArrowIcon, CloseIcon, WishIcon } from "./icons";
 import { PictogramIcon } from "./pictogram";
 
 /** A recipe of the stack as its card shows it. */
@@ -231,6 +231,22 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
 
   return (
     <div className="stack">
+      {/* Above the card: below its three buttons, the only way to take a swipe back lay under
+          the strip of the sections on a phone (November 2026). */}
+      <p className="stack-status" aria-live="polite">
+        {failed ? (
+          <span className="font-semibold text-warn">Nicht gespeichert. Bitte noch einmal.</span>
+        ) : (
+          <span className="text-muted tabular-nums">
+            {left === 1 ? "1 Karte" : `${left} Karten`} · {kept} vorgemerkt
+          </span>
+        )}
+        {done.length > 0 && (
+          <button type="button" className="link link-quiet -my-3 min-h-11 px-2" onClick={undo}>
+            Zurück
+          </button>
+        )}
+      </p>
       <div className="stack-deck">
         {left === 0 ? (
           <div className="stack-empty">
@@ -311,7 +327,9 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
           onClick={() => decide("up")}
           disabled={left === 0}
         >
-          <span aria-hidden>↑</span>
+          <span aria-hidden>
+            <ArrowIcon />
+          </span>
           Einplanen
         </button>
         <button
@@ -320,27 +338,13 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
           onClick={() => decide("right")}
           disabled={left === 0}
         >
+          {/* The wish's sign, as everywhere a wish is: the heart is a favourite's. */}
           <span aria-hidden>
-            <HeartIcon filled />
+            <WishIcon filled />
           </span>
           Vormerken
         </button>
       </div>
-
-      <p className="stack-foot" aria-live="polite">
-        {failed ? (
-          <span className="font-semibold text-warn">Nicht gespeichert. Bitte noch einmal.</span>
-        ) : (
-          <span className="text-muted tabular-nums">
-            {left === 1 ? "1 Karte" : `${left} Karten`} · {kept} vorgemerkt
-          </span>
-        )}
-        {done.length > 0 && (
-          <button type="button" className="link link-quiet min-h-11 px-2" onClick={undo}>
-            Zurück
-          </button>
-        )}
-      </p>
     </div>
   );
 }

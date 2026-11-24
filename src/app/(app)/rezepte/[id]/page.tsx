@@ -31,7 +31,7 @@ import { must } from "@/server/catalog";
 import { viewUrls } from "@/server/import/storage";
 import { readOrigin } from "@/lib/origin";
 import { BackToList } from "@/components/list-return";
-import { MEAL_NAME } from "@/lib/plan-text";
+import { MEAL_NAME, plannedAtText } from "@/lib/plan-text";
 import { today } from "@/lib/today";
 import { loadLastCooked, loadPlannedAt } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
@@ -155,7 +155,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       };
     }),
   );
-  const time = recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null;
+  // Never "35 / Min." at the end of a line of the cooking view.
+  const time = recipe.prep_minutes ? `${recipe.prep_minutes}\u00a0Min.` : null;
   const facts = (
     base
       ? [time]
@@ -222,6 +223,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
           .join(" · ")}
       </p>
       <p className="mt-1 text-sm text-muted">{lastCookedText(cooked, now)}</p>
+      {/* Where it is planned: the button says only that it is, and stays short for the row. */}
+      {planned && <p className="text-sm text-muted">{plannedAtText(planned)}</p>}
 
       {editingTags ? (
         // Changed in place, like the steps: what the household reads is what it ticks.

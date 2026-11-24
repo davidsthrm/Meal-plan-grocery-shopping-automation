@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { saveRecipeEdit } from "@/app/(app)/rezepte/actions";
 import { PROTEIN_OPTIONS } from "@/lib/plan-text";
 import type { ReviewErrors } from "@/domain/import/review-input";
@@ -83,8 +84,27 @@ export function RecipeEditForm({
     errors[name] && <p className="mt-1 text-sm font-semibold text-warn">{errors[name]}</p>;
   const failed = Object.keys(errors).length > 0;
 
+  // The bar is put into the body once the form runs in the browser (null on the server and
+  // while hydrating), like `SelectionBar`: every page comes in with a transform, and inside
+  // it the fixed bar stood narrower and off the strip until the page had come (DESIGN.md).
+  const body = useSyncExternalStore(
+    () => () => {},
+    () => document.body,
+    () => null,
+  );
+  const saveBar = (
+    <div className="save-bar">
+      <div className="mx-auto flex max-w-3xl">
+        <button type="button" className="btn btn-primary" disabled={pending} onClick={submit}>
+          {pending ? "Speichert …" : "Speichern"}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-4">
+    // It ends the height of "Speichern"'s bar above it (`.save-bar`).
+    <div className="space-y-4 pb-20">
       <div>
         <label className="label" htmlFor="title">
           Titel
@@ -305,11 +325,7 @@ export function RecipeEditForm({
           Noch nicht gespeichert. Bitte sieh dir die markierten Felder an.
         </p>
       )}
-      <div className="sticky bottom-20 flex gap-2 sm:bottom-4">
-        <button type="button" className="btn btn-primary" disabled={pending} onClick={submit}>
-          {pending ? "Speichert …" : "Speichern"}
-        </button>
-      </div>
+      {body ? createPortal(saveBar, body) : saveBar}
     </div>
   );
 }

@@ -72,6 +72,52 @@ test("the library has a recipe of the day, themes and shelves to browse", async 
   await expect(page.getByRole("link", { name: /Pilzrisotto/ })).toBeVisible();
 });
 
+test("two filters tapped quickly one after the other are both on", async ({ page }) => {
+  await page.goto("/rezepte?kategorie=hauptgericht");
+  await expect(page.getByRole("status")).toHaveText("14 Rezepte passen dazu");
+  const close = await openFilters(page);
+  const panel = page.getByLabel("Filter", { exact: true });
+  const fish = panel.getByRole("link", { name: /^Fisch \d+$/ });
+  const quick = panel.getByRole("link", { name: /^bis 20 Min\. \d+$/ });
+  // The second before the server has answered the first: it used to keep only the second.
+  await fish.click();
+  await page.waitForTimeout(80);
+  await quick.click();
+  await expect(page).toHaveURL(/kost=fisch/);
+  await expect(page).toHaveURL(/zeit=20/);
+  await expect(page.getByRole("status")).toHaveText("1 Rezept passt dazu");
+  await expect(fish).toHaveAttribute("aria-pressed", "true");
+  await expect(quick).toHaveAttribute("aria-pressed", "true");
+  await close();
+});
+
+test.describe("on an iPad", () => {
+  test.use({ viewport: { width: 810, height: 1080 } });
+
+  test("the first filter on Entdecken puts the panel beside the list, not over it", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "an iPad's width");
+    await page.goto("/rezepte");
+    // While browsing the filters are a sheet, as on a phone.
+    await page.getByRole("button", { name: /^Filter/ }).click();
+    const sheet = page.locator(".filter-panel:popover-open");
+    await sheet.waitFor();
+    await sheet.getByRole("link", { name: /^Vegetarisch/ }).click();
+    await expect(page).toHaveURL(/kost=vegetarisch/);
+    await expect(page.getByRole("status")).toHaveText(/passen dazu$/);
+    // It stood across the page, see-through, without its cross or "… anzeigen".
+    await expect(page.locator(".filter-panel:popover-open")).toHaveCount(0);
+    const panel = await page.locator(".filter-panel").boundingBox();
+    const results = await page.getByRole("region", { name: "Ergebnisse" }).boundingBox();
+    expect(panel!.x + panel!.width).toBeLessThanOrEqual(results!.x);
+    await expect(
+      page.getByLabel("Filter", { exact: true }).getByRole("link", { name: /^Vegetarisch/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
 test("the list under the search field changes with every letter", async ({ page }) => {
   await page.goto("/rezepte");
   const field = page.getByPlaceholder("Titel oder Zutat");
@@ -236,6 +282,19 @@ test("the stepper scales the ingredients, the amounts in the steps and the cooki
   await expect(cooking).toContainText("3 Karotten");
 });
 
+test("the cooking view has its own buttons, not the recipe page's", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "a phone's screen");
+  await page.goto("/rezepte?q=kartoffelsuppe");
+  await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
+  await page.getByRole("link", { name: "Kochen" }).click();
+  const cooking = page.getByRole("dialog", { name: "Kochen: Kartoffelsuppe" });
+  await cooking.getByRole("button", { name: "Erster Schritt" }).click();
+  // It grew to 199px with the row of the recipe page's buttons, and its steps' to 15px.
+  const done = cooking.getByRole("button", { name: "Fertig", exact: true });
+  expect((await done.boundingBox())!.width).toBeLessThan(100);
+  await expect(cooking.getByRole("button", { name: "Weiter" })).toHaveCSS("font-size", "19px");
+});
+
 test("the Arbeitsschritte are folded away, and a recipe without any says so", async ({ page }) => {
   await page.goto("/rezepte?q=risotto");
   await page.getByRole("link", { name: /Pilzrisotto/ }).click();
@@ -317,10 +376,22 @@ test("the season page shows what is harvested and the recipes made with it", asy
   await page.getByRole("link", { name: /^Zurück zum / }).click();
   await expect(page.getByRole("heading", { name: "Was hat gerade Saison?" })).toBeVisible();
 
-  // In a month with pumpkins, the made-up Kürbisgnocchi are made with them.
-  await page.goto("/rezepte/saison?monat=10&zutat=kuerbis");
+  // In a month with pumpkins, the made-up Kürbisgnocchi are made with them. They open under
+  // the pumpkin, where it was tapped: the page jumped to its top for them.
+  await page.goto("/rezepte/saison?monat=10");
+  const row = page.getByRole("link", { name: /^Kürbis / });
+  await row.scrollIntoViewIfNeeded();
+  const before = (await row.boundingBox())!.y;
+  await row.click();
   const pumpkin = page.getByRole("region", { name: "Rezepte mit Kürbis" });
   await expect(pumpkin.getByRole("link", { name: /Kürbisgnocchi/ })).toBeVisible();
+  await expect(page).toHaveURL(/zutat=kuerbis/);
+  expect(Math.abs((await row.boundingBox())!.y - before)).toBeLessThan(2);
+  expect((await pumpkin.boundingBox())!.y).toBeGreaterThan(before);
+
+  // The way back is the app's way back, the page coming in from the left.
+  await page.getByRole("link", { name: "← Entdecken" }).click();
+  await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
 });
 
 test("a phone held across asks to be turned upright", async ({ page, isMobile }) => {
@@ -355,6 +426,24 @@ test("the Regal is a shelf of cookbooks, and a recipe leads back to the open boo
   await page.getByRole("link", { name: "← Regal" }).click();
   await expect(page).toHaveURL(/\/rezepte\/regal\?buch=Zweites\+Buch$/);
   await expect(page.getByRole("heading", { name: "Zweites Buch" })).toBeVisible();
+});
+
+test("the switch between Entdecken and Regal stays where it is", async ({ page }) => {
+  const views = page.getByRole("navigation", { name: "Ansicht" });
+  // Where it stands once the page has come in.
+  const settled = async () => {
+    await page.waitForFunction(() =>
+      document.getAnimations().every((animation) => animation.playState !== "running"),
+    );
+    return (await views.boundingBox())!.y;
+  };
+  await page.goto("/rezepte");
+  const discover = await settled();
+  await views.getByRole("link", { name: "Regal" }).click();
+  await expect(page).toHaveURL(/\/rezepte\/regal/);
+  // It jumped by about 25px: Entdecken has a line above it the Regal did not.
+  await expect(page.getByText(/^\d+ Rezepte im Kochbuch$/)).toBeVisible();
+  expect(Math.abs((await settled()) - discover)).toBeLessThan(1);
 });
 
 test("a category is a tab of its own, and its recipes lead back to it", async ({ page }) => {

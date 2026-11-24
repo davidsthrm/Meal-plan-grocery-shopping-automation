@@ -116,6 +116,7 @@ export default async function ShelfPage(props: PageProps<"/import/rezepte">) {
   const lacking: PanelGroup = {
     key: "ohne",
     title: "Was fehlt",
+    single: true,
     options: LACKS.map((lack) => {
       const on = view.lacks === lack;
       return {
@@ -474,12 +475,18 @@ function dayText(day: IsoDate, now: IsoDate): string {
     : `${dayAndMonth(day)} ${day.slice(0, 4)}`;
 }
 
+/**
+ * Between facts on a line that may break: the dot stays with the fact before it. A line
+ * started with "· 60 Min." on a phone (November 2026).
+ */
+const DOT = "\u00a0· ";
+
+/** "Mittel · 25 Min.", never broken inside "25 Min.". */
 function effortText(recipe: RecipeSummary): string | null {
   const effort = effortOf(recipe);
-  if (!effort) return recipe.prepMinutes === null ? null : `${recipe.prepMinutes} Min.`;
-  return recipe.prepMinutes === null
-    ? EFFORT_NAME[effort]
-    : `${EFFORT_NAME[effort]} · ${recipe.prepMinutes} Min.`;
+  const minutes = recipe.prepMinutes === null ? null : `${recipe.prepMinutes}\u00a0Min.`;
+  if (!effort) return minutes;
+  return minutes === null ? EFFORT_NAME[effort] : `${EFFORT_NAME[effort]}${DOT}${minutes}`;
 }
 
 function kindLabel(recipe: RecipeSummary): { className: string; label: string } | null {
@@ -567,10 +574,12 @@ function ShelfRow({
           <div className="flex items-start gap-2.5">
             <RecipeBadge recipe={recipe} className="mt-0.5 hidden h-8 w-8 shrink-0 sm:flex" />
             <div className="min-w-0 flex-1">
+              {/* On a phone as tall as a finger: 19px tall right above the line that folds
+                  the row open, taps landed on the other (November 2026). */}
               <Link
                 href={`/rezepte/${recipe.id}${FROM_ALL_RECIPES}`}
                 prefetch
-                className="font-semibold hover:underline"
+                className="font-semibold hover:underline max-sm:flex max-sm:min-h-11 max-sm:items-center"
               >
                 {recipe.title}
               </Link>
@@ -591,7 +600,7 @@ function ShelfRow({
               <details className="group sm:hidden">
                 <summary className="flex min-h-9 cursor-pointer list-none items-start gap-1 text-sm text-muted [&::-webkit-details-marker]:hidden">
                   <span className="min-w-0 flex-1 pt-0.5">
-                    {[source, category, effort].filter(Boolean).join(" · ")}
+                    {[source, category, effort].filter(Boolean).join(DOT)}
                   </span>
                   <span className="flex size-6 shrink-0 items-center justify-center text-accent transition-transform group-open:rotate-180">
                     <ChevronIcon />

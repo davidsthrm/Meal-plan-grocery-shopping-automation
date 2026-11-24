@@ -175,7 +175,10 @@ The paper metaphors in motion:
 - What is done with the recipes ticked in "Alle Rezepte" is a bar at the foot of the screen
   that opens upwards (`.selection-bar`, `SelectionBar`), out of sight while nothing is
   ticked. It is put directly into the body: every page comes in with a transform (`page-in`),
-  and inside a transformed element "fixed" is fixed to that element, not to the screen.
+  and inside a transformed element "fixed" is fixed to that element, not to the screen. The
+  recipe form's "Speichern" bar (`.save-bar`) is put there too: inside the page it stood
+  narrower and off the strip while the page came in, and jumped into place (24 November
+  2026).
 
 ## Layout and screens
 
@@ -253,9 +256,11 @@ The paper metaphors in motion:
 - Every page ends above the strip: its foot leaves the strip's height free
   (`--tabbar-height`), so that nothing lies under it at the end of a scroll, and what stands
   at the foot of the screen (the offline bar, the bar of ticked recipes, "Fertig" of a
-  photographed recipe) stands on it. The Rezept-Stapel's deck takes what the screen has left
-  above its three buttons: at its old height they lay under the bar on a 375px phone
-  (November 2026). `e2e/small-phone.spec.ts` checks both.
+  photographed recipe, "Speichern" of the recipe form) stands on it. The Rezept-Stapel's
+  deck takes what the screen has left above its three buttons: at its old height they lay
+  under the bar on a 375px phone (November 2026); its "Zurück" stands above the card for the
+  same reason, all of its 44px: its foot lay over the card, and a tap there opened the
+  recipe. `e2e/small-phone.spec.ts` checks them.
 - The header stays at the top of every page on a strip of the page's paper as wide as the
   screen (`.app-header`), in the section's colour (see "Section colours"), solid, fading out at its foot instead of ending in a line, so that
   the Merkzettel and the settings are one tap away halfway down a long list; anchors land
