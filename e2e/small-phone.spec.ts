@@ -121,3 +121,23 @@ test("a title in Alle Rezepte is as tall as a finger", async ({ page }) => {
   const title = page.getByRole("link", { name: "Kartoffelsuppe", exact: true });
   expect((await title.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
+
+test("the recipe form's Speichern is a bar standing on the strip", async ({ page }) => {
+  await page.goto("/rezepte?q=kartoffelsuppe");
+  await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
+  await page.getByRole("link", { name: "Rezept ändern" }).click();
+  await expect(page.getByRole("heading", { name: "Rezept ändern" })).toBeVisible();
+  // A pill floating over the fields: a tap meant for a field saved and left the form.
+  const bar = page.locator(".save-bar");
+  await expect(bar.getByRole("button", { name: "Speichern" })).toBeVisible();
+  for (const y of [0, 600]) {
+    await page.evaluate((to) => window.scrollTo(0, to), y);
+    const box = await bar.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(374);
+    expect(Math.abs(box!.y + box!.height - (await stripTop(page)))).toBeLessThan(1.5);
+  }
+  // At the end nothing lies under it.
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const steps = await page.getByLabel("Arbeitsschritte, einer pro Zeile").boundingBox();
+  expect(steps!.y + steps!.height).toBeLessThanOrEqual((await bar.boundingBox())!.y);
+});

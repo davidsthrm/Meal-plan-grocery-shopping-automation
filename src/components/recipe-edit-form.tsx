@@ -84,7 +84,8 @@ export function RecipeEditForm({
   const failed = Object.keys(errors).length > 0;
 
   return (
-    <div className="space-y-4">
+    // It ends the height of "Speichern"'s bar above it (`.save-bar`).
+    <div className="space-y-4 pb-20">
       <div>
         <label className="label" htmlFor="title">
           Titel
@@ -305,10 +306,12 @@ export function RecipeEditForm({
           Noch nicht gespeichert. Bitte sieh dir die markierten Felder an.
         </p>
       )}
-      <div className="sticky bottom-20 flex gap-2 sm:bottom-4">
-        <button type="button" className="btn btn-primary" disabled={pending} onClick={submit}>
-          {pending ? "Speichert …" : "Speichern"}
-        </button>
+      <div className="save-bar">
+        <div className="mx-auto flex max-w-3xl">
+          <button type="button" className="btn btn-primary" disabled={pending} onClick={submit}>
+            {pending ? "Speichert …" : "Speichern"}
+          </button>
+        </div>
       </div>
     </div>
   );

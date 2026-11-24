@@ -2435,6 +2435,29 @@ summary,
       bottom: 1rem;
     }
   }
+  /*
+   * "Speichern" of the recipe form: a bar across the foot of the screen, standing on the
+   * strip of the sections on a phone, solid like it. As a pill floating over the form it lay
+   * on a field at 10 of 13 places of a long recipe on a phone, and a tap meant for the field
+   * saved and left the form (November 2026). The form ends its height above it.
+   */
+  .save-bar {
+    position: fixed;
+    right: 0;
+    bottom: var(--tabbar-height);
+    left: 0;
+    z-index: 11;
+    padding: 0.6rem max(1rem, env(safe-area-inset-right)) 0.6rem
+      max(1rem, env(safe-area-inset-left));
+    border-top: 1px solid var(--color-line);
+    background: var(--color-surface);
+  }
+  @media (width >= 40rem) {
+    .save-bar {
+      bottom: 0;
+      padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
+    }
+  }
 
   /*
    * Entdecken while nothing is searched, made for the iPad (October 2026): the tabs of the
