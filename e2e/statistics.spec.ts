@@ -74,7 +74,7 @@ test.describe("statistics", () => {
     await expect(page).toHaveURL(/\/einkauf\?w=/);
   });
 
-  test("screens @look", async ({ page }, info) => {
+  test("screens @look @webkit", async ({ page }, info) => {
     await planHistory(6);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await signIn(page);

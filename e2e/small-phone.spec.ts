@@ -19,7 +19,7 @@ async function stripTop(page: Page): Promise<number> {
   return strip!.y;
 }
 
-test("the week's row of arrows is one line on every week, and the page ends above the strip", async ({
+test("the week's row of arrows is one line on every week, and the page ends above the strip @webkit", async ({
   page,
 }) => {
   // The week the plan opens on, and a week that shows "Aktuelle" between the arrows.
@@ -38,7 +38,7 @@ test("the week's row of arrows is one line on every week, and the page ends abov
   expect(main!.y + main!.height).toBeLessThanOrEqual(await stripTop(page));
 });
 
-test("the Rezept-Stapel's three buttons stand above the strip as the page opens", async ({
+test("the Rezept-Stapel's three buttons stand above the strip as the page opens @webkit", async ({
   page,
 }) => {
   await page.goto("/rezepte/stapel");
