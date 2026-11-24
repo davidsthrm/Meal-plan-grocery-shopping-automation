@@ -124,13 +124,7 @@ export default async function ImportPage(props: PageProps<"/import">) {
           </p>
         </div>
       ) : (
-        <>
-          <h2 className="mt-8 text-lg font-semibold">Viele Seiten auf einmal</h2>
-          <p className="mb-2 text-sm text-muted">
-            Ein ganzes Kochbuch oder Heft, Seite für Seite fotografiert, oder ein Ordner voller
-            Fotos.
-          </p>
-        </>
+        <h2 className="mt-8 mb-2 text-lg font-semibold">Viele Seiten auf einmal</h2>
       )}
       <NewBatchForm
         sources={sources}

@@ -126,9 +126,8 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
               : `${openProposals} neue Zutaten zuordnen`}
           </Link>
           <p className="mt-2 text-sm text-muted">
-            Zutaten, die der Katalog noch nicht kennt. Die Rezepte sind trotzdem schon übernommen.
-            Zugeordnet werden sie, damit sie auf der Einkaufsliste im richtigen Laden und Regal
-            stehen und zusammengezählt werden.
+            Die Rezepte sind schon übernommen. Zugeordnet stehen die Zutaten auf den Einkaufszetteln
+            im richtigen Laden und Regal und werden zusammengezählt.
           </p>
         </div>
       )}
@@ -181,11 +180,7 @@ export default async function BatchPage(props: PageProps<"/import/[batchId]">) {
 
       {leftOut.length > 0 && (
         <>
-          <h2 className="mt-6 mb-1 text-lg font-semibold">Seiten ohne Rezept</h2>
-          <p className="mb-2 text-sm text-muted">
-            Auf diesen Fotos wurde kein Rezept gefunden. Stimmt das nicht, lass die Seite trotzdem
-            einlesen.
-          </p>
+          <h2 className="mt-6 mb-2 text-lg font-semibold">Seiten ohne Rezept</h2>
           <ul className="grid gap-3 sm:grid-cols-2">
             {leftOut.map((page) => {
               const survey = page.survey as unknown as PageSurvey | null;
