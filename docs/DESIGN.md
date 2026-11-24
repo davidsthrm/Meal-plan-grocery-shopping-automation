@@ -253,9 +253,10 @@ The paper metaphors in motion:
 - Every page ends above the strip: its foot leaves the strip's height free
   (`--tabbar-height`), so that nothing lies under it at the end of a scroll, and what stands
   at the foot of the screen (the offline bar, the bar of ticked recipes, "Fertig" of a
-  photographed recipe) stands on it. The Rezept-Stapel's deck takes what the screen has left
-  above its three buttons: at its old height they lay under the bar on a 375px phone
-  (November 2026). `e2e/small-phone.spec.ts` checks both.
+  photographed recipe, "Speichern" of the recipe form) stands on it. The Rezept-Stapel's
+  deck takes what the screen has left above its three buttons: at its old height they lay
+  under the bar on a 375px phone (November 2026); its "Zurück" stands above the card for the
+  same reason. `e2e/small-phone.spec.ts` checks them.
 - The header stays at the top of every page on a strip of the page's paper as wide as the
   screen (`.app-header`), in the section's colour (see "Section colours"), solid, fading out at its foot instead of ending in a line, so that
   the Merkzettel and the settings are one tap away halfway down a long list; anchors land
