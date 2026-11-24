@@ -172,3 +172,20 @@ test("a swipe buys a line or removes it, and holding it opens its menu", async (
   await menu.getByRole("menuitem", { name: "Am Di 2. kaufen" }).click();
   await expect(row("Eier")).toContainText("→ Di 2.");
 });
+
+test("the shop's pen takes a part of a kilo as it is typed", async ({ page }) => {
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await write(page, "2 kg Lakritzschnecken");
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  await shop.getByRole("button", { name: "Lakritzschnecken: Menge oder Produkt ändern" }).click();
+  const edit = page.getByRole("dialog", { name: "Lakritzschnecken" });
+  const amount = edit.getByLabel("Menge von Lakritzschnecken");
+  // Read at every key, "1," was 1 and "1,5" became 15 (audit, 24 November 2026).
+  await amount.fill("");
+  await amount.pressSequentially("1,5");
+  await expect(amount).toHaveValue("1,5");
+  await expect(edit).toContainText("Es fehlen noch 500 g Lakritzschnecken.");
+  await edit.getByRole("button", { name: "Rest verschieben" }).click();
+  await expect(page.getByRole("dialog", { name: "Rest: 500 g Lakritzschnecken" })).toBeVisible();
+});

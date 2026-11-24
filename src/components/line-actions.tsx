@@ -1016,9 +1016,13 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
   const { host, decision } = useLine(line);
   const already = decision.kind === "bought" || decision.kind === "partial" ? decision : null;
   const [unit, setUnit] = useState<Unit>(already?.amount?.unit ?? line.purchase?.unit ?? "Stück");
-  const [quantity, setQuantity] = useState<number | null>(
-    already?.amount?.quantity ?? line.purchase?.quantity ?? null,
+  // The amount as typed, read where it is used: read at every key, "1," was 1 and "1,5"
+  // became 15 kg (audit, 24 November 2026).
+  const [text, setText] = useState(
+    quantityText(already?.amount?.quantity ?? line.purchase?.quantity ?? null),
   );
+  const read = parseQuantity(text);
+  const quantity = read !== null && read !== undefined && read > 0 ? read : null;
   const [name, setName] = useState(already?.name ?? "");
   const step = stepOf(unit, line.purchase?.quantity ?? 1);
   const bought: Amount | null = quantity !== null && quantity > 0 ? { quantity, unit } : null;
@@ -1062,7 +1066,7 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
                 type="button"
                 aria-label="Weniger"
                 disabled={quantity === null || quantity <= step}
-                onClick={() => setQuantity((value) => Math.max(step, (value ?? step) - step))}
+                onClick={() => setText(quantityText(Math.max(step, (quantity ?? step) - step)))}
               >
                 −
               </button>
@@ -1071,11 +1075,8 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
                   aria-label={`Menge von ${line.label}`}
                   inputMode="decimal"
                   className="w-12 bg-transparent text-center"
-                  value={quantity === null ? "" : formatNumber(quantity)}
-                  onChange={(event) => {
-                    const read = Number(event.target.value.replace(",", "."));
-                    setQuantity(Number.isFinite(read) && read > 0 ? read : null);
-                  }}
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
                 />
                 {unit === line.purchase.unit && (
                   <span className="text-muted whitespace-nowrap">
@@ -1086,7 +1087,7 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
               <button
                 type="button"
                 aria-label="Mehr"
-                onClick={() => setQuantity((value) => (value ?? 0) + step)}
+                onClick={() => setText(quantityText((quantity ?? 0) + step))}
               >
                 +
               </button>
