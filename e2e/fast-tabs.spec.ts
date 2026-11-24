@@ -22,6 +22,13 @@ test("tabs tapped fast before the page has started do not load the whole page ag
   });
 
   await page.goto("/woche", { waitUntil: "commit" });
+  // The page as the phone shows it then: with its styles, which are not held back.
+  await page.locator("nav").first().waitFor({ state: "attached" });
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')].every(
+      (link) => link.sheet,
+    ),
+  );
   const tab = (name: string) =>
     page.getByRole("navigation", { name: "Hauptbereiche" }).getByRole("link", { name });
   await expect(tab("Einkauf")).toBeVisible();
