@@ -73,7 +73,6 @@ export function ProposalList({ proposals, ingredients, aisleGroups }: Props) {
     },
     {
       title: "Neu im Katalog",
-      hint: "Das Regal ist ein Vorschlag. Alles Weitere lässt sich später ändern.",
       list: proposals.filter((p) => !p.sameAsIngredientId),
     },
   ].filter((section) => section.list.length > 0);
@@ -91,8 +90,8 @@ export function ProposalList({ proposals, ingredients, aisleGroups }: Props) {
           <h2 className="text-lg font-semibold">
             {section.title} <span className="font-normal text-muted">({section.list.length})</span>
           </h2>
-          <p className="mb-2 text-sm text-muted">{section.hint}</p>
-          <ul className="card divide-y divide-line">
+          {section.hint && <p className="text-sm text-muted">{section.hint}</p>}
+          <ul className="card mt-2 divide-y divide-line">
             {section.list.map((proposal) => {
               const row = rows[proposal.id];
               const unknownTarget =
