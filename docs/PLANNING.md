@@ -324,7 +324,7 @@ are in [SHOPPING.md](SHOPPING.md).
 ## Statistics
 
 - "Statistik" (`/woche/statistik`) stands next to "Alle Wochen" on the week plan and on that
-  page, not in the bar of the sections: the phone's bar holds five, and looking back is part
+  page, not among the sections: the phone's row holds five, and looking back is part
   of the week. Two views as a segmented control, "Essen" and "Einkauf", and a week, a month
   (the default) or a year with the capsule to go back and forward.
 - A month and a year are whole weeks, each counted for the month most of its days are in, as

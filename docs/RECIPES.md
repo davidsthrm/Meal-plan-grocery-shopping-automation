@@ -84,8 +84,8 @@ after.
   The lines are the rows of the import's review (`IngredientRows`, shared by both forms):
   amount, unit, ingredient and note per row, the printed line shown above it. What is typed
   is checked on the server by `readReview`, and saving replaces the recipe's lines.
-  "Speichern" stands in a bar of its own at the foot of the screen, on the strip of the
-  sections on a phone, and the form ends above it (`.save-bar`): as a pill floating over
+  "Speichern" stands in a bar of its own at the foot of the screen, its button clear of the
+  iPhone's home bar, and the form ends above it (`.save-bar`): as a pill floating over
   the form it lay on a field at most places of a long recipe, and a tap meant for the field
   saved and left the form (November 2026).
 - A recipe typed in by hand (`readTypedRecipe`) has one ingredient per line, written as on a
