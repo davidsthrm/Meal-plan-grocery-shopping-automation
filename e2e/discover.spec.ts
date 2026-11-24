@@ -416,6 +416,24 @@ test("the Regal is a shelf of cookbooks, and a recipe leads back to the open boo
   await expect(page.getByRole("heading", { name: "Zweites Buch" })).toBeVisible();
 });
 
+test("the switch between Entdecken and Regal stays where it is", async ({ page }) => {
+  const views = page.getByRole("navigation", { name: "Ansicht" });
+  // Where it stands once the page has come in.
+  const settled = async () => {
+    await page.waitForFunction(() =>
+      document.getAnimations().every((animation) => animation.playState !== "running"),
+    );
+    return (await views.boundingBox())!.y;
+  };
+  await page.goto("/rezepte");
+  const discover = await settled();
+  await views.getByRole("link", { name: "Regal" }).click();
+  await expect(page).toHaveURL(/\/rezepte\/regal/);
+  // It jumped by about 25px: Entdecken has a line above it the Regal did not.
+  await expect(page.getByText(/^\d+ Rezepte im Kochbuch$/)).toBeVisible();
+  expect(Math.abs((await settled()) - discover)).toBeLessThan(1);
+});
+
 test("a category is a tab of its own, and its recipes lead back to it", async ({ page }) => {
   await page.goto("/rezepte");
   const tabs = page.getByRole("navigation", { name: "Kategorien" });

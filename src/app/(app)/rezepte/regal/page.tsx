@@ -72,8 +72,14 @@ export default async function BookshelfPage(props: PageProps<"/rezepte/regal">) 
   return (
     <div className="mx-auto max-w-5xl">
       <ListMemory />
+      {/* As on Entdecken: without it the switch between the two jumped. */}
+      <p className="eyebrow">
+        {recipes.length === 1 ? "1 Rezept" : `${recipes.length} Rezepte`} im Kochbuch
+      </p>
       <h1 className="sr-only">Regal</h1>
-      <RecipeViews current="regal" />
+      <div className="mt-2">
+        <RecipeViews current="regal" />
+      </div>
 
       {shelf.length === 0 ? (
         <p className="mt-8 text-muted">
