@@ -107,7 +107,7 @@ test("on the note ticked lines go to its very end, and an opened one stays until
   const note = sheet(page, MONDAY);
   const bought = region(note, "Gekauft");
 
-  await note.getByRole("button", { name: "Weintrauben: erledigt" }).click();
+  await note.getByRole("button", { name: "Weintrauben: gekauft" }).click();
   await expect(rows(region(bought, "Obst & Gemüse, gekauft"), "Weintrauben")).toHaveCount(1);
   // After everything else: writing on the note stays next to what is still open.
   const otherDay = note.getByText("An einem anderen Tag einkaufen");
@@ -119,7 +119,7 @@ test("on the note ticked lines go to its very end, and an opened one stays until
   // Opened to see what it is for, the eggs stay where they are while ticked, until closed.
   const eggs = rows(note, "Eier");
   await eggs.locator("summary").click();
-  await eggs.getByRole("button", { name: /Eier: erledigt$/ }).click();
+  await eggs.getByRole("button", { name: /Eier: gekauft$/ }).click();
   await page.waitForTimeout(1200);
   await expect(rows(bought, "Eier")).toHaveCount(0);
   await expect(eggs.locator("details[open]")).toHaveCount(1);

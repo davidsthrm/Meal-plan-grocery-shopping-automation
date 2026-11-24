@@ -341,7 +341,7 @@ export function TickButton({
       ) : (
         <button
           className="tickbox"
-          aria-label={`${label}: ${shown ? "wieder offen" : "erledigt"}`}
+          aria-label={`${label}: ${shown ? "wieder offen" : "gekauft"}`}
           data-on={shown}
         >
           <TickIcon />
@@ -351,13 +351,16 @@ export function TickButton({
   );
 }
 
-/** "3 offen, 2 erledigt", with the ticks of this device that the page does not know yet. */
+/**
+ * "3 offen, 2 gekauft", with the ticks of this device that the page does not know yet. It
+ * said "erledigt" above the lines' own "Gekauft" (audit, 24 November 2026).
+ */
 export function TickCount({ page, lines }: { page: NotePage; lines: readonly PageLine[] }) {
   const onNote = useOnNote(page, lines);
   const done = onNote.filter(isBought).length;
   return (
     <>
-      {onNote.length - done} offen{done > 0 ? `, ${done} erledigt` : ""}
+      {onNote.length - done} offen{done > 0 ? `, ${done} gekauft` : ""}
     </>
   );
 }

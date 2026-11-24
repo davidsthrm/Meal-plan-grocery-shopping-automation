@@ -40,11 +40,11 @@ test("on a note the pen changes how many and the note, and buys nothing @webkit"
   await expect(pen(page)).toBeHidden();
   // Changed, not bought: the line says what the plan has, and its box is still open.
   await expect(eggs(page)).toContainText("6x Eier (Plan: 20x)");
-  await expect(eggs(page).getByRole("button", { name: "6x Eier: erledigt" })).toBeVisible();
+  await expect(eggs(page).getByRole("button", { name: "6x Eier: gekauft" })).toBeVisible();
   // Read again from the server, it says the same.
   await page.reload();
   await expect(eggs(page)).toContainText("6x Eier (Plan: 20x)");
-  await expect(eggs(page).getByRole("button", { name: "6x Eier: erledigt" })).toBeVisible();
+  await expect(eggs(page).getByRole("button", { name: "6x Eier: gekauft" })).toBeVisible();
 
   // In the shop the pen still says what was bought, of the six.
   await page.getByRole("link", { name: "Jetzt einkaufen" }).click();

@@ -176,7 +176,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             {open + done + atHome.length > 0 && (
               <span className="font-normal">
                 {" "}
-                · {open} offen{done > 0 ? `, ${done} erledigt` : ""}
+                · {open} offen{done > 0 ? `, ${done} gekauft` : ""}
               </span>
             )}
           </p>
@@ -493,7 +493,7 @@ function NoteTile({
                 ? note.view.notBought.length > 0
                   ? notBoughtText(note.view.notBought.length)
                   : `${note.done} gekauft`
-                : `${note.open} offen${note.done > 0 ? `, ${note.done} erledigt` : ""}`}
+                : `${note.open} offen${note.done > 0 ? `, ${note.done} gekauft` : ""}`}
             </span>
           </span>
           <span className="mt-2 block flex-1 text-sm">

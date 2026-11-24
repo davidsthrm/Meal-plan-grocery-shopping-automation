@@ -93,7 +93,7 @@ test("screens @look @webkit", async ({ page }, info) => {
     for (const text of ["Milch", "Brot", "Tomaten"]) {
       await write.fill(text);
       await write.press("Enter");
-      await page.getByRole("button", { name: new RegExp(`${text}: erledigt$`) }).waitFor();
+      await page.getByRole("button", { name: new RegExp(`${text}: gekauft$`) }).waitFor();
     }
     await page.waitForTimeout(500);
     await shot("2-einkauf-zettel");

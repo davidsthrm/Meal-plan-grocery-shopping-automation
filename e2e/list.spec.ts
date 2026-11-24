@@ -135,7 +135,7 @@ test("the week becomes a note for every errand, to pick up and work through @web
   await paper.getByRole("button", { name: "Geschenkpapier auf Fr 5." }).click();
   // On Monday's note it is said, quietly, where it went.
   await expect(
-    sheet(page, MONDAY).getByRole("button", { name: "Geschenkpapier: erledigt" }),
+    sheet(page, MONDAY).getByRole("button", { name: "Geschenkpapier: gekauft" }),
   ).toHaveCount(0);
   await expect(sheet(page, MONDAY).getByRole("region", { name: "Verschoben" })).toContainText(
     "Geschenkpapier→ Fr 5.",
@@ -161,8 +161,8 @@ test("the week becomes a note for every errand, to pick up and work through @web
   // Ticking off, and the tick survives a change of the plan.
   await tile(page, BUTCHER).click();
   // The last tick on a note finishes its errand, just like the button.
-  await page.getByRole("button", { name: "4x Rindersteaks: erledigt" }).click();
-  await expect(sheet(page, BUTCHER)).toContainText("1 erledigt");
+  await page.getByRole("button", { name: "4x Rindersteaks: gekauft" }).click();
+  await expect(sheet(page, BUTCHER)).toContainText("1 gekauft");
   await expect(sheet(page, BUTCHER).getByRole("status")).toContainText("Erledigt");
   await page.goto(`/woche?w=${WEEK}`);
   await page.getByRole("button", { name: "Dienstag Mittag leeren" }).click();
@@ -228,8 +228,8 @@ test("the drugstore's note is written by hand: what, how many, for whom @webkit"
   await expect(group(page, DRUGSTORE, "Haushalt")).toContainText("Klopapier");
 
   // Ticked like any line; moving it to a food note is not offered.
-  await page.getByRole("button", { name: "2x Duschgel für Lena: erledigt" }).click();
-  await expect(dm).toContainText("1 offen, 1 erledigt");
+  await page.getByRole("button", { name: "2x Duschgel für Lena: gekauft" }).click();
+  await expect(dm).toContainText("1 offen, 1 gekauft");
   await dm.getByText("Klopapier", { exact: true }).click();
   await expect(dm.getByText("Lieber woanders kaufen:")).toHaveCount(0);
   await dm.getByRole("button", { name: "Klopapier entfernen" }).click();
@@ -297,19 +297,19 @@ test("what was not bought at the drugstore comes along to its next note @webkit"
   await page.getByLabel("Was").fill("Deo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
   // The field is emptied once the line is stored; typed into earlier, the next is lost.
-  await expect(page.getByRole("button", { name: "Deo: erledigt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Deo: gekauft" })).toBeVisible();
   await page.getByLabel("Was").fill("Shampoo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await page.getByRole("button", { name: "Shampoo: erledigt" }).click();
-  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 erledigt");
+  await page.getByRole("button", { name: "Shampoo: gekauft" }).click();
+  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 gekauft");
 
   // Not bought that day, the deodorant is on the next dm note; the shampoo was bought.
   await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
   const dm = page.getByRole("region", { name: /^dm, / });
   await expect(dm).toContainText("Deo");
   await expect(dm).not.toContainText("Shampoo");
-  await page.getByRole("button", { name: "Deo: erledigt" }).click();
-  await expect(dm).toContainText("0 offen, 1 erledigt");
+  await page.getByRole("button", { name: "Deo: gekauft" }).click();
+  await expect(dm).toContainText("0 offen, 1 gekauft");
 });
 
 test("the page opens with the next errand, a tap from the shop and from its note @webkit", async ({
@@ -321,7 +321,7 @@ test("the page opens with the next errand, a tap from the shop and from its note
   await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
   await page.getByLabel("Was").fill("Zahnpasta");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await expect(page.getByRole("button", { name: "Zahnpasta: erledigt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zahnpasta: gekauft" })).toBeVisible();
 
   await page.goto("/einkauf");
   const errand = page.getByRole("region", { name: /^Nächster Einkauf/ });
