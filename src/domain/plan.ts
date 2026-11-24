@@ -198,6 +198,22 @@ export type SlotContent =
   | { kind: "away"; label: string }
   | { kind: "skipped" };
 
+/** What a meal holds, without its place in the calendar: to write it again, as it was. */
+export function contentOf(slot: PlanSlot): SlotContent {
+  switch (slot.kind) {
+    case "recipes":
+      return { kind: "recipes", items: slot.items, extra: slot.extra, foods: slot.foods ?? [] };
+    case "free_text":
+      return { kind: "free_text", label: slot.label, foods: slot.foods ?? [] };
+    case "leftovers":
+      return { kind: "leftovers", ofSlotId: slot.ofSlotId };
+    case "away":
+      return { kind: "away", label: slot.label };
+    case "skipped":
+      return { kind: "skipped" };
+  }
+}
+
 export interface NewSlot {
   date: IsoDate;
   meal: Meal;

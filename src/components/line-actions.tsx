@@ -49,6 +49,7 @@ import {
   type NotePage,
   type PageLine,
 } from "./ticks";
+import { UndoBar, type Toast } from "./undo-bar";
 
 /**
  * What can happen to a line in the shop besides a tick, with one hand on the trolley: the
@@ -111,12 +112,6 @@ type Sheet =
       rest?: { bought: Amount; rest: Amount; name: string | null };
     };
 
-interface Toast {
-  id: number;
-  text: string;
-  undo: (() => void) | null;
-}
-
 interface Host {
   page: NotePage;
   note: ShoppingTrip;
@@ -152,9 +147,6 @@ function useHost(): Host {
   if (!host) throw new Error("A line's actions need LineActions around them.");
   return host;
 }
-
-/** How long a decision can be taken back from the bar at the foot. */
-const UNDO_MS = 5000;
 
 /** How long a finger rests on a row before its menu opens. */
 const PRESS_MS = 450;
@@ -1582,58 +1574,6 @@ function MoveForm({
       >
         {same ? "Tag oder Geschäft wählen" : `${rest ? "Rest" : line.label} ${words.join(" ")}`}
       </button>
-    </div>
-  );
-}
-
-/**
- * The bar at the foot that says what was just decided, with "Widerrufen" for a few seconds.
- * It lies above everything, also above the view for the shop: a popover in the top layer.
- */
-function UndoBar({ toast, onDone }: { toast: Toast | null; onDone: () => void }) {
-  const bar = useRef<HTMLDivElement>(null);
-  // How many views over the whole screen were open when the bar was last shown.
-  const viewsWhenShown = useRef(0);
-  useEffect(() => {
-    const element = bar.current;
-    if (!element || !toast) return;
-    const views = document.querySelectorAll("dialog:modal").length;
-    if (!element.matches(":popover-open")) {
-      element.showPopover();
-    } else if (views > viewsWhenShown.current) {
-      // A view opened over the page since: shown again, the bar comes above it.
-      element.hidePopover();
-      element.showPopover();
-    }
-    // Otherwise it stays where it is and only its words change: shown afresh for every
-    // decision, it rose again from nothing and jumped under quick swipes.
-    viewsWhenShown.current = views;
-    const timer = window.setTimeout(() => {
-      element.hidePopover();
-      onDone();
-    }, UNDO_MS);
-    return () => window.clearTimeout(timer);
-  }, [toast, onDone]);
-  return (
-    <div ref={bar} popover="manual" className="undo-bar" role="status" aria-live="polite">
-      {toast && (
-        <>
-          <span className="min-w-0 flex-1">{toast.text}</span>
-          {toast.undo && (
-            <button
-              type="button"
-              className="undo-button"
-              onClick={() => {
-                toast.undo?.();
-                bar.current?.hidePopover();
-                onDone();
-              }}
-            >
-              Widerrufen
-            </button>
-          )}
-        </>
-      )}
     </div>
   );
 }

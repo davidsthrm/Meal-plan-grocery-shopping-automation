@@ -157,6 +157,9 @@ are in [SHOPPING.md](SHOPPING.md).
 - A plan the household is done with is saved (`week_plan.saved_at`, "Plan speichern"). A
   saved plan is read: the meals stand there without the controls for planning, without
   suggestions, and each with a small pen that opens that one meal (`?stift=<date>.<meal>`).
+  The pen stays open while the meal is changed, its persons, extra portions and "Mehr
+  kochen", until "Fertig": one step of the persons closed it, and the next tap landed on a
+  meal to read (audit, 24 November 2026).
   "Plan bearbeiten" opens the whole plan again. Saving is a decision, not a date: a week
   that has begun is not locked by itself. A saved meal shows beside its dish for how many it
   is cooked, a person's sign and the number as on the stepper; a recipe's own unit stands
@@ -281,7 +284,12 @@ are in [SHOPPING.md](SHOPPING.md).
 - A planned meal is two lines: its dish with the persons as a small stepper beside it ("− 4
   +", a person's sign and the number, "4 Personen" for a screen reader; a recipe with a unit
   of its own shows that below the dish), and its actions as signs in one row, each with its
-  words as label and title: a pen to change it, a plus for a side, a bin to empty it;
+  words as label and title: a pen to change it, a plus for a side, a bin to empty it at
+  once, with "Mo Abend geleert · Widerrufen" at the foot for five seconds (`MealSection`,
+  `restoreSlot`), also when its last recipe is stepped to nothing. The way back writes the
+  meal again, persons, foods and extra portions, unless it was planned meanwhile, and the
+  leftovers planned from it are its again. One tap beside the plus had erased all of it for
+  good, while the whole week asks first (audit, 24 November 2026);
   "Mehr kochen" is the one word among them, a quiet grey word (`.link-quiet`: as a green
   pill it outshone the meal) that opens its form under the row
   (`?mehr=<date>.<meal>`, "Übernehmen" or "Abbrechen"), the way a suggestion is asked for.

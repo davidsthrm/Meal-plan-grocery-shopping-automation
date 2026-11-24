@@ -779,6 +779,18 @@ export async function planAsExtra(title: string, week: string): Promise<void> {
   if (planned.error) throw new Error(`plan extra: ${planned.error.message}`);
 }
 
+/** The recipes on the test household's meals as stored: each row's id and its servings. */
+export async function plannedItems(): Promise<{ id: string; servings: number }[]> {
+  return check(
+    await db
+      .from("plan_slot_item")
+      .select("id, servings")
+      .eq("household_id", await testHousehold())
+      .order("id"),
+    "load planned recipes",
+  );
+}
+
 /**
  * Puts the test household back to how a household starts: the app's own shopping days, no
  * invitations, and nobody in it but the test user. Accounts that joined in a test are

@@ -47,6 +47,8 @@ const place = z
 // Any id in the usual form: the seeded recipes have ids that are no version 4 UUIDs.
 const recipeId = z.guid();
 const weekStart = date.refine((value) => mondayOf(value) === value);
+/** A lunch or dinner as "<date>.<meal>", or empty for none: where leftovers are eaten. */
+const laterMeal = z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}\.(lunch|dinner)$/)]);
 
 function read<T extends z.ZodType>(schema: T, form: FormData): z.infer<T> {
   const parsed = schema.safeParse(Object.fromEntries(form));
@@ -70,6 +72,18 @@ function afterPlanning(form: FormData, input: { week: string; date: string; meal
   redirect(
     `/woche/auswahl?${new URLSearchParams({ w: input.week, d: input.date, m: input.meal, modus: "replace" })}`,
   );
+}
+
+/**
+ * Back to the week at the meal, with its pen still open where a saved meal was changed with
+ * it (the form says `stift`): only "Fertig" puts the pen down. One step of the persons closed
+ * it, and the next tap landed on a meal to read (audit, 24 November 2026).
+ */
+function backToMeal(form: FormData, input: { week: string; date: string; meal: string }): never {
+  const pen = `${input.date}.${input.meal}`;
+  if (form.get("stift") !== pen) backToWeek(input.week, input.date);
+  revalidatePath("/woche");
+  redirect(`/woche?w=${input.week}&stift=${pen}#tag-${input.date}`);
 }
 
 function backToExtras(week: string): never {
@@ -271,6 +285,92 @@ export async function clearSlot(form: FormData): Promise<void> {
   backToWeek(input.week, input.date);
 }
 
+/** What a meal held, as `MealSection` sends it back to undo emptying it. */
+const food = z.object({
+  label: z.string().trim().min(1).max(60),
+  quantity: z.number().int().min(1).nullish(),
+  ingredientId: z.guid().nullable(),
+  shopId: z.guid().nullable(),
+  plannedOn: date.nullish(),
+  plannedAt: z.number().nullish(),
+});
+const slotContent = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("recipes"),
+    items: z
+      .array(
+        z.object({
+          recipeId,
+          servings: z.number().int().min(1).max(99),
+          plannedOn: date.nullish(),
+          plannedAt: z.number().nullish(),
+        }),
+      )
+      .min(1),
+    extra: z.number().int().min(0).max(20).optional(),
+    foods: z.array(food).optional(),
+  }),
+  z.object({
+    kind: z.literal("free_text"),
+    label: z.string().trim().min(1).max(60),
+    foods: z.array(food).optional(),
+  }),
+  z.object({ kind: z.literal("leftovers"), ofSlotId: z.guid().nullish() }),
+  z.object({ kind: z.literal("away"), label: z.string().trim().min(1).max(60) }),
+  z.object({ kind: z.literal("skipped") }),
+]);
+
+/**
+ * "Widerrufen" after a meal was emptied: what it held is written again, unless it was planned
+ * meanwhile, and the leftovers planned from it (`reste`, each "<date>.<meal>", joined by
+ * commas) are its again: the meal comes back with a new id, and they had lost the old one.
+ */
+export async function restoreSlot(form: FormData): Promise<void> {
+  const input = read(
+    z.intersection(
+      place,
+      z.object({
+        was: z.string(),
+        reste: z
+          .string()
+          .transform((meals) => meals.split(",").filter(Boolean))
+          .pipe(z.array(laterMeal)),
+      }),
+    ),
+    form,
+  );
+  const content = slotContent.parse(JSON.parse(input.was));
+  const household = await requireHousehold();
+  const db = await createSessionClient();
+  const found = await findSlot(db, household.id, input.week, input.date, input.meal);
+  if (!found.slot) {
+    const id = await writeSlot(
+      db,
+      household.id,
+      input.week,
+      input.date,
+      input.meal,
+      content,
+      found,
+    );
+    await Promise.all(
+      (id ? input.reste : []).map(async (later) => {
+        const [day, meal] = later.split(".");
+        const linked = await db
+          .from("plan_slot")
+          .update({ leftovers_of_slot_id: id })
+          .eq("household_id", household.id)
+          .eq("date", day)
+          .eq("meal", meal as Meal)
+          .eq("kind", "leftovers")
+          .is("leftovers_of_slot_id", null);
+        if (linked.error) throw new Error(`link leftovers: ${linked.error.message}`);
+      }),
+    );
+  }
+  backToWeek(input.week, input.date);
+}
+
 /** Sets how much of a planned recipe is cooked. Zero takes the recipe off the meal. */
 export async function changeServings(form: FormData): Promise<void> {
   const input = read(
@@ -291,7 +391,7 @@ export async function changeServings(form: FormData): Promise<void> {
     input.recipe,
     input.servings === 0 ? null : input.servings,
   );
-  backToWeek(input.week, input.date);
+  backToMeal(form, input);
 }
 
 /**
@@ -304,7 +404,7 @@ export async function cookMoreOfMeal(form: FormData): Promise<void> {
       place,
       z.object({
         extra: z.coerce.number().int().min(1).max(20),
-        reste: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}\.(lunch|dinner)$/)]),
+        reste: laterMeal,
       }),
     ),
     form,
@@ -323,7 +423,7 @@ export async function cookMoreOfMeal(form: FormData): Promise<void> {
     input.extra,
     later,
   );
-  backToWeek(input.week, input.date);
+  backToMeal(form, input);
 }
 
 /**
@@ -343,7 +443,7 @@ export async function changeExtraPortions(form: FormData): Promise<void> {
     input.meal,
     input.extra,
   );
-  backToWeek(input.week, input.date);
+  backToMeal(form, input);
 }
 
 /** Adds a recipe to the week outside its meals. */

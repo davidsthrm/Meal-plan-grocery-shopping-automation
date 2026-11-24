@@ -48,3 +48,35 @@ test("each set of the plan's buttons is one row, and a saved meal says its perso
   await edit.click();
   await expect(page.getByRole("button", { name: "Plan speichern" })).toBeVisible();
 });
+
+// Audit, 24 November 2026: one tap on the stepper of a saved meal closed its pen, so the
+// second tap after a pause landed on a meal to read.
+test("a saved meal's pen stays open while its persons change, until Fertig", async ({ page }) => {
+  await page.goto("/woche?w=2027-05-10");
+  await plan(page, "Montag Mittag", "Pilzrisotto");
+  await page.getByRole("button", { name: "Plan speichern" }).click();
+  await expect(page.getByRole("button", { name: "Plan bearbeiten" })).toBeVisible();
+
+  const monday = meal(page, "Montag Mittag");
+  await monday.getByRole("link", { name: "Montag Mittag bearbeiten" }).click();
+  const fewer = monday.getByRole("button", { name: "Weniger von Pilzrisotto" });
+  for (const persons of ["3 Personen", "2 Personen"]) {
+    await fewer.click();
+    await expect(monday).toContainText(persons);
+    await expect(monday.locator('[aria-busy="true"]')).toHaveCount(0);
+    // The page has come back from the server, and the pen is still open.
+    await page.waitForTimeout(500);
+    await expect(fewer).toBeVisible();
+  }
+  // "Mehr kochen" opens its form in the pen too.
+  await monday.getByRole("link", { name: "Montag Mittag: mehr kochen" }).click();
+  await expect(monday.getByRole("button", { name: "Übernehmen" })).toBeVisible();
+  await monday.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(monday).toContainText("4 Extra-Portionen");
+  await expect(fewer).toBeVisible();
+
+  // Only "Fertig" closes it.
+  await monday.getByRole("link", { name: "Fertig" }).click();
+  await expect(fewer).toHaveCount(0);
+  await expect(monday.getByRole("link", { name: "Montag Mittag bearbeiten" })).toBeVisible();
+});
