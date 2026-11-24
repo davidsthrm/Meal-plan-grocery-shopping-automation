@@ -155,7 +155,8 @@ export default async function RecipePage(props: PageProps<"/rezepte/[id]">) {
       };
     }),
   );
-  const time = recipe.prep_minutes ? `${recipe.prep_minutes} Min.` : null;
+  // Never "35 / Min." at the end of a line of the cooking view.
+  const time = recipe.prep_minutes ? `${recipe.prep_minutes}\u00a0Min.` : null;
   const facts = (
     base
       ? [time]

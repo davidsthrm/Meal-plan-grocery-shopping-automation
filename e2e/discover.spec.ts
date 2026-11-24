@@ -282,6 +282,19 @@ test("the stepper scales the ingredients, the amounts in the steps and the cooki
   await expect(cooking).toContainText("3 Karotten");
 });
 
+test("the cooking view has its own buttons, not the recipe page's", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "a phone's screen");
+  await page.goto("/rezepte?q=kartoffelsuppe");
+  await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
+  await page.getByRole("link", { name: "Kochen" }).click();
+  const cooking = page.getByRole("dialog", { name: "Kochen: Kartoffelsuppe" });
+  await cooking.getByRole("button", { name: "Erster Schritt" }).click();
+  // It grew to 199px with the row of the recipe page's buttons, and its steps' to 15px.
+  const done = cooking.getByRole("button", { name: "Fertig", exact: true });
+  expect((await done.boundingBox())!.width).toBeLessThan(100);
+  await expect(cooking.getByRole("button", { name: "Weiter" })).toHaveCSS("font-size", "19px");
+});
+
 test("the Arbeitsschritte are folded away, and a recipe without any says so", async ({ page }) => {
   await page.goto("/rezepte?q=risotto");
   await page.getByRole("link", { name: /Pilzrisotto/ }).click();

@@ -1425,20 +1425,23 @@ summary,
   /*
    * A recipe's three actions in one row. On a phone each is as wide as its sign and words
    * and shares what is left; their words a little smaller, so that the three fit a 360-pixel
-   * screen.
+   * screen. The row's own buttons only: the cooking view opens from inside the row, and took
+   * them over, a "Fertig" 199px wide and the steps' buttons at 15px (November 2026).
    */
   .recipe-actions {
     display: flex;
     gap: 0.3rem;
   }
-  .recipe-actions .btn {
+  .recipe-actions > .btn,
+  .recipe-actions > form > .btn {
     flex: 1 1 auto;
     gap: 0.25rem;
     padding: 0 0.45rem;
     font-size: var(--text-sm);
     white-space: nowrap;
   }
-  .recipe-actions .btn > svg {
+  .recipe-actions > .btn > svg,
+  .recipe-actions > form > .btn > svg {
     width: 1.1rem;
     height: 1.1rem;
   }
@@ -1447,13 +1450,15 @@ summary,
       flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .recipe-actions .btn {
+    .recipe-actions > .btn,
+    .recipe-actions > form > .btn {
       flex: none;
       gap: 0.5rem;
       padding: 0 1rem;
       font-size: var(--text-base);
     }
-    .recipe-actions .btn > svg {
+    .recipe-actions > .btn > svg,
+    .recipe-actions > form > .btn > svg {
       width: 1.25rem;
       height: 1.25rem;
     }
