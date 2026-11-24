@@ -1,6 +1,7 @@
 import { findIngredient, normalizeName, type CatalogIndex, type Ingredient } from "../catalog";
 import { describedName, nameVariants } from "../import/map-ingredient";
 import { parseUnit, type Amount, type Unit } from "../units";
+import { formatAmount } from "./format";
 
 /** A hand-typed line, split into what the catalog knows and what stays free text. */
 export interface FreeEntry {
@@ -80,6 +81,15 @@ export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
     return { ingredient: null, label: rest, amount, described: null, note: null };
   }
   return { ingredient: null, label: typed, amount: null, described: null, note: null };
+}
+
+/**
+ * The text of a typed line that `parseFreeEntry` reads back as `amount` of `name`: the rest
+ * of a line the catalog does not know, carried to another note. Written as a bare number it
+ * read "300x Hokkaido-Kürbis" (November 2026).
+ */
+export function entryText(amount: Amount, name: string): string {
+  return `${formatAmount(amount)} ${name}`;
 }
 
 /** The shortest catalog name a compound may end with: "Vollmilch" in "milch", not "Ei". */

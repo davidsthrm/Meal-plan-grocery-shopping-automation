@@ -20,7 +20,7 @@ import {
   type MovedAway,
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
-import { guessKind } from "@/domain/shopping-list/free-entry";
+import { entryText, guessKind } from "@/domain/shopping-list/free-entry";
 import { shopChoices, type PastChoice, type ShopChoice } from "@/domain/shopping-list/shop-choice";
 import { presentByAisle, type AisleView, type ViewLine } from "@/domain/shopping-list/present";
 import { favouriteSupermarkets } from "@/domain/shopping-list/supermarkets";
@@ -1061,7 +1061,7 @@ export async function applyDecisions(
             id: rest.entryId,
             household_id: household.id,
             shopping_list_id: there,
-            text: ingredientId ? name : `${rest.amount.quantity} ${name}`,
+            text: ingredientId ? name : entryText(rest.amount, name),
             ingredient_id: ingredientId,
             carried_quantity: ingredientId ? rest.amount.quantity : null,
             carried_unit: ingredientId ? rest.amount.unit : null,

@@ -404,7 +404,9 @@ specification of the receipt upload (not built yet).
   them work offline and two people never undo each other. `applyDecisions` does what
   follows: a move records the note it was made on (`moved_with`) so that taking it back
   finds every part, a rest becomes an entry on its note (`carried_from_*`), and each
-  purchase is counted in `shop_item_history`.
+  purchase is counted in `shop_item_history`. The rest of a line the catalog does not know
+  is written with its unit, "300 g Hokkaido-Kürbis" (`entryText`); written as a bare number
+  it read "300x Hokkaido-Kürbis" until November 2026.
 - A tick is "this line is ticked (or open) since then", not "toggle" (`Tick`,
   `src/domain/shopping-list/ticks.ts`). It is kept in IndexedDB first (`TickQueue`,
   `src/lib/tick-sync.ts`, `src/lib/tick-store.ts`) and sent to `/api/einkauf/haken` at once,

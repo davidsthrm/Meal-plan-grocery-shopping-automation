@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { parseFreeEntry } from "./free-entry";
+import { entryText, parseFreeEntry } from "./free-entry";
 import { testIndex } from "./test-catalog";
+
+describe("entryText", () => {
+  it("writes the rest of a line so that it reads back with its unit", () => {
+    // The bare number read "300x Hokkaido-Kürbis" (November 2026).
+    const cases = [
+      [{ quantity: 300, unit: "g" }, "300 g Hokkaido-Kürbis", { quantity: 300, unit: "g" }],
+      [{ quantity: 0.065, unit: "l" }, "65 ml Hühnerbrühe", { quantity: 65, unit: "ml" }],
+      [{ quantity: 1.5, unit: "kg" }, "1,5 kg Hokkaido-Kürbis", { quantity: 1.5, unit: "kg" }],
+      [{ quantity: 3, unit: "Stück" }, "3 Stück Ingwer-Shots", { quantity: 3, unit: "Stück" }],
+      [{ quantity: 2, unit: "Dose" }, "2 Dosen Katzenfutter", { quantity: 2, unit: "Dose" }],
+    ] as const;
+    for (const [amount, text, read] of cases) {
+      const name = text.split(" ").at(-1)!;
+      expect(entryText(amount, name)).toBe(text);
+      expect(parseFreeEntry(text, testIndex)).toMatchObject({ label: name, amount: read });
+    }
+  });
+});
 
 describe("parseFreeEntry", () => {
   it("matches a plain ingredient name", () => {
