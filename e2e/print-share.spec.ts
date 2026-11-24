@@ -86,6 +86,10 @@ test("in the installed app the PDFs go to the share sheet, to print or keep", as
   await expect
     .poll(async () => (await shared(page)).at(-1))
     .toEqual(pdf("Einkaufszettel Mo 1. Metzger"));
+  // The note's own "Drucken" too: the print dialog does not open in the installed app.
+  await page.getByRole("button", { name: "Drucken" }).click();
+  await expect.poll(async () => (await shared(page)).length).toBe(2);
+  expect((await shared(page)).at(-1)).toEqual(pdf("Einkaufszettel Mo 1. Metzger"));
   await page.goto(`/einkauf?w=${WEEK}`);
   await page.getByRole("link", { name: "Alle Zettel als PDF" }).click();
   await expect
@@ -98,6 +102,7 @@ test("in the installed app the PDFs go to the share sheet, to print or keep", as
   await page.context().setOffline(true);
   await page.getByRole("link", { name: "Als PDF", exact: true }).click();
   await expect(page.getByText("Offline: Das geht erst wieder mit Verbindung.")).toBeVisible();
+  await page.getByRole("button", { name: "Drucken" }).click();
   expect(await shared(page)).toEqual([]);
   await expect(page).toHaveURL(BUTCHER);
   await page.context().setOffline(false);
@@ -168,8 +173,16 @@ test("in a browser the PDFs open as before", async ({ page }) => {
   expect((await opened).isNavigationRequest()).toBe(true);
   expect(await tab).not.toBe(page);
 
-  // A note, and all of them, as a file.
+  // A note's "Drucken" opens the browser's print dialog.
   await page.goto(BUTCHER);
+  await page.evaluate(() => {
+    Object.assign(window, { printed: 0 });
+    window.print = () => Object.assign(window, { printed: 1 });
+  });
+  await page.getByRole("button", { name: "Drucken" }).click();
+  expect(await page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
+
+  // A note, and all of them, as a file.
   let file = page.waitForEvent("download");
   await page.getByRole("link", { name: "Als PDF", exact: true }).click();
   expect((await file).suggestedFilename()).toBe(`Einkaufszettel-${WEEK}.butcher.pdf`);

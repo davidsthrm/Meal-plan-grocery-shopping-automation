@@ -13,7 +13,7 @@ interface Fetched {
 }
 
 /** Whether a tap hands the PDF to the share sheet: in the installed app, where it can. */
-function sharesFiles(): boolean {
+export function sharesFiles(): boolean {
   return (
     isInstalled() &&
     "canShare" in navigator &&
@@ -44,6 +44,77 @@ function fetchPdf(href: string, name: string): Fetched {
 }
 
 /**
+ * What a tap on a link or button to a PDF does in the installed app (see `PdfLink`):
+ * `fetchAhead` as the finger lands, and `share`, which takes the tap where the PDF goes to
+ * the share sheet and says whether it did.
+ */
+export function usePdfShare(href: string, name: string) {
+  const fetched = useRef<Fetched | null>(null);
+  const [busy, setBusy] = useState(false);
+  // The PDF that came too late for its tap and waits for the next one.
+  const [readyFor, setReadyFor] = useState<string | null>(null);
+  const ready = readyFor === href;
+
+  // A form sent may change the plan or the note: the PDF kept for the next tap goes.
+  useEffect(() => {
+    if (!ready) return;
+    const drop = () => {
+      fetched.current = null;
+      setReadyFor(null);
+    };
+    document.addEventListener("submit", drop);
+    return () => document.removeEventListener("submit", drop);
+  }, [ready]);
+
+  // A PDF that waits for its tap is kept; otherwise each tap fetches the plan as it is now.
+  function fetchAhead() {
+    if (!ready && !busy && sharesFiles()) fetched.current = fetchPdf(href, name);
+  }
+
+  function share(event: MouseEvent<HTMLElement>): boolean {
+    if (!sharesFiles()) return false;
+    event.preventDefault();
+    // A tap again while the PDF is on its way is the same tap.
+    if (!busy) void send();
+    return true;
+  }
+
+  async function send() {
+    if (fetched.current?.href !== href) fetched.current = fetchPdf(href, name);
+    const pdf = fetched.current;
+    setBusy(pdf.file === null);
+    let late = false;
+    try {
+      // Shared at once where the PDF is here: while the tap still counts.
+      await navigator.share({ files: [pdf.file ?? (await pdf.coming)], title: name });
+    } catch (error) {
+      late = error instanceof DOMException && error.name === "NotAllowedError";
+      // The sheet closed without anything chosen is no error. Where no PDF came (weak signal,
+      // the login run out, the server failed), the PDF opens as in a browser, to show why.
+      if (!late && !(error instanceof DOMException && error.name === "AbortError")) {
+        window.location.assign(href);
+      }
+    } finally {
+      setBusy(false);
+      setReadyFor(late ? href : null);
+      if (!late) fetched.current = null;
+    }
+  }
+
+  return { busy, ready, fetchAhead, share };
+}
+
+/** What a link or button says while its PDF waits for the next tap. */
+export function SharePdf() {
+  return (
+    <>
+      <ShareIcon />
+      <span>PDF teilen</span>
+    </>
+  );
+}
+
+/**
  * A link to a PDF the server makes. In a browser it opens the PDF, whose viewer prints and
  * keeps it. The app on the home screen has no browser bar: a PDF opened there could be
  * neither printed nor saved (November 2026). There a tap hands the PDF to the share sheet
@@ -64,73 +135,19 @@ export function PdfLink({
   /** The PDF's title in the share sheet, and its file name. */
   name: string;
 }) {
-  const fetched = useRef<Fetched | null>(null);
-  const [busy, setBusy] = useState(false);
-  // The link whose PDF came too late for its tap and waits for the next one.
-  const [readyFor, setReadyFor] = useState<string | null>(null);
-  const ready = readyFor === link.href;
-
-  // A form sent may change the plan or the note: the PDF kept for the next tap goes.
-  useEffect(() => {
-    if (!ready) return;
-    const drop = () => {
-      fetched.current = null;
-      setReadyFor(null);
-    };
-    document.addEventListener("submit", drop);
-    return () => document.removeEventListener("submit", drop);
-  }, [ready]);
-
-  // A PDF that waits for its tap is kept; otherwise each tap fetches the plan as it is now.
-  function fetchAhead() {
-    if (!ready && !busy && sharesFiles()) fetched.current = fetchPdf(link.href, name);
-  }
-
-  async function share(event: MouseEvent<HTMLAnchorElement>) {
-    if (!sharesFiles()) return;
-    event.preventDefault();
-    // A tap again while the PDF is on its way is the same tap.
-    if (busy) return;
-    if (fetched.current?.href !== link.href) fetched.current = fetchPdf(link.href, name);
-    const pdf = fetched.current;
-    setBusy(pdf.file === null);
-    let late = false;
-    try {
-      // Shared at once where the PDF is here: while the tap still counts.
-      await navigator.share({ files: [pdf.file ?? (await pdf.coming)], title: name });
-    } catch (error) {
-      late = error instanceof DOMException && error.name === "NotAllowedError";
-      // The sheet closed without anything chosen is no error. Where no PDF came (weak signal,
-      // the login run out, the server failed), the link opens as in a browser, to show why.
-      if (!late && !(error instanceof DOMException && error.name === "AbortError")) {
-        window.location.assign(link.href);
-      }
-    } finally {
-      setBusy(false);
-      setReadyFor(late ? link.href : null);
-      if (!late) fetched.current = null;
-    }
-  }
-
+  const pdf = usePdfShare(link.href, name);
   return (
     <a
       {...link}
-      aria-label={ready ? "PDF teilen" : link["aria-label"]}
-      title={ready ? "PDF teilen" : link.title}
-      aria-busy={busy}
-      data-pending={busy || undefined}
+      aria-label={pdf.ready ? "PDF teilen" : link["aria-label"]}
+      title={pdf.ready ? "PDF teilen" : link.title}
+      aria-busy={pdf.busy}
+      data-pending={pdf.busy || undefined}
       data-online-only
-      onPointerDown={fetchAhead}
-      onClick={share}
+      onPointerDown={pdf.fetchAhead}
+      onClick={pdf.share}
     >
-      {ready ? (
-        <>
-          <ShareIcon />
-          <span>PDF teilen</span>
-        </>
-      ) : (
-        children
-      )}
+      {pdf.ready ? <SharePdf /> : children}
     </a>
   );
 }
