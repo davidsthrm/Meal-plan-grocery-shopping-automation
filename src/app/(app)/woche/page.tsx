@@ -718,9 +718,9 @@ function slotSaid(slot: PlanSlot | undefined, recipeOf: ReadonlyMap<string, Reci
 }
 
 /**
- * Today's meals, and below them Saturday and Sunday as two small cards, each meal on a line
- * of its own with the dot of its kind: the weekend was one grey sentence the household did
- * not read (October 2026). Today's dishes are named at 19px, the strongest thing on the page
+ * Today's meals, and below them Saturday and Sunday in two plain columns, each meal on a
+ * line of its own with the dot of its kind: the weekend was one grey sentence the household
+ * did not read (October 2026). Today's dishes are named at 19px, the strongest thing on the page
  * after the greeting (`.today-card`, 23 November 2026).
  */
 function Today({

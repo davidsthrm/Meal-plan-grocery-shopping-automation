@@ -254,9 +254,11 @@ are in [SHOPPING.md](SHOPPING.md).
 - Above the plan of the running week stands what there is to eat today and what the weekend
   holds (`Today`), also while the page already shows the coming week. Once something is
   planned for those days, it stands next to the greeting like a widget on a large screen,
-  and under it on a phone; otherwise the header is the greeting alone. Today's lunch and
-  dinner stand side by side, and Saturday and Sunday are two small cards, each meal on a
-  line of its own with its pictogram: the weekend was one grey sentence (October 2026).
+  and under it on a phone; otherwise the header is the greeting alone. Saturday and Sunday
+  stand in two plain columns with a hairline between them, each meal on a line of its own
+  with its kind's dot: the weekend was one grey sentence (October 2026). They were two
+  small tinted cards until the audit of 24 November 2026: a box inside a box, and beside a
+  longer Saturday an empty tinted block.
 - Every planned meal on the plan carries the kind of its first dish as a coloured edge, a
   stronger shade of the kind's pastel (`.meal-cell`), and a grey one where its dish has no
   kind or it has no recipe. A meal without a recipe has a picture where it has one
