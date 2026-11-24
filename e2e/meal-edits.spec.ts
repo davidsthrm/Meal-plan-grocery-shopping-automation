@@ -94,3 +94,35 @@ test("quick taps on the extra portions all count", async ({ page }) => {
   await page.reload();
   await expect(meal(page, "Montag Mittag")).toContainText("7 Extra-Portionen");
 });
+
+test("food chips stay where they are and are tapped on and off", async ({ page }) => {
+  await page.goto(`/woche?w=${WEEK}`);
+  await page.getByRole("link", { name: "Montag Abend planen" }).click();
+  await page.getByRole("button", { name: "Vesper" }).click();
+  await page.getByRole("link", { name: "← Wochenplan" }).click();
+  await page.getByRole("link", { name: "Montag Abend: Lebensmittel" }).click();
+
+  const where = async (name: string) => {
+    const box = await page.getByRole("button", { name }).boundingBox();
+    return { x: Math.round(box!.x), y: Math.round(box!.y) };
+  };
+  const butter = await where("Butter hinzufügen");
+  const cucumber = await where("Gurke hinzufügen");
+  // Quickly, one after the other: each lands on the food it was meant for.
+  await page.getByRole("button", { name: "Brot hinzufügen" }).click();
+  await page.getByRole("button", { name: "Butter hinzufügen" }).click();
+  await page.getByRole("button", { name: "Gurke hinzufügen" }).click();
+  for (const food of ["Brot", "Butter", "Gurke"]) {
+    await expect(page.getByRole("button", { name: `${food} entfernen` })).toBeVisible();
+  }
+  expect(await where("Butter entfernen")).toEqual(butter);
+  expect(await where("Gurke entfernen")).toEqual(cucumber);
+  await expect(page.getByRole("button", { name: /entfernen$/ })).toHaveCount(3);
+
+  // A second tap takes it off again, in its place.
+  await page.getByRole("button", { name: "Butter entfernen" }).click();
+  await expect(page.getByRole("button", { name: "Butter hinzufügen" })).toBeVisible();
+  expect(await where("Butter hinzufügen")).toEqual(butter);
+  await page.getByRole("link", { name: "Fertig" }).click();
+  await expect(meal(page, "Montag Abend")).toContainText("Brot, Gurke");
+});

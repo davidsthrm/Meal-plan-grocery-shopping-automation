@@ -62,7 +62,15 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
   const shops = must(shopRows, "load shops");
   const shopName = new Map(shops.map((shop) => [shop.id, shop.name]));
   const foods = slot.foods ?? [];
-  const chosen = new Set(foods.map((food) => food.label.toLowerCase()));
+  // A food of the chips is its chip, on. What was typed is listed as chosen: a food of its
+  // own, or a chip's food with an amount or shop the chip would not add, which it does not
+  // show ("8 Brötchen" from the Metzger).
+  const typed = foods.filter((food) => {
+    const option = options.find((entry) => entry.label.toLowerCase() === food.label.toLowerCase());
+    if (!option) return true;
+    const shop = shops.find((entry) => entry.name === option.shop)?.id ?? null;
+    return (food.quantity ?? null) !== (option.quantity ?? null) || food.shopId !== shop;
+  });
 
   const where = (
     <>
@@ -87,10 +95,10 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
         <h1 className="title mt-1">Lebensmittel für {dish}</h1>
       )}
 
-      {foods.length > 0 && (
+      {typed.length > 0 && (
         <section className="mt-5" aria-label="Ausgewählt">
           <ul className="card divide-y divide-line">
-            {foods.map((food) => (
+            {typed.map((food) => (
               <li key={food.label} className="flex items-center justify-between gap-3 px-4 py-2">
                 <span>
                   <span className="font-semibold">{foodText(food)}</span>
@@ -116,21 +124,33 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
 
       <section className="mt-6" aria-label="Lebensmittel hinzufügen">
         <h2 className="eyebrow">Lebensmittel hinzufügen</h2>
+        {/* Every chip stays where it is, on or off: a chosen one went from the row, the rest
+            moved up under the thumb, and a quick next tap added the wrong food (audit, 24
+            November 2026). */}
         <div className="mt-2 flex flex-wrap gap-2">
-          {options
-            .filter((option) => !chosen.has(option.label.toLowerCase()))
-            .map((option) => (
-              <form key={option.label} action={addSlotFood}>
+          {options.map((option) => {
+            const food = foods.find(
+              (entry) => entry.label.toLowerCase() === option.label.toLowerCase(),
+            );
+            const on = food !== undefined;
+            return (
+              <form key={option.label} action={on ? removeSlotFood : addSlotFood}>
                 {where}
-                <input type="hidden" name="label" value={option.label} />
-                {option.shop && <input type="hidden" name="shop" value={option.shop} />}
-                {option.quantity && <input type="hidden" name="quantity" value={option.quantity} />}
-                <SubmitButton className="chip" label={`${option.label} hinzufügen`}>
+                <input type="hidden" name="label" value={food?.label ?? option.label} />
+                {!on && option.shop && <input type="hidden" name="shop" value={option.shop} />}
+                {!on && option.quantity && (
+                  <input type="hidden" name="quantity" value={option.quantity} />
+                )}
+                <SubmitButton
+                  className={`chip ${on ? "chip-on" : ""}`}
+                  label={`${option.label} ${on ? "entfernen" : "hinzufügen"}`}
+                >
                   {option.label}
                   {option.shop && <span className="font-normal text-muted">{option.shop}</span>}
                 </SubmitButton>
               </form>
-            ))}
+            );
+          })}
         </div>
 
         <form action={addSlotFood} className="mt-3 grid gap-2 sm:grid-cols-[1fr_12rem_auto]">

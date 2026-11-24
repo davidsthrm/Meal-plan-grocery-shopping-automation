@@ -44,7 +44,7 @@ import { today } from "@/lib/today";
 import { listRecipes, loadLibraryForLists } from "@/server/recipe-list";
 import { loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
-import { addSlotFood, markSlot, planExtra, planRecipe } from "../actions";
+import { addSlotFood, markSlot, planExtra, planRecipe, removeSlotFood } from "../actions";
 import { WeekStrip } from "./week-strip";
 
 export const metadata: Metadata = { title: "Mahlzeit planen" };
@@ -284,26 +284,33 @@ export default async function ChoosePage(props: PageProps<"/woche/auswahl">) {
           {current?.kind === "recipes" && (
             <section className="mt-5" aria-label="Dazu, ohne Rezept">
               <h2 className="eyebrow">Dazu, ohne Rezept</h2>
+              {/* Each chip stays in its place, on or off: a chosen one went from the row
+                  and the rest moved under the thumb (audit, 24 November 2026). */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {SIDE_FOODS.filter(
-                  (option) =>
-                    !current.foods?.some(
-                      (food) => food.label.toLowerCase() === option.label.toLowerCase(),
-                    ),
-                ).map((option) => (
-                  <form key={option.label} action={addSlotFood}>
-                    {where}
-                    <input type="hidden" name="zurueck" value="auswahl" />
-                    <input type="hidden" name="label" value={option.label} />
-                    {option.shop && <input type="hidden" name="shop" value={option.shop} />}
-                    {option.quantity && (
-                      <input type="hidden" name="quantity" value={option.quantity} />
-                    )}
-                    <SubmitButton className="chip" label={`${option.label} dazu`}>
-                      + {option.label}
-                    </SubmitButton>
-                  </form>
-                ))}
+                {SIDE_FOODS.map((option) => {
+                  const food = current.foods?.find(
+                    (entry) => entry.label.toLowerCase() === option.label.toLowerCase(),
+                  );
+                  return (
+                    <form key={option.label} action={food ? removeSlotFood : addSlotFood}>
+                      {where}
+                      <input type="hidden" name="zurueck" value="auswahl" />
+                      <input type="hidden" name="label" value={food?.label ?? option.label} />
+                      {!food && option.shop && (
+                        <input type="hidden" name="shop" value={option.shop} />
+                      )}
+                      {!food && option.quantity && (
+                        <input type="hidden" name="quantity" value={option.quantity} />
+                      )}
+                      <SubmitButton
+                        className={`chip ${food ? "chip-on" : ""}`}
+                        label={`${option.label} ${food ? "entfernen" : "dazu"}`}
+                      >
+                        {food ? option.label : `+ ${option.label}`}
+                      </SubmitButton>
+                    </form>
+                  );
+                })}
                 <Link
                   href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
                   className="link inline-flex min-h-11 items-center text-sm"

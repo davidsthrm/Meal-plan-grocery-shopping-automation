@@ -126,7 +126,12 @@ are in [SHOPPING.md](SHOPPING.md).
   (`plan_slot_food.quantity`; "1 Dinkelbaguette", "1x Dinkelbaguette" on the note). Such a
   side stored before foods had a number counts as one too (`asSide`, when a week is read). It may name where it is bought
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
-  the catalog says for cooking. Foods are copied with the meal to the next week.
+  the catalog says for cooking. Foods are copied with the meal to the next week. Each of
+  those foods is a chip that stays in its place, on once chosen and off again with a second
+  tap; only what was typed is listed as chosen, with its amount and shop, also a chip's food
+  typed with an amount or shop its chip would not add ("8 Brötchen" from the Metzger). A chosen chip
+  went from its row, the rest moved up under the thumb, and a quick next tap added the
+  wrong food (audit, 24 November 2026). The same holds for "Dazu, ohne Rezept".
 - A meal with recipes can carry foods too, what goes with it and has no recipe: a spelt
   baguette with Sunday's soup (`PlanSlot.foods` on a "recipes" meal, the same
   `plan_slot_food`). The recipe chooser offers them under "Dazu, ohne Rezept" once the meal

@@ -106,11 +106,13 @@ test("a cold supper gets the things to buy for it", async ({ page }) => {
   await page.getByRole("link", { name: "Montag Abend: Lebensmittel" }).click();
   await expect(page.getByRole("heading", { name: "Lebensmittel für Vesper" })).toBeVisible();
 
-  // One tap, and bread for a cold supper comes from the bakery.
+  // One tap, and bread for a cold supper comes from the bakery: its chip is on.
   await page.getByRole("button", { name: "Brot hinzufügen" }).click();
-  const chosen = page.getByRole("region", { name: "Ausgewählt" });
-  await expect(chosen).toContainText("Brot · Bäcker");
+  await expect(page.getByRole("button", { name: "Brot entfernen" })).toContainText("Bäcker");
   await expect(page.getByRole("button", { name: "Brot hinzufügen" })).toHaveCount(0);
+
+  // What is typed is listed as chosen, with where it is bought.
+  const chosen = page.getByRole("region", { name: "Ausgewählt" });
 
   await page.getByLabel("Anderes Lebensmittel").fill("Obatzter");
   await page.getByLabel("Wo wird es gekauft?").selectOption("Metzger");
@@ -118,7 +120,16 @@ test("a cold supper gets the things to buy for it", async ({ page }) => {
   await expect(chosen).toContainText("Obatzter · Metzger");
   await page.getByRole("button", { name: "Gurke hinzufügen" }).click();
   await page.getByRole("button", { name: "Obatzter entfernen" }).click();
-  await expect(chosen).not.toContainText("Obatzter");
+  await expect(chosen).toHaveCount(0);
+
+  // A chip's food typed with an amount and a shop of its own is listed too: its chip, on,
+  // shows neither.
+  await page.getByLabel("Anderes Lebensmittel").fill("8 Brötchen");
+  await page.getByLabel("Wo wird es gekauft?").selectOption("Metzger");
+  await page.getByRole("button", { name: "Hinzufügen", exact: true }).click();
+  await expect(chosen).toContainText("8 Brötchen · Metzger");
+  await page.getByRole("button", { name: "Brötchen entfernen" }).first().click();
+  await expect(chosen).toHaveCount(0);
 
   await page.getByRole("link", { name: "Fertig" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("Brot, Gurke");
@@ -136,7 +147,7 @@ test("a meal with a recipe takes bread to go with it, which the bakery's note bu
   const sides = page.getByRole("region", { name: "Dazu, ohne Rezept" });
   await sides.getByRole("button", { name: "Dinkelbaguette dazu" }).click();
   await expect(page.getByRole("status").first()).toContainText("Pilzrisotto + 1 Dinkelbaguette");
-  await expect(sides.getByRole("button", { name: "Dinkelbaguette dazu" })).toHaveCount(0);
+  await expect(sides.getByRole("button", { name: "Dinkelbaguette entfernen" })).toBeVisible();
 
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   const sunday = meal(page, "Sonntag Mittag");
