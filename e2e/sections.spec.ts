@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./fixtures";
+import { resetLibrary, signIn } from "./fixtures";
 
 // On a phone the five sections stand at the top, a row under the logo, the Merkzettel and
 // the account, in one block that stays there while the page scrolls (David, 24 November
@@ -9,6 +9,8 @@ test("every section is one tap away far down a long page on a phone @webkit", as
   isMobile,
 }) => {
   test.skip(!isMobile || page.viewportSize()!.width >= 640, "a phone's screen");
+  // A long page: every recipe of the test cookbooks in "Alle Rezepte".
+  await resetLibrary();
   await signIn(page);
   await page.goto("/import/rezepte");
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
