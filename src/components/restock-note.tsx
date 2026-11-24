@@ -6,6 +6,7 @@ import { tellRestock, type RestockState } from "@/app/(app)/merkzettel/actions";
 import { mondayOf } from "@/domain/dates";
 import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 import { dayName, noteName } from "@/lib/list-text";
+import { useOnline } from "./connection";
 import { CloseIcon, ListIcon, PlusIcon } from "./icons";
 import { PictogramIcon } from "./pictogram";
 import { SubmitButton } from "./submit-button";
@@ -39,6 +40,7 @@ interface Props {
  */
 export function RestockNote({ items, asPage = false, onLeave }: Props) {
   const [state, tell] = useActionState(tellRestock, { moved: [] });
+  const online = useOnline();
   // The entry struck last says so on the note for a few seconds, to write it again: the cross
   // tapped by mistake lost it for good. A bar at the foot would lie under the note's dim
   // (audit, 24 November 2026).
@@ -81,6 +83,11 @@ export function RestockNote({ items, asPage = false, onLeave }: Props) {
           <PlusIcon />
         </SubmitButton>
       </form>
+      {/* The bar that says so lies under the note's dim. */}
+      {!online && (
+        <p className="mt-2 text-sm text-warn">Offline: Das geht erst wieder mit Verbindung.</p>
+      )}
+
       {struck && (
         <div role="status" className="mt-2 flex flex-wrap items-center gap-x-3 text-sm">
           <span>{struck} gestrichen</span>

@@ -593,4 +593,9 @@ test("an entry struck from the Merkzettel can be taken back @webkit", async ({ p
   const struck = note.getByRole("status").filter({ hasText: "Spülmaschinentabs gestrichen" });
   await struck.getByRole("button", { name: "Widerrufen" }).click();
   await expect(entry).toHaveCount(1);
+
+  // Without a connection the note says why nothing happens.
+  await page.context().setOffline(true);
+  await expect(note).toContainText("Offline: Das geht erst wieder mit Verbindung.");
+  await page.context().setOffline(false);
 });
