@@ -216,6 +216,15 @@ The paper metaphors in motion:
   ended, and the page flickered once after every tap on a section (October 2026).
 - A tapped section is the current one the moment the finger lands, before its page has come
   (`AppNav`).
+- A section tapped right after a whole page has loaded, while the page shows but its scripts
+  have not run yet, is kept and followed once the bar has started (`EARLY_TAP` in the root
+  layout, `AppNav`); should the scripts not come within three seconds, the browser follows
+  it as a plain link. Until 24 November 2026 such a tap was a plain link: Safari loaded the
+  whole page again, and so did every quick tap after it ("when changing tabs fast it
+  reloads the whole page sometimes"). In WebKit on a production build, quick taps right
+  after a page had loaded made 20 whole loads in 8 tries; in an app already running, 205
+  rounds of quick taps, with a slow network, a slowed processor and live refreshes in
+  between, made none. `e2e/fast-tabs.spec.ts` holds the scripts back to tap in that moment.
 - Every page ends above the strip: its foot leaves the strip's height free
   (`--tabbar-height`), so that nothing lies under it at the end of a scroll, and what stands
   at the foot of the screen (the offline bar, the bar of ticked recipes, "Fertig" of a
