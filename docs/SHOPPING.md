@@ -289,9 +289,11 @@ specification of the receipt upload (not built yet).
 - In the running week the page opens with the next errand that has something open
   (`nextErrand`), large, in place of its tile: "Nächster Einkauf · Heute", the place or its
   supermarkets (a tap opens the note), "Jetzt einkaufen" straight into that note's view for
-  the shop (`#laden`) and how many lines are open. The other notes follow as tiles. Chosen on
-  23 November 2026: the household wanted the page to say what is next. Look in
-  [DESIGN.md](DESIGN.md#paper-and-notes).
+  the shop (`#laden`), how many lines are open, and "Zettel ansehen" into the note itself,
+  to write on it: the view for the shop cannot add a line, and the note has no tile of its
+  own there, so its unmarked name was the only way in (audit, 24 November 2026). The other
+  notes follow as tiles. Chosen on 23 November 2026: the household wanted the page to say
+  what is next. Look in [DESIGN.md](DESIGN.md#paper-and-notes).
 - From Saturday on the page shows the week ahead, but the day's market and dm are notes of
   the running week. The next errand is looked for in both weeks, and it opens in its own
   week. Looking at the week ahead alone, the page named Monday's supermarket on the

@@ -304,6 +304,24 @@ test("what was not bought at the drugstore comes along to its next note", async 
   await expect(dm).toContainText("0 offen, 1 erledigt");
 });
 
+test("the page opens with the next errand, a tap from the shop and from its note", async ({
+  page,
+}) => {
+  // The next dm is today or later, the only note with something on it. On a Saturday it is
+  // a note of the running week, while the page already shows the week ahead.
+  const next = fromToday((weekday) => (6 - weekday + 7) % 7);
+  await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
+  await page.getByLabel("Was").fill("Zahnpasta");
+  await page.getByRole("button", { name: "Hinzufügen" }).click();
+  await expect(page.getByRole("button", { name: "Zahnpasta: erledigt" })).toBeVisible();
+
+  await page.goto("/einkauf");
+  const errand = page.getByRole("region", { name: /^Nächster Einkauf/ });
+  await expect(errand.getByRole("link", { name: "Jetzt einkaufen" })).toBeVisible();
+  await errand.getByRole("link", { name: "Zettel ansehen" }).click();
+  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("Zahnpasta");
+});
+
 test("a week with nothing planned has empty notes that say where they come from", async ({
   page,
 }) => {

@@ -427,6 +427,11 @@ function NextErrand({
           Jetzt einkaufen
         </Link>
         <span className="text-muted tabular-nums">{note.open} offen</span>
+        {/* The note has no tile of its own here, and the view for the shop cannot add a
+            line: its name alone, unmarked, was the only way to write on it. */}
+        <Link href={href} className="link inline-flex min-h-11 items-center">
+          Zettel ansehen
+        </Link>
       </p>
     </section>
   );
