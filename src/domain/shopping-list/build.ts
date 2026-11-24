@@ -551,13 +551,13 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         optional: line.optional,
       };
       // Zest is bought as its fruit, an organic one, and adds up with what else needs the
-      // fruit (David, 22 November 2026). Without an amount it takes one: "Schale von 1
-      // Zitrone" says so in its name.
+      // fruit (David, 22 November 2026). Without an amount it takes one, and says so among
+      // what was asked for: "Schale von 1 Zitrone" says so in its name.
       const id = ingredient.whole?.ingredientId;
       const fruit = id ? index.ingredientById.get(id) : undefined;
       const wholes = amount ? wholesOf(ingredient, amount) : 1;
       if (fruit && wholes !== null) {
-        const part = { of: ingredient.name, amount };
+        const part = { of: ingredient.name, amount: amount ?? { quantity: 1, unit: "Stück" } };
         const inWholes = { quantity: tidy(wholes), unit: fruit.defaultUnit };
         add(fruit, errand(fruit), { ...contribution, amount: inWholes, part }, "Bio");
         continue;

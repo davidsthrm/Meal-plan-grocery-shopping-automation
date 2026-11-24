@@ -49,7 +49,8 @@ specification of the receipt upload (not built yet).
   1 EL an orange. A piece of zest, or a zest read without an amount, is one fruit: "Schale
   von 1 Zitrone" is "1x Zitrone Bio". A packet of zest has no fruit to count and stays as it
   is. An opened line says what it was asked for in ("Genau: 8 Zehen", "Genau: 2 Stück + 2 TL
-  Bio-Zitronenschale"). Lemon and lime juice are not turned into fruit: the household uses
+  Bio-Zitronenschale"), a zest without an amount as the one fruit it buys ("Genau: 2 Stück +
+  1 Stück Bio-Zitronenschale"; it was missing there until November 2026). Lemon and lime juice are not turned into fruit: the household uses
   bottled juice it has at home, so Zitronensaft and Limettensaft are pantry staples and
   stand under "Haben wir schon"; orange juice is bought as juice. The yields are estimates.
   A herb kept by the leaf (Salbei) or dried (Majoran, Oregano) has no bunch its sprigs can

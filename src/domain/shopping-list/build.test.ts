@@ -847,6 +847,19 @@ describe("parts become the whole", () => {
     expect(text(week.get("zitronen@main"))).toBe("4x Zitronen Bio");
   });
 
+  it("says a zest without an amount among what the lemons were asked for", () => {
+    // It bought a lemon, but "Genau" said only "2 Stück" (November 2026).
+    const week = lines(
+      recipe("a", [line("zitronen", 2, "Stück")]),
+      recipe("b", [line("zitronenschale", null, null)]),
+    );
+    expect(text(week.get("zitronen@main"))).toBe("3x Zitronen Bio");
+    expect(week.get("zitronen@main")!.amounts).toEqual([
+      { quantity: 2, unit: "Stück" },
+      { quantity: 1, unit: "Stück", of: "Bio-Zitronenschale" },
+    ]);
+  });
+
   it("keeps a zest that does not say how much fruit it is: a packet of it", () => {
     const packet = lines(recipe("a", [line("zitronenschale", 1, "Packung")]));
     expect([...packet.keys()]).toEqual(["zitronenschale@main#Packung"]);
