@@ -40,10 +40,35 @@ export const viewport: Viewport = {
   themeColor: "#f7f4ee",
 };
 
+/**
+ * A section of the bar tapped before the page has started. After a whole page has loaded
+ * (the app opened, or loaded again), the phone shows it a moment before its scripts have
+ * run, and a tab tapped then was a plain link: the browser loaded the whole page again, and
+ * so did every further tap in that moment (David, 24 November 2026: "when changing tabs fast
+ * it reloads the whole page sometimes"). This keeps the tap instead, and `AppNav` follows it
+ * once it has started. Should the app's scripts never come, the browser follows it after a
+ * few seconds, as before. It stands here because this layout is only ever drawn by the
+ * server: a script React draws in the browser does not run.
+ */
+const EARLY_TAP = `document.addEventListener("click", function (event) {
+  if (window.appNavStarted) return;
+  var link = event.target instanceof Element && event.target.closest('nav[aria-label="Hauptbereiche"] a[href]');
+  if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  if (!window.earlyTap) {
+    setTimeout(function () {
+      if (!window.appNavStarted) location.assign(window.earlyTap);
+    }, 3000);
+  }
+  window.earlyTap = link.getAttribute("href");
+}, true);`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="de" className={figtree.variable}>
       <body>
+        {/* Ahead of the page, so that it listens before the bar can be tapped. */}
+        <script dangerouslySetInnerHTML={{ __html: EARLY_TAP }} />
         {children}
         <ServiceWorker />
         <AppFeel />

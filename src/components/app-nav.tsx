@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { sideways } from "@/lib/transitions";
 import { BookIcon, CameraIcon, HeartIcon, ListIcon, WeekIcon } from "./icons";
 
@@ -37,6 +37,20 @@ export function AppNav({ floating = false }: { floating?: boolean }) {
   const [tapped, setTapped] = useState<{ index: number; on: string } | null>(null);
   const here = sectionOf(pathname);
   const current = tapped && tapped.on === pathname ? tapped.index : here;
+
+  // From now on the links are Next.js's. A section tapped before (`EARLY_TAP` in the root
+  // layout) is tapped again, now as a link of the app.
+  useEffect(() => {
+    const early = window as Window & { appNavStarted?: boolean; earlyTap?: string | null };
+    early.appNavStarted = true;
+    const href = early.earlyTap;
+    early.earlyTap = null;
+    if (href) {
+      document
+        .querySelector<HTMLAnchorElement>(`nav[aria-label="Hauptbereiche"] a[href="${href}"]`)
+        ?.click();
+    }
+  }, []);
 
   const list = (
     <ul className={floating ? "flex" : "flex gap-1"}>
