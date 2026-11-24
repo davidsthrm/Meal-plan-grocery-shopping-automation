@@ -757,10 +757,6 @@ summary,
    * on 24 November 2026 from drafts in the real app, over a strip of signs at the foot of a
    * phone's screen (22 November 2026), register tabs and three sections.
    */
-  /* What stood on the strip at the foot stands on the home bar's inset for now. */
-  :root {
-    --tabbar-height: env(safe-area-inset-bottom, 0px);
-  }
   .sections ul {
     display: flex;
     gap: 0.25rem;
@@ -2806,15 +2802,16 @@ summary,
   }
   /*
    * On a phone the deck takes what the screen has left between the line above it and its
-   * three buttons above the strip of the sections: taller, the buttons lay under the strip
-   * as the page opened.
+   * three buttons, which end 2.5rem above the screen's foot, the iPhone's insets taken off:
+   * taller, the buttons lay under the strip of the sections then at the foot (November
+   * 2026). The header with the sections is 6.4rem of the 26.2rem.
    */
   .stack-deck {
     position: relative;
     width: min(100%, 26rem);
     height: clamp(
       14rem,
-      calc(100dvh - var(--tabbar-height) - env(safe-area-inset-top) - 24rem),
+      calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 26.2rem),
       24rem
     );
   }
@@ -2984,7 +2981,7 @@ summary,
   /*
    * How many cards are left and kept, and "Zurück", as tall as the words and close to the
    * card: its button reaches above and below them, so that the three buttons under the deck
-   * stay above the strip on a 375px phone. Below, it reaches 0.75rem, and no further than the
+   * stay clear of the screen's foot on a 375px phone. Below, it reaches 0.75rem, and no further than the
    * card's top: its foot lay over the card, and a tap there opened the recipe (November 2026).
    */
   .stack-status {
