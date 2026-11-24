@@ -94,6 +94,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     );
 
   if (picked) {
+    const notePdf = `/einkauf/pdf?w=${week}&zettel=${picked.id}`;
+    const noteTitle = `Einkaufszettel ${noteName(picked.trip)}`;
     return (
       <div className="mx-auto max-w-5xl">
         {/* Printed, the note has the size and the layout of its PDF. */}
@@ -101,12 +103,8 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
           <BackLink href={`/einkauf?w=${week}`}>Alle Zettel</BackLink>
           <span className="flex gap-2">
-            {picked.open > 0 && <PrintButton />}
-            <PdfLink
-              href={`/einkauf/pdf?w=${week}&zettel=${picked.id}`}
-              name={`Einkaufszettel ${noteName(picked.trip)}`}
-              className="btn btn-small"
-            >
+            {picked.open > 0 && <PrintButton href={notePdf} name={noteTitle} />}
+            <PdfLink href={notePdf} name={noteTitle} className="btn btn-small">
               Als PDF
             </PdfLink>
           </span>
