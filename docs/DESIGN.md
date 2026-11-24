@@ -303,11 +303,13 @@ The paper metaphors in motion:
 ## Section colours
 
 - Each section has its pastel as a wash at the top of its pages, fading into the paper over
-  22rem (`.app-shell`, `--section-tint`: Woche sage #dbf1e3, Einkauf blue #daecfa, Rezepte
+  22rem (`.app-shell`, `--section`: Woche sage #dbf1e3, Einkauf blue #daecfa, Rezepte
   peach #ffdfc7, Favoriten blush #ffd8e2, Import lavender #ebe1ff), and the header's strip
   in the same colour. It is read from the section the strip marks as current, so it is there
-  from the first paint, and it is not faded: a change of an inherited value recalculates
-  every element in every frame while a tap loads the next page.
+  from the first paint, and on a tap it fades over to the next section's in 300ms while the
+  page loads (David, 24 November 2026). Only the two layers that draw it fade: each fades its
+  own `--section-tint`, registered with `@property` and not inherited, towards `--section`.
+  Fading an inherited value would recalculate every element of the page in every frame.
 - History: from October 2026 the sections had such a pastel and a breath of green lay
   behind the header; on 22 November 2026 the household chose the paper alone (palette C1),
   and on 23 November 2026 asked for the colours back, softly, to give the app more life.

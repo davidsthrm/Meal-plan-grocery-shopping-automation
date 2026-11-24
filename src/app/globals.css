@@ -96,6 +96,19 @@
  */
 @custom-variant tablet (@media (width >= 46rem) and (height >= 30rem));
 
+/*
+ * The section's colour at the top of a page fades from one section's to the next when a tab
+ * is tapped (David, 24 November 2026). `--section` says which colour; it is plain and
+ * inherited and changes once. `--section-tint` is registered and not inherited, so only the
+ * two layers that draw it (`.app-shell` and the header's strip) fade it and are drawn again
+ * in each frame, not every element of the page.
+ */
+@property --section-tint {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #f7f4ee;
+}
+
 html {
   font-size: 17px;
   /* Under the page, the paper: nothing else shows where the page ends. */
@@ -354,28 +367,30 @@ summary,
    * Favoriten blush, Import lavender. Back on 23 November 2026: the paper alone (palette C1)
    * was too plain for the household; on 24 November David chose the clearer of the drafts
    * (each pastel's chroma doubled) over the softer one. Read from the section the bar
-   * marks as current, so it is there from the first paint and changes the moment a section is
-   * tapped. Not faded: a change of an inherited value recalculates every element on the page
-   * in every frame, just while a tap loads the next page.
+   * marks as current, so it is there from the first paint and fades over the moment a section
+   * is tapped, while its page loads (`@property --section-tint` above says why only two layers
+   * fade it).
    */
   .app-shell {
-    --section-tint: var(--color-paper);
+    --section: var(--color-paper);
+    --section-tint: var(--section);
     background: linear-gradient(var(--section-tint), var(--color-paper) 22rem) no-repeat;
+    transition: --section-tint 300ms ease;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/woche"][aria-current="page"]) .app-shell {
-    --section-tint: #dbf1e3;
+    --section: #dbf1e3;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/einkauf"][aria-current="page"]) .app-shell {
-    --section-tint: #daecfa;
+    --section: #daecfa;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/rezepte"][aria-current="page"]) .app-shell {
-    --section-tint: #ffdfc7;
+    --section: #ffdfc7;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
-    --section-tint: #ffd8e2;
+    --section: #ffd8e2;
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
-    --section-tint: #ebe1ff;
+    --section: #ebe1ff;
   }
   @media print {
     .app-shell {
@@ -807,7 +822,9 @@ summary,
     left: 50%;
     width: 100vw;
     translate: -50% 0;
-    background: var(--section-tint, var(--color-paper));
+    --section-tint: var(--section, var(--color-paper));
+    background: var(--section-tint);
+    transition: --section-tint 300ms ease;
     mask-image: linear-gradient(black calc(100% - 0.6rem), transparent);
   }
 
