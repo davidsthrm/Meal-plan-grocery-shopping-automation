@@ -289,7 +289,7 @@ export function AddRecipe({
         </p>
       )}
 
-      {/* Above the sections at the foot of a phone's screen, where a thumb finds it. */}
+      {/* At the foot of the screen, where a thumb finds it. */}
       <div className="add-recipe-done">
         <button
           type="button"

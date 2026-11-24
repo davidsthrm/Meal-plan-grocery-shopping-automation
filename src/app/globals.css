@@ -2501,18 +2501,19 @@ summary,
 
   /*
    * "Fertig" of a recipe photographed: at the foot of the screen while the photos and the
-   * field are above it, on a phone above the sections, where a thumb finds it.
+   * field are above it, where a thumb finds it, on a phone on paper clear of the home bar.
    */
   .add-recipe-done {
     position: sticky;
-    bottom: var(--tabbar-height);
+    bottom: 0;
     z-index: 5;
-    padding-top: 0.75rem;
+    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
     background: linear-gradient(transparent, var(--color-paper) 0.75rem);
   }
   @media (width >= 40rem) {
     .add-recipe-done {
       bottom: 1rem;
+      padding-bottom: 0;
     }
   }
   /*
