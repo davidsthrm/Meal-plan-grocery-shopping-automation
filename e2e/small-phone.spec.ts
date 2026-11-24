@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resetLibrary, signIn } from "./fixtures";
+import { planHistory, resetLibrary, signIn } from "./fixtures";
 
 // The narrowest phone of the household's: 375 by 667 pixels, an iPhone SE. On it the week's
 // arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the bar of the
@@ -102,4 +102,15 @@ test("the Rezept-Stapel's Zurück stands above the strip after a decision", asyn
   const card = (await page.locator(".stack-deck").boundingBox())!.y;
   expect((await count.boundingBox())!.y).toBeLessThan(card);
   expect(box!.y + box!.height / 2).toBeLessThan(card);
+});
+
+test("a recipe cooked before says on the Regal when, the whole date", async ({ page }) => {
+  await planHistory();
+  await page.goto(`/rezepte/regal?buch=${encodeURIComponent("E2E Kochbuch")}`);
+  const row = page.getByRole("region", { name: "Schon gekocht" }).getByRole("link").first();
+  await expect(row).toContainText("Zuletzt am");
+  // The date instead of the time: there is no room for both, and the date was cut off.
+  await expect(row).not.toContainText("Min.");
+  const date = row.getByText(/^Zuletzt am/);
+  expect(await date.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });

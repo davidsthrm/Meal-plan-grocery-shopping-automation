@@ -114,7 +114,10 @@ function kindOf(recipe: Pick<RecipeSummary, "proteinType" | "category">): string
   return recipeTone(recipe)?.className ?? "kind-none";
 }
 
-/** A recipe as a row of a shelf that shows three to a column: sign, title, time. */
+/**
+ * A recipe as a row of a shelf that shows three to a column: sign, title, time and category,
+ * or what put it on the shelf instead of both.
+ */
 function RecipeListRow({
   recipe,
   category,
@@ -123,11 +126,14 @@ function RecipeListRow({
 }: {
   recipe: RecipeSummary;
   category: string | null;
-  /** Instead of the category: "Zuletzt am 1. Oktober". */
+  /**
+   * Instead of time and category: "Zuletzt am 1. Oktober". On a phone there was no room for
+   * both, and the day was cut off (November 2026).
+   */
   note?: string;
   from: string;
 }) {
-  const time = timeText(recipe);
+  const time = note ? null : timeText(recipe);
   const said = note ?? category;
   return (
     <Link
@@ -140,12 +146,13 @@ function RecipeListRow({
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 leading-snug font-semibold">{recipe.title}</span>
         <span className="mt-0.5 flex items-center gap-1 text-sm text-muted">
+          {/* One piece: as bare words in the row, "20 Min." stood over a dot of its own. */}
           {time && (
-            <>
+            <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
               <ClockIcon />
               {time}
-              {said && " · "}
-            </>
+              {said && " ·"}
+            </span>
           )}
           {said && <span className="truncate">{said}</span>}
         </span>
