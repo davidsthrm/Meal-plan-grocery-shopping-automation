@@ -1186,10 +1186,19 @@ function NoteForm({
     ? quantityText(quantity ?? null) === quantityText(planned.quantity) && unit === planned.unit
     : quantity === null;
   const origin = edit.written ? "geschrieben" : "geplant";
+  const save = useRef<HTMLButtonElement>(null);
 
   return (
     <form
       className="space-y-5 px-4 pt-2 pb-4"
+      // Return in a field saves. Left to the browser, it pressed the form's first button,
+      // "Wie geplant", and a changed amount quietly went back to the plan's (audit, 24
+      // November 2026).
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" || !(event.target instanceof HTMLInputElement)) return;
+        event.preventDefault();
+        event.currentTarget.requestSubmit(save.current);
+      }}
       action={async (form) => {
         // The sheet goes once the server has it, and the line under it says the new amount.
         try {
@@ -1303,7 +1312,9 @@ function NoteForm({
           <input type="hidden" name="kind" value={kind} />
         </>
       )}
-      <SubmitButton className="btn btn-primary w-full">Speichern</SubmitButton>
+      <SubmitButton ref={save} className="btn btn-primary w-full">
+        Speichern
+      </SubmitButton>
       {/* The bar that says so lies under the sheet. */}
       {!online && (
         <p className="text-sm text-warn">Offline: Das geht erst wieder mit Verbindung.</p>

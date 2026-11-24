@@ -84,3 +84,23 @@ test("held, a line on a note offers the same as its pen @webkit", async ({ page 
   await expect(pen(page).getByRole("group", { name: "Menge" })).toBeVisible();
   await expect(pen(page)).not.toContainText("Gekauft");
 });
+
+test("Return in the pen's sheet saves, and keeps an amount changed before @webkit", async ({
+  page,
+}) => {
+  const open = () =>
+    eggs(page).getByRole("button", { name: "Eier: Menge oder Notiz ändern" }).click();
+  await open();
+  await pen(page).getByLabel("Menge von Eier").fill("9");
+  await pen(page).getByLabel("Menge von Eier").press("Enter");
+  await expect(pen(page)).toBeHidden();
+  await expect(eggs(page)).toContainText("9x Eier (Plan: 20x)");
+
+  // Return in the note pressed the form's first button, "Wie geplant", and the nine eggs
+  // went back to the plan's twenty (audit, 24 November 2026).
+  await open();
+  await pen(page).getByLabel("Notiz", { exact: true }).fill("Bio");
+  await pen(page).getByLabel("Notiz", { exact: true }).press("Enter");
+  await expect(pen(page)).toBeHidden();
+  await expect(eggs(page)).toContainText("9x Eier Bio (Plan: 20x)");
+});
