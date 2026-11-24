@@ -93,6 +93,12 @@ decisions, code layout, routes, data access and tests of Essensplan.
   server: it is fetched as the finger lands (`pointerdown`), never with the page. Should it
   still come too late (`NotAllowedError`), the link says "PDF teilen" and its next tap
   shares the PDF already there; a sheet closed without a choice (`AbortError`) is no error.
+  A PDF kept for that tap goes once a form is sent, which may have changed the plan or the
+  note. Where no PDF comes (weak signal, the login run out, a failure on the server), the
+  link opens as in a browser, so the page the service worker shows without a connection, the
+  login page or the server's answer stands there: shared silently, the login page went to
+  the share sheet as the plan's PDF, and a failed fetch did nothing at all (review of
+  24 November 2026).
 
 ## Offline
 

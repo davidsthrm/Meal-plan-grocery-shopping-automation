@@ -140,9 +140,8 @@ The paper metaphors in motion:
   that row was 400px wide, at 375px a phone has 343 (24 November 2026). The signs are round
   and 2.6rem wide, the words hug theirs closer on a phone, and no line stands between them:
   the household saw them stacked on 23 November 2026. `e2e/week-saved.spec.ts` checks it at
-  375px. A suggestion's two
-  buttons share a row the same way: "Gute Idee!" and "Was anderes", which as "Lieber was
-  anderes" took a second row.
+  375px. A suggestion's two buttons share a row the same way: "Gute Idee!" and "Was
+  anderes", which as "Lieber was anderes" took a second row.
 - Every control gives a little the moment a finger lands on it (`:active`, a scale of 0.96),
   not only when it lifts, also for whoever asked for less motion: nothing travels. Hover is
   for a mouse or trackpad only, and a press answers on every screen (`:active`).
