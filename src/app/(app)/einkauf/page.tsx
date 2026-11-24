@@ -296,32 +296,18 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
 
       {atHomeGroups.length > 0 && <AtHomeList groups={atHomeGroups} week={week} />}
 
+      {/* One link: a chip for every note wrapped onto three rows on a phone. A note on its
+          own is a PDF from its page. */}
       {open > 0 && (
-        <nav
-          aria-label="Als PDF"
-          className="mt-8 flex flex-wrap items-center gap-2 border-t border-line pt-4"
-        >
-          <span className="eyebrow mr-1">Als PDF</span>
+        <p className="mt-8 border-t border-line pt-2">
           <PdfLink
             href={`/einkauf/pdf?w=${week}`}
             name={`Einkaufszettel ${weekRange(week)}`}
-            className="chip"
+            className="link inline-flex min-h-11 items-center gap-1.5"
           >
-            Alle Zettel
+            Alle Zettel als PDF
           </PdfLink>
-          {notes
-            .filter((note) => note.open > 0)
-            .map((note) => (
-              <PdfLink
-                key={note.id}
-                href={`/einkauf/pdf?w=${week}&zettel=${note.id}`}
-                name={`Einkaufszettel ${noteName(note.trip)}`}
-                className="chip"
-              >
-                {noteName(note.trip)}
-              </PdfLink>
-            ))}
-        </nav>
+        </p>
       )}
       {keep && <KeepForTheShop pages={keep} readAt={readAt} />}
     </div>

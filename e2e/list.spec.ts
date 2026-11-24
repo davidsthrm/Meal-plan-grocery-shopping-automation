@@ -172,9 +172,11 @@ test("the week becomes a note for every errand, to pick up and work through", as
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
   await expect(tile(page, BUTCHER)).toContainText("1 gekauft");
 
-  // Every note is a file of its own, and all of them are one.
-  const files = page.getByRole("navigation", { name: "Als PDF" });
-  await expect(files.getByRole("link", { name: "Fr 5. Supermarkt" })).toBeVisible();
+  // All notes are one file, and every note is a file of its own from its page.
+  await expect(page.getByRole("link", { name: "Alle Zettel als PDF" })).toHaveAttribute(
+    "href",
+    `/einkauf/pdf?w=${WEEK}`,
+  );
   for (const address of [
     `/einkauf/pdf?w=${WEEK}`,
     `/einkauf/pdf?w=${WEEK}&zettel=${WEEK}.bakery`,
@@ -332,7 +334,7 @@ test("a week with nothing planned has empty notes that say where they come from"
   await expect(
     page.getByText("Für diese Woche steht noch nichts auf den Einkaufszetteln."),
   ).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Als PDF" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Alle Zettel als PDF" })).toHaveCount(0);
 });
 
 test("what ran out at home is noted on a note pulled down over any page", async ({ page }) => {
