@@ -26,8 +26,9 @@ export function naturalStep(quantity: number, unit: Unit): number {
 /**
  * Turns an exact sum (in the ingredient's default unit) into the amount that stands in front
  * of the name on the list. Every line shows the amount needed in the ingredient's own unit:
- * "200 g Crème fraîche", "1x Schalotte", "1 Bund Petersilie". Counts and weights are rounded
- * to the catalog's step; whatever else is rounded to whole pieces or a sensible weight. How
+ * "200 g Crème fraîche", "1x Schalotte", "1 Bund Petersilie". Everything is rounded to the
+ * catalog's step where it has one; without one, counts to whole pieces and everything else
+ * as far as reads well: 1,2 kg of something weighed in kg read "2 kg" (November 2026). How
  * many packs that is, is said apart (`packsFor`). What is bought whole is bought in wholes:
  * 8 Zehen are "1 Knolle".
  */
@@ -38,9 +39,7 @@ export function purchaseFor(ingredient: Ingredient, quantity: number): Amount {
   if (whole && wholes) return { quantity: roundUpTo(wholes, 1), unit: whole };
   const step =
     ingredient.roundingStep ??
-    (ingredient.buyingMode === "count" || ingredient.buyingMode === "weight"
-      ? 1
-      : naturalStep(quantity, unit));
+    (ingredient.buyingMode === "count" ? 1 : naturalStep(quantity, unit));
   return { quantity: roundUpTo(quantity, step), unit };
 }
 

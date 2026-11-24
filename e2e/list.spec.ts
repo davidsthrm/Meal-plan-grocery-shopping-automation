@@ -468,10 +468,10 @@ test("on a note the shelf says what is at home; only a typed line can be removed
 test("a typed line goes under its kind of grocery", async ({ page }) => {
   await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
   const write = page.getByLabel("Auf den Zettel schreiben");
-  // Named after what describes it, the grapes are still fruit.
+  // Named after what describes it, the grapes are still fruit, and still green.
   await write.fill("grüne Trauben");
   await write.press("Enter");
-  await expect(group(page, MONDAY, "Obst & Gemüse")).toContainText("Weintrauben");
+  await expect(group(page, MONDAY, "Obst & Gemüse")).toContainText("grüne Weintrauben");
 
   // What the catalog does not know is put under a kind by hand, and stays there.
   await write.fill("Lakritzschnecken");

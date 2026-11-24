@@ -102,15 +102,30 @@ export function toDefaultUnit(
 const SPOONFULS: ReadonlySet<Unit> = new Set(["EL", "TL", "Prise", "Msp", "Handvoll"]);
 
 /**
- * Whether pieces of something measured by volume or by the spoon, and bought as it is, say
- * only "some": the juice of a lemon is read as one piece of lemon juice and was "1x
- * Zitronensaft", eight juniper berries "8x Wacholderbeeren" (November 2026). A bottle, a jar
- * or a packet is bought whole and keeps its line: "1x Rotwein".
+ * Whether a recipe's amount that cannot be added to the rest says only "some". So do pieces
+ * of something measured by volume or by the spoon, and bought as it is: the juice of a lemon
+ * is read as one piece of lemon juice and was "1x Zitronensaft", eight juniper berries "8x
+ * Wacholderbeeren" (November 2026). A bottle, a jar or a packet is bought whole and keeps
+ * its line: "1x Rotwein". And so do leaves, pieces or grams of what is bought by the bunch,
+ * where the line has bunches (`bunched`): "10x Basilikum" stood beside "1 Bund Basilikum"
+ * (David, 24 November 2026). Alone, "200 g Frühlingszwiebeln" keep their amount. Only a
+ * recipe reads amounts so: "2 Orangensaft" typed onto a note, or two for a Vesper, buy two.
  */
-function countsAsSome(ingredient: Ingredient, amount: Amount): boolean {
+function countsAsSome(
+  ingredient: Ingredient,
+  contribution: Contribution,
+  bunched: boolean,
+): boolean {
+  const { amount, source } = contribution;
+  if (!amount || (source.type !== "recipe" && source.type !== "extra")) return false;
   const measured =
     dimensionOf(ingredient.defaultUnit) === "volume" || SPOONFULS.has(ingredient.defaultUnit);
-  return amount.unit === "Stück" && measured && ingredient.buyingMode === "none";
+  if (amount.unit === "Stück" && measured && ingredient.buyingMode === "none") return true;
+  return (
+    bunched &&
+    ingredient.defaultUnit === "Bund" &&
+    (amount.unit === "Blatt" || amount.unit === "Stück" || dimensionOf(amount.unit) === "mass")
+  );
 }
 
 /**
@@ -137,6 +152,8 @@ interface Bucket {
   shopId: string | null;
   contributions: Contribution[];
   notes: string[];
+  /** Words typed in front of the name that describe it: "Grüne" Weintrauben. */
+  described: string[];
 }
 
 function neededBy(contributions: Contribution[]): IsoDate | null {
@@ -179,6 +196,11 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
   let bySpoonOnly = true;
   const asked = new Map<string, ShoppingLine["amounts"][number]>();
   const apart = new Map<Dimension, { sum: number; contributions: Contribution[] }>();
+  // Whether something on the line adds up in the default unit: a bunch's line has bunches.
+  const bunched = contributions.some(
+    ({ amount, source }) =>
+      amount !== null && toDefaultUnit(ingredient, amount, source.type === "manual") !== null,
+  );
 
   for (const contribution of contributions) {
     const { amount } = contribution;
@@ -209,7 +231,7 @@ function sumUp(ingredient: Ingredient, contributions: readonly Contribution[]): 
     // about what to buy, nor does the juice of a lemon where the juice is bought as it is.
     // It counts as "some", and does not become a line of its own that would read "55 ml
     // Butter" or "1x Zitronensaft".
-    if (spoonful || countsAsSome(ingredient, amount)) {
+    if (spoonful || countsAsSome(ingredient, contribution, bunched)) {
       hasUnquantified = true;
       primary.push(contribution);
       continue;
@@ -241,7 +263,11 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     ingredient,
     bucket.contributions,
   );
-  const forms = { one: nameForOne(ingredient), many: ingredient.name };
+  // What describes a typed thing stands in front of its name, as written: "Grüne Weintrauben"
+  // read "Weintrauben Grüne" (November 2026).
+  const before = bucket.described.join(", ");
+  const named = (name: string) => (before ? `${before} ${name}` : name);
+  const forms = { one: named(nameForOne(ingredient)), many: named(ingredient.name) };
   const common = {
     ingredientId: ingredient.id,
     forms,
@@ -257,7 +283,11 @@ function linesForBucket(bucket: Bucket): ShoppingLine[] {
     (c) => c.source.type === "manual" || c.source.type === "food",
   );
   const defaultAtHome = ingredient.isPantryStaple && !askedFor;
-  const note = bucket.notes.length > 0 ? bucket.notes.join(", ") : null;
+  // A note that a describing word in front already says is said once: typed "Bio Zitronen"
+  // and a recipe's zest read "1x Bio Zitrone Bio" (November 2026).
+  const said = bucket.described.join(" ").toLowerCase().split(" ");
+  const notes = bucket.notes.filter((each) => !said.includes(each.toLowerCase()));
+  const note = notes.length > 0 ? notes.join(", ") : null;
   const key = bucketKey(ingredient, trip, bucket.shopId);
   // The day it is needed is said only for what goes bad: tomatoes and yoghurt are bought
   // close to their meal, flour is simply on the list.
@@ -406,6 +436,7 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
     contribution: Contribution,
     note?: string,
     shop?: string | null,
+    described?: string,
   ) => {
     // A shop that is the catalog's own is no exception.
     const shopId = shop && shop !== ingredient.preferredShopId ? shop : null;
@@ -420,12 +451,14 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       shopId,
       contributions: [],
       notes: [],
+      described: [],
     };
     bucket.contributions.push({
       ...contribution,
       origin: { date: origin.date, place: origin.place },
     });
     if (note && !bucket.notes.includes(note)) bucket.notes.push(note);
+    if (described && !bucket.described.includes(described)) bucket.described.push(described);
     buckets.set(key, bucket);
   };
 
@@ -535,13 +568,13 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
         optional: line.optional,
       };
       // Zest is bought as its fruit, an organic one, and adds up with what else needs the
-      // fruit (David, 22 November 2026). Without an amount it takes one: "Schale von 1
-      // Zitrone" says so in its name.
+      // fruit (David, 22 November 2026). Without an amount it takes one, and says so among
+      // what was asked for: "Schale von 1 Zitrone" says so in its name.
       const id = ingredient.whole?.ingredientId;
       const fruit = id ? index.ingredientById.get(id) : undefined;
       const wholes = amount ? wholesOf(ingredient, amount) : 1;
       if (fruit && wholes !== null) {
-        const part = { of: ingredient.name, amount };
+        const part = { of: ingredient.name, amount: amount ?? { quantity: 1, unit: "Stück" } };
         const inWholes = { quantity: tidy(wholes), unit: fruit.defaultUnit };
         add(fruit, errand(fruit), { ...contribution, amount: inWholes, part }, "Bio");
         continue;
@@ -664,7 +697,8 @@ export function buildShoppingList(input: BuildInput): ShoppingLine[] {
       trip: "main",
     };
     if (parsed.ingredient) {
-      add(parsed.ingredient, on, contribution, parsed.note ?? undefined);
+      const { note, described } = parsed;
+      add(parsed.ingredient, on, contribution, note ?? undefined, null, described ?? undefined);
     } else {
       addLoose(`manual:${entry.id}`, parsed.label, on, contribution, entry);
     }

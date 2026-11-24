@@ -428,6 +428,26 @@ describe("buildShoppingList", () => {
       expect(lines.get("eier@main")!.purchase).toEqual({ quantity: 20, unit: "Stück" });
     });
 
+    it("says the words that describe a typed line before its name", () => {
+      // "Grüne Trauben" read "Weintrauben Grüne" (November 2026).
+      const lines = build(
+        [],
+        [],
+        [
+          { id: "m1", text: "Grüne Trauben" },
+          { id: "m2", text: "Bio Karotten vom Hof" },
+        ],
+      );
+      expect(resolveLine(lines.get("weintrauben@main")!).text).toBe("Grüne Weintrauben");
+      const carrots = lines.get("karotten@main")!;
+      expect(resolveLine(carrots).text).toBe("Bio Karotten vom Hof");
+      // One piece in the singular, also where the amount was changed on the note.
+      const one = build([], [], [{ id: "m1", text: "1 Bio Karotte" }]).get("karotten@main")!;
+      expect(resolveLine(one).text).toBe("1x Bio Karotte");
+      const two = resolveLine(one, { amount: { quantity: 2, unit: "Stück" } });
+      expect(two.text).toBe("2x Bio Karotten");
+    });
+
     it("keeps text that matches nothing as a free line in the chosen or default shop", () => {
       const lines = build(
         [],
@@ -576,6 +596,7 @@ describe("what cannot be bought in parts", () => {
       like("limettensaft", "Limettensaft", { defaultUnit: "EL" }),
       like("zitronenschale", "Zitronenschale", { defaultUnit: "TL" }),
       like("zitronensaft", "Zitronensaft", { defaultUnit: "ml" }),
+      like("orangensaft", "Orangensaft", { defaultUnit: "ml" }),
       like("rucola", "Rucola", { buyingMode: "pack", packSize: 125 }),
     ],
   });
@@ -643,6 +664,35 @@ describe("what cannot be bought in parts", () => {
     expect(cream.get("ingwer@main#Stück")!.purchase).toEqual({ quantity: 1, unit: "Stück" });
   });
 
+  it("buys as many of a juice as were typed onto a note or counted for a meal", () => {
+    // "2 Orangensaft" read "Orangensaft", as did a Vesper's Orangensaft ×2 (November 2026).
+    const week = (slots: PlanSlot[], manualEntries: ManualEntry[] = []) =>
+      buildShoppingList({
+        index: parts,
+        recipes: [],
+        slots,
+        trips: singleTrip(MONDAY),
+        onDemand: [],
+        manualEntries,
+      }).map((each) => resolveLine(each).text);
+    expect(week([], [{ id: "m1", text: "2 Orangensaft" }])).toEqual(["2x Orangensaft"]);
+    const vesper: PlanSlot = {
+      id: "vesper",
+      date: MONDAY,
+      meal: "dinner",
+      kind: "free_text",
+      label: "Vesper",
+      foods: [{ label: "Orangensaft", quantity: 2, ingredientId: "orangensaft", shopId: null }],
+    };
+    expect(week([vesper])).toEqual(["2x Orangensaft"]);
+    // The juice of an orange in a recipe still counts as some.
+    const juice = line("orangensaft", 1, "Stück", { originalText: "Saft von 1 Orange" });
+    expect(lines(recipe("a", [juice])).get("orangensaft@main")).toMatchObject({
+      purchase: null,
+      hasUnquantified: true,
+    });
+  });
+
   it("counts a handful as some, not as a line of its own", () => {
     // "5 Handvoll Rucola" stood on the note beside the rocket (16 November 2026).
     const salad = lines(recipe("a", [line("rucola", 2, "Handvoll")]));
@@ -675,6 +725,11 @@ describe("parts become the whole", () => {
         whole: { ingredientId: null, unit: "Knolle", parts: { Zehe: 10 } },
       }),
       like("thymian", "Thymian", {
+        defaultUnit: "Bund",
+        whole: { ingredientId: null, unit: "Bund", parts: { Zweig: 10, Stängel: 10 } },
+      }),
+      like("basilikum", "Basilikum", {
+        synonyms: ["Basilikumblätter"],
         defaultUnit: "Bund",
         whole: { ingredientId: null, unit: "Bund", parts: { Zweig: 10, Stängel: 10 } },
       }),
@@ -751,6 +806,70 @@ describe("parts become the whole", () => {
     expect(radishes.get("radieschen@main")!.purchase).toEqual({ quantity: 1, unit: "Bund" });
   });
 
+  it("counts leaves, pieces or grams a recipe asks of a bunch as some on its line", () => {
+    // "10x Basilikum" stood beside "1 Bund Basilikum" (November 2026).
+    const leaves = lines(
+      recipe("a", [line("basilikum", 1, "Bund")]),
+      recipe("b", [line("basilikum", 10, "Blatt")]),
+      recipe("c", [line("basilikum", 6, "Stück")]),
+    );
+    expect([...leaves.keys()]).toEqual(["basilikum@main"]);
+    expect(text(leaves.get("basilikum@main"))).toBe("1 Bund Basilikum");
+    expect(leaves.get("basilikum@main")).toMatchObject({
+      amounts: [{ quantity: 1, unit: "Bund" }],
+      hasUnquantified: true,
+    });
+    expect(leaves.get("basilikum@main")!.contributions).toHaveLength(3);
+    const onions = lines(
+      recipe("a", [line("fruehlingszwiebeln", 1, "Bund")]),
+      recipe("b", [line("fruehlingszwiebeln", 50, "g")]),
+    );
+    expect([...onions.keys()]).toEqual(["fruehlingszwiebeln@main"]);
+    expect(text(onions.get("fruehlingszwiebeln@main"))).toBe("1 Bund Frühlingszwiebeln");
+    // Without a bunch's line they keep their amount.
+    const alone = lines(recipe("a", [line("fruehlingszwiebeln", 200, "g")]));
+    expect([...alone.values()].map(text)).toEqual(["200 g Frühlingszwiebeln"]);
+    const leavesAlone = lines(recipe("a", [line("basilikum", 10, "Blatt")]));
+    expect([...leavesAlone.values()].map(text)).toEqual(["10 Blätter Basilikum"]);
+    // A number typed onto a note keeps its line.
+    const typed = buildShoppingList({
+      index: wholes,
+      recipes: [],
+      slots: [],
+      trips: singleTrip(MONDAY),
+      manualEntries: [{ id: "m1", text: "2 Basilikum" }],
+    });
+    expect(typed.map((each) => resolveLine(each).text)).toEqual(["2x Basilikum"]);
+  });
+
+  it("counts a bare number typed or given to a food in pieces of the bunch", () => {
+    // "2 Radieschen" is one bunch, a bunch holds 12 (David, 23 and 24 November 2026).
+    const week = (slots: PlanSlot[], manualEntries: ManualEntry[] = []) =>
+      buildShoppingList({
+        index: wholes,
+        recipes: [],
+        slots,
+        trips: singleTrip(MONDAY),
+        onDemand: [],
+        manualEntries,
+      });
+    const typed = week([], [{ id: "m1", text: "2 Radieschen" }]);
+    expect(typed.map((each) => resolveLine(each).text)).toEqual(["1 Bund Radieschen"]);
+    expect(typed[0].amounts).toEqual([{ quantity: 2, unit: "Stück" }]);
+    const vesper: PlanSlot = {
+      id: "vesper",
+      date: MONDAY,
+      meal: "dinner",
+      kind: "free_text",
+      label: "Vesper",
+      foods: [{ label: "Radieschen", quantity: 2, ingredientId: "radieschen", shopId: null }],
+    };
+    expect(week([vesper]).map((each) => resolveLine(each).text)).toEqual(["1 Bund Radieschen"]);
+    // Asked for by the bunch, it buys bunches.
+    const bunches = week([], [{ id: "m1", text: "2 Bund Radieschen" }]);
+    expect(bunches.map((each) => resolveLine(each).text)).toEqual(["2 Bund Radieschen"]);
+  });
+
   it("buys the fruit for its zest, organic, together with the other lemons", () => {
     const cake = lines(recipe("a", [line("zitronenschale", 2, "TL")]));
     expect([...cake.keys()]).toEqual(["zitronen@main"]);
@@ -767,6 +886,31 @@ describe("parts become the whole", () => {
     );
     expect([...week.keys()]).toEqual(["zitronen@main"]);
     expect(text(week.get("zitronen@main"))).toBe("4x Zitronen Bio");
+  });
+
+  it("says a zest without an amount among what the lemons were asked for", () => {
+    // It bought a lemon, but "Genau" said only "2 Stück" (November 2026).
+    const week = lines(
+      recipe("a", [line("zitronen", 2, "Stück")]),
+      recipe("b", [line("zitronenschale", null, null)]),
+    );
+    expect(text(week.get("zitronen@main"))).toBe("3x Zitronen Bio");
+    expect(week.get("zitronen@main")!.amounts).toEqual([
+      { quantity: 2, unit: "Stück" },
+      { quantity: 1, unit: "Stück", of: "Bio-Zitronenschale" },
+    ]);
+  });
+
+  it("says Bio once where typed Bio lemons meet a recipe's zest", () => {
+    // It read "1x Bio Zitrone Bio" (November 2026).
+    const week = buildShoppingList({
+      index: wholes,
+      recipes: [recipe("a", [line("zitronenschale", 2, "TL")])],
+      slots: [slot(MONDAY, "a")],
+      trips: singleTrip(MONDAY),
+      manualEntries: [{ id: "m1", text: "Bio Zitronen" }],
+    });
+    expect(week.map((each) => resolveLine(each).text)).toEqual(["1x Bio Zitrone"]);
   });
 
   it("keeps a zest that does not say how much fruit it is: a packet of it", () => {

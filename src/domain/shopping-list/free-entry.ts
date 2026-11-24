@@ -1,6 +1,7 @@
 import { findIngredient, normalizeName, type CatalogIndex, type Ingredient } from "../catalog";
 import { describedName, nameVariants } from "../import/map-ingredient";
 import { parseUnit, type Amount, type Unit } from "../units";
+import { formatAmount } from "./format";
 
 /** A hand-typed line, split into what the catalog knows and what stays free text. */
 export interface FreeEntry {
@@ -8,6 +9,8 @@ export interface FreeEntry {
   /** What the line shows. The catalog name if one matched, otherwise the text as typed. */
   label: string;
   amount: Amount | null;
+  /** Words in front of the ingredient's name that only describe it: "grüne" Trauben. */
+  described: string | null;
   /** Whatever follows the ingredient name: brand, offer price, a reminder. */
   note: string | null;
 }
@@ -21,9 +24,9 @@ const LEADING_QUANTITY = /^(\d+(?:[.,]\d+)?)\s*(.*)$/;
  * The longest leading run of words that names a catalog ingredient wins, in the singular or
  * the plural too, and the rest becomes the note. Words in front that only describe it
  * ("grüne Trauben", "kleines Bauernbrot", `describedName`) are left out for finding it and
- * kept in the note: the grapes are fruit and add up with what the recipes need. Text that
- * names no ingredient keeps its name as typed, a number in front as its amount: "4
- * Ingwer-Shots" are 4 pieces of "Ingwer-Shots".
+ * kept apart, to stand in front of its name again: the grapes are fruit and add up with what
+ * the recipes need. Text that names no ingredient keeps its name as typed, a number in front
+ * as its amount: "4 Ingwer-Shots" are 4 pieces of "Ingwer-Shots".
  */
 export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
   const typed = text.trim().replace(/\s+/g, " ");
@@ -51,7 +54,7 @@ export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
   const leading = (words: string[]) => {
     for (let count = words.length; count >= 1; count--) {
       const run = words.slice(0, count).join(" ");
-      // "Bio" is left out only as a describing word below, so that the note keeps it.
+      // "Bio" is left out only as a describing word below, so that the line keeps it.
       const ingredient = (/^bio[-\s]/i.test(run) ? [run] : nameVariants(run))
         .map((variant) => findIngredient(index, variant))
         .find((found) => found !== undefined);
@@ -61,28 +64,32 @@ export function parseFreeEntry(text: string, index: CatalogIndex): FreeEntry {
   };
   // The name as written first: "kleine Tomaten" is a product of its own.
   const { name, described } = describedName(rest);
-  const found =
-    leading(rest.split(" ")) ??
-    (described.length > 0 ? mapped(leading(name.split(" ")), described) : null);
+  const asWritten = leading(rest.split(" "));
+  const found = asWritten ?? (described.length > 0 ? leading(name.split(" ")) : null);
   if (found) {
     return {
       ingredient: found.ingredient,
       label: found.ingredient.name,
       amount,
+      described: asWritten ? null : described.join(" "),
       note: found.rest.join(" ") || null,
     };
   }
   // A number that stands apart is an amount: "4 Ingwer-Shots", "2x Tee". In "2in1 Shampoo" it
   // is part of the name.
   if (amount && /^\d+(?:[.,]\d+)?(?:\s|x\s)/i.test(typed)) {
-    return { ingredient: null, label: rest, amount, note: null };
+    return { ingredient: null, label: rest, amount, described: null, note: null };
   }
-  return { ingredient: null, label: typed, amount: null, note: null };
+  return { ingredient: null, label: typed, amount: null, described: null, note: null };
 }
 
-/** A match found behind describing words keeps those words in front of its note. */
-function mapped<T extends { rest: string[] }>(found: T | null, described: string[]): T | null {
-  return found ? { ...found, rest: [...described, ...found.rest] } : null;
+/**
+ * The text of a typed line that `parseFreeEntry` reads back as `amount` of `name`: the rest
+ * of a line the catalog does not know, carried to another note. Written as a bare number it
+ * read "300x Hokkaido-Kürbis" (November 2026).
+ */
+export function entryText(amount: Amount, name: string): string {
+  return `${formatAmount(amount)} ${name}`;
 }
 
 /** The shortest catalog name a compound may end with: "Vollmilch" in "milch", not "Ei". */

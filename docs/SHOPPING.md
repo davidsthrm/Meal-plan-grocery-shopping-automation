@@ -10,11 +10,13 @@ specification of the receipt upload (not built yet).
   sum, then round for purchase.
 - Every line shows the amount needed in the ingredient's own unit, whatever its buying mode
   (`purchaseFor`): "200 g Crème fraîche", "400 g Champignons", "1 Bund Petersilie", pieces as
-  "1x Schalotte", as on the dm note. `count` and `weight` round to the catalog's step,
-  everything else to whole pieces or just enough to read well (`naturalStep`: 137,5 g is
-  140 g). The steps of 5, 10 and 50 are for g and ml; kg and l are stepped as their g and
-  ml, spoons and every other unit to whole ones. Until November 2026 six tablespoons read
-  "10 EL" and 150 ml of a drink kept in litres "5 l". A line without a catalog ingredient
+  "1x Schalotte", as on the dm note. Every line rounds to the catalog's step where it has
+  one; without one, `count` rounds to whole pieces and everything else just enough to read
+  well (`naturalStep`: 137,5 g is 140 g). The steps of 5, 10 and 50 are for g and ml; kg
+  and l are stepped as their g and ml, spoons and every other unit to whole ones. Until
+  November 2026 six tablespoons read "10 EL", 150 ml of a drink kept in litres "5 l", and
+  what is bought by weight without a step was rounded to whole grams or kilos: "134 g
+  Belugalinsen", and "1 kg Miesmuscheln" for 500 g. A line without a catalog ingredient
   is rounded the same way ("0,13 l Hühnerbrühe" was ⅛ l). The household found "Champignons"
   one week and "4x Champignons" the next, and had to open "Crème fraîche" to learn it was
   200 g. What comes in packs says how many packs with the exact amount, on tap (`packsFor`).
@@ -42,12 +44,20 @@ specification of the receipt upload (not built yet).
   Knoblauch" is "1 Knolle Knoblauch"), fresh herbs 10 Zweige or Stängel a Bund ("12 Zweige
   Thymian" are "2 Bund Thymian"), Frühlingszwiebeln 7 and Radieschen 12 a Bund. Counted
   pieces add up with the bunches: "1 Bund Frühlingszwiebeln" and "4x Frühlingszwiebeln" were
-  two lines and are "2 Bund". Zest is bought as the household's fruit of that kind, with the
-  note "Bio", because zest is grated from an untreated fruit: 3 TL a lemon, 2 TL a lime,
-  1 EL an orange. A piece of zest, or a zest read without an amount, is one fruit: "Schale
-  von 1 Zitrone" is "1x Zitrone Bio". A packet of zest has no fruit to count and stays as it
-  is. An opened line says what it was asked for in ("Genau: 8 Zehen", "Genau: 2 Stück + 2 TL
-  Bio-Zitronenschale"). Lemon and lime juice are not turned into fruit: the household uses
+  two lines and are "2 Bund". Leaves, pieces or grams a recipe asks of what is kept by the
+  bunch, which no bunch can add up, count as "some" where the same note has its bunches:
+  "10 Basilikumblätter" and "1 Bund Basilikum" are "1 Bund Basilikum", 50 g of spring onions
+  stand on their bunch (David, 24 November 2026; "10x Basilikum" stood beside the bunch).
+  This holds for everything the catalog keeps by the bunch, also Schnittlauch, which has no
+  count of sprigs (David kept it so, 24 November 2026). Without a bunch to stand on they keep their amount, "200 g Frühlingszwiebeln". A number
+  typed onto a note keeps its line, "2x Basilikum". Zest is bought as the household's fruit
+  of that kind, with the note "Bio", because zest is grated from an untreated fruit: 3 TL a
+  lemon, 2 TL a lime, 1 EL an orange. A piece of zest, or a zest read without an amount, is
+  one fruit: "Schale von 1 Zitrone" is "1x Zitrone Bio". A packet of zest has no fruit to
+  count and stays as it is. An opened line says what it was asked for in ("Genau: 8 Zehen",
+  "Genau: 2 Stück + 2 TL Bio-Zitronenschale"), a zest without an amount as the one fruit it
+  buys ("Genau: 2 Stück + 1 Stück Bio-Zitronenschale"; it was missing there until November
+  2026). Lemon and lime juice are not turned into fruit: the household uses
   bottled juice it has at home, so Zitronensaft and Limettensaft are pantry staples and
   stand under "Haben wir schon"; orange juice is bought as juice. The yields are estimates.
   A herb kept by the leaf (Salbei) or dried (Majoran, Oregano) has no bunch its sprigs can
@@ -71,6 +81,10 @@ specification of the receipt upload (not built yet).
   in a recipe a number counts pieces, and "4 Riesengarnelen" are four prawns, a line of
   their own beside any grams other recipes need, not four packs of 225 g. A prawn's weight
   varies too much to guess one from a count.
+- For an ingredient bought by the bunch, a bare number counts pieces, also where it was typed
+  onto a note or given to a food of a meal: "2 Radieschen" are "1 Bund Radieschen", and the
+  line says "Genau: 2 Stück". A bunch holds 12 radishes (the catalog's count, which David
+  kept on 24 November 2026), so two of them are not two bunches (David, 23 November 2026). "2 Bund Radieschen" buys two.
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`), which is unique on one note. Notes, shop overrides, at-home marks
   and check-offs belong to the note and the key and survive. A meal moved to another
@@ -348,7 +362,10 @@ specification of the receipt upload (not built yet).
 - Free entries are first-class. "Milch WS 1.29" is matched to the catalog (Milch) and keeps
   the rest as a note. Where the ingredient is named after what describes it ("grüne
   Trauben"), the longest run of words anywhere that names one wins, in the singular or the
-  plural too, and the other words are the note: the grapes are fruit (`parseFreeEntry`).
+  plural too: the grapes are fruit (`parseFreeEntry`). The describing words stay in front of
+  the name, as written, and only what follows the name is the note: "Grüne Trauben" is
+  "Grüne Weintrauben", "Bio Karotten vom Hof" stays so (David, 24 November 2026; it read
+  "Weintrauben Grüne" and "Karotten Bio vom Hof").
   Text that matches nothing stays a free line under "Sonstiges", until the household puts
   it under a kind of grocery with the line's pen ("Gehört zu", `editLine`,
   `shopping_manual_entry.aisle_group_id`). Every entry of the same text goes with it, and
@@ -417,7 +434,9 @@ specification of the receipt upload (not built yet).
   them work offline and two people never undo each other. `applyDecisions` does what
   follows: a move records the note it was made on (`moved_with`) so that taking it back
   finds every part, a rest becomes an entry on its note (`carried_from_*`), and each
-  purchase is counted in `shop_item_history`.
+  purchase is counted in `shop_item_history`. The rest of a line the catalog does not know
+  is written with its unit, "300 g Hokkaido-Kürbis" (`entryText`); written as a bare number
+  it read "300x Hokkaido-Kürbis" until November 2026.
 - A tick is "this line is ticked (or open) since then", not "toggle" (`Tick`,
   `src/domain/shopping-list/ticks.ts`). It is kept in IndexedDB first (`TickQueue`,
   `src/lib/tick-sync.ts`, `src/lib/tick-store.ts`) and sent to `/api/einkauf/haken` at once,
