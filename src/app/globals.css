@@ -4309,20 +4309,20 @@ html[data-going="back"] .page > * {
   }
   main > *,
   .page > *,
-  .zoom-in,
-  .note-drawer[open],
-  .note-drawer[open]::backdrop,
-  .note-drawer.going {
+  .zoom-in {
     animation: none;
   }
   /* Less motion is not none: what comes and goes still fades, it only does not travel. */
   .store-view[open],
   .cook-view[open],
+  .note-drawer[open],
+  .note-drawer[open]::backdrop,
   details[open] > :not(summary),
   .stamp-pressed {
     animation: fade-in 160ms ease both;
   }
-  .store-view.going {
+  .store-view.going,
+  .note-drawer.going {
     animation: fade-out 160ms ease both;
   }
   .offline-bar,

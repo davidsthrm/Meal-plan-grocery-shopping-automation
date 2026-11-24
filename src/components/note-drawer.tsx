@@ -5,8 +5,9 @@ import { NoteIcon } from "./icons";
 import { RestockNote } from "./restock-note";
 import type { ComponentProps } from "react";
 
-/** How long the note takes to go back up, as the stylesheet has it. */
+/** How long the note takes to go back up, as the stylesheet has it, or to fade for less motion. */
 const UP_MS = 220;
+const FADE_MS = 160;
 
 /**
  * The note for what ran out at home, in the header of every page. It does not lead to a
@@ -25,11 +26,17 @@ export function NoteDrawer({ items }: { items: ComponentProps<typeof RestockNote
     const note = dialog.current;
     if (!note?.open) return;
     note.classList.add("going");
-    setTimeout(() => {
-      note.classList.remove("going");
-      note.close();
-      setDown(false);
-    }, UP_MS);
+    // Asked for less motion it fades, and goes when it has: it waited for a swing it did not
+    // make (audit, 24 November 2026).
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(
+      () => {
+        note.classList.remove("going");
+        note.close();
+        setDown(false);
+      },
+      still ? FADE_MS : UP_MS,
+    );
   }, []);
 
   useEffect(() => {
