@@ -11,6 +11,7 @@ import { SheetHoles } from "@/components/sheet-holes";
 import { ShopLogo } from "@/components/shop-logo";
 import { StoreView, type StoreNote } from "@/components/store-view";
 import { SubmitButton } from "@/components/submit-button";
+import { SuggestingField } from "@/components/suggesting-field";
 import { TickedLast, TickedPart, type TickedSection } from "@/components/ticked-last";
 import {
   CompleteNote,
@@ -369,7 +370,7 @@ export function NoteSheet({
                   <Where week={week} note={note.id} />
                   <label className="flex-1">
                     <span className="sr-only">Auf den Zettel schreiben</span>
-                    <input
+                    <SuggestingField
                       name="text"
                       maxLength={120}
                       list="zutaten"
@@ -496,7 +497,7 @@ function DrugstoreForm({
       <Where week={week} note={note} />
       <label>
         <span className="label">Was</span>
-        <input
+        <SuggestingField
           name="item"
           required
           maxLength={80}
@@ -520,7 +521,7 @@ function DrugstoreForm({
       </label>
       <label className="col-span-2 sm:col-span-1">
         <span className="label">Für wen</span>
-        <input
+        <SuggestingField
           name="forWhom"
           maxLength={FOR_WHOM_MAX}
           list="familie"

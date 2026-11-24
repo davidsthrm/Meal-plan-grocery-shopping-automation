@@ -510,7 +510,9 @@ test("writing on a note keeps it as it is: a line opened, the field ready @webki
   const opened = sheet(page, MONDAY).locator("details[open]");
   await expect(opened).toHaveCount(1);
   const write = page.getByLabel("Auf den Zettel schreiben");
-  for (const text of ["Kerzen"]) {
+  // A word the catalog knows, offered while typing: in Safari, Return picked the offer and
+  // wrote nothing (audit, 24 November 2026).
+  for (const text of ["Kerzen", "Spülmittel"]) {
     await write.fill(text);
     await write.press("Enter");
     await expect(sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: text })).toHaveCount(

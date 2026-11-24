@@ -273,3 +273,17 @@ test("a recipe can come in as pasted text, which is asked for before anything is
   await page.getByRole("button", { name: "Einlesen" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Füge den Text" })).toBeVisible();
 });
+
+test("Return adds a food the field offers while typing @webkit", async ({ page }) => {
+  await signIn(page);
+  await page.goto(`/woche?w=${WEEK}`);
+  await page.getByRole("link", { name: "Montag Abend planen" }).click();
+  await page.getByRole("button", { name: "Vesper" }).click();
+  await page.getByRole("link", { name: "Montag Abend: Lebensmittel" }).click();
+  // A word the catalog knows, offered while typing: in Safari, Return picked the offer and
+  // added nothing (audit, 24 November 2026).
+  const field = page.getByLabel("Anderes Lebensmittel");
+  await field.fill("Salami");
+  await field.press("Enter");
+  await expect(page.getByRole("region", { name: "Ausgewählt" })).toContainText("Salami");
+});
