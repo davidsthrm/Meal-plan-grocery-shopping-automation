@@ -21,9 +21,11 @@ them, and how to work on the look. UI text is German; this document is English.
   (`text-xl` is 19, `text-2xl` and `text-3xl` are 26), and `tracking-tight` is a hair
   (`-0.01em`): tight tracking on every heading reads as machine-made. A dish's name on the
   week is 16px on a phone and 19px from `sm` on: beside the stepper, at 19px it broke into
-  syllables ("Cur-rysahne"). It breaks only where a compound joins, "Kartoffel-suppe", with
-  four letters at least on either side (`.dish-name`), never "Lasa-gne". Text in a field
-  stays 16px at least (see "Controls and sizes").
+  syllables ("Cur-rysahne"). The card "Heute" is the exception: no stepper stands beside
+  its dishes, so they are 19px on a phone too (`.today-card`). A dish's name breaks only
+  where a compound joins, "Kartoffel-suppe", with four letters at least on either side
+  (`.dish-name`), never "Lasa-gne". Text in a field stays 16px at least (see "Controls and
+  sizes").
   The only sizes outside the scale are the greeting on the week plan, 30px (`.greeting`:
   at 26px it did not read easily on the phone or the iPad, 23 November 2026; the day above
   it went from 15 to 16px and the week's range below it from 16 to 19px), what is drawn

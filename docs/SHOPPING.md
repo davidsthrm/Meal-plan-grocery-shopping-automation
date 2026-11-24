@@ -286,19 +286,26 @@ specification of the receipt upload (not built yet).
   it is not shown: Monday's empty dm note said nothing on a Tuesday (October 2026). Nor is
   an empty note while another one of the week has something on it, unless it is there to be
   written on: the drugstore's, or one opened by hand.
-- In the running week the page opens with the next errand that has something open
-  (`nextErrand`), large, in place of its tile: "Nächster Einkauf · Heute", the place or its
-  supermarkets (a tap opens the note), "Jetzt einkaufen" straight into that note's view for
-  the shop (`#laden`), how many lines are open, and "Zettel ansehen" into the note itself,
-  to write on it: the view for the shop cannot add a line, and the note has no tile of its
-  own there, so its unmarked name was the only way in (audit, 24 November 2026). The other
-  notes follow as tiles. Chosen on 23 November 2026: the household wanted the page to say
-  what is next. Look in [DESIGN.md](DESIGN.md#paper-and-notes).
+- On the week the page opens on (the running week, from Saturday on the week ahead; not on
+  a week chosen with the arrows) it starts with the next errand that is not done and has
+  something open (`nextErrand`), large, in place of its tile: "Nächster Einkauf · Heute",
+  the place or its supermarkets (a tap opens the note), "Jetzt einkaufen" straight into
+  that note's view for the shop (`#laden`), how many lines are open, and "Zettel ansehen"
+  into the note itself, to write on it: the view for the shop cannot add a line, and the
+  note has no tile of its own there, so its unmarked name was the only way in (audit, 24
+  November 2026). The other notes follow as tiles. Chosen on 23 November 2026: the
+  household wanted the page to say what is next. Look in
+  [DESIGN.md](DESIGN.md#paper-and-notes).
 - From Saturday on the page shows the week ahead, but the day's market and dm are notes of
   the running week. The next errand is looked for in both weeks, and it opens in its own
   week. Looking at the week ahead alone, the page named Monday's supermarket on the
   household's market and dm Saturday, and today's dm note was not on the page at all
-  (audit, 24 November 2026).
+  (audit, 24 November 2026). An errand of the running week that is done is never the next
+  one, though lines planned after its shopping are still open on it: read without the
+  order of `arrangeNotes`, a dm already done stood there as "Nächster Einkauf". Beside the
+  next errand the page never says that nothing is on the notes (`nothingOnTheNotes`), though
+  the week ahead is still empty: on a Saturday it showed the empty cart beside today's dm
+  (review, 24 November 2026).
 
 ## Moving lines between notes
 
