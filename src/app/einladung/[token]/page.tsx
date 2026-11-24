@@ -61,15 +61,9 @@ export default async function InvitePage(props: PageProps<"/einladung/[token]">)
             )}{" "}
             eingeladen.
           </p>
-          <p className="mt-2 text-muted">
-            Ihr plant hier zusammen die Woche, und die Einkaufszettel schreiben sich daraus.
-          </p>
           <div className="sheet mt-7">
             <SheetHoles />
             <div className="p-5">
-              <p className="mb-4 font-semibold">
-                Dein Name, deine E-Mail und ein Passwort, dann bist du dabei.
-              </p>
               <JoinForm token={token} />
             </div>
           </div>

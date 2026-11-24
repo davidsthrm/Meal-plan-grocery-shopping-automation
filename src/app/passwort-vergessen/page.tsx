@@ -14,10 +14,7 @@ export default async function ForgotPasswordPage(props: PageProps<"/passwort-ver
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6">
       <LogoMark className="mb-4 h-14 w-14" />
       <h1 className="text-3xl font-bold tracking-tight">Passwort vergessen</h1>
-      <p className="mt-1 mb-8 text-muted">
-        Gib die E-Mail-Adresse deines Kontos ein. Du bekommst einen Link, mit dem du ein neues
-        Passwort festlegst.
-      </p>
+      <p className="mt-1 mb-8 text-muted">Du bekommst einen Link für ein neues Passwort.</p>
       {one(params.fehler) === "link" && (
         <p role="alert" className="mb-4 rounded-lg bg-warn-soft px-3 py-2 text-warn">
           Der Link gilt nicht mehr, oder er wurde auf einem anderen Gerät geöffnet als dem, auf dem
