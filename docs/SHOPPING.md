@@ -48,7 +48,8 @@ specification of the receipt upload (not built yet).
   bunch, which no bunch can add up, count as "some" where the same note has its bunches:
   "10 Basilikumblätter" and "1 Bund Basilikum" are "1 Bund Basilikum", 50 g of spring onions
   stand on their bunch (David, 24 November 2026; "10x Basilikum" stood beside the bunch).
-  Without a bunch to stand on they keep their amount, "200 g Frühlingszwiebeln". A number
+  This holds for everything the catalog keeps by the bunch, also Schnittlauch, which has no
+  count of sprigs (David kept it so, 24 November 2026). Without a bunch to stand on they keep their amount, "200 g Frühlingszwiebeln". A number
   typed onto a note keeps its line, "2x Basilikum". Zest is bought as the household's fruit
   of that kind, with the note "Bio", because zest is grated from an untreated fruit: 3 TL a
   lemon, 2 TL a lime, 1 EL an orange. A piece of zest, or a zest read without an amount, is
@@ -82,8 +83,8 @@ specification of the receipt upload (not built yet).
   varies too much to guess one from a count.
 - For an ingredient bought by the bunch, a bare number counts pieces, also where it was typed
   onto a note or given to a food of a meal: "2 Radieschen" are "1 Bund Radieschen", and the
-  line says "Genau: 2 Stück". A bunch holds many radishes, so two of them are not two
-  bunches (David, 23 November 2026). "2 Bund Radieschen" buys two.
+  line says "Genau: 2 Stück". A bunch holds 12 radishes (the catalog's count, which David
+  kept on 24 November 2026), so two of them are not two bunches (David, 23 November 2026). "2 Bund Radieschen" buys two.
 - When the plan changes, lines are recomputed and matched by a stable line key
   (`<ingredient>@<trip>`), which is unique on one note. Notes, shop overrides, at-home marks
   and check-offs belong to the note and the key and survive. A meal moved to another

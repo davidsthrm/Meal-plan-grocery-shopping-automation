@@ -843,7 +843,7 @@ describe("parts become the whole", () => {
   });
 
   it("counts a bare number typed or given to a food in pieces of the bunch", () => {
-    // "2 Radieschen" is one bunch, a bunch is about ten (David, 23 November 2026).
+    // "2 Radieschen" is one bunch, a bunch holds 12 (David, 23 and 24 November 2026).
     const week = (slots: PlanSlot[], manualEntries: ManualEntry[] = []) =>
       buildShoppingList({
         index: wholes,
