@@ -179,7 +179,11 @@ are in [SHOPPING.md](SHOPPING.md).
   ("Noch nie gekocht"), and -2 for each main ingredient or kind of dish the week has already
   ("Schon Hackfleisch diese Woche": the tags of "Hauptzutat" and "Gericht", `varietyTags`,
   `tagsOfWeek`; a cuisine may come twice). A suggestion names its two strongest reasons,
-  what speaks for it first (`whyText`); more made a box of small print. Favourites are no
+  what speaks for it first (`whyText`); more made a box of small print. A reason against
+  after one for follows an "aber", "Auf der Wunschliste, aber erst vor einer Woche gekocht":
+  joined by the same dot as two reasons for, it read as one more reason to cook it, and a
+  wish said "Möchtest du kochen" to whoever looked, though someone else may have marked it
+  (audit, 24 November 2026). Favourites are no
   more than a third of any list of suggestions (`mixFavorites`, `FAVORITE_SHARE`): with +2
   they won every tie, and the household was offered its favourites over and over. A
   favourite someone wants to cook counts as a wish. Equal recipes are ordered by a seed (week, meal), so the
