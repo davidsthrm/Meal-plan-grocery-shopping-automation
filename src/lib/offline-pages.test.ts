@@ -30,6 +30,21 @@ describe("pagesForTheShop", () => {
       "/einkauf?w=2026-10-19&zettel=2026-10-17.market",
     ]);
   });
+
+  it("keeps today's notes of the running week while the page shows the week ahead", () => {
+    // Saturday: the page shows the week from Monday, today's dm is the running week's.
+    const pages = pagesForTheShop(
+      "2026-10-19",
+      [trip("2026-10-19")],
+      "2026-10-17",
+      [],
+      [trip("2026-10-12"), trip("2026-10-17", "market"), trip("2026-10-17", "drugstore")],
+    );
+    expect(pages).toContain("/einkauf?w=2026-10-12");
+    expect(pages).toContain("/einkauf?w=2026-10-12&zettel=2026-10-17.market");
+    expect(pages).toContain("/einkauf?w=2026-10-12&zettel=2026-10-17.drugstore");
+    expect(pages).not.toContain("/einkauf?w=2026-10-12&zettel=2026-10-12.supermarket");
+  });
 });
 
 describe("hasErrandFrom", () => {

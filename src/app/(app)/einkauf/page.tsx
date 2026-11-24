@@ -12,6 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 import type { Shop } from "@/domain/catalog";
 import {
   addDays,
+  mondayOf,
   planningWeek,
   weekRange,
   type IsoDate,
@@ -58,16 +59,28 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
   const now = today();
   const moment = momentNow();
   const thisWeek = planningWeek(now);
+  const running = mondayOf(now);
   const week = weekShown(one(params.w), thisWeek, household.firstWeek);
+  // From Saturday on the page opens on the week ahead, while that day's market and dm are
+  // notes of the running week: its notes are read too, for the next errand.
+  const readRunning = week === thisWeek && week !== running && !one(params.zettel);
   const db = await createSessionClient();
-  const [{ notes, atHome, index, members, supermarkets, readAt, choices, history }, noted] =
-    await Promise.all([loadShoppingNotes(db, household, week), loadOwnRestock(now)]);
+  const [
+    { notes, atHome, index, members, supermarkets, readAt, choices, history },
+    noted,
+    runningNotes,
+  ] = await Promise.all([
+    loadShoppingNotes(db, household, week),
+    loadOwnRestock(now),
+    readRunning ? loadShoppingNotes(db, household, running).then((read) => read.notes) : [],
+  ]);
   const picked = notes.find((note) => note.id === one(params.zettel));
   // The notes of the running week are kept on the device for the shop, and the next errand
-  // with them when it lies in the week after.
+  // with them when it lies in the week after. From Saturday on the week ahead keeps today's
+  // notes of the running week with its own.
   const trips = notes.map((note) => note.trip);
   const keep =
-    week === thisWeek &&
+    (week === thisWeek || week === running) &&
     pagesForTheShop(
       week,
       trips,
@@ -75,6 +88,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       hasErrandFrom(trips, now)
         ? []
         : (await loadShoppingNotes(db, household, addDays(week, 7))).notes.map((note) => note.trip),
+      runningNotes.map((note) => note.trip),
     );
 
   if (picked) {
@@ -121,8 +135,18 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
     (note) => note.view.groups.every((group) => group.lines.length === 0),
     (note) => note.trip.place === "drugstore" || note.openedByHand,
   );
-  // The running week opens with its next errand, large, a tap away from the shop.
-  const next = week === thisWeek ? nextErrand(arranged.toDo, now) : undefined;
+  // The running week opens with its next errand, large, a tap away from the shop. From
+  // Saturday on that can be a note of the week before the one shown.
+  const next =
+    week === thisWeek
+      ? nextErrand(
+          [
+            { week: running, notes: runningNotes },
+            { week, notes: arranged.toDo },
+          ],
+          now,
+        )
+      : undefined;
   const marketsOf = (note: NoteList) =>
     note.trip.place === "supermarket" ? marketsOfNote(note.view, supermarkets) : [];
   const tile = (note: NoteList) => (
@@ -215,10 +239,15 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
       <ul aria-label="Zettel" className="tiles mt-7 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {next && (
           <li className="next-errand sm:col-span-2 lg:col-span-3">
-            <NextErrand note={next} week={week} today={now} markets={marketsOf(next)} />
+            <NextErrand
+              note={next.note}
+              week={next.week}
+              today={now}
+              markets={marketsOf(next.note)}
+            />
           </li>
         )}
-        {arranged.toDo.filter((note) => note !== next).map(tile)}
+        {arranged.toDo.filter((note) => note.id !== next?.note.id).map(tile)}
         {noted.length > 0 && (
           <li>
             <a href="#merkzettel" className="note lift flex h-full flex-col px-4 pt-6 pb-4">

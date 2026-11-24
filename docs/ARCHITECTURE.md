@@ -95,7 +95,9 @@ decisions, code layout, routes, data access and tests of Essensplan.
   typeface's files (all under `/_next/static/`) are kept
   as they load, and any other page without a connection shows `/offline.html`. The page
   names what to keep (`pagesForTheShop`, `KeepForTheShop`): the notes of the running week,
-  each note, and the next errand when it lies in the week after. A copy asked for earlier
+  each note, and the next errand when it lies in the week after. From Saturday on, while
+  the page shows the week ahead, it keeps the running week's notes from today on with it:
+  the day's market and dm are on them. A copy asked for earlier
   never replaces one asked for later. `experimental.useOffline` stays off: with it a soft
   navigation offline waits forever instead of loading the kept page.
 - Under `next dev` a kept page does not come to life offline (the dev runtime needs its

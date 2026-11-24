@@ -91,14 +91,24 @@ export function arrangeNotes<T extends { trip: ShoppingTrip; completed: object |
 }
 
 /**
- * The errand the shopping page opens with (`toDo` of `arrangeNotes`): the first one from
- * today on that has something still to buy. None when every one ahead is empty or done.
+ * The errand the shopping page opens with, and the week it is a note of: the first one from
+ * today on that has something still to buy, in the weeks given (their notes, or `toDo` of
+ * `arrangeNotes`). None when every one ahead is empty or done. From
+ * Saturday on the page shows the week ahead while that day's market and dm are notes of the
+ * running week: looking at the week ahead alone, it named Monday's supermarket on the
+ * household's Saturday (audit, 24 November 2026).
  */
 export function nextErrand<T extends { trip: ShoppingTrip; open: number }>(
-  toDo: readonly T[],
+  weeks: readonly { week: IsoDate; notes: readonly T[] }[],
   today: IsoDate,
-): T | undefined {
-  return toDo.find((note) => note.trip.date >= today && note.open > 0);
+): { week: IsoDate; note: T } | undefined {
+  return weeks
+    .flatMap(({ week, notes }) =>
+      notes
+        .filter((note) => note.trip.date >= today && note.open > 0)
+        .map((note) => ({ week, note })),
+    )
+    .sort((a, b) => a.note.trip.date.localeCompare(b.note.trip.date))[0];
 }
 
 /**

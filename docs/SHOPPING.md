@@ -292,6 +292,11 @@ specification of the receipt upload (not built yet).
   the shop (`#laden`) and how many lines are open. The other notes follow as tiles. Chosen on
   23 November 2026: the household wanted the page to say what is next. Look in
   [DESIGN.md](DESIGN.md#paper-and-notes).
+- From Saturday on the page shows the week ahead, but the day's market and dm are notes of
+  the running week. The next errand is looked for in both weeks, and it opens in its own
+  week. Looking at the week ahead alone, the page named Monday's supermarket on the
+  household's market and dm Saturday, and today's dm note was not on the page at all
+  (audit, 24 November 2026).
 
 ## Moving lines between notes
 

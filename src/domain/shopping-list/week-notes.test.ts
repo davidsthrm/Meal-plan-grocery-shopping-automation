@@ -205,17 +205,49 @@ describe("nextErrand", () => {
     open,
   });
 
+  const NEXT_MONDAY = "2026-10-19";
+  const week = (monday: string, ...notes: ReturnType<typeof note>[]) => ({ week: monday, notes });
+
   it("is the first errand from today on with something open", () => {
     const next = nextErrand(
-      [note(TUESDAY, "drugstore", 0), note(FRIDAY, "supermarket", 3), note(SATURDAY, "market", 2)],
+      [
+        week(
+          MONDAY,
+          note(TUESDAY, "drugstore", 0),
+          note(FRIDAY, "supermarket", 3),
+          note(SATURDAY, "market", 2),
+        ),
+      ],
       TUESDAY,
     );
-    expect(next?.trip.place).toBe("supermarket");
+    expect(next?.note.trip.place).toBe("supermarket");
   });
 
   it("is never an errand whose day is over, nor one when nothing is open", () => {
-    expect(nextErrand([note(MONDAY, "supermarket", 4)], TUESDAY)).toBeUndefined();
-    expect(nextErrand([note(TUESDAY, "bakery", 0)], TUESDAY)).toBeUndefined();
+    expect(nextErrand([week(MONDAY, note(MONDAY, "supermarket", 4))], TUESDAY)).toBeUndefined();
+    expect(nextErrand([week(MONDAY, note(TUESDAY, "bakery", 0))], TUESDAY)).toBeUndefined();
+  });
+
+  it("on Saturday is today's dm of the running week, not Monday's supermarket ahead", () => {
+    const next = nextErrand(
+      [
+        week(MONDAY, note(FRIDAY, "supermarket", 0), note(SATURDAY, "drugstore", 2)),
+        week(NEXT_MONDAY, note(SATURDAY, "market", 0), note(NEXT_MONDAY, "supermarket", 5)),
+      ],
+      SATURDAY,
+    );
+    expect(next).toEqual({ week: MONDAY, note: note(SATURDAY, "drugstore", 2) });
+  });
+
+  it("is the week ahead's errand, with its week, once the running week has none open", () => {
+    const next = nextErrand(
+      [
+        week(MONDAY, note(SATURDAY, "drugstore", 0)),
+        week(NEXT_MONDAY, note(NEXT_MONDAY, "supermarket", 5)),
+      ],
+      SATURDAY,
+    );
+    expect(next).toEqual({ week: NEXT_MONDAY, note: note(NEXT_MONDAY, "supermarket", 5) });
   });
 });
 

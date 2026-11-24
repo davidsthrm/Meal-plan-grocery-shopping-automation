@@ -3,8 +3,9 @@ import { noteId, type ShoppingTrip } from "@/domain/shopping-list/trips";
 
 /**
  * The pages a device keeps for the shop, where there may be no connection: the shopping
- * notes of the week, each note of it, and the next errand when it lies in the week after.
- * The service worker keeps them (`public/sw.js`).
+ * notes of the week, each note of it, the next errand when it lies in the week after, and,
+ * while the page shows the week ahead from Saturday on, the running week's notes from today
+ * on. The service worker keeps them (`public/sw.js`).
  */
 
 /** The address of the notes of a week, or of one of them. Links in the app use the same. */
@@ -23,16 +24,23 @@ export function pagesForTheShop(
   today: IsoDate,
   /** The errands of the week after, where this one has none left. */
   nextTrips: readonly ShoppingTrip[] = [],
+  /** The errands of the week before, the running one, where the page shows the week ahead. */
+  runningTrips: readonly ShoppingTrip[] = [],
 ): string[] {
   const next = nextTrips
     .filter((trip) => trip.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))[0];
   const nextWeek = addDays(week, 7);
+  const running = addDays(week, -7);
+  const left = runningTrips.filter((trip) => trip.date >= today);
   return [
     // The section in the navigation leads here, without a week.
     "/einkauf",
     notesAddress(week),
     ...trips.map((trip) => notesAddress(week, trip)),
     ...(next ? [notesAddress(nextWeek), notesAddress(nextWeek, next)] : []),
+    ...(left.length > 0
+      ? [notesAddress(running), ...left.map((trip) => notesAddress(running, trip))]
+      : []),
   ];
 }
