@@ -4170,32 +4170,26 @@ html[data-going="back"] .page > * {
   z-index: 2;
 }
 /*
- * The header and the bar of the sections stay where they are, above the page on its way:
- * left in the picture of the whole screen, they lay under the page while it moved. Their
- * new state shows at once, the tapped section already marked.
+ * The header, with the sections, stays where it is, above the page on its way: left in the
+ * picture of the whole screen, it lay under the page while it moved. Its new state shows at
+ * once, the tapped section already marked.
  */
 /*
  * Named only while a page moves: a named element is a backdrop root, and the glass bar of
- * October 2026, named for good, saw nothing behind it to blur. The paper strip has no glass;
- * naming them only for the move costs nothing and was kept.
+ * October 2026, named for good, saw nothing behind it to blur. The paper has no glass;
+ * naming it only for the move costs nothing and was kept.
  */
 :root:active-view-transition .app-header {
   view-transition-name: app-header;
 }
-:root:active-view-transition .tabbar {
-  view-transition-name: app-tabbar;
-}
-::view-transition-group(app-header),
-::view-transition-group(app-tabbar) {
+::view-transition-group(app-header) {
   z-index: 3;
   animation: none;
 }
-::view-transition-old(app-header),
-::view-transition-old(app-tabbar) {
+::view-transition-old(app-header) {
   display: none;
 }
-::view-transition-new(app-header),
-::view-transition-new(app-tabbar) {
+::view-transition-new(app-header) {
   animation: none;
 }
 /* Another section: dozens of times a day, so nearer and quicker, barely there. */
@@ -4263,9 +4257,9 @@ html[data-going="back"] .page > * {
  * From the welcome into the app, a moment that happens once per device and is meant to be
  * seen. The welcome lifts off the moment a button is tapped (`.welcome-leaving`, a class:
  * React runs no exit transition for a page Next.js leaves), and the app comes in under it
- * in three parts, 60ms apart: the header drops into place, the page rises, the bar of the
- * sections comes up from the foot. The header and the bar get names of their own only
- * during this transition (`willkommen`), so no other navigation moves them.
+ * in two parts, 60ms apart: the header with the sections drops into place, the page rises.
+ * The header gets its entrance only during this transition (`willkommen`), so no other
+ * navigation moves it.
  */
 .welcome-leaving {
   pointer-events: none;
@@ -4288,9 +4282,6 @@ html[data-going="back"] .page > * {
 ::view-transition-new(.app-in) {
   animation: app-in 420ms var(--ease-out) 60ms both;
 }
-:root:active-view-transition-type(willkommen)::view-transition-new(app-tabbar) {
-  animation: app-tabbar-in 380ms var(--ease-out) 120ms both;
-}
 @keyframes app-header-in {
   from {
     opacity: 0;
@@ -4301,12 +4292,6 @@ html[data-going="back"] .page > * {
   from {
     opacity: 0;
     transform: translateY(1.5rem) scale(0.98);
-  }
-}
-@keyframes app-tabbar-in {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
   }
 }
 @keyframes note-on {
