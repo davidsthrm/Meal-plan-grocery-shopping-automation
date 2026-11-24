@@ -58,9 +58,23 @@ function noteOf(id: string): ShoppingTrip {
   return trip;
 }
 
-function backToList(input: z.infer<typeof place>): never {
+/**
+ * Back where the form stands. On the note itself the page is read again where it is: sent to
+ * the same address once more, it was drawn anew, the note zoomed in again, an opened line
+ * closed and the iPhone's keyboard went down after every line written (audit, 24 November
+ * 2026). Without scripts the form's answer is that page too.
+ */
+function backToList(input: z.infer<typeof place>): void {
+  if (input.back !== "note") goTo(input);
   revalidatePath("/einkauf");
-  redirect(`/einkauf?w=${input.week}${input.back === "note" ? `&zettel=${input.note}` : ""}`);
+}
+
+/** To the page of a note, or of all notes: where a form leads elsewhere. */
+function goTo(input: z.infer<typeof place>, hash = ""): never {
+  revalidatePath("/einkauf");
+  redirect(
+    `/einkauf?w=${input.week}${input.back === "note" ? `&zettel=${input.note}` : ""}${hash}`,
+  );
 }
 
 /** Adds a line typed by hand to a note. Nothing typed adds nothing. */
@@ -130,7 +144,8 @@ export async function buyAfterAll(form: FormData): Promise<void> {
   const db = await createSessionClient();
   const { atHome, index } = await loadShoppingNotes(db, household, input.week);
   const now = today();
-  for (const value of form.getAll("line").map(String)) {
+  const lines = form.getAll("line").map(String);
+  for (const value of lines) {
     const [note, key] = value.split("|");
     const entry = atHome.find(
       ({ trip, line: view }) => noteId(trip) === note && view.line.key === key,
@@ -148,7 +163,12 @@ export async function buyAfterAll(form: FormData): Promise<void> {
     );
     await changeLine(db, household, target, view.line.key, { atHome: false });
   }
-  backToList(input);
+  // Back at what is at home while something is left there: the page started at its top,
+  // far from the list "Doch kaufen" was tapped in (audit, 24 November 2026).
+  const left = atHome.some(
+    ({ trip, line: view }) => !lines.includes(`${noteId(trip)}|${view.line.key}`),
+  );
+  goTo(input, left ? "#haben-wir-schon" : "");
 }
 
 /**
@@ -165,8 +185,9 @@ export async function editLine(form: FormData): Promise<void> {
       quantity: z.string().max(12).optional(),
       unit: z.string().max(12).optional(),
       reset: z.enum(["1"]).optional(),
-      // Not called "note": that is the shopping note the line is on.
-      text: z.string().trim().max(80),
+      // Not called "note": that is the shopping note the line is on. Sent only when changed:
+      // the note another phone wrote meanwhile stays.
+      text: z.string().trim().max(80).optional(),
       entry: z.guid().optional(),
       kind: z.string().min(1).max(64).optional(),
     }),
@@ -177,7 +198,9 @@ export async function editLine(form: FormData): Promise<void> {
   const trip = noteOf(input.note);
   const amount = amountOf(input);
   if (amount !== undefined) await changeLine(db, household, trip, input.key, { amount });
-  await changeLine(db, household, trip, input.key, { note: input.text });
+  if (input.text !== undefined) {
+    await changeLine(db, household, trip, input.key, { note: input.text });
+  }
   if (input.entry && input.kind) {
     // Row level security lets this find the household's own kinds only.
     const kind = await db.from("aisle_group").select("id").eq("id", input.kind).maybeSingle();
@@ -229,7 +252,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
   const db = await createSessionClient();
   const { notes, index } = await loadShoppingNotes(db, household, input.week);
   const note = notes.find((entry) => entry.id === input.note);
-  if (!note) backToList(input);
+  if (!note) goTo(input);
   const lines = note.view.groups.flatMap((group) => group.lines).map((entry) => entry.line);
   const target = { date: input.day, place: note.trip.place };
   const now = today();
@@ -237,7 +260,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
     !noteDays(note.trip.date, now).includes(input.day) ||
     dayProblems(lines, target, now, index).some(blocks)
   ) {
-    backToList(input);
+    goTo(input);
   }
   // The lines go, and so does the errand: what the plan needs later is bought on the new day
   // by itself, and what keeps from there, such as milk for Sunday, needs no errand of its own.
@@ -248,7 +271,7 @@ export async function changeNoteDay(form: FormData): Promise<void> {
     target,
   );
   await moveErrand(db, household, note.trip, input.day);
-  backToList({ ...input, note: noteId(target) });
+  goTo({ ...input, note: noteId(target) });
 }
 
 /**
@@ -286,5 +309,5 @@ export async function putAwayListNote(form: FormData): Promise<void> {
     note.view.groups.every((group) => group.lines.length === 0) &&
     note.view.notBought.length === 0;
   if (note?.openedByHand && empty) await putAwayNote(db, note.trip);
-  backToList({ ...input, back: "all" });
+  goTo({ ...input, back: "all" });
 }

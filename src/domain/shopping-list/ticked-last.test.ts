@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Decision } from "./decisions";
-import { settleTicked, splitByPlaced, type Settled, type ShownLine } from "./ticked-last";
+import {
+  boughtCount,
+  settleTicked,
+  splitByPlaced,
+  type Settled,
+  type ShownLine,
+} from "./ticked-last";
 
 const BOUGHT: Decision = { kind: "bought" };
 const OPEN: Decision = { kind: "open" };
@@ -247,5 +253,18 @@ describe("splitByPlaced", () => {
     const { open, bought } = splitByPlaced(sections, new Set());
     expect(open).toEqual(sections);
     expect(bought).toEqual([]);
+  });
+});
+
+describe("boughtCount", () => {
+  it("counts what lies under Gekauft, not a line removed from there since", () => {
+    const removed: Decision = { kind: "removed" };
+    const moved: Decision = { kind: "moved", to: "2027-03-02.supermarket", shopId: null };
+    const [drawn] = steps([line("eier", BOUGHT), line("milch", BOUGHT), line("mehl", OPEN)], 0);
+    expect(boughtCount([line("eier", BOUGHT), line("milch", BOUGHT)], drawn.placed)).toBe(2);
+    // Bought, then removed: it read "Gekauft 1" over nothing (audit, 24 November 2026).
+    expect(boughtCount([line("eier", removed), line("milch", BOUGHT)], drawn.placed)).toBe(1);
+    // Moved to another day it stays there, and says where it went.
+    expect(boughtCount([line("eier", moved), line("milch", BOUGHT)], drawn.placed)).toBe(2);
   });
 });

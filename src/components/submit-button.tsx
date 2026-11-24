@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { useFormStatus } from "react-dom";
 
 /** The button of a form that shows, while the form is on its way, that the tap arrived. */
@@ -12,6 +12,7 @@ export function SubmitButton({
   on,
   name,
   value,
+  ref,
 }: {
   children: ReactNode;
   className?: string;
@@ -24,10 +25,12 @@ export function SubmitButton({
   /** Sent with the form when this button is the one pressed, to tell two buttons apart. */
   name?: string;
   value?: string;
+  ref?: Ref<HTMLButtonElement>;
 }) {
   const { pending } = useFormStatus();
   return (
     <button
+      ref={ref}
       className={className}
       disabled={pending}
       aria-label={label}

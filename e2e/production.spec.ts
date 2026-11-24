@@ -50,12 +50,12 @@ test("@production sign in, plan a meal, tick offline, and the family's data stay
   const write = page.getByLabel("Auf den Zettel schreiben");
   await write.fill("Milch");
   await write.press("Enter");
-  await expect(page.getByRole("button", { name: "Milch: erledigt" })).toBeVisible();
-  await expect.poll(() => keptWith(page, "Milch: erledigt"), { timeout: 20_000 }).toBe(true);
+  await expect(page.getByRole("button", { name: "Milch: gekauft" })).toBeVisible();
+  await expect.poll(() => keptWith(page, "Milch: gekauft"), { timeout: 20_000 }).toBe(true);
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole("status").filter({ hasText: "Offline:" })).toBeVisible();
-  await page.getByRole("button", { name: "Milch: erledigt" }).click();
+  await page.getByRole("button", { name: "Milch: gekauft" }).click();
   await expect(page.getByText("Offline – 1 Häkchen wartet")).toBeVisible();
   await context.setOffline(false);
   await expect(page.getByText("Häkchen wartet")).toHaveCount(0, { timeout: 30_000 });

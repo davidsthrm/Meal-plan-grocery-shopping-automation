@@ -34,17 +34,17 @@ test("a note works in the shop without a connection, and its ticks arrive later"
   for (const text of ["Milch", "Brot"]) {
     await write.fill(text);
     await write.press("Enter");
-    await expect(page.getByRole("button", { name: `${text}: erledigt` })).toBeVisible();
+    await expect(page.getByRole("button", { name: `${text}: gekauft` })).toBeVisible();
   }
   // The page is kept again a moment after it changed. (Every note names all ingredients for
   // typing: what counts is the line's own box.)
-  await expect.poll(() => keptWith(page, "Brot: erledigt"), { timeout: 20_000 }).toBe(true);
+  await expect.poll(() => keptWith(page, "Brot: gekauft"), { timeout: 20_000 }).toBe(true);
 
   // In the shop: no connection. The note opens all the same.
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole("status").filter({ hasText: "Offline:" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Brot: erledigt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Brot: gekauft" })).toBeVisible();
 
   // The view for the shop: the whole row is the button, and the tick waits on the phone.
   await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
@@ -82,9 +82,9 @@ test("a note works in the shop without a connection, and its ticks arrive later"
   await context.setOffline(false);
   await expect(page.getByText("Häkchen wartet")).toHaveCount(0);
   await expect(page.getByRole("region", { name: /^Supermarkt, / })).toContainText(
-    "1 offen, 1 erledigt",
+    "1 offen, 1 gekauft",
   );
   await page.reload();
   await expect(page.getByRole("button", { name: "Milch: wieder offen" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Brot: erledigt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Brot: gekauft" })).toBeVisible();
 });

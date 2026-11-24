@@ -97,6 +97,8 @@ The shopping notes of a week:
 - A screen reader names a note's tile, and the next errand, by what it shows: "Aldi &
   Rewe, Montag, 23. November", not "Supermarkt", which is nowhere on it (`shownName`;
   audit, 24 November 2026).
+- "Neuer Zettel" and "Haben wir schon" under the notes are rows to open, 44px tall under a
+  hairline, not white cards with an edge: boxes among the notes (audit, 24 November 2026).
 - In the view for the shop the tick sits inside its box (`.tickbox-large`); on the note it
   runs past the box like a pen's. The view shows the supermarkets' logos as the note does,
   and the service worker keeps them for the shop: its own Content-Security-Policy (in
@@ -108,12 +110,17 @@ The paper metaphors in motion:
   (`NoteDrawer`, a `<dialog>` that holds the note only while it is down), and pushed back up.
   A link to `#merkzettel` pulls it down too. "Zurückstecken" under it is a button of paper
   (`.note-drawer-close`): as white words floating over the dimmed page it did not read as
-  something to tap (22 November 2026).
+  something to tap (22 November 2026). From `sm` on it hangs under its button in the
+  header, its string from the button's middle (`--note-right`, `--string-x`): from the
+  middle of an iPad it hung about 265px from the button, its top over "Favoriten" (audit,
+  24 November 2026).
 - Emptying a week sends a rubber over the sheet first (`ResetWeek`, `.erasing`).
 - Going on to the next meal tears the meal's page off like a sheet of a pad (a React
   `<ViewTransition>` keyed by the meal, `.note-off` and `.note-on`, started only by that
   link's `transitionTypes`).
-- All of it is off for whoever asked for less motion.
+- Asked for less motion, the Merkzettel fades in and out in 160ms without its swing, and
+  goes once it has faded: less motion is not none (David, 24 November 2026; it was off, and
+  still waited 220ms for a swing it did not make). The rubber and the tear-off are off.
 
 ## Controls and sizes
 

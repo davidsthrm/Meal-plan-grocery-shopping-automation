@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,7 +40,15 @@ import { SubmitButton } from "./submit-button";
 import { PictogramIcon } from "./pictogram";
 import { ShopLogo } from "./shop-logo";
 import { usePlace } from "./ticked-last";
-import { decide, deviceId, TickButton, useDecisions, type NotePage, type PageLine } from "./ticks";
+import {
+  CompleteNote,
+  decide,
+  deviceId,
+  TickButton,
+  useDecisions,
+  type NotePage,
+  type PageLine,
+} from "./ticks";
 
 /**
  * What can happen to a line in the shop besides a tick, with one hand on the trolley: the
@@ -122,6 +131,8 @@ interface Host {
     before: Decision,
     text: string | null,
   ): void;
+  /** Says what was just done at the foot, with "Widerrufen" doing `undo`. */
+  say(text: string, undo: () => void): void;
 }
 
 /** What a row's menu offers besides buying, moving and changing it. */
@@ -259,6 +270,7 @@ export function LineActions({
       open: setSheet,
       menu: (line, anchor, choices) => setMenu({ line, anchor, choices }),
       act,
+      say: (text, undo) => setToast({ id: Date.now(), text, undo }),
     }),
     [page, note, today, choices, act],
   );
@@ -292,6 +304,35 @@ export function LineActionsHere({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * "Einkauf erledigt": every line still open is bought, and the bar at the foot opens exactly
+ * those again. It ticked a whole note with no way back (audit, 24 November 2026).
+ */
+export function CompleteLines({
+  lines,
+  className,
+}: {
+  lines: readonly PageLine[];
+  className: string;
+}) {
+  const host = useHost();
+  return (
+    <CompleteNote
+      page={host.page}
+      lines={lines}
+      className={className}
+      onComplete={(keys) =>
+        host.say(
+          `${keys.length === 1 ? "1 Eintrag" : `${keys.length} Einträge`} als gekauft`,
+          () => {
+            for (const key of keys) void decide(host.page, key, { kind: "open" });
+          },
+        )
+      }
+    />
+  );
+}
+
 /** The decision a line shows on this device, and what to do about it. */
 function useLine(line: ActionLine) {
   const host = useHost();
@@ -299,8 +340,11 @@ function useLine(line: ActionLine) {
   const bought = isBought(decision);
   const toggle = () =>
     host.act(line, bought ? { kind: "open" } : { kind: "bought" }, decision, null);
+  // A swipe and the menu say so, to take it back; the box is a tick, quiet (audit, 24
+  // November 2026).
+  const buy = () => host.act(line, { kind: "bought" }, decision, `${line.label} gekauft`);
   const remove = () => host.act(line, { kind: "removed" }, decision, `${line.label} entfernt`);
-  return { host, decision, bought, toggle, remove };
+  return { host, decision, bought, toggle, buy, remove };
 }
 
 /**
@@ -484,7 +528,7 @@ export function ActionRow({
   className?: string;
   children?: ReactNode;
 }) {
-  const { host, decision, bought, toggle, remove } = useLine(line);
+  const { host, decision, bought, toggle, buy, remove } = useLine(line);
   const row = useRef<HTMLLIElement>(null);
   const face = useRef<HTMLDivElement>(null);
   const homeForm = useRef<HTMLFormElement>(null);
@@ -498,7 +542,7 @@ export function ActionRow({
   };
   useRowGesture(row, face, {
     right: () => {
-      if (!bought) toggle();
+      if (!bought) buy();
     },
     left: home ? toHome : remove,
     press: () => {
@@ -566,7 +610,18 @@ export function ActionRow({
         <PenIcon />
       </button>
       {home ? (
-        <form ref={homeForm} action={atHome.action} className="contents">
+        <form
+          ref={homeForm}
+          action={atHome.action}
+          className="contents"
+          // The line leaves the note: the bar says so, and puts it back. Without it, getting
+          // it back took the page of all notes and "Doch kaufen" (audit, 24 November 2026).
+          onSubmit={(event) => {
+            const back = new FormData(event.currentTarget);
+            back.set("atHome", "0");
+            host.say(`${line.label}: haben wir schon`, () => void atHome.action(back));
+          }}
+        >
           {atHome.fields}
           <input type="hidden" name="atHome" value="1" />
           <SubmitButton
@@ -743,6 +798,26 @@ export function NotBoughtRow({
   );
 }
 
+/**
+ * Swallows the click that a tap which closed something ends in: until the next touch, or
+ * half a second at most.
+ */
+function swallowClick() {
+  const swallow = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    stop();
+  };
+  const stop = () => {
+    window.clearTimeout(timer);
+    document.removeEventListener("click", swallow, true);
+    document.removeEventListener("pointerdown", stop, true);
+  };
+  const timer = window.setTimeout(stop, 500);
+  document.addEventListener("click", swallow, true);
+  document.addEventListener("pointerdown", stop, true);
+}
+
 /** The menu a row opens when a finger rests on it: the same actions, named. */
 function RowMenu({
   line,
@@ -755,20 +830,46 @@ function RowMenu({
   choices: MenuChoices;
   onClose: () => void;
 }) {
-  const { host, decision, bought, toggle, remove } = useLine(line);
+  const { host, decision, bought, toggle, buy, remove } = useLine(line);
   const menu = useRef<HTMLDivElement>(null);
   // The day after the note, or tomorrow where its day is over.
   const next = nextMoveDay(host.note.date, host.today);
   const nextWord = dayWord(next, host.today);
 
-  useEffect(() => {
+  // Placed by its own size where it fits: below the row, else above it, else over it, and
+  // never past the screen's edges. Guessed at 320 by 290 pixels, it ran off the top above a
+  // row in the middle of a phone, and a long name made it wider than the screen (audit, 24
+  // November 2026).
+  useLayoutEffect(() => {
     const element = menu.current;
     if (!element) return;
     if (!element.matches(":popover-open")) element.showPopover();
+    const { innerWidth, innerHeight } = window;
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
+    const fitsBelow = anchor.bottom - 4 + height <= innerHeight - 8;
+    const fitsAbove = anchor.top + 4 - height >= 8;
+    const below = fitsBelow || (!fitsAbove && innerHeight - anchor.bottom >= anchor.top);
+    const top = below ? anchor.bottom - 4 : anchor.top + 4 - height;
+    element.style.top = `${Math.max(8, Math.min(top, innerHeight - 8 - height))}px`;
+    element.style.left = `${Math.max(12, Math.min(anchor.left + 12, innerWidth - 12 - width))}px`;
+    // It grows out of the row's side.
+    element.style.transformOrigin = below ? "top left" : "bottom left";
+  }, [anchor]);
+
+  useEffect(() => {
+    const element = menu.current;
+    if (!element) return;
     // Closed by a tap beside it or by Escape. Not by the browser's own light dismiss: the
     // finger that held the row still lifts after the menu opened, and that closed it again.
+    // The tap only closes it: its click reached the row under it, and in the shop that
+    // bought the row, unseen and with nothing to take it back (audit, 24 November 2026).
     const outside = (event: PointerEvent) => {
-      if (!element.contains(event.target as Node)) onClose();
+      if (element.contains(event.target as Node)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      swallowClick();
+      onClose();
     };
     // Escape closes the menu only, not the view for the shop it lies over.
     const key = (event: KeyboardEvent) => {
@@ -788,14 +889,6 @@ function RowMenu({
     };
   }, [onClose]);
 
-  // Below the row where it fits, else above it; from the row's side, as it grows out of it.
-  const below = anchor.bottom + 320 < window.innerHeight;
-  const style = {
-    top: below ? anchor.bottom - 4 : undefined,
-    bottom: below ? undefined : window.innerHeight - anchor.top - 4,
-    left: Math.min(Math.max(12, anchor.left + 12), window.innerWidth - 290),
-    transformOrigin: below ? "top left" : "bottom left",
-  };
   const run = (action: () => void) => () => {
     onClose();
     action();
@@ -803,16 +896,9 @@ function RowMenu({
   const here = host.choices.find((choice) => choice.id === line.about.shop);
 
   return (
-    <div
-      ref={menu}
-      popover="manual"
-      role="menu"
-      className="row-menu"
-      style={style}
-      aria-label={line.label}
-    >
+    <div ref={menu} popover="manual" role="menu" className="row-menu" aria-label={line.label}>
       <p className="row-menu-title">{line.text}</p>
-      <button type="button" role="menuitem" onClick={run(toggle)}>
+      <button type="button" role="menuitem" onClick={run(bought ? toggle : buy)}>
         <TickIcon />
         {bought ? "Wieder offen" : "Gekauft"}
       </button>
@@ -1016,9 +1102,13 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
   const { host, decision } = useLine(line);
   const already = decision.kind === "bought" || decision.kind === "partial" ? decision : null;
   const [unit, setUnit] = useState<Unit>(already?.amount?.unit ?? line.purchase?.unit ?? "Stück");
-  const [quantity, setQuantity] = useState<number | null>(
-    already?.amount?.quantity ?? line.purchase?.quantity ?? null,
+  // The amount as typed, read where it is used: read at every key, "1," was 1 and "1,5"
+  // became 15 kg (audit, 24 November 2026).
+  const [text, setText] = useState(
+    quantityText(already?.amount?.quantity ?? line.purchase?.quantity ?? null),
   );
+  const read = parseQuantity(text);
+  const quantity = read !== null && read !== undefined && read > 0 ? read : null;
   const [name, setName] = useState(already?.name ?? "");
   const step = stepOf(unit, line.purchase?.quantity ?? 1);
   const bought: Amount | null = quantity !== null && quantity > 0 ? { quantity, unit } : null;
@@ -1062,7 +1152,7 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
                 type="button"
                 aria-label="Weniger"
                 disabled={quantity === null || quantity <= step}
-                onClick={() => setQuantity((value) => Math.max(step, (value ?? step) - step))}
+                onClick={() => setText(quantityText(Math.max(step, (quantity ?? step) - step)))}
               >
                 −
               </button>
@@ -1071,11 +1161,8 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
                   aria-label={`Menge von ${line.label}`}
                   inputMode="decimal"
                   className="w-12 bg-transparent text-center"
-                  value={quantity === null ? "" : formatNumber(quantity)}
-                  onChange={(event) => {
-                    const read = Number(event.target.value.replace(",", "."));
-                    setQuantity(Number.isFinite(read) && read > 0 ? read : null);
-                  }}
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
                 />
                 {unit === line.purchase.unit && (
                   <span className="text-muted whitespace-nowrap">
@@ -1086,7 +1173,7 @@ function EditForm({ line, onDone }: { line: ActionLine; onDone: () => void }) {
               <button
                 type="button"
                 aria-label="Mehr"
-                onClick={() => setQuantity((value) => (value ?? 0) + step)}
+                onClick={() => setText(quantityText((quantity ?? 0) + step))}
               >
                 +
               </button>
@@ -1186,11 +1273,23 @@ function NoteForm({
     ? quantityText(quantity ?? null) === quantityText(planned.quantity) && unit === planned.unit
     : quantity === null;
   const origin = edit.written ? "geschrieben" : "geplant";
+  const save = useRef<HTMLButtonElement>(null);
 
   return (
     <form
       className="space-y-5 px-4 pt-2 pb-4"
+      // Return in a field saves. Left to the browser, it pressed the form's first button,
+      // "Wie geplant", and a changed amount quietly went back to the plan's (audit, 24
+      // November 2026).
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" || !(event.target instanceof HTMLInputElement)) return;
+        event.preventDefault();
+        event.currentTarget.requestSubmit(save.current);
+      }}
       action={async (form) => {
+        // A note left as it was is not sent: another phone may have written one since the
+        // sheet opened, and the field it showed empty erased it (audit, 24 November 2026).
+        if (form.get("text") === edit.note) form.delete("text");
         // The sheet goes once the server has it, and the line under it says the new amount.
         try {
           await editLine(form);
@@ -1303,7 +1402,9 @@ function NoteForm({
           <input type="hidden" name="kind" value={kind} />
         </>
       )}
-      <SubmitButton className="btn btn-primary w-full">Speichern</SubmitButton>
+      <SubmitButton ref={save} className="btn btn-primary w-full">
+        Speichern
+      </SubmitButton>
       {/* The bar that says so lies under the sheet. */}
       {!online && (
         <p className="text-sm text-warn">Offline: Das geht erst wieder mit Verbindung.</p>

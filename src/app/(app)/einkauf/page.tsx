@@ -174,7 +174,7 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
             {open + done + atHome.length > 0 && (
               <span className="font-normal">
                 {" "}
-                · {open} offen{done > 0 ? `, ${done} erledigt` : ""}
+                · {open} offen{done > 0 ? `, ${done} gekauft` : ""}
               </span>
             )}
           </p>
@@ -318,7 +318,9 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
  */
 function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; week: IsoDate }) {
   return (
-    <details className="card mt-8 px-4 py-2">
+    // A row to open, under a hairline: a white card with an edge was a box among the notes
+    // (audit, 24 November 2026).
+    <details id="haben-wir-schon" className="mt-8 border-t border-line pt-1">
       <summary className="flex min-h-11 items-center justify-between gap-3 font-semibold">
         <span>Haben wir schon</span>
         <span className="text-sm font-normal text-muted tabular-nums">
@@ -491,7 +493,7 @@ function NoteTile({
                 ? note.view.notBought.length > 0
                   ? notBoughtText(note.view.notBought.length)
                   : `${note.done} gekauft`
-                : `${note.open} offen${note.done > 0 ? `, ${note.done} erledigt` : ""}`}
+                : `${note.open} offen${note.done > 0 ? `, ${note.done} gekauft` : ""}`}
             </span>
           </span>
           <span className="mt-2 block flex-1 text-sm">

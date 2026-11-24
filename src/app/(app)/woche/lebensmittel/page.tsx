@@ -3,6 +3,7 @@ import { BackLink } from "@/components/back-link";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
+import { SuggestingField } from "@/components/suggesting-field";
 import { dayAndMonth, isIsoDate, mondayOf, weekdayLong } from "@/domain/dates";
 import { foodText, SIDE_FOODS, VESPER_FOODS } from "@/domain/vesper";
 import { MEAL_NAME } from "@/lib/plan-text";
@@ -138,7 +139,7 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
           {where}
           <label>
             <span className="sr-only">Anderes Lebensmittel</span>
-            <input
+            <SuggestingField
               name="label"
               maxLength={60}
               list="lebensmittel"

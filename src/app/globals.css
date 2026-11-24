@@ -450,8 +450,12 @@ summary,
    * of fewer than ten letters not at all. WebKit reads the -webkit- limits, Chromium the
    * last one. A word that still does not fit breaks anywhere, as the last resort. Plain
    * `hyphens: auto` broke "Gemüse-Lasa-gne" and "Currysah-ne" (audit, 24 November 2026).
+   * A line of a shopping note breaks the same way: "Frühlingszwiebeln" did not, and pushed
+   * the line's signs out of their column on a phone (`.swipe-row`, same audit).
    */
-  .dish-name {
+  .dish-name,
+  .tick-text,
+  .store-text {
     overflow-wrap: break-word;
     hyphens: auto;
     -webkit-hyphenate-limit-before: 4;
@@ -1006,6 +1010,17 @@ summary,
     width: fit-content;
     margin: 0.9rem auto 0;
     background: var(--color-surface);
+  }
+  /* From `sm` on, under its button in the header, the string from the button's middle
+     (`NoteDrawer` measures both): from the middle of an iPad it hung far from the button. */
+  @media (width >= 40rem) {
+    .note-drawer {
+      margin-right: var(--note-right, auto);
+      transform-origin: var(--string-x, 50%) 0;
+    }
+    .note-drawer-string {
+      left: var(--string-x, 50%);
+    }
   }
 
   /* A shopping note picked up from among the others comes closer. */
@@ -3348,6 +3363,9 @@ summary,
   .swipe-row {
     position: relative;
     display: grid;
+    /* As wide as the row, whatever its words: a word wider than the text's column widened
+       the column, and the signs moved out by up to 29px and were cut off at 375px. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 1fr;
     overflow-x: clip;
     touch-action: pan-y;
@@ -3526,7 +3544,7 @@ summary,
     margin: 0;
     width: max-content;
     min-width: 14rem;
-    max-width: calc(100vw - 1.5rem);
+    max-width: min(20rem, 100vw - 1.5rem);
     padding: 0.35rem;
     border: 1px solid var(--color-line);
     border-radius: 1rem;
@@ -3539,7 +3557,11 @@ summary,
   .row-menu:popover-open {
     animation: menu-in 160ms var(--ease-out) both;
   }
+  /* The line's name takes the menu's width and does not set it: a long one made the menu
+     wider than the screen. */
   .row-menu-title {
+    width: 0;
+    min-width: 100%;
     padding: 0.4rem 0.75rem 0.3rem;
     overflow: hidden;
     color: var(--color-muted);
@@ -4305,20 +4327,20 @@ html[data-going="back"] .page > * {
   }
   main > *,
   .page > *,
-  .zoom-in,
-  .note-drawer[open],
-  .note-drawer[open]::backdrop,
-  .note-drawer.going {
+  .zoom-in {
     animation: none;
   }
   /* Less motion is not none: what comes and goes still fades, it only does not travel. */
   .store-view[open],
   .cook-view[open],
+  .note-drawer[open],
+  .note-drawer[open]::backdrop,
   details[open] > :not(summary),
   .stamp-pressed {
     animation: fade-in 160ms ease both;
   }
-  .store-view.going {
+  .store-view.going,
+  .note-drawer.going {
     animation: fade-out 160ms ease both;
   }
   .offline-bar,

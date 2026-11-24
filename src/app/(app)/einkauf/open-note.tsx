@@ -13,7 +13,8 @@ import { openListNote } from "./actions";
  */
 export function OpenNote({ week, days }: { week: IsoDate; days: readonly IsoDate[] }) {
   return (
-    <details className="card mt-6 px-4 py-2 print:hidden">
+    // A row to open, under a hairline, like "Haben wir schon": not a white card.
+    <details className="mt-6 border-t border-line pt-1 print:hidden">
       <summary className="flex min-h-11 items-center gap-2 font-semibold">
         <PlusIcon />
         Neuer Zettel

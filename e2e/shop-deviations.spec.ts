@@ -172,3 +172,78 @@ test("a swipe buys a line or removes it, and holding it opens its menu", async (
   await menu.getByRole("menuitem", { name: "Am Di 2. kaufen" }).click();
   await expect(row("Eier")).toContainText("→ Di 2.");
 });
+
+test("the shop's pen takes a part of a kilo as it is typed", async ({ page }) => {
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await write(page, "2 kg Lakritzschnecken");
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  await shop.getByRole("button", { name: "Lakritzschnecken: Menge oder Produkt ändern" }).click();
+  const edit = page.getByRole("dialog", { name: "Lakritzschnecken" });
+  const amount = edit.getByLabel("Menge von Lakritzschnecken");
+  // Read at every key, "1," was 1 and "1,5" became 15 (audit, 24 November 2026).
+  await amount.fill("");
+  await amount.pressSequentially("1,5");
+  await expect(amount).toHaveValue("1,5");
+  await expect(edit).toContainText("Es fehlen noch 500 g Lakritzschnecken.");
+  await edit.getByRole("button", { name: "Rest verschieben" }).click();
+  await expect(page.getByRole("dialog", { name: "Rest: 500 g Lakritzschnecken" })).toBeVisible();
+});
+
+test("a tap beside a row's menu only closes it, and buys nothing", async ({ page }) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  const progress = shop.locator(".store-head p");
+  const before = await progress.textContent();
+
+  await shop.getByRole("listitem").filter({ hasText: "Eier" }).click({ button: "right" });
+  const menu = page.getByRole("menu", { name: "Eier" });
+  await expect(menu).toBeVisible();
+  // Another line, where the menu does not lie over it.
+  const spread = (await menu.boundingBox())!;
+  let target: { x: number; y: number; name: string | null } | null = null;
+  for (const row of await shop.locator("button.store-row").all()) {
+    const box = (await row.boundingBox())!;
+    const y = box.y + box.height / 2;
+    if (y > spread.y - 10 && y < spread.y + spread.height + 10) continue;
+    if ((await row.textContent())?.includes("Eier")) continue;
+    target = { x: box.x + box.width / 2, y, name: await row.textContent() };
+    break;
+  }
+  expect(target).not.toBeNull();
+  await page.mouse.click(target!.x, target!.y);
+  // The tap closed the menu, and nothing more: it ticked the line under it, unseen.
+  await expect(menu).toBeHidden();
+  await page.waitForTimeout(600);
+  await expect(shop.locator('button.store-row[aria-pressed="true"]')).toHaveCount(0);
+  await expect(progress).toHaveText(before!);
+});
+
+test("a swipe or the menu that buys a line says so, to take it back", async ({ page }) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await write(page, "Geschenkpapier");
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  const row = (text: string) => shop.getByRole("listitem").filter({ hasText: text });
+  const box = (await row("Geschenkpapier").boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.down();
+  for (let step = 1; step <= 8; step++) {
+    await page.mouse.move(box.x + box.width / 2 + (260 * step) / 8, y);
+  }
+  await page.mouse.up();
+  const bar = page.getByRole("status").filter({ hasText: "Geschenkpapier gekauft" });
+  await bar.getByRole("button", { name: "Widerrufen" }).click();
+  await expect(
+    shop.getByRole("button", { name: "Geschenkpapier", exact: true, pressed: false }),
+  ).toBeVisible();
+
+  // Held, the menu's "Gekauft" says it too.
+  await row("Eier").click({ button: "right" });
+  await page.getByRole("menu", { name: "Eier" }).getByRole("menuitem", { name: "Gekauft" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Eier gekauft" })).toBeVisible();
+});

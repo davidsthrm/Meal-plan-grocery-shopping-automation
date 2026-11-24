@@ -30,6 +30,8 @@ export interface TickedSection {
 interface Lines {
   sections: readonly TickedSection[];
   settled: Settled;
+  /** How many lines "Gekauft" holds (`boughtCount`). */
+  bought: number;
   hold: (key: string, opened: boolean) => void;
   /** The id of the heading of "Gekauft", where the focus goes when nothing open follows. */
   heading: string;
@@ -52,7 +54,7 @@ export function TickedLast({
   children: ReactNode;
 }) {
   const lines = sections.flatMap((section) => section.groups.flatMap((group) => group.lines));
-  const { settled, hold, onMove } = useTickedLast(page, lines);
+  const { settled, bought, hold, onMove } = useTickedLast(page, lines);
   const heading = useId();
   const toHeading = useRef(false);
 
@@ -86,7 +88,7 @@ export function TickedLast({
   });
 
   return (
-    <LinesContext.Provider value={{ sections, settled, hold, heading }}>
+    <LinesContext.Provider value={{ sections, settled, bought, hold, heading }}>
       {children}
     </LinesContext.Provider>
   );
@@ -119,7 +121,6 @@ export function TickedPart({
   const { open, bought } = splitByPlaced(lines.sections, lines.settled.placed);
   if (part === "open") return <Sections sections={open} variant={variant} />;
 
-  const rows = bought.flatMap((section) => section.groups.flatMap((group) => group.lines));
   const label = new Map(
     lines.sections.flatMap((section) =>
       section.groups.flatMap((group) => group.lines.map((line) => [line.key, line.label])),
@@ -128,7 +129,7 @@ export function TickedPart({
   const arrived = lines.settled.arrived.flatMap((key) => label.get(key) ?? []);
   const title = (
     <>
-      Gekauft <span className="font-normal text-muted tabular-nums">{rows.length}</span>
+      Gekauft <span className="font-normal text-muted tabular-nums">{lines.bought}</span>
     </>
   );
   return (
@@ -136,7 +137,7 @@ export function TickedPart({
       <p aria-live="polite" className="sr-only">
         {arrived.length > 0 ? `${arrived.join(", ")}: unter Gekauft` : ""}
       </p>
-      {rows.length > 0 && (
+      {lines.bought > 0 && (
         <section
           aria-label="Gekauft"
           className={`ticked-part print:hidden ${variant === "store" ? "mt-8" : "mt-6"}`}

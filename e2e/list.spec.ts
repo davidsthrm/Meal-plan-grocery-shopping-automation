@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { resetHousehold, resetLibrary, signIn } from "./fixtures";
+import { planAsExtra, resetHousehold, resetLibrary, signIn } from "./fixtures";
 import { plan, sheet, tile } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
@@ -79,7 +79,10 @@ test("the week becomes a note for every errand, to pick up and work through @web
   await expect(sheet(page, MARKET_ON_FRIDAY)).toContainText("2x Karotten");
   // Done there: one tap ticks everything, and the note says so.
   await page.getByRole("button", { name: "Einkauf erledigt" }).click();
-  await expect(sheet(page, MARKET_ON_FRIDAY).getByRole("status")).toContainText("Erledigt");
+  // Beside it, the bar that takes "Einkauf erledigt" back.
+  await expect(
+    sheet(page, MARKET_ON_FRIDAY).getByRole("status").filter({ hasText: "Erledigt" }),
+  ).toBeVisible();
   await all(page).click();
   await expect(tile(page, MARKET)).toHaveCount(0);
   await expect(tile(page, MARKET_ON_FRIDAY)).toContainText("Erledigt");
@@ -135,7 +138,7 @@ test("the week becomes a note for every errand, to pick up and work through @web
   await paper.getByRole("button", { name: "Geschenkpapier auf Fr 5." }).click();
   // On Monday's note it is said, quietly, where it went.
   await expect(
-    sheet(page, MONDAY).getByRole("button", { name: "Geschenkpapier: erledigt" }),
+    sheet(page, MONDAY).getByRole("button", { name: "Geschenkpapier: gekauft" }),
   ).toHaveCount(0);
   await expect(sheet(page, MONDAY).getByRole("region", { name: "Verschoben" })).toContainText(
     "Geschenkpapier→ Fr 5.",
@@ -161,8 +164,8 @@ test("the week becomes a note for every errand, to pick up and work through @web
   // Ticking off, and the tick survives a change of the plan.
   await tile(page, BUTCHER).click();
   // The last tick on a note finishes its errand, just like the button.
-  await page.getByRole("button", { name: "4x Rindersteaks: erledigt" }).click();
-  await expect(sheet(page, BUTCHER)).toContainText("1 erledigt");
+  await page.getByRole("button", { name: "4x Rindersteaks: gekauft" }).click();
+  await expect(sheet(page, BUTCHER)).toContainText("1 gekauft");
   await expect(sheet(page, BUTCHER).getByRole("status")).toContainText("Erledigt");
   await page.goto(`/woche?w=${WEEK}`);
   await page.getByRole("button", { name: "Dienstag Mittag leeren" }).click();
@@ -197,7 +200,10 @@ test("a meal planned after the shopping leaves the errand done @webkit", async (
   await tile(page, MONDAY).click();
   await expect(sheet(page, MONDAY)).toContainText("Sahne");
   await page.getByRole("button", { name: "Einkauf erledigt" }).click();
-  await expect(sheet(page, MONDAY).getByRole("status")).toContainText("Erledigt");
+  // Beside it, the bar that takes "Einkauf erledigt" back.
+  await expect(
+    sheet(page, MONDAY).getByRole("status").filter({ hasText: "Erledigt" }),
+  ).toBeVisible();
   // Back home, the soup is planned for Wednesday too. Monday's errand has not bought its
   // cream, and Monday stays done. The week lies ahead, so the Friday before it is still to
   // come and buys it.
@@ -228,8 +234,8 @@ test("the drugstore's note is written by hand: what, how many, for whom @webkit"
   await expect(group(page, DRUGSTORE, "Haushalt")).toContainText("Klopapier");
 
   // Ticked like any line; moving it to a food note is not offered.
-  await page.getByRole("button", { name: "2x Duschgel für Lena: erledigt" }).click();
-  await expect(dm).toContainText("1 offen, 1 erledigt");
+  await page.getByRole("button", { name: "2x Duschgel für Lena: gekauft" }).click();
+  await expect(dm).toContainText("1 offen, 1 gekauft");
   await dm.getByText("Klopapier", { exact: true }).click();
   await expect(dm.getByText("Lieber woanders kaufen:")).toHaveCount(0);
   await dm.getByRole("button", { name: "Klopapier entfernen" }).click();
@@ -297,19 +303,19 @@ test("what was not bought at the drugstore comes along to its next note @webkit"
   await page.getByLabel("Was").fill("Deo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
   // The field is emptied once the line is stored; typed into earlier, the next is lost.
-  await expect(page.getByRole("button", { name: "Deo: erledigt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Deo: gekauft" })).toBeVisible();
   await page.getByLabel("Was").fill("Shampoo");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await page.getByRole("button", { name: "Shampoo: erledigt" }).click();
-  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 erledigt");
+  await page.getByRole("button", { name: "Shampoo: gekauft" }).click();
+  await expect(page.getByRole("region", { name: /^dm, / })).toContainText("1 offen, 1 gekauft");
 
   // Not bought that day, the deodorant is on the next dm note; the shampoo was bought.
   await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
   const dm = page.getByRole("region", { name: /^dm, / });
   await expect(dm).toContainText("Deo");
   await expect(dm).not.toContainText("Shampoo");
-  await page.getByRole("button", { name: "Deo: erledigt" }).click();
-  await expect(dm).toContainText("0 offen, 1 erledigt");
+  await page.getByRole("button", { name: "Deo: gekauft" }).click();
+  await expect(dm).toContainText("0 offen, 1 gekauft");
 });
 
 test("the page opens with the next errand, a tap from the shop and from its note @webkit", async ({
@@ -321,7 +327,7 @@ test("the page opens with the next errand, a tap from the shop and from its note
   await page.goto(`/einkauf?w=${next.monday}&zettel=${next.date}.drugstore`);
   await page.getByLabel("Was").fill("Zahnpasta");
   await page.getByRole("button", { name: "Hinzufügen" }).click();
-  await expect(page.getByRole("button", { name: "Zahnpasta: erledigt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zahnpasta: gekauft" })).toBeVisible();
 
   await page.goto("/einkauf");
   const errand = page.getByRole("region", { name: /^Nächster Einkauf/ });
@@ -499,4 +505,100 @@ test("a typed line goes under its kind of grocery @webkit", async ({ page }) => 
   await write.fill("Lakritzschnecken");
   await write.press("Enter");
   await expect(group(page, FRIDAY, "Süßes & Snacks")).toContainText("Lakritzschnecken");
+});
+
+test("writing on a note keeps it as it is: a line opened, the field ready @webkit", async ({
+  page,
+}) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await sheet(page, MONDAY).locator("li.swipe-row summary").filter({ hasText: "Eier" }).click();
+  const opened = sheet(page, MONDAY).locator("details[open]");
+  await expect(opened).toHaveCount(1);
+  const write = page.getByLabel("Auf den Zettel schreiben");
+  // A word the catalog knows, offered while typing: in Safari, Return picked the offer and
+  // wrote nothing (audit, 24 November 2026).
+  for (const text of ["Kerzen", "Spülmittel"]) {
+    await write.fill(text);
+    await write.press("Enter");
+    await expect(sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: text })).toHaveCount(
+      1,
+    );
+    // The page was drawn anew: the opened line closed and the keyboard went down.
+    await expect(opened).toHaveCount(1);
+    await expect(write).toBeFocused();
+    await expect(write).toHaveValue("");
+  }
+});
+
+test("what is at home, and Einkauf erledigt, can be taken back from the bar @webkit", async ({
+  page,
+}) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  const row = (text: string) =>
+    sheet(page, MONDAY).locator("li.swipe-row").filter({ hasText: text });
+  const bar = (text: string) => page.getByRole("status").filter({ hasText: text });
+
+  await row("Eier").getByRole("button", { name: "Eier: haben wir schon" }).click();
+  await expect(row("Eier")).toHaveCount(0);
+  await bar("Eier: haben wir schon").getByRole("button", { name: "Widerrufen" }).click();
+  await expect(row("Eier")).toHaveCount(1);
+  await page.reload();
+  await expect(row("Eier")).toHaveCount(1);
+
+  // A quiet button beside "Jetzt einkaufen", the one green button.
+  const done = sheet(page, MONDAY).getByRole("button", { name: "Einkauf erledigt" });
+  await expect(done).not.toHaveClass(/btn-primary/);
+  const count = sheet(page, MONDAY).getByText(/^\d+ offen/);
+  const open = Number((await count.textContent())!.match(/^(\d+)/)![1]);
+  await done.click();
+  await expect(count).toHaveText(`0 offen, ${open} gekauft`);
+  await bar(`${open} Einträge als gekauft`).getByRole("button", { name: "Widerrufen" }).click();
+  await expect(count).toHaveText(`${open} offen`);
+});
+
+test("Doch kaufen keeps the page at what is at home @webkit", async ({ page }) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  const write = page.getByLabel("Auf den Zettel schreiben");
+  await write.fill("Kerzen");
+  await write.press("Enter");
+  for (const name of ["Eier", "Kerzen"]) {
+    const shelf = sheet(page, MONDAY).getByRole("button", { name: `${name}: haben wir schon` });
+    await shelf.click();
+    await expect(shelf).toHaveCount(0);
+  }
+  await page.goto(`/einkauf?w=${WEEK}`);
+  await page.getByText("Haben wir schon", { exact: true }).click();
+  await page.getByRole("button", { name: "Eier doch kaufen" }).click();
+  // It landed at the top of the page, far from the list it was tapped in.
+  await expect(page).toHaveURL(/#haben-wir-schon$/);
+  await expect(page.getByRole("button", { name: "Kerzen doch kaufen" })).toBeInViewport();
+});
+
+test("an entry struck from the Merkzettel can be taken back @webkit", async ({ page }) => {
+  await page.goto("/einkauf");
+  await page.getByRole("link", { name: /^Merkzettel, / }).click();
+  const note = page.getByRole("dialog", { name: "Merkzettel" });
+  const write = note.getByLabel("Auf den Merkzettel schreiben");
+  await write.fill("Spülmaschinentabs");
+  await write.press("Enter");
+  const entry = note.getByRole("listitem").filter({ hasText: "Spülmaschinentabs" });
+  await expect(entry).toHaveCount(1);
+  // Where it goes stays together: "Sa / 28. dm" broke in the middle.
+  const where = entry.locator(".muted");
+  expect(await where.evaluate((element) => element.getClientRects().length)).toBe(1);
+
+  // A cross tapped by mistake lost the entry for good.
+  await note.getByRole("button", { name: "Spülmaschinentabs streichen" }).click();
+  await expect(entry).toHaveCount(0);
+  const struck = note.getByRole("status").filter({ hasText: "Spülmaschinentabs gestrichen" });
+  await struck.getByRole("button", { name: "Widerrufen" }).click();
+  await expect(entry).toHaveCount(1);
+
+  // Without a connection the note says why nothing happens.
+  await page.context().setOffline(true);
+  await expect(note).toContainText("Offline: Das geht erst wieder mit Verbindung.");
+  await page.context().setOffline(false);
 });

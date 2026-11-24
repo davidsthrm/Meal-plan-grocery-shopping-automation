@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { planHistory, resetLibrary, signIn } from "./fixtures";
+import { planAsExtra, planHistory, resetLibrary, signIn } from "./fixtures";
 
 // The narrowest phone of the household's: 375 by 667 pixels, an iPhone SE. On it the week's
 // arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the bar of the
@@ -143,4 +143,52 @@ test("the recipe form's Speichern is a bar standing on the strip @webkit", async
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const steps = await page.getByLabel("Arbeitsschritte, einer pro Zeile").boundingBox();
   expect(steps!.y + steps!.height).toBeLessThanOrEqual((await bar.boundingBox())!.y);
+});
+
+/** Writes lines onto the week's first supermarket note, opened. */
+async function writeOnNote(page: Page, ...lines: string[]) {
+  await planAsExtra("Zitronen-Mohn-Kuchen", "2027-03-01");
+  await page.goto("/einkauf?w=2027-03-01&zettel=2027-03-01.supermarket");
+  const write = page.getByLabel("Auf den Zettel schreiben");
+  for (const line of lines) {
+    await write.fill(line);
+    await write.press("Enter");
+    await expect(page.locator("li.swipe-row").filter({ hasText: line })).toHaveCount(1);
+  }
+}
+
+test("a long word on a note keeps the line's signs in their column @webkit", async ({ page }) => {
+  await writeOnNote(page, "500 g Rinderhackfleisch", "Spülmaschinentabs");
+  // The last sign of every line ends where the others do: a word wider than the text's
+  // column pushed them out by up to 29px, and cut the shelf off (audit, 24 November 2026).
+  const ends = await page
+    .locator("li.tick-line .row-actions")
+    .evaluateAll((signs) => signs.map((sign) => Math.round(sign.getBoundingClientRect().right)));
+  expect(ends.length).toBeGreaterThan(2);
+  expect(new Set(ends).size).toBe(1);
+  expect(ends[0]).toBeLessThanOrEqual(375);
+});
+
+test("a row's menu stays on the screen wherever the row is held @webkit", async ({ page }) => {
+  await writeOnNote(page, "2x Bio-Heumilch 3,8% laktosefrei Berchtesgadener Land");
+  const row = page.locator("li.swipe-row").filter({ hasText: "Bio-Heumilch" });
+  const menu = page.getByRole("menu");
+  // Held at several heights of the screen: the menu opened above a row near the middle ran
+  // off the top, and the long name made it wider than the screen.
+  for (const top of [90, 250, 290, 330, 420, 560]) {
+    await row.evaluate((element, y) => {
+      window.scrollBy(0, element.getBoundingClientRect().top - y);
+    }, top);
+    await row.click({ button: "right", position: { x: 60, y: 20 } });
+    await expect(menu).toBeVisible();
+    // It grows out of the row: measured once it has.
+    await page.waitForTimeout(250);
+    const box = (await menu.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(667);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+  }
 });

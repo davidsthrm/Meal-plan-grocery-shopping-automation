@@ -10,6 +10,7 @@ import {
   type PlannedLine,
 } from "@/domain/shopping-list/decisions";
 import {
+  boughtCount,
   FOLD_MS,
   settleTicked,
   type Settled,
@@ -234,7 +235,12 @@ export function useTickedLast(page: NotePage, lines: readonly PageLine[]) {
   const [placing] = useState(() => new Placing(shown, Date.now()));
   const settled = useSyncExternalStore(placing.subscribe, placing.get, placing.get);
   useLayoutEffect(() => placing.see(shown));
-  return { settled, hold: placing.hold, onMove: placing.onMove };
+  return {
+    settled,
+    bought: boughtCount(shown, settled.placed),
+    hold: placing.hold,
+    onMove: placing.onMove,
+  };
 }
 
 /** Whether each line shows as ticked: bought, in full or in part. */
@@ -341,7 +347,7 @@ export function TickButton({
       ) : (
         <button
           className="tickbox"
-          aria-label={`${label}: ${shown ? "wieder offen" : "erledigt"}`}
+          aria-label={`${label}: ${shown ? "wieder offen" : "gekauft"}`}
           data-on={shown}
         >
           <TickIcon />
@@ -351,13 +357,16 @@ export function TickButton({
   );
 }
 
-/** "3 offen, 2 erledigt", with the ticks of this device that the page does not know yet. */
+/**
+ * "3 offen, 2 gekauft", with the ticks of this device that the page does not know yet. It
+ * said "erledigt" above the lines' own "Gekauft" (audit, 24 November 2026).
+ */
 export function TickCount({ page, lines }: { page: NotePage; lines: readonly PageLine[] }) {
   const onNote = useOnNote(page, lines);
   const done = onNote.filter(isBought).length;
   return (
     <>
-      {onNote.length - done} offen{done > 0 ? `, ${done} erledigt` : ""}
+      {onNote.length - done} offen{done > 0 ? `, ${done} gekauft` : ""}
     </>
   );
 }
@@ -385,11 +394,14 @@ export function useAllTicked(page: NotePage, lines: readonly PageLine[]): boolea
 export function CompleteNote({
   page,
   lines,
-  className = "btn btn-primary w-full sm:w-auto",
+  className,
+  onComplete,
 }: {
   page: NotePage;
   lines: readonly PageLine[];
-  className?: string;
+  className: string;
+  /** Told which lines it ticked: the bar at the foot takes them back. */
+  onComplete: (keys: string[]) => void;
 }) {
   const shown = useDecisions(page, lines).map((decision) => decision.kind !== "open");
   if (lines.length === 0 || shown.every(Boolean)) return null;
@@ -401,17 +413,18 @@ export function CompleteNote({
         event.preventDefault();
         const queue = tickQueue();
         const at = Date.now();
-        lines.forEach((line, index) => {
-          if (!shown[index])
-            void queue.add({
-              id: newId(),
-              note: page.note,
-              key: line.key,
-              checked: true,
-              decision: { kind: "bought" },
-              at,
-            });
-        });
+        const open = lines.filter((_, index) => !shown[index]).map((line) => line.key);
+        for (const key of open) {
+          void queue.add({
+            id: newId(),
+            note: page.note,
+            key,
+            checked: true,
+            decision: { kind: "bought" },
+            at,
+          });
+        }
+        onComplete(open);
       }}
     >
       <input type="hidden" name="week" value={page.week} />
