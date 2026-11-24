@@ -5,6 +5,7 @@ import { filterParams, type RecipeFilter } from "@/domain/library/filter";
 import { pictogramForFilter } from "@/domain/library/pictogram";
 import { monthOf, seasonTagOf } from "@/domain/season/calendar";
 import { today } from "@/lib/today";
+import { FilterFrame } from "./filter-choices";
 import { ClockIcon, CloseIcon, FilterIcon, HeartIcon } from "./icons";
 import { LiveSearch } from "./live-search";
 import { PictogramIcon } from "./pictogram";
@@ -174,12 +175,7 @@ export function FilterPanel({
   reset,
 }: PanelProps) {
   return (
-    <div
-      id={id}
-      popover="auto"
-      className={`filter-panel ${layout === "aside" ? "filter-aside" : ""}`}
-      aria-label="Filter"
-    >
+    <FilterFrame id={id} layout={layout}>
       <div className="filter-head">
         <span aria-hidden className="action-sheet-grip filter-only-sheet" />
         <div className="flex items-center justify-between gap-3">
@@ -235,7 +231,7 @@ export function FilterPanel({
           {total === 1 ? `1 ${noun[0]} anzeigen` : `${total} ${noun[1]} anzeigen`}
         </button>
       </div>
-    </div>
+    </FilterFrame>
   );
 }
 

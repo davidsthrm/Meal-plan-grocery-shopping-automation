@@ -72,6 +72,33 @@ test("the library has a recipe of the day, themes and shelves to browse", async 
   await expect(page.getByRole("link", { name: /Pilzrisotto/ })).toBeVisible();
 });
 
+test.describe("on an iPad", () => {
+  test.use({ viewport: { width: 810, height: 1080 } });
+
+  test("the first filter on Entdecken puts the panel beside the list, not over it", async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, "an iPad's width");
+    await page.goto("/rezepte");
+    // While browsing the filters are a sheet, as on a phone.
+    await page.getByRole("button", { name: /^Filter/ }).click();
+    const sheet = page.locator(".filter-panel:popover-open");
+    await sheet.waitFor();
+    await sheet.getByRole("link", { name: /^Vegetarisch/ }).click();
+    await expect(page).toHaveURL(/kost=vegetarisch/);
+    await expect(page.getByRole("status")).toHaveText(/passen dazu$/);
+    // It stood across the page, see-through, without its cross or "… anzeigen".
+    await expect(page.locator(".filter-panel:popover-open")).toHaveCount(0);
+    const panel = await page.locator(".filter-panel").boundingBox();
+    const results = await page.getByRole("region", { name: "Ergebnisse" }).boundingBox();
+    expect(panel!.x + panel!.width).toBeLessThanOrEqual(results!.x);
+    await expect(
+      page.getByLabel("Filter", { exact: true }).getByRole("link", { name: /^Vegetarisch/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
 test("the list under the search field changes with every letter", async ({ page }) => {
   await page.goto("/rezepte");
   const field = page.getByPlaceholder("Titel oder Zutat");
