@@ -89,6 +89,9 @@ The shopping notes of a week:
   made the shopping page twice as long as it needed to be (October 2026). Such a strip is
   shown only where it is to be written on (dm, a note opened by hand) or in a week with
   nothing on any note (`arrangeNotes`).
+- A screen reader names a note's tile, and the next errand, by what it shows: "Aldi &
+  Rewe, Montag, 23. November", not "Supermarkt", which is nowhere on it (`shownName`;
+  audit, 24 November 2026).
 - In the view for the shop the tick sits inside its box (`.tickbox-large`); on the note it
   runs past the box like a pen's. The view shows the supermarkets' logos as the note does,
   and the service worker keeps them for the shop: its own Content-Security-Policy (in

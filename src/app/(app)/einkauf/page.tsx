@@ -375,6 +375,16 @@ function AtHomeList({ groups: atHomeGroups, week }: { groups: AtHomeGroup[]; wee
 }
 
 /**
+ * A note's name as it shows: its supermarkets, "Aldi & Rewe", or its place. A link to the note
+ * starts its name for a screen reader with it, so that what is read out is what is seen.
+ */
+function shownName(note: NoteList, markets: Shop[]): string {
+  return markets.length > 0
+    ? namesText(markets.map((shop) => shop.name))
+    : PLACE_NAME[note.trip.place];
+}
+
+/**
  * The next errand, large at the top of the page: where, and "Jetzt einkaufen" straight into
  * that note's view for the shop. Its name leads to the note itself, as a tile would. Chosen
  * on 23 November 2026: the household wanted the page to say what is next, not only lay the
@@ -403,7 +413,7 @@ function NextErrand({
       <Link
         href={href}
         className={`mt-2 flex min-h-11 items-center gap-3 ${look.tone}`}
-        aria-label={`${PLACE_NAME[trip.place]}, ${whenText(trip)}: ${note.open} offen`}
+        aria-label={`${shownName(note, markets)}, ${whenText(trip)}`}
       >
         {markets.length > 0 ? (
           <span className="flex shrink-0 -space-x-2">
@@ -416,11 +426,7 @@ function NextErrand({
             <PictogramIcon name={look.pictogram} className="h-[66%] w-[66%]" />
           </span>
         )}
-        <span className="title min-w-0">
-          {markets.length > 0
-            ? namesText(markets.map((shop) => shop.name))
-            : PLACE_NAME[trip.place]}
-        </span>
+        <span className="title min-w-0">{shownName(note, markets)}</span>
       </Link>
       <p className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
         <Link href={`${href}#laden`} className="btn btn-primary">
@@ -459,7 +465,7 @@ function NoteTile({
     <Link
       href={`/einkauf?w=${week}&zettel=${note.id}`}
       className={`sheet lift relative flex h-full flex-col ${note.completed ? "done-sheet" : ""}`}
-      aria-label={`${PLACE_NAME[note.trip.place]}, ${whenText(note.trip)}: ${
+      aria-label={`${shownName(note, markets)}, ${whenText(note.trip)}: ${
         note.completed ? "erledigt" : `${note.open} offen`
       }`}
     >
