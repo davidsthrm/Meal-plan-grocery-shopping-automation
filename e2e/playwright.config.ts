@@ -60,6 +60,9 @@ export default defineConfig({
       name: "tablet-webkit",
       use: { ...devices["iPad (gen 7)"], browserName: "webkit", storageState: INSTALLED },
       grep: /@webkit/,
+      // The narrowest phone's tests set its 375px for the whole file: on the iPad they would
+      // only test that phone again.
+      testIgnore: /small-phone\.spec\.ts/,
     },
   ],
   webServer: DEPLOYED
