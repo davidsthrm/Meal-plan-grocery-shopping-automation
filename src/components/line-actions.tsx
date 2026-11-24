@@ -743,6 +743,26 @@ export function NotBoughtRow({
   );
 }
 
+/**
+ * Swallows the click that a tap which closed something ends in: until the next touch, or
+ * half a second at most.
+ */
+function swallowClick() {
+  const swallow = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    stop();
+  };
+  const stop = () => {
+    window.clearTimeout(timer);
+    document.removeEventListener("click", swallow, true);
+    document.removeEventListener("pointerdown", stop, true);
+  };
+  const timer = window.setTimeout(stop, 500);
+  document.addEventListener("click", swallow, true);
+  document.addEventListener("pointerdown", stop, true);
+}
+
 /** The menu a row opens when a finger rests on it: the same actions, named. */
 function RowMenu({
   line,
@@ -767,8 +787,14 @@ function RowMenu({
     if (!element.matches(":popover-open")) element.showPopover();
     // Closed by a tap beside it or by Escape. Not by the browser's own light dismiss: the
     // finger that held the row still lifts after the menu opened, and that closed it again.
+    // The tap only closes it: its click reached the row under it, and in the shop that
+    // bought the row, unseen and with nothing to take it back (audit, 24 November 2026).
     const outside = (event: PointerEvent) => {
-      if (!element.contains(event.target as Node)) onClose();
+      if (element.contains(event.target as Node)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      swallowClick();
+      onClose();
     };
     // Escape closes the menu only, not the view for the shop it lies over.
     const key = (event: KeyboardEvent) => {
