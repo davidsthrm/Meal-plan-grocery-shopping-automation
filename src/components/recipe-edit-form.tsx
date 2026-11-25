@@ -86,7 +86,8 @@ export function RecipeEditForm({
 
   // The bar is put into the body once the form runs in the browser (null on the server and
   // while hydrating), like `SelectionBar`: every page comes in with a transform, and inside
-  // it the fixed bar stood narrower and off the strip until the page had come (DESIGN.md).
+  // it the fixed bar stood narrower and off the screen's foot until the page had come
+  // (DESIGN.md).
   const body = useSyncExternalStore(
     () => () => {},
     () => document.body,

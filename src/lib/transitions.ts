@@ -13,7 +13,7 @@ export const BACK = "nav-back";
 /** Another view of the same thing (Mahlzeiten and Außerdem): the two cross-fade. */
 export const SWAP = "nav-swap";
 /**
- * To a section further right in the bar, or further left: the same directions, nearer and
+ * To a section further right in the row, or further left: the same directions, nearer and
  * quicker. Sections are changed dozens of times a day, so their move is barely there.
  */
 export const TAB_FORWARD = "nav-tab-forward";
@@ -30,8 +30,8 @@ export const PAGE_MOTION = {
 } as const;
 
 /**
- * Between two sections of the bar: the one further right comes in from the right, so that
- * the page moves the way the finger went along the bar.
+ * Between two sections of the row: the one further right comes in from the right, so that
+ * the page moves the way the finger went along the row.
  */
 export function sideways(from: number, to: number): string[] {
   if (from < 0 || to === from) return [SWAP];

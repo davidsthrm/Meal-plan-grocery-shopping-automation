@@ -2,35 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { sideways } from "@/lib/transitions";
-import { BookIcon, CameraIcon, HeartIcon, ListIcon, WeekIcon } from "./icons";
 
-const SECTIONS: { href: string; label: string; icon: ReactNode }[] = [
-  { href: "/woche", label: "Woche", icon: <WeekIcon /> },
-  { href: "/einkauf", label: "Einkauf", icon: <ListIcon /> },
-  { href: "/rezepte", label: "Rezepte", icon: <BookIcon /> },
-  { href: "/favoriten", label: "Favoriten", icon: <HeartIcon /> },
-  { href: "/import", label: "Import", icon: <CameraIcon /> },
+/**
+ * The places the household goes every week. Bringing recipes in is done now and then: it is
+ * "+ Rezept" on Rezepte, and its pages (`also`) belong to Rezepte (25 November 2026).
+ */
+const SECTIONS: { href: string; label: string; also?: string }[] = [
+  { href: "/woche", label: "Woche" },
+  { href: "/einkauf", label: "Einkauf" },
+  { href: "/rezepte", label: "Rezepte", also: "/import" },
+  { href: "/favoriten", label: "Favoriten" },
 ];
 
-/** The section a path belongs to, by its place in the bar; -1 for none (the settings). */
+const under = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
+
+/** The section a path belongs to, by its place in the row; -1 for none (the settings). */
 function sectionOf(pathname: string): number {
-  return SECTIONS.findIndex(({ href }) => pathname === href || pathname.startsWith(`${href}/`));
+  return SECTIONS.findIndex(
+    ({ href, also }) => under(pathname, href) || (also !== undefined && under(pathname, also)),
+  );
 }
 
 /**
- * The main sections. On a phone (`floating`) they are a strip of paper at the foot of the
- * screen, where the thumb is, each with its sign above its name, the open one marked with
- * the highlighter as today is on the plan. Its signs keep clear of the bar the iPhone itself
- * has at its lower edge: right at the edge, a tap on a section brought up the phone's own
- * gestures. On a wider screen they are a row of names in the header.
+ * The main sections, four words in the header: on a phone a row of their own under the
+ * logo, the Merkzettel and the account, on a wider screen beside them. The open one is in
+ * ink under a stroke of the highlighter, the others muted (`.sections`).
  *
  * A tapped section is the current one the moment the finger lands, before its page has
  * come: the page took up to a second, and the household tapped again (October 2026). The
- * page then comes in from the side of the section, as the finger moved along the bar.
+ * page then comes in from the side of the section, as the finger moved along the row.
  */
-export function AppNav({ floating = false }: { floating?: boolean }) {
+export function AppNav() {
   const pathname = usePathname();
   // The section tapped, and the page it was tapped on: once the page changes it is told by
   // the address again, also when the navigation went elsewhere.
@@ -52,40 +57,25 @@ export function AppNav({ floating = false }: { floating?: boolean }) {
     }
   }, []);
 
-  const list = (
-    <ul className={floating ? "flex" : "flex gap-1"}>
-      {SECTIONS.map(({ href, label, icon }, index) => {
-        const active = index === current;
-        return (
-          <li key={href} className={floating ? "min-w-0 flex-1" : undefined}>
+  return (
+    <nav aria-label="Hauptbereiche" className="sections">
+      <ul>
+        {SECTIONS.map(({ href, label }, index) => (
+          <li key={href}>
             <Link
               href={href}
               // The whole page ahead, kept for minutes: a tab answers without the server.
               prefetch
               transitionTypes={sideways(here, index)}
-              aria-current={active ? "page" : undefined}
+              aria-current={index === current ? "page" : undefined}
               onPointerDown={() => setTapped({ index, on: pathname })}
-              className={
-                floating
-                  ? "tab"
-                  : `flex min-h-11 items-center rounded-full px-4 font-semibold ${
-                      active ? "bg-accent-soft text-accent" : "text-muted hover:text-ink"
-                    }`
-              }
+              className="section-link"
             >
-              {floating && icon}
-              <span className={floating && active ? "marked" : undefined}>{label}</span>
+              <span>{label}</span>
             </Link>
           </li>
-        );
-      })}
-    </ul>
-  );
-
-  if (!floating) return <nav aria-label="Hauptbereiche">{list}</nav>;
-  return (
-    <nav aria-label="Hauptbereiche" className="tabbar">
-      {list}
+        ))}
+      </ul>
     </nav>
   );
 }

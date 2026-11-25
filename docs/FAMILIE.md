@@ -44,6 +44,7 @@ wieder mit Netz.
 
 - Was einer plant oder abhakt, sehen alle anderen gleich mit.
 - Was zu Hause ausgeht, kommt auf den **Merkzettel** (oben, der gelbe Zettel).
+- Ein neues Rezept aus dem Kochbuch fotografierst du unter **Rezepte** mit **„+ Rezept“**.
 - Die Einstellungen findest du hinter deinem Buchstaben oben rechts.
 - Passwort vergessen? Auf der Anmeldeseite „Passwort vergessen?“ antippen, oder David
   fragen.

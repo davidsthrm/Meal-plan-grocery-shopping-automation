@@ -160,7 +160,7 @@ export function ProposalList({ proposals, ingredients, aisleGroups }: Props) {
         </section>
       ))}
 
-      <div className="sticky bottom-16 z-10 mt-6 rounded-lg border border-line bg-surface p-3 sm:bottom-4">
+      <div className="sticky bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 mt-6 rounded-lg border border-line bg-surface p-3 sm:bottom-4">
         <button
           type="button"
           className="btn btn-primary w-full"

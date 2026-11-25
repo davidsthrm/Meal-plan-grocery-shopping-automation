@@ -247,3 +247,21 @@ test("a swipe or the menu that buys a line says so, to take it back", async ({ p
   await page.getByRole("menu", { name: "Eier" }).getByRole("menuitem", { name: "Gekauft" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Eier gekauft" })).toBeVisible();
 });
+
+test("Widerrufen stands clear of the shop view's button at its foot @webkit", async ({ page }) => {
+  await planAsExtra("Zitronen-Mohn-Kuchen", WEEK);
+  await page.goto(`/einkauf?w=${WEEK}&zettel=${WEEK}.supermarket`);
+  await write(page, "Geschenkpapier");
+  await page.getByRole("link", { name: "Jetzt einkaufen" }).click();
+  const shop = page.getByRole("dialog", { name: /^Einkaufen/ });
+  await shop.getByRole("button", { name: "Geschenkpapier entfernen" }).click();
+  const bar = page.getByRole("status").filter({ hasText: "Widerrufen" });
+  await expect(bar).toBeVisible();
+  // At the end of the list the button lies at the foot of the screen, where the bar is.
+  await shop.evaluate((view) => view.scrollTo(0, view.scrollHeight));
+  const foot = shop.getByRole("button", { name: "Einkauf erledigt" });
+  await expect(foot).toBeInViewport();
+  const barBox = (await bar.boundingBox())!;
+  const footBox = (await foot.boundingBox())!;
+  expect(barBox.y + barBox.height).toBeLessThanOrEqual(footBox.y);
+});

@@ -52,13 +52,13 @@ A few things are borrowed from the handwritten notes the app replaces, and only 
 - What ran out at home is written on a yellow note stuck on with tape (`.note`), as narrow
   as a real sticky note (`RestockNote`, 18rem, about 300px). "+" writes on it; each entry
   is one line: its name, where it will go in small muted words, the sign of the shopping
-  notes (the Einkauf tab's) for "Auf den Einkaufszettel" and the cross, each sign 44px. One
+  notes (`ListIcon`) for "Auf den Einkaufszettel" and the cross, each sign 44px. One
   link at its foot, "Alle auf den Einkaufszettel". Chosen on 22 November 2026: with a pill
   under every entry, a caption and a green button, the note was a page of buttons.
 - A meal without a recipe carries a small yellow slip.
 - Today is marked with a highlighter (`.marked`), "Heute" beside it in the green, far enough
-  away for the mark to reach past the name. The same stroke marks the open section in the
-  strip of the sections.
+  away for the mark to reach past the name. A drawn stroke of the same highlighter marks the
+  open section in the header.
 - No handwriting typeface. On real paper only a note's ruled lines are printed, faint, as in
   its PDF.
 - The pad's two sheets under a `.sheet` are a shade darker than the top one, with a soft
@@ -199,7 +199,7 @@ The paper metaphors in motion:
   ticked. It is put directly into the body: every page comes in with a transform (`page-in`),
   and inside a transformed element "fixed" is fixed to that element, not to the screen. The
   recipe form's "Speichern" bar (`.save-bar`) is put there too: inside the page it stood
-  narrower and off the strip while the page came in, and jumped into place (24 November
+  narrower and off the screen's foot while the page came in, and jumped into place (24 November
   2026).
 
 ## Layout and screens
@@ -216,11 +216,12 @@ The paper metaphors in motion:
 - The week plan stands each day above its lunch and dinner from `sm` to `lg` (an iPad
   upright) and beside them from `lg` on; in a third of the width a long dish ran into its
   stepper.
-- The sections in the bar are Woche, Einkauf, Rezepte, Favoriten and Import. "Rezepte" has
-  two views at its top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to
-  find something to cook and "Regal" to leaf through the cookbooks. Looking after the library
-  ("Alle Rezepte") is under Import, beside bringing recipes in, where the earlier batches
-  were; those are folded below it.
+- The sections are Woche, Einkauf, Rezepte and Favoriten. "Rezepte" has two views at its
+  top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to find something
+  to cook and "Regal" to leaf through the cookbooks. Bringing recipes in is the import's
+  page (`/import`), which "+ Rezept" on both views opens and which belongs to Rezepte (see
+  "Sections and header"). Looking after the library ("Alle Rezepte") is there, beside
+  bringing recipes in, where the earlier batches were; those are folded below it.
 
 ## Pictograms and logo
 
@@ -249,53 +250,76 @@ The paper metaphors in motion:
 - The logo is a plate with its cutlery on the app's green, and "Essensplan" with the plan in
   green (`logo.tsx`, `app/icon.svg`).
 
-## Strip of the sections and header
+## Sections and header
 
-- On a phone the five sections are a strip of paper across the foot of the screen
-  (`.tabbar`): the surface's white, a hairline above it, no blur, no float, no shadow. A
-  sign stands above each name in the muted ink, the names at 13px; the open section has its
-  name under the highlighter of today (`.marked`) and its sign in the green. Every tab is
-  at least 44px. Chosen on 22 November 2026: the household wanted the app not to "look like
-  any other app", and the round bar of liquid glass that floated above the screen's foot
-  (October 2026, `GlassSurface`) is what every app has now.
-- It has a layer of its own (`translateZ(0)`), and every entrance of a page lets go of its
-  transform when it ends (`backwards`, not `both`): on the iPhone, content left on a layer by
-  its animation was drawn over the bar (October 2026).
+- The four sections are words in the header, no signs, no box, no pill (`AppNav`,
+  `.sections`): the open one in ink at 700 with a drawn stroke of the green highlighter
+  under it, the others in the muted ink. On a phone they are a row of their own under the
+  logo, the Merkzettel and the account, as wide as the screen, each word in the middle of a
+  quarter of it, all of which takes the tap (80px wide even at 320px); from `sm` on they
+  stand in the header's line. Every word is at least 44px tall. Chosen
+  on 24 November 2026 from drafts injected into the real app: the words over
+  register tabs and three sections, and on a phone at the top, fixed with the header, over
+  a block that slides away while the page scrolls down (which would break the header's rule
+  below). The header with its row is one block of 109px at 390px: header and strip took
+  126px, and on an installed iPhone, where the strip took the home bar's inset too, about
+  152px.
+- Four sections since 25 November 2026: Woche, Einkauf, Rezepte and Favoriten are places
+  gone to every week; Import, bringing recipes in, is a task done now and then. It is a
+  button on Rezepte, "+ Rezept" ([RECIPES.md](RECIPES.md#entdecken)), and every page under
+  `/import` belongs to Rezepte: the header marks Rezepte there (`also` in `AppNav`), so the
+  colour at the top is Rezepte's, and the import's page leads back to Rezepte. With five
+  words the phone's row shared out what was left between them, as a fifth of it would not
+  have held "Favoriten"; four have a quarter each.
+- History: from 22 November 2026 the sections were a strip of paper across the foot of a
+  phone's screen (`.tabbar`), a sign above each name; before that, from October 2026, a
+  round bar of liquid glass floating above the screen's foot (`GlassSurface`), which the
+  household found made the app "look like any other app". The strip's signs reached half a
+  rem into the home bar's inset: right at the edge, a tap on a section brought up the
+  phone's gestures; above the whole of it, the strip stood too high (October 2026).
+- Every entrance of a page lets go of its transform when it ends (`backwards`, not `both`):
+  on the iPhone, content left on a layer by its animation was drawn over the bar of the
+  sections, then at the foot (October 2026).
 - That entrance (`page-in`) is never switched off or renamed, only where it starts
   (`--page-in-*`): switched off while a page moved, it started again the moment the move
   ended, and the page flickered once after every tap on a section (October 2026).
 - A tapped section is the current one the moment the finger lands, before its page has come
   (`AppNav`).
 - A section tapped right after a whole page has loaded, while the page shows but its scripts
-  have not run yet, is kept and followed once the bar has started (`EARLY_TAP` in the root
-  layout, `AppNav`); should the scripts not come within three seconds, the browser follows
-  it as a plain link. Until 24 November 2026 such a tap was a plain link: Safari loaded the
-  whole page again, and so did every quick tap after it ("when changing tabs fast it
-  reloads the whole page sometimes"). In WebKit on a production build, quick taps right
-  after a page had loaded made 20 whole loads in 8 tries; in an app already running, 205
-  rounds of quick taps, with a slow network, a slowed processor and live refreshes in
+  have not run yet, is kept and followed once the sections have started (`EARLY_TAP` in the
+  root layout, `AppNav`); should the scripts not come within three seconds, the browser
+  follows it as a plain link. Until 24 November 2026 such a tap was a plain link: Safari
+  loaded the whole page again, and so did every quick tap after it ("when changing tabs
+  fast it reloads the whole page sometimes"). In WebKit on a production build, quick taps
+  right after a page had loaded made 20 whole loads in 8 tries; in an app already running,
+  205 rounds of quick taps, with a slow network, a slowed processor and live refreshes in
   between, made none. `e2e/fast-tabs.spec.ts` holds the scripts back to tap in that moment.
-- Every page ends above the strip: its foot leaves the strip's height free
-  (`--tabbar-height`), so that nothing lies under it at the end of a scroll, and what stands
-  at the foot of the screen (the offline bar, the bar of ticked recipes, "Fertig" of a
-  photographed recipe, "Speichern" of the recipe form) stands on it. The Rezept-Stapel's
-  deck takes what the screen has left above its three buttons: at its old height they lay
-  under the bar on a 375px phone (November 2026); its "Zurück" stands above the card for the
-  same reason, all of its 44px: its foot lay over the card, and a tap there opened the
-  recipe. `e2e/small-phone.spec.ts` checks them.
+- A page's foot, and what stands at the foot of the screen (the offline bar, the bar of
+  ticked recipes, "Widerrufen", "Fertig" of a photographed recipe, "Speichern" of the recipe
+  form, the button under the import's proposals), keep clear of the iPhone's home bar
+  (`env(safe-area-inset-bottom)`, which needs `viewport-fit=cover`). Until 24 November 2026
+  they stood on the strip of the sections. In "Jetzt einkaufen" "Widerrufen" stands higher,
+  above the view's own button at its foot ("Einkauf erledigt", "Fertig"): at the screen's
+  foot it covered that button for five seconds after each decision (25 November 2026,
+  `e2e/shop-deviations.spec.ts`). The Rezept-Stapel's deck takes what the screen
+  has left between the header and its three buttons, both insets taken off: at its old
+  height they lay under the strip of the sections, then at the foot, on a 375px phone
+  (November 2026); its "Zurück" stands
+  above the card for the same reason, all of its 44px: its foot lay over the card, and a
+  tap there opened the recipe. `e2e/small-phone.spec.ts` checks them, and that nothing of a
+  page stays under the header.
 - The header stays at the top of every page on a strip of the page's paper as wide as the
-  screen (`.app-header`), in the section's colour (see "Section colours"), solid, fading out at its foot instead of ending in a line, so that
-  the Merkzettel and the settings are one tap away halfway down a long list; anchors land
-  below it (`scroll-padding-top`), and `body` clips sideways so that the strip does not
-  widen the page. It was frosted glass until 22 November 2026.
-- The strip's signs keep clear of the iPhone's own home bar (`viewport-fit=cover` and
-  `env(safe-area-inset-bottom)`): right at the edge, a tap on a section brought up the
-  phone's gestures. They reach half a rem into that inset: above the whole of it, the bar
-  stood too high (October 2026).
+  screen (`.app-header`), in the section's colour (see "Section colours"), solid, fading out
+  at its foot instead of ending in a line, so that the sections, the Merkzettel and the
+  settings are one tap away halfway down a long list (`e2e/sections.spec.ts`); anchors land
+  below it (`scroll-padding-top`: 7rem on a phone, for its row, 4.5rem from `sm`), and
+  `body` clips sideways so that the strip does not widen the page. On an iPhone its paper
+  reaches up under the status bar (`env(safe-area-inset-top)`). It was frosted glass until
+  22 November 2026.
 - Next to the Merkzettel stands the first letter of whoever is signed in on the green
   (`.account`, `initialOf`), the way to the settings, on every screen size.
 - Between a phone and a large screen (`sm` to `lg`, an iPad upright) the header holds the
-  sections too: the logo stands without its name there. With the logo's name and a sign-out
+  sections in its line: the logo stands without its name there. With the logo's name and a sign-out
   button in the header the page was 983 pixels wide on an 810 pixel iPad, which zoomed it out
   and pushed fixed bars off the screen. "Abmelden" is only in the settings, under "Dein
   Konto": the family wanted it off every main section (October 2026).
@@ -304,12 +328,14 @@ The paper metaphors in motion:
 
 - Each section has its pastel as a wash at the top of its pages, fading into the paper over
   22rem (`.app-shell`, `--section`: Woche sage #dbf1e3, Einkauf blue #daecfa, Rezepte
-  peach #ffdfc7, Favoriten blush #ffd8e2, Import lavender #ebe1ff), and the header's strip
-  in the same colour. It is read from the section the strip marks as current, so it is there
-  from the first paint, and on a tap it fades over to the next section's in 300ms while the
-  page loads (David, 24 November 2026). Only the two layers that draw it fade: each fades its
-  own `--section-tint`, registered with `@property` and not inherited, towards `--section`.
-  Fading an inherited value would recalculate every element of the page in every frame.
+  peach #ffdfc7, also on the import's pages, which belong to Rezepte, Favoriten blush
+  #ffd8e2), and the header's strip in the same colour. Import's lavender (#ebe1ff) went
+  with its section on 25 November 2026. It is read from the section the header marks as
+  current, so it is there from the first paint, and on a tap it fades over to the next
+  section's in 300ms while the page loads (David, 24 November 2026). Only the two layers
+  that draw it fade: each fades its own `--section-tint`, registered with `@property` and
+  not inherited, towards `--section`. Fading an inherited value would recalculate every
+  element of the page in every frame.
 - History: from October 2026 the sections had such a pastel and a breath of green lay
   behind the header; on 22 November 2026 the household chose the paper alone (palette C1),
   and on 23 November 2026 asked for the colours back, softly, to give the app more life.
@@ -365,15 +391,16 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
   right going in, to a section further right or to the next week; from the left going back;
   cross-faded for another view of the same page (Mahlzeiten and Außerdem, Entdecken and
   Regal).
-- Going in or back takes 240ms; another section of the bar, changed dozens of times a day,
+- Going in or back takes 240ms; another section, changed dozens of times a day,
   200ms over a shorter way. A blur at the start stuttered on the iPhone and was taken out.
 - The old page is not drawn at all: Safari draws the picture of an old page over everything,
-  the bar of the sections included, whatever its z-index, and one picture less is what the
+  the header included, whatever its z-index (in October 2026 the bar of the sections at the
+  foot), and one picture less is what the
   iPhone needed to move smoothly.
-- While a page moves, the header and the bar are views of their own above it (`app-header`,
-  `app-tabbar`), shown at once in their new state. Only then: a named element is a backdrop
+- While a page moves, the header with the sections is a view of its own above it
+  (`app-header`), shown at once in its new state. Only then: a named element is a backdrop
   root, and named for good, the glass bar of October 2026 saw nothing behind it to blur and
-  stood clear as glass. The paper strip kept it so; it costs nothing.
+  stood clear as glass. The paper kept it so; it costs nothing.
 - A value that many elements inherit is never faded: the section pastels of October 2026,
   faded, recalculated every element of the page in every frame while the tap loaded the
   next page.
@@ -393,8 +420,8 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
   in `@theme`) and stays under 300ms, except the Merkzettel's swing, the rubber and the way
   from the welcome into the app, which are meant to be seen.
 - The welcome lifts off on the tap (`.welcome-leaving`: React runs no exit transition for a
-  page Next.js leaves), and the app comes in under it in three parts 60ms apart, header, page
-  and the bar of the sections (the transition type `willkommen`,
+  page Next.js leaves), and the app comes in under it in two parts 60ms apart, the header
+  with the sections and the page (the transition type `willkommen`,
   `:active-view-transition-type`).
 - A tick on a note is drawn like a pen stroke in 200ms and goes at once when taken back (a
   transition on `stroke-dashoffset`, the path's length 1).
@@ -509,7 +536,7 @@ Where this project's rules override a skill:
   `/apple-design` would start from the system's typeface: here it is Figtree on the scale
   under "Principles" (22 November 2026).
 - `/apple-design` builds bars of translucent material with the page scrolling under them:
-  here the strip of the sections and the header are solid paper (22 November 2026).
+  here the header with the sections is solid paper (22 November 2026).
 - Pastel marks on the paper, the paper metaphors above, and pills for buttons and filter
   chips (only) stay as they are.
 - Controls are at least 44px and text in a field at least 16px; "reduced motion" means

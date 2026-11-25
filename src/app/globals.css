@@ -122,8 +122,16 @@ html {
   touch-action: pan-x pan-y;
   /* No grey flash over what is tapped: every control answers the press itself (`:active`). */
   -webkit-tap-highlight-color: transparent;
-  /* The header stays at the top (`.app-header`): an anchor scrolled to lands below it. */
-  scroll-padding-top: 4.5rem;
+  /*
+   * The header stays at the top (`.app-header`): an anchor scrolled to lands below it, on a
+   * phone below its row of the sections too (109px at 390px).
+   */
+  scroll-padding-top: 7rem;
+}
+@media (width >= 40rem) {
+  html {
+    scroll-padding-top: 4.5rem;
+  }
 }
 
 body {
@@ -159,7 +167,7 @@ button,
 summary,
 .btn,
 .chip,
-.tab,
+.section-link,
 .segment,
 .capsule > a,
 .tickbox,
@@ -230,7 +238,7 @@ summary,
    */
   .btn:active:not(:disabled),
   .chip:active,
-  .tab:active,
+  .section-link:active,
   .icon-button:active,
   .heart:active {
     transform: scale(0.96);
@@ -363,10 +371,10 @@ summary,
 
   /*
    * Each section has a pastel of its own at the top of its pages, fading into the paper over
-   * 22rem, and the header's strip in it: Woche sage, Einkauf a misty blue, Rezepte peach,
-   * Favoriten blush, Import lavender. Back on 23 November 2026: the paper alone (palette C1)
+   * 22rem, and the header's strip in it: Woche sage, Einkauf a misty blue, Rezepte peach
+   * (the import's pages too, which belong to it), Favoriten blush. Back on 23 November 2026: the paper alone (palette C1)
    * was too plain for the household; on 24 November David chose the clearer of the drafts
-   * (each pastel's chroma doubled) over the softer one. Read from the section the bar
+   * (each pastel's chroma doubled) over the softer one. Read from the section the header
    * marks as current, so it is there from the first paint and fades over the moment a section
    * is tapped, while its page loads (`@property --section-tint` above says why only two layers
    * fade it).
@@ -388,9 +396,6 @@ summary,
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
     --section: #ffd8e2;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
-    --section: #ebe1ff;
   }
   @media print {
     .app-shell {
@@ -744,67 +749,87 @@ summary,
   }
 
   /*
-   * The sections on a phone: a strip of paper across the foot of the screen, a hairline
-   * above it, nothing floating, no glass. The household wanted the app not to look like any
-   * other app (22 November 2026), and the paper is what is its own. The safe area
-   * (`env(safe-area-inset-bottom)`, which needs `viewport-fit=cover`) is 34px, more than the
-   * iPhone's home bar needs: the signs reach half a rem into it. Right at the edge, a tap on
-   * a section brought up the phone's gestures; above the whole inset, they stood too high
-   * (October 2026). How tall it is (`--tabbar-height`) is what the page leaves free at its
-   * foot, and what a bar at the foot of the screen stands on.
+   * The sections, four words in the header, no signs, no box, no pill: the open one in ink at
+   * 700 with a stroke of the green highlighter under it, the others muted. Chosen on 24
+   * November 2026 from drafts in the real app, over a strip of signs at the foot of a
+   * phone's screen (22 November 2026), register tabs and three sections. Four since 25
+   * November 2026: Import, a task done now and then, is "+ Rezept" on Rezepte.
    */
-  :root {
-    --tabbar-height: calc(3.1rem + 1px + max(0px, env(safe-area-inset-bottom) - 0.5rem));
-  }
-  .tabbar {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 10;
-    padding: 0 env(safe-area-inset-right) max(0px, calc(env(safe-area-inset-bottom) - 0.5rem))
-      env(safe-area-inset-left);
-    border-top: 1px solid var(--color-line);
-    background: var(--color-surface);
-    /*
-     * A layer of its own: on the iPhone a card that lifts under the finger was drawn over the
-     * bar, which then lay under the page (October 2026).
-     */
-    transform: translateZ(0);
-  }
-  .tabbar > ul {
-    max-width: 30rem;
-    margin: 0 auto;
-  }
-  /* The open section: its sign in the green and its name under the highlighter (`.marked`). */
-  .tab {
+  .sections ul {
     display: flex;
-    min-height: 3.1rem;
-    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .section-link {
+    display: flex;
+    min-height: 2.75rem;
     align-items: center;
     justify-content: center;
-    gap: 0.2rem;
+    padding-inline: 0.85rem;
     color: var(--color-muted);
-    font-size: var(--text-xs);
-    line-height: 1.2;
-    -webkit-tap-highlight-color: transparent;
     transition: transform 120ms var(--ease-out);
   }
-  .tab[aria-current="page"] {
+  @media (hover: hover) and (pointer: fine) {
+    .section-link:hover {
+      color: var(--color-ink);
+    }
+  }
+  .section-link[aria-current="page"] {
     color: var(--color-ink);
+    font-weight: 700;
   }
-  .tab[aria-current="page"] > svg {
-    color: var(--color-accent);
+  .section-link[aria-current="page"] > span {
+    position: relative;
+    isolation: isolate;
   }
-  .tab:focus-visible {
+  .section-link[aria-current="page"] > span::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    right: -0.25em;
+    bottom: 0.1em;
+    left: -0.25em;
+    height: 0.48em;
+    rotate: -1deg;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M3.5 3.4C22 2.2 52 1.5 97.4 2.7L98.9 9.2C70 10.5 36 9.8 1.1 11.1Z' fill='%232f5d50' fill-opacity='.24'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat;
+  }
+  .section-link:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
+  }
+  /*
+   * On a phone a row of their own under the logo, the Merkzettel and the account, as wide as
+   * the screen: one sticky block at the top, 109px at 390px. Not a block that slides away
+   * while the page scrolls down (24 November 2026): the sections stay one tap away at any
+   * scroll position. Each of the four words has a quarter of the row, its word in the middle:
+   * a tap anywhere in it counts, 80px wide even at 320px. Five words shared out the room
+   * left over between them: a fifth of a 375px row would not have held "Favoriten" in bold
+   * (25 November 2026).
+   */
+  @media (width < 40rem) {
+    .app-header > .sections {
+      order: 3;
+      flex: 0 0 calc(100% + 2rem);
+      margin-inline: -1rem;
+    }
+    .sections ul {
+      max-width: 30rem;
+      margin: 0 auto;
+      padding: 0 0.25rem;
+      gap: 0;
+    }
+    .sections li {
+      flex: 1 1 0;
+    }
+    .section-link {
+      padding-inline: 0.2rem;
+    }
   }
 
   /*
    * The header stays at the top of every page, on a strip of the page's paper as wide as the
-   * screen, so that the Merkzettel and the settings are one tap away also halfway down a
-   * long list. The strip fades out at its foot instead of ending in a line.
+   * screen, so that the sections, the Merkzettel and the settings are one tap away also
+   * halfway down a long list. The strip fades out at its foot instead of ending in a line.
    */
   .app-header {
     position: sticky;
@@ -847,11 +872,11 @@ summary,
     outline-offset: 2px;
   }
 
-  /* Offline, on every page: above the navigation on a phone, at the foot of the screen otherwise. */
+  /* Offline, on every page: at the foot of the screen, clear of the iPhone's home bar. */
   .offline-bar {
     position: fixed;
     left: 50%;
-    bottom: calc(var(--tabbar-height) + 0.75rem);
+    bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
     z-index: 20;
     width: max-content;
     max-width: calc(100vw - 2rem);
@@ -886,18 +911,18 @@ summary,
   }
 
   /*
-   * What is done with the recipes ticked in the Regal: a bar at the foot of the screen, above
-   * the sections on a phone, that opens upwards. It stays out of sight while nothing is
-   * ticked; without a script it is always there.
+   * What is done with the recipes ticked in the Regal: a bar at the foot of the screen that
+   * opens upwards, at most to a little below the header. It stays out of sight while nothing
+   * is ticked; without a script it is always there.
    */
   .selection-bar {
     position: fixed;
     right: max(0.75rem, env(safe-area-inset-right));
-    bottom: calc(var(--tabbar-height) + 0.5rem);
+    bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
     left: max(0.75rem, env(safe-area-inset-left));
     z-index: 11;
     max-width: 40rem;
-    max-height: calc(100dvh - 9rem);
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8rem);
     margin: 0 auto;
     overflow-y: auto;
     border: 1px solid var(--color-accent);
@@ -928,6 +953,7 @@ summary,
   @media (width >= 40rem) {
     .selection-bar {
       bottom: 1rem;
+      max-height: calc(100dvh - 9rem);
     }
   }
 
@@ -2472,42 +2498,37 @@ summary,
 
   /*
    * "Fertig" of a recipe photographed: at the foot of the screen while the photos and the
-   * field are above it, on a phone above the sections, where a thumb finds it.
+   * field are above it, where a thumb finds it, on a phone on paper clear of the home bar.
    */
   .add-recipe-done {
     position: sticky;
-    bottom: var(--tabbar-height);
+    bottom: 0;
     z-index: 5;
-    padding-top: 0.75rem;
+    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
     background: linear-gradient(transparent, var(--color-paper) 0.75rem);
   }
   @media (width >= 40rem) {
     .add-recipe-done {
       bottom: 1rem;
+      padding-bottom: 0;
     }
   }
   /*
-   * "Speichern" of the recipe form: a bar across the foot of the screen, standing on the
-   * strip of the sections on a phone, solid like it. As a pill floating over the form it lay
-   * on a field at 10 of 13 places of a long recipe on a phone, and a tap meant for the field
-   * saved and left the form (November 2026). The form ends its height above it.
+   * "Speichern" of the recipe form: a solid bar across the foot of the screen, its button
+   * clear of the home bar. As a pill floating over the form it lay on a field at 10 of 13
+   * places of a long recipe on a phone, and a tap meant for the field saved and left the
+   * form (November 2026). The form ends its height above it.
    */
   .save-bar {
     position: fixed;
     right: 0;
-    bottom: var(--tabbar-height);
+    bottom: 0;
     left: 0;
     z-index: 11;
-    padding: 0.6rem max(1rem, env(safe-area-inset-right)) 0.6rem
+    padding: 0.6rem max(1rem, env(safe-area-inset-right)) calc(0.6rem + env(safe-area-inset-bottom))
       max(1rem, env(safe-area-inset-left));
     border-top: 1px solid var(--color-line);
     background: var(--color-surface);
-  }
-  @media (width >= 40rem) {
-    .save-bar {
-      bottom: 0;
-      padding-bottom: calc(0.6rem + env(safe-area-inset-bottom));
-    }
   }
 
   /*
@@ -2782,15 +2803,16 @@ summary,
   }
   /*
    * On a phone the deck takes what the screen has left between the line above it and its
-   * three buttons above the strip of the sections: taller, the buttons lay under the strip
-   * as the page opened.
+   * three buttons, which end 2.5rem above the screen's foot, the iPhone's insets taken off:
+   * taller, the buttons lay under the strip of the sections then at the foot (November
+   * 2026). The header with the sections is 6.4rem of the 26.2rem.
    */
   .stack-deck {
     position: relative;
     width: min(100%, 26rem);
     height: clamp(
       14rem,
-      calc(100dvh - var(--tabbar-height) - env(safe-area-inset-top) - 24rem),
+      calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 26.2rem),
       24rem
     );
   }
@@ -2960,7 +2982,7 @@ summary,
   /*
    * How many cards are left and kept, and "Zurück", as tall as the words and close to the
    * card: its button reaches above and below them, so that the three buttons under the deck
-   * stay above the strip on a 375px phone. Below, it reaches 0.75rem, and no further than the
+   * stay clear of the screen's foot on a 375px phone. Below, it reaches 0.75rem, and no further than the
    * card's top: its foot lay over the card, and a tap there opened the recipe (November 2026).
    */
   .stack-status {
@@ -3665,10 +3687,13 @@ summary,
     opacity: 1;
   }
 
-  /* What was just decided, with "Widerrufen", for a few seconds at the foot of the screen. */
+  /*
+   * What was just decided, with "Widerrufen", for a few seconds at the foot of the screen,
+   * clear of the iPhone's home bar.
+   */
   .undo-bar {
     position: fixed;
-    inset: auto max(0.75rem, env(safe-area-inset-right)) calc(5.25rem + env(safe-area-inset-bottom))
+    inset: auto max(0.75rem, env(safe-area-inset-right)) calc(0.75rem + env(safe-area-inset-bottom))
       max(0.75rem, env(safe-area-inset-left));
     width: auto;
     max-width: 30rem;
@@ -3679,6 +3704,19 @@ summary,
     background: var(--color-ink);
     color: var(--color-surface);
     box-shadow: 0 14px 30px -14px rgb(35 33 29 / 0.6);
+  }
+  @media (width >= 40rem) {
+    .undo-bar {
+      bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    }
+  }
+  /*
+   * In "Jetzt einkaufen" it stands above the view's own button at the foot ("Fertig",
+   * "Einkauf erledigt"), which it covered for five seconds after each decision on a phone
+   * (25 November 2026).
+   */
+  body:has(.store-view[open]) .undo-bar {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
   /*
    * It rises when it first appears and goes down when it goes. While it stays, the next
@@ -4058,7 +4096,8 @@ details[open] > :not(summary) {
 }
 /*
  * Only before and while it runs: kept to its end, the motion left every page on a layer of
- * its own, which the iPhone drew over the bar of the sections (October 2026).
+ * its own, which the iPhone drew over the bar of the sections, then at the foot (October
+ * 2026).
  */
 main > *,
 .page > * {
@@ -4090,7 +4129,8 @@ html[data-going="back"] .page > * {
  * morph between two heights: the new page simply stands where it will stay.
  *
  * The old page is not drawn at all: Safari draws the picture of an old page over everything
- * else, the bar of the sections included, whatever its z-index (October 2026). One picture
+ * else, the header included, whatever its z-index (the bar of the sections at the foot in
+ * October 2026). One picture
  * less to move is also what the iPhone needed to move the new one smoothly.
  */
 ::view-transition-group(.nav-forward),
@@ -4141,32 +4181,26 @@ html[data-going="back"] .page > * {
   z-index: 2;
 }
 /*
- * The header and the bar of the sections stay where they are, above the page on its way:
- * left in the picture of the whole screen, they lay under the page while it moved. Their
- * new state shows at once, the tapped section already marked.
+ * The header, with the sections, stays where it is, above the page on its way: left in the
+ * picture of the whole screen, it lay under the page while it moved. Its new state shows at
+ * once, the tapped section already marked.
  */
 /*
  * Named only while a page moves: a named element is a backdrop root, and the glass bar of
- * October 2026, named for good, saw nothing behind it to blur. The paper strip has no glass;
- * naming them only for the move costs nothing and was kept.
+ * October 2026, named for good, saw nothing behind it to blur. The paper has no glass;
+ * naming it only for the move costs nothing and was kept.
  */
 :root:active-view-transition .app-header {
   view-transition-name: app-header;
 }
-:root:active-view-transition .tabbar {
-  view-transition-name: app-tabbar;
-}
-::view-transition-group(app-header),
-::view-transition-group(app-tabbar) {
+::view-transition-group(app-header) {
   z-index: 3;
   animation: none;
 }
-::view-transition-old(app-header),
-::view-transition-old(app-tabbar) {
+::view-transition-old(app-header) {
   display: none;
 }
-::view-transition-new(app-header),
-::view-transition-new(app-tabbar) {
+::view-transition-new(app-header) {
   animation: none;
 }
 /* Another section: dozens of times a day, so nearer and quicker, barely there. */
@@ -4234,9 +4268,9 @@ html[data-going="back"] .page > * {
  * From the welcome into the app, a moment that happens once per device and is meant to be
  * seen. The welcome lifts off the moment a button is tapped (`.welcome-leaving`, a class:
  * React runs no exit transition for a page Next.js leaves), and the app comes in under it
- * in three parts, 60ms apart: the header drops into place, the page rises, the bar of the
- * sections comes up from the foot. The header and the bar get names of their own only
- * during this transition (`willkommen`), so no other navigation moves them.
+ * in two parts, 60ms apart: the header with the sections drops into place, the page rises.
+ * The header gets its entrance only during this transition (`willkommen`), so no other
+ * navigation moves it.
  */
 .welcome-leaving {
   pointer-events: none;
@@ -4259,9 +4293,6 @@ html[data-going="back"] .page > * {
 ::view-transition-new(.app-in) {
   animation: app-in 420ms var(--ease-out) 60ms both;
 }
-:root:active-view-transition-type(willkommen)::view-transition-new(app-tabbar) {
-  animation: app-tabbar-in 380ms var(--ease-out) 120ms both;
-}
 @keyframes app-header-in {
   from {
     opacity: 0;
@@ -4272,12 +4303,6 @@ html[data-going="back"] .page > * {
   from {
     opacity: 0;
     transform: translateY(1.5rem) scale(0.98);
-  }
-}
-@keyframes app-tabbar-in {
-  from {
-    opacity: 0;
-    transform: translateY(100%);
   }
 }
 @keyframes note-on {

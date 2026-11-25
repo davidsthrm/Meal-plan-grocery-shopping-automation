@@ -82,16 +82,6 @@ export function ShareIcon() {
   );
 }
 
-/** The signs of the main sections, for the bar at the bottom of a phone. */
-export function WeekIcon() {
-  return (
-    <svg {...base} width={22} height={22}>
-      <rect x="4" y="5.500" width="16" height="14.500" rx="2.500" />
-      <path d="M4 10h16M8.500 3.500v4M15.500 3.500v4M8 14h2.500M13.500 14H16" />
-    </svg>
-  );
-}
-
 /** A calendar of a whole month, its days as dots: all weeks. */
 export function CalendarIcon() {
   return (
@@ -115,14 +105,6 @@ export function ListIcon() {
   return (
     <svg {...base} width={22} height={22}>
       <path d="M5 6.500 6.500 8 9 5.500M5 12.500 6.500 14 9 11.500M5 18.500 6.500 20 9 17.500M12.500 7h7M12.500 13h7M12.500 19h7" />
-    </svg>
-  );
-}
-
-export function BookIcon() {
-  return (
-    <svg {...base} width={22} height={22}>
-      <path d="M12 6.500c-2-1.400-4.500-2-7.500-2v13.500c3 0 5.500.6 7.500 2 2-1.400 4.500-2 7.500-2V4.500c-3 0-5.500.6-7.500 2ZM12 6.500V20" />
     </svg>
   );
 }

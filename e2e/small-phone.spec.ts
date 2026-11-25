@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { planAsExtra, planHistory, resetLibrary, signIn } from "./fixtures";
+import { expectSearchRowWithAdd } from "./helpers";
 
 // The narrowest phone of the household's: 375 by 667 pixels, an iPhone SE. On it the week's
-// arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the bar of the
-// sections (November 2026).
+// arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the strip of the
+// sections then at the foot (November 2026).
 test.use({ viewport: { width: 375, height: 667 } });
 
 test.beforeEach(async ({ page, isMobile }) => {
@@ -12,14 +13,45 @@ test.beforeEach(async ({ page, isMobile }) => {
   await signIn(page);
 });
 
-/** Where the strip of the sections at the foot of the screen begins, from the top. */
-async function stripTop(page: Page): Promise<number> {
-  const strip = await page.locator("nav.tabbar").boundingBox();
-  expect(strip).not.toBeNull();
-  return strip!.y;
+/** Where the header, with the row of the sections, ends on the screen, from the top. */
+async function headerBottom(page: Page): Promise<number> {
+  const header = await page.locator(".app-header").boundingBox();
+  expect(header).not.toBeNull();
+  return header!.y + header!.height;
 }
 
-test("the week's row of arrows is one line on every week, and the page ends above the strip @webkit", async ({
+/**
+ * The controls of the page that are never seen whole between the header and the foot of the
+ * screen while the page is scrolled from its top to its end, by their names.
+ */
+async function neverSeenWhole(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const header = document.querySelector(".app-header")!;
+    const controls = [
+      ...document.querySelectorAll<HTMLElement>("main :is(a[href], button, input, summary)"),
+    ].filter(
+      (element) =>
+        element.getClientRects().length > 0 &&
+        !element.closest("dialog, [popover], .sr-only, details:not([open]) > :not(summary)"),
+    );
+    const seen = new Set<HTMLElement>();
+    const end = document.documentElement.scrollHeight - innerHeight;
+    for (let y = 0; y < end + 60; y += 60) {
+      window.scrollTo(0, Math.min(y, end));
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const top = header.getBoundingClientRect().bottom;
+      for (const element of controls) {
+        const box = element.getBoundingClientRect();
+        if (box.top >= top - 0.5 && box.bottom <= innerHeight + 0.5) seen.add(element);
+      }
+    }
+    return controls
+      .filter((element) => !seen.has(element))
+      .map((element) => element.getAttribute("aria-label") ?? element.textContent!.trim());
+  });
+}
+
+test("the week's row of arrows is one line on every week, and nothing stays under the header @webkit", async ({
   page,
 }) => {
   // The week the plan opens on, and a week that shows "Aktuelle" between the arrows.
@@ -32,22 +64,28 @@ test("the week's row of arrows is one line on every week, and the page ends abov
     expect(box!.height).toBeLessThan(60);
   }
 
-  // At the end of the page nothing lies under the strip.
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-  const main = await page.locator("main").boundingBox();
-  expect(main!.y + main!.height).toBeLessThanOrEqual(await stripTop(page));
+  // The header with the sections stays at the top, 109px tall: every control of the page
+  // comes out whole below it somewhere on the way down.
+  expect(await neverSeenWhole(page)).toEqual([]);
 });
 
-test("the Rezept-Stapel's three buttons stand above the strip as the page opens @webkit", async ({
+test("+ Rezept and Filter leave the search field room for its words @webkit", async ({ page }) => {
+  await page.goto("/rezepte");
+  // Filter is its sign alone here, "+ Rezept" keeps its word.
+  await expect(page.getByRole("button", { name: "Filter", exact: true })).toBeVisible();
+  await expectSearchRowWithAdd(page);
+});
+
+test("the Rezept-Stapel's three buttons stand clear of the screen's foot as the page opens @webkit", async ({
   page,
 }) => {
   await page.goto("/rezepte/stapel");
   const buttons = page.getByRole("group", { name: "Entscheiden" }).getByRole("button");
   await expect(buttons).toHaveCount(3);
-  const top = await stripTop(page);
   for (const button of await buttons.all()) {
     const box = await button.boundingBox();
-    expect(box!.y + box!.height).toBeLessThanOrEqual(top);
+    // A finger's room below them; the iPhone's home bar the deck leaves free besides.
+    expect(box!.y + box!.height).toBeLessThanOrEqual(667 - 16);
   }
 });
 
@@ -87,18 +125,18 @@ test("the meal chooser keeps a dish's facts to one line, leaving out whole what 
   expect(cut).toEqual([]);
 });
 
-test("the Rezept-Stapel's Zurück stands above the strip after a decision @webkit", async ({
+test("the Rezept-Stapel's Zurück stands above the card after a decision @webkit", async ({
   page,
 }) => {
   await page.goto("/rezepte/stapel");
   await page.getByRole("button", { name: "Nicht jetzt" }).click();
-  // The only way to take a swipe back lay below the three buttons, under the strip on an
-  // iPhone, with the count beside it. It stands above the card now.
+  // The only way to take a swipe back lay below the three buttons, under the strip of the
+  // sections then at an iPhone's foot, with the count beside it. It stands above the card now.
   const back = page.getByRole("button", { name: "Zurück" });
   await expect(back).toBeVisible();
   const box = await back.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(await stripTop(page));
+  expect(box!.y).toBeGreaterThanOrEqual(await headerBottom(page));
   const count = page.getByText(/· 0 vorgemerkt/);
   await expect(count).toBeVisible();
   const card = (await page.locator(".stack-deck").boundingBox())!.y;
@@ -125,7 +163,7 @@ test("a title in Alle Rezepte is as tall as a finger @webkit", async ({ page }) 
   expect((await title.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
 
-test("the recipe form's Speichern is a bar standing on the strip @webkit", async ({ page }) => {
+test("the recipe form's Speichern is a bar at the foot of the screen @webkit", async ({ page }) => {
   await page.goto("/rezepte?q=kartoffelsuppe");
   await page.getByRole("link", { name: /Kartoffelsuppe/ }).click();
   await page.getByRole("link", { name: "Rezept ändern" }).click();
@@ -137,7 +175,7 @@ test("the recipe form's Speichern is a bar standing on the strip @webkit", async
     await page.evaluate((to) => window.scrollTo(0, to), y);
     const box = await bar.boundingBox();
     expect(box!.width).toBeGreaterThanOrEqual(374);
-    expect(Math.abs(box!.y + box!.height - (await stripTop(page)))).toBeLessThan(1.5);
+    expect(Math.abs(box!.y + box!.height - 667)).toBeLessThan(1.5);
   }
   // At the end nothing lies under it.
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));

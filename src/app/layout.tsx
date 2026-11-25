@@ -31,7 +31,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   // The page reaches the edges of the screen, and says itself where the phone keeps its own
-  // bars (`env(safe-area-inset-*)`): the sections float clear of the iPhone's home bar.
+  // bars (`env(safe-area-inset-*)`): the header's paper reaches under the status bar, and
+  // what stands at the foot keeps clear of the iPhone's home bar.
   viewportFit: "cover",
   // An app does not zoom: the writing is large enough, and a field never zooms in by itself
   // (its text is 16px at least). Safari also needs `AppFeel` for pinching.
@@ -41,7 +42,7 @@ export const viewport: Viewport = {
 };
 
 /**
- * A section of the bar tapped before the page has started. After a whole page has loaded
+ * A section tapped before the page has started. After a whole page has loaded
  * (the app opened, or loaded again), the phone shows it a moment before its scripts have
  * run, and a tab tapped then was a plain link: the browser loaded the whole page again, and
  * so did every further tap in that moment (David, 24 November 2026: "when changing tabs fast
@@ -67,7 +68,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="de" className={figtree.variable}>
       <body>
-        {/* Ahead of the page, so that it listens before the bar can be tapped. */}
+        {/* Ahead of the page, so that it listens before a section can be tapped. */}
         <script dangerouslySetInnerHTML={{ __html: EARLY_TAP }} />
         {children}
         <ServiceWorker />

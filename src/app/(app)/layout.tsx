@@ -26,20 +26,18 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   // count of the Merkzettel and the initial follow. Waiting for them, opening the app showed
   // nothing at all until they were read (October 2026).
   return (
-    // On a phone the sections are a strip at the foot of the screen: the page ends above it,
-    // so that nothing lies under it at the end of a scroll. Coming from the welcome, the
+    // The page's foot keeps clear of the iPhone's home bar. Coming from the welcome, the
     // whole app rises into place (`.app-in`); any other way in, it is simply there.
     <ViewTransition enter={{ willkommen: "app-in", default: "none" }} default="none">
-      <div className="app-shell min-h-dvh px-4 pb-[calc(var(--tabbar-height)+1.5rem)] sm:pb-10 print:p-0">
+      <div className="app-shell min-h-dvh px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:pb-10 print:p-0">
         <NavigationProgress />
-        {/* Paper gets the content only: no header, no navigation. */}
-        <header className="app-header mx-auto flex max-w-5xl items-center justify-between gap-4 pt-2.5 pb-3.5 print:hidden">
+        {/* Paper gets the content only: no header, no navigation. On a phone the sections
+            are a row of their own under the rest of the header (`.sections`). */}
+        <header className="app-header mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 pt-2.5 pb-[0.3rem] print:hidden sm:flex-nowrap sm:pb-3.5">
           <Link href="/" aria-label="Essensplan, zum Wochenplan">
             <Logo />
           </Link>
-          <div className="hidden sm:block">
-            <AppNav />
-          </div>
+          <AppNav />
           <div className="flex items-center gap-2">
             <Suspense fallback={<NoteButtonWaiting />}>
               <HeaderNote />
@@ -59,9 +57,6 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         </main>
         <LiveRefresh />
         <ConnectionGuard />
-        <div className="sm:hidden print:hidden">
-          <AppNav floating />
-        </div>
       </div>
     </ViewTransition>
   );

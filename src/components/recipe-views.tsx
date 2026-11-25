@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { SWAP } from "@/lib/transitions";
+import { FORWARD, SWAP } from "@/lib/transitions";
+import { PlusIcon } from "./icons";
 import { SegmentPill } from "./segment-pill";
 
 /**
  * The two views of the recipes, as the week has "Mahlzeiten" and "Außerdem": "Entdecken" to
  * find something to cook, "Regal" to leaf through the cookbooks. The table of every recipe,
- * to look after the library, is under Import ("Alle Rezepte").
+ * to look after the library, is on the import's page ("Alle Rezepte").
  */
 export function RecipeViews({ current }: { current: "entdecken" | "regal" }) {
   const view = (key: typeof current, href: string, label: string) => (
@@ -24,5 +25,25 @@ export function RecipeViews({ current }: { current: "entdecken" | "regal" }) {
       {view("entdecken", "/rezepte", "Entdecken")}
       {view("regal", "/rezepte/regal", "Regal")}
     </nav>
+  );
+}
+
+/**
+ * "+ Rezept": to the import's page, where photos, text or typing bring a recipe in. It was a
+ * section of its own until 25 November 2026; it is a task done now and then, the sections are
+ * the places gone to every week. At the end of the row under the switch, on both views:
+ * beside the search and "Filter" on Entdecken.
+ */
+export function NewRecipeLink() {
+  return (
+    <Link
+      href="/import"
+      transitionTypes={[FORWARD]}
+      className="btn btn-primary shrink-0 gap-1.5 max-sm:px-3"
+      aria-label="Rezept hinzufügen"
+    >
+      <PlusIcon />
+      Rezept
+    </Link>
   );
 }

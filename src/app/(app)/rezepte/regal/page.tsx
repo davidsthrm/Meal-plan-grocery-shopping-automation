@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { ShelfRow } from "@/components/discover";
 import { ListMemory } from "@/components/list-return";
-import { RecipeViews } from "@/components/recipe-views";
+import { NewRecipeLink, RecipeViews } from "@/components/recipe-views";
 import { dayAndMonth } from "@/domain/dates";
 import { bookshelf, cookedShare, openBook, type ShelfBook } from "@/domain/library/bookshelf";
 import { bookOfTheDay, type Shelf } from "@/domain/library/discover";
@@ -45,7 +45,7 @@ const lastText = (day: string) => `Zuletzt am ${dayAndMonth(day)}`;
  * The Regal: the cookbooks and magazines as a shelf of spines, each as tall as it is thick
  * and with a bar for how much of it was cooked. One is taken out and lies open below: its
  * editions, what fits the season, what was never cooked from it, what was. The table of every
- * recipe, which was here before, is "Alle Rezepte" under Import (October 2026).
+ * recipe, which was here before, is "Alle Rezepte" on the import's page (October 2026).
  */
 export default async function BookshelfPage(props: PageProps<"/rezepte/regal">) {
   const params = await props.searchParams;
@@ -80,18 +80,18 @@ export default async function BookshelfPage(props: PageProps<"/rezepte/regal">) 
       <div className="mt-2">
         <RecipeViews current="regal" />
       </div>
+      {/* Where Entdecken has it, at the end of its search row. */}
+      <div className="mt-5 flex justify-end">
+        <NewRecipeLink />
+      </div>
 
       {shelf.length === 0 ? (
-        <p className="mt-8 text-muted">
-          Noch keine Kochbücher. Unter{" "}
-          <Link href="/import" className="link underline">
-            Import
-          </Link>{" "}
-          werden Seiten fotografiert und eingelesen.
+        <p className="mt-6 text-muted">
+          Noch keine Kochbücher. Mit „+ Rezept“ oben werden Seiten fotografiert und eingelesen.
         </p>
       ) : (
         <>
-          <nav aria-label="Kochbücher und Hefte" className="bookshelf mt-5">
+          <nav aria-label="Kochbücher und Hefte" className="bookshelf mt-3">
             {shelf.map((book) => (
               <Spine
                 key={book.name}

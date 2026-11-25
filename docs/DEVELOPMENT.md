@@ -73,6 +73,11 @@ that cost time before.
   reads it (a Sophos certificate in front of `*.vercel.app`, November 2026) the test
   browser refuses the page at its first step: `net::ERR_CERT_AUTHORITY_INVALID`. That says
   nothing about the deployment; run it from another network.
+- `next dev` shows its own notices (an "Insight" toast, the round "N") in the lower left
+  corner of the screen, where a phone's page ends with its last button since the sections
+  went to the top (24 November 2026): Playwright waited for them to move and the test timed
+  out ("nextjs-portal intercepts pointer events"). `signIn` hides them for the tests;
+  `devIndicators: false` in `next.config.ts` does not hide the toast.
 - To wait for a background test run, wait for a file the run writes when it ends. A loop on
   `pgrep -f "playwright test"` matches its own command line and never ends.
 

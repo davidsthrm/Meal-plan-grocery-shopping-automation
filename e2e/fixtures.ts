@@ -839,6 +839,16 @@ export async function signIn(
   page: Page,
   visit: "first" | "returning" = "returning",
 ): Promise<void> {
+  // The dev server's own notices stand in the lower left corner of a phone's screen, where a
+  // page's last button stands since the sections went to the top (24 November 2026), and
+  // took the taps meant for it. The family's app has none.
+  await page.context().addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent = "nextjs-portal { display: none !important; }";
+      document.head.append(style);
+    });
+  });
   if (visit === "returning") {
     await page.context().addCookies([
       {
