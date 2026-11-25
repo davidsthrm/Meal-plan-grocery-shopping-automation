@@ -35,10 +35,12 @@ measurements. Checking the whole library is in
 
 ## Adding recipes
 
-- Recipes are added on `/rezepte/hinzufuegen` (`AddRecipe`), from the top of the Import tab
-  or from "Rezept hinzufügen" on a meal planned as text: "Foto aufnehmen" is the camera
-  itself (`capture="environment"`), "Fotos wählen" the gallery, many at once, "Text
-  einfügen" and "Eintippen" open `/rezepte/neu`. The photos, more taken or picked, and the
+- Recipes are added on `/rezepte/hinzufuegen` (`AddRecipe`), from the top of the import's
+  page (`/import`, opened by "+ Rezept" on Rezepte and part of that section since 25
+  November 2026, [DESIGN.md](DESIGN.md#sections-and-header)) or from "Rezept hinzufügen"
+  on a meal planned as text: "Foto aufnehmen" is the camera itself
+  (`capture="environment"`), "Fotos wählen" the gallery, many at once, "Text einfügen" and
+  "Eintippen" open `/rezepte/neu`. The photos, more taken or picked, and the
   cookbook or magazine with its edition (one field, required), then "Fertig": the photos go
   to Storage three at a time, and `/api/import/[batchId]/run` answers at once and reads the
   batch on the server after the answer (`after`, `runBatch`, about four minutes:
@@ -46,9 +48,10 @@ measurements. Checking the whole library is in
   login while it is good for more than six minutes, thirty runs at most (`handOn`); it never
   renews the login, which would compete with the phone's. The phone can be put away. What
   is read without doubts is in the library, and on its meal where it was added from one
-  (`placeForMeal`); what has doubts waits under Import → Prüfen, and approving it plans it.
-  Anything left is read when the batch page is open. Measured (October 2026): one photo on
-  its meal 42 s after "Fertig"; two photos through five runs of a minute
+  (`placeForMeal`); what has doubts waits under "Prüfen" on the import's page, which
+  Entdecken points to ("… warten auf deine Prüfung"), and approving it plans it. Anything
+  left is read when the batch page is open. Measured (October 2026): one photo on its meal
+  42 s after "Fertig"; two photos through five runs of a minute
   (`IMPORT_RUN_BUDGET_MS=62000`, only to try the handing on), one taken over, one to check.
 - Recipes are added on an upload tab in the app. The model detects title and kind. The
   household enters what a photo cannot show: cookbook and, if not printed, the page. The

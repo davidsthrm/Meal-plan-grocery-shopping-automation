@@ -216,11 +216,12 @@ The paper metaphors in motion:
 - The week plan stands each day above its lunch and dinner from `sm` to `lg` (an iPad
   upright) and beside them from `lg` on; in a third of the width a long dish ran into its
   stepper.
-- The sections are Woche, Einkauf, Rezepte, Favoriten and Import. "Rezepte" has
-  two views at its top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to
-  find something to cook and "Regal" to leaf through the cookbooks. Looking after the library
-  ("Alle Rezepte") is under Import, beside bringing recipes in, where the earlier batches
-  were; those are folded below it.
+- The sections are Woche, Einkauf, Rezepte and Favoriten. "Rezepte" has two views at its
+  top, as the week has (`RecipeViews`, a segmented control): "Entdecken" to find something
+  to cook and "Regal" to leaf through the cookbooks. Bringing recipes in is the import's
+  page (`/import`), which "+ Rezept" on both views opens and which belongs to Rezepte (see
+  "Sections and header"). Looking after the library ("Alle Rezepte") is there, beside
+  bringing recipes in, where the earlier batches were; those are folded below it.
 
 ## Pictograms and logo
 
@@ -251,17 +252,25 @@ The paper metaphors in motion:
 
 ## Sections and header
 
-- The five sections are words in the header, no signs, no box, no pill (`AppNav`,
+- The four sections are words in the header, no signs, no box, no pill (`AppNav`,
   `.sections`): the open one in ink at 700 with a drawn stroke of the green highlighter
   under it, the others in the muted ink. On a phone they are a row of their own under the
-  logo, the Merkzettel and the account, as wide as the screen, the words shared out over
-  it; from `sm` on they stand in the header's line. Every word is at least 44px tall. Chosen
+  logo, the Merkzettel and the account, as wide as the screen, each word in the middle of a
+  quarter of it, all of which takes the tap (80px wide even at 320px); from `sm` on they
+  stand in the header's line. Every word is at least 44px tall. Chosen
   on 24 November 2026 from drafts injected into the real app: the words over
   register tabs and three sections, and on a phone at the top, fixed with the header, over
   a block that slides away while the page scrolls down (which would break the header's rule
   below). The header with its row is one block of 109px at 390px: header and strip took
   126px, and on an installed iPhone, where the strip took the home bar's inset too, about
   152px.
+- Four sections since 25 November 2026: Woche, Einkauf, Rezepte and Favoriten are places
+  gone to every week; Import, bringing recipes in, is a task done now and then. It is a
+  button on Rezepte, "+ Rezept" ([RECIPES.md](RECIPES.md#entdecken)), and every page under
+  `/import` belongs to Rezepte: the header marks Rezepte there (`also` in `AppNav`), so the
+  colour at the top is Rezepte's, and the import's page leads back to Rezepte. With five
+  words the phone's row shared out what was left between them, as a fifth of it would not
+  have held "Favoriten"; four have a quarter each.
 - History: from 22 November 2026 the sections were a strip of paper across the foot of a
   phone's screen (`.tabbar`), a sign above each name; before that, from October 2026, a
   round bar of liquid glass floating above the screen's foot (`GlassSurface`), which the
@@ -319,12 +328,14 @@ The paper metaphors in motion:
 
 - Each section has its pastel as a wash at the top of its pages, fading into the paper over
   22rem (`.app-shell`, `--section`: Woche sage #dbf1e3, Einkauf blue #daecfa, Rezepte
-  peach #ffdfc7, Favoriten blush #ffd8e2, Import lavender #ebe1ff), and the header's strip
-  in the same colour. It is read from the section the header marks as current, so it is there
-  from the first paint, and on a tap it fades over to the next section's in 300ms while the
-  page loads (David, 24 November 2026). Only the two layers that draw it fade: each fades its
-  own `--section-tint`, registered with `@property` and not inherited, towards `--section`.
-  Fading an inherited value would recalculate every element of the page in every frame.
+  peach #ffdfc7, also on the import's pages, which belong to Rezepte, Favoriten blush
+  #ffd8e2), and the header's strip in the same colour. Import's lavender (#ebe1ff) went
+  with its section on 25 November 2026. It is read from the section the header marks as
+  current, so it is there from the first paint, and on a tap it fades over to the next
+  section's in 300ms while the page loads (David, 24 November 2026). Only the two layers
+  that draw it fade: each fades its own `--section-tint`, registered with `@property` and
+  not inherited, towards `--section`. Fading an inherited value would recalculate every
+  element of the page in every frame.
 - History: from October 2026 the sections had such a pastel and a breath of green lay
   behind the header; on 22 November 2026 the household chose the paper alone (palette C1),
   and on 23 November 2026 asked for the colours back, softly, to give the app more life.

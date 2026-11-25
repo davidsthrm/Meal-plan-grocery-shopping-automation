@@ -314,6 +314,13 @@ after.
   typed into the search find them. There is no directory of every filter as tiles any more:
   it repeated the panel, and its names were cut off (October 2026). A library of up to
   thirty recipes is also shown whole.
+- "+ Rezept" (`NewRecipeLink`), the one green button, ends the row of the search and
+  "Filter": on an iPad and a laptop where a primary action is looked for, at the row's right
+  end; it leads to the import's page (`/import`), which was a section of its own until 25
+  November 2026 ([DESIGN.md](DESIGN.md#sections-and-header)). On a phone "Filter" is its
+  sign alone beside it (`action` of `FilterBar`): with both words the field was too narrow
+  for "Titel oder Zutat" at 375px. An empty library has the button in the same place, under
+  the switch.
 
 ## Regal
 
@@ -325,7 +332,8 @@ after.
   of what was cooked says that day instead of the time: on a phone there was no room for
   both, and "20 Min." stood over a dot of its own while the day was cut off (November 2026).
   Above the shelf stands how many recipes the library has, as on Entdecken, so that the
-  switch between the two stays where it is.
+  switch between the two stays where it is. "+ Rezept" stands at the right end of a row of
+  its own under the switch, where Entdecken has its search row and the button at its end.
 
 ## Recipe stack
 
