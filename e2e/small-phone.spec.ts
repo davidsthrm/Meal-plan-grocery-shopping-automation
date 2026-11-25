@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { planAsExtra, planHistory, resetLibrary, signIn } from "./fixtures";
+import { expectSearchRowWithAdd } from "./helpers";
 
 // The narrowest phone of the household's: 375 by 667 pixels, an iPhone SE. On it the week's
 // arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the strip of the
@@ -66,6 +67,13 @@ test("the week's row of arrows is one line on every week, and nothing stays unde
   // The header with the sections stays at the top, 109px tall: every control of the page
   // comes out whole below it somewhere on the way down.
   expect(await neverSeenWhole(page)).toEqual([]);
+});
+
+test("+ Rezept and Filter leave the search field room for its words @webkit", async ({ page }) => {
+  await page.goto("/rezepte");
+  // Filter is its sign alone here, "+ Rezept" keeps its word.
+  await expect(page.getByRole("button", { name: "Filter", exact: true })).toBeVisible();
+  await expectSearchRowWithAdd(page);
 });
 
 test("the Rezept-Stapel's three buttons stand clear of the screen's foot as the page opens @webkit", async ({

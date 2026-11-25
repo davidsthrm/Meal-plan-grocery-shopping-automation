@@ -37,3 +37,29 @@ export async function keptWith(page: Page, text: string): Promise<boolean> {
     { key: url.origin + url.pathname + url.search, text },
   );
 }
+
+/**
+ * On Entdecken: "+ Rezept" is the last thing in the search row, a finger tall, and the field
+ * beside it still has room for its words ("Titel oder Zutat").
+ */
+export async function expectSearchRowWithAdd(page: Page) {
+  const field = page.getByPlaceholder("Titel oder Zutat");
+  const add = page.getByRole("link", { name: "Rezept hinzufügen", exact: true });
+  const fieldBox = (await field.boundingBox())!;
+  const addBox = (await add.boundingBox())!;
+  const middle = (box: { y: number; height: number }) => box.y + box.height / 2;
+  expect(Math.abs(middle(addBox) - middle(fieldBox))).toBeLessThan(2);
+  expect(addBox.x).toBeGreaterThan(fieldBox.x + fieldBox.width);
+  const filter = page.getByRole("button", { name: "Filter", exact: true });
+  if (await filter.isVisible()) expect(addBox.x).toBeGreaterThan((await filter.boundingBox())!.x);
+  expect(addBox.height).toBeGreaterThanOrEqual(44);
+  const room = await field.evaluate((input: HTMLInputElement) => {
+    const style = getComputedStyle(input);
+    const context = document.createElement("canvas").getContext("2d")!;
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const inner =
+      input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    return inner - context.measureText(input.placeholder).width;
+  });
+  expect(room).toBeGreaterThanOrEqual(0);
+}
