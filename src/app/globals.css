@@ -4095,7 +4095,8 @@ details[open] > :not(summary) {
 }
 /*
  * Only before and while it runs: kept to its end, the motion left every page on a layer of
- * its own, which the iPhone drew over the bar of the sections (October 2026).
+ * its own, which the iPhone drew over the bar of the sections, then at the foot (October
+ * 2026).
  */
 main > *,
 .page > * {
@@ -4127,7 +4128,8 @@ html[data-going="back"] .page > * {
  * morph between two heights: the new page simply stands where it will stay.
  *
  * The old page is not drawn at all: Safari draws the picture of an old page over everything
- * else, the bar of the sections included, whatever its z-index (October 2026). One picture
+ * else, the header included, whatever its z-index (the bar of the sections at the foot in
+ * October 2026). One picture
  * less to move is also what the iPhone needed to move the new one smoothly.
  */
 ::view-transition-group(.nav-forward),

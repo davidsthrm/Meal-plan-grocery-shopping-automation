@@ -232,7 +232,7 @@ export function RecipeStack({ cards }: { cards: StackCard[] }) {
   return (
     <div className="stack">
       {/* Above the card: below its three buttons, the only way to take a swipe back lay under
-          the strip of the sections on a phone (November 2026). */}
+          the strip of the sections, then at a phone's foot (November 2026). */}
       <p className="stack-status" aria-live="polite">
         {failed ? (
           <span className="font-semibold text-warn">Nicht gespeichert. Bitte noch einmal.</span>

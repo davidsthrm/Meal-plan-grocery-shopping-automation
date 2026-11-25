@@ -11,7 +11,8 @@ test.beforeEach(async ({ page }) => {
 /**
  * Ticks or unticks a weekday chip the way a finger does, on its visible label. The box itself
  * is hidden for screen readers only; clicked by force at its spot, the click could land on
- * the bar at the bottom of a phone.
+ * whatever lies over it, as the strip of the sections did at a phone's foot until 24
+ * November 2026.
  */
 async function setDay(page: Page, name: string, on: boolean) {
   const box = page.getByLabel(name);

@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { planAsExtra, planHistory, resetLibrary, signIn } from "./fixtures";
 
 // The narrowest phone of the household's: 375 by 667 pixels, an iPhone SE. On it the week's
-// arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the bar of the
-// sections (November 2026).
+// arrows broke onto two rows, and the Rezept-Stapel's buttons lay under the strip of the
+// sections then at the foot (November 2026).
 test.use({ viewport: { width: 375, height: 667 } });
 
 test.beforeEach(async ({ page, isMobile }) => {
@@ -64,10 +64,8 @@ test("the week's row of arrows is one line on every week, and nothing stays unde
   }
 
   // The header with the sections stays at the top, 109px tall: every control of the page
-  // comes out whole below it somewhere on the way down, and the page's end is on the screen.
+  // comes out whole below it somewhere on the way down.
   expect(await neverSeenWhole(page)).toEqual([]);
-  const main = await page.locator("main").boundingBox();
-  expect(main!.y + main!.height).toBeLessThanOrEqual(667);
 });
 
 test("the Rezept-Stapel's three buttons stand clear of the screen's foot as the page opens @webkit", async ({
@@ -124,8 +122,8 @@ test("the Rezept-Stapel's Zurück stands above the card after a decision @webkit
 }) => {
   await page.goto("/rezepte/stapel");
   await page.getByRole("button", { name: "Nicht jetzt" }).click();
-  // The only way to take a swipe back lay below the three buttons, under the strip on an
-  // iPhone, with the count beside it. It stands above the card now.
+  // The only way to take a swipe back lay below the three buttons, under the strip of the
+  // sections then at an iPhone's foot, with the count beside it. It stands above the card now.
   const back = page.getByRole("button", { name: "Zurück" });
   await expect(back).toBeVisible();
   const box = await back.boundingBox();

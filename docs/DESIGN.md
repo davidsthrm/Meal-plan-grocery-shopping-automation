@@ -199,7 +199,7 @@ The paper metaphors in motion:
   ticked. It is put directly into the body: every page comes in with a transform (`page-in`),
   and inside a transformed element "fixed" is fixed to that element, not to the screen. The
   recipe form's "Speichern" bar (`.save-bar`) is put there too: inside the page it stood
-  narrower and off the strip while the page came in, and jumped into place (24 November
+  narrower and off the screen's foot while the page came in, and jumped into place (24 November
   2026).
 
 ## Layout and screens
@@ -294,7 +294,8 @@ The paper metaphors in motion:
   foot it covered that button for five seconds after each decision (25 November 2026,
   `e2e/shop-deviations.spec.ts`). The Rezept-Stapel's deck takes what the screen
   has left between the header and its three buttons, both insets taken off: at its old
-  height they lay under the strip on a 375px phone (November 2026); its "Zurück" stands
+  height they lay under the strip of the sections, then at the foot, on a 375px phone
+  (November 2026); its "Zurück" stands
   above the card for the same reason, all of its 44px: its foot lay over the card, and a
   tap there opened the recipe. `e2e/small-phone.spec.ts` checks them, and that nothing of a
   page stays under the header.
@@ -382,7 +383,8 @@ Prefetching, `staleTimes` and what is read when: see [ARCHITECTURE.md](ARCHITECT
 - Going in or back takes 240ms; another section, changed dozens of times a day,
   200ms over a shorter way. A blur at the start stuttered on the iPhone and was taken out.
 - The old page is not drawn at all: Safari draws the picture of an old page over everything,
-  the bar of the sections included, whatever its z-index, and one picture less is what the
+  the header included, whatever its z-index (in October 2026 the bar of the sections at the
+  foot), and one picture less is what the
   iPhone needed to move smoothly.
 - While a page moves, the header with the sections is a view of its own above it
   (`app-header`), shown at once in its new state. Only then: a named element is a backdrop
