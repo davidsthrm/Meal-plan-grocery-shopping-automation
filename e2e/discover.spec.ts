@@ -10,13 +10,17 @@ test("the library has a recipe of the day, themes and shelves to browse", async 
   await page.goto("/rezepte");
   await expect(page.getByRole("heading", { name: "Entdecken" })).toBeVisible();
   await expect(page.getByText("20 Rezepte im Kochbuch")).toBeVisible();
-  // Favourites and wishes have a page of their own, and recipes are added under Import.
+  // Favourites and wishes have a page of their own, and recipes are added on the import's
+  // page, which "+ Rezept" leads to.
   await expect(page.getByRole("region", { name: "Favoriten", exact: true })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Möchte ich kochen" })).toHaveCount(0);
   await expect(
     page.getByRole("group", { name: "Filter" }).getByRole("link", { name: "Favoriten" }),
   ).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Rezept hinzufügen" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Rezept hinzufügen", exact: true })).toHaveAttribute(
+    "href",
+    "/import",
+  );
 
   // A recipe of the day to plan at once, and a theme says what is behind it and how many.
   await expect(

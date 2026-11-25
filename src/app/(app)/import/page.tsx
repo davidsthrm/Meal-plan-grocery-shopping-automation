@@ -14,6 +14,7 @@ import { loadSources } from "@/server/sources";
 import { CheckTiles, CheckTilesWithLibrary } from "./library-checks";
 import { NewBatchForm } from "./new-batch-form";
 import { AddRecipe } from "@/components/add-recipe";
+import { BackLink } from "@/components/back-link";
 
 export const metadata: Metadata = { title: "Import" };
 
@@ -92,7 +93,13 @@ export default async function ImportPage(props: PageProps<"/import">) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="title">Rezept hinzufügen</h1>
+      {/* Reached by "+ Rezept" on Rezepte, or from a meal planned as text: back to either. */}
+      <BackLink
+        href={forMeal ? `/woche?w=${mondayOf(forMeal.date)}#tag-${forMeal.date}` : "/rezepte"}
+      >
+        {forMeal ? "Wochenplan" : "Rezepte"}
+      </BackLink>
+      <h1 className="title mt-2">Rezept hinzufügen</h1>
       <p className="mt-1 text-muted">
         Was sicher gelesen wurde, landet direkt bei den Rezepten. Alles andere bekommst du unten zum
         Prüfen.

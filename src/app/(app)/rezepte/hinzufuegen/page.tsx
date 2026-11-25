@@ -14,7 +14,7 @@ const one = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value) ?? "";
 
 /**
- * Adding a recipe, from the Import tab or from a meal planned as text: a photo of the page,
+ * Adding a recipe, from the import's page or from a meal planned as text: a photo of the page,
  * pasted text, or typed in. Started from a meal, the recipe goes there once it is read.
  */
 export default async function AddRecipePage(props: PageProps<"/rezepte/hinzufuegen">) {

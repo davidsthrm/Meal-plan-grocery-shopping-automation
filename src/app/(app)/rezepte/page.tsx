@@ -22,7 +22,7 @@ import {
   panelGroups,
   WaysOut,
 } from "@/components/recipe-filters";
-import { RecipeViews } from "@/components/recipe-views";
+import { NewRecipeLink, RecipeViews } from "@/components/recipe-views";
 import {
   categoryTabs,
   discover,
@@ -153,13 +153,15 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
       )}
 
       {recipes.length === 0 ? (
-        <p className="mt-8 text-muted">
-          Noch keine Rezepte. Unter{" "}
-          <Link href="/import" className="link underline">
-            Import
-          </Link>{" "}
-          kannst du Kochbuchseiten fotografieren und einlesen lassen.
-        </p>
+        <>
+          <div className="mt-5 flex justify-end">
+            <NewRecipeLink />
+          </div>
+          <p className="mt-6 text-muted">
+            Noch keine Rezepte. Mit „+ Rezept“ oben kannst du Kochbuchseiten fotografieren und
+            einlesen lassen.
+          </p>
+        </>
       ) : (
         <div className="mt-5">
           <FilterLayout
@@ -180,6 +182,7 @@ export default async function DiscoverPage(props: PageProps<"/rezepte">) {
               layout={layout}
               chips={activeChips(list.groups, href)}
               reset={reset}
+              action={<NewRecipeLink />}
             />
 
             {browsing && <CategoryTabsNav tabs={tabs} current={tab?.key ?? null} />}

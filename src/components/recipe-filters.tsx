@@ -253,11 +253,15 @@ interface BarProps {
   reset: string | null;
   plan?: { action: (form: FormData) => Promise<void>; fields: Record<string, string> };
   placeholder?: string;
+  /** The page's own button, at the row's end ("+ Rezept"). */
+  action?: ReactNode;
 }
 
 /**
  * Above the list: the search field with "Filter" beside it (on a phone, or wherever the
- * panel is a sheet), and what is on as chips to take away.
+ * panel is a sheet), and what is on as chips to take away. Beside a button of the page's own,
+ * "Filter" is its sign alone on a phone, where both words left the field too narrow for
+ * "Titel oder Zutat".
  */
 export function FilterBar({
   id = "filter",
@@ -269,6 +273,7 @@ export function FilterBar({
   reset,
   plan,
   placeholder,
+  action,
 }: BarProps) {
   const count = chips.length;
   return (
@@ -282,16 +287,19 @@ export function FilterBar({
         plan={plan}
         placeholder={placeholder}
         extra={
-          <button
-            type="button"
-            popoverTarget={id}
-            className={`btn filter-open ${layout === "aside" ? "tablet:hidden" : ""} ${count > 0 ? "filter-open-on" : ""}`}
-            aria-label={count > 0 ? `Filter, ${count} an` : "Filter"}
-          >
-            <FilterIcon />
-            <span className="max-[22rem]:sr-only">Filter</span>
-            {count > 0 && <span className="filter-on-count">{count}</span>}
-          </button>
+          <>
+            <button
+              type="button"
+              popoverTarget={id}
+              className={`btn filter-open ${layout === "aside" ? "tablet:hidden" : ""} ${count > 0 ? "filter-open-on" : ""} ${action ? "max-sm:px-3" : ""}`}
+              aria-label={count > 0 ? `Filter, ${count} an` : "Filter"}
+            >
+              <FilterIcon />
+              <span className={action ? "max-sm:sr-only" : "max-[22rem]:sr-only"}>Filter</span>
+              {count > 0 && <span className="filter-on-count">{count}</span>}
+            </button>
+            {action}
+          </>
         }
       />
       {count > 0 && (

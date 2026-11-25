@@ -29,7 +29,7 @@ interface Photo {
  * magazine with its edition, and "Fertig" uploads them and has the server read them
  * (`/api/import/[batchId]/run`). The phone can be put away then. A recipe read without
  * doubts goes into the library, and onto its meal when it was added from one; anything
- * unclear waits under Import → Prüfen.
+ * unclear waits for a review, which Rezepte points to.
  */
 export function AddRecipe({
   sources,
@@ -121,7 +121,7 @@ export function AddRecipe({
             : many
               ? "Was sicher gelesen ist, steht nach und nach bei den Rezepten. Du kannst das Handy weglegen. "
               : "Sobald es gelesen ist, steht es bei den Rezepten. "}
-          Ist etwas unklar, findest du es unter Import → Prüfen.
+          Ist etwas unklar, wartet es unter Rezepte auf deine Prüfung.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {forMeal ? (
