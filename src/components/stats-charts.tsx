@@ -44,33 +44,40 @@ export function NotYet({ children }: { children: ReactNode }) {
   return <p className="not-yet">{children}</p>;
 }
 
-/** A large figure with what it is: "38 · Mahlzeiten gekocht". */
+/**
+ * A large figure with what it is, on the paper: "38 · Mahlzeiten gekocht". The figures were
+ * tiles filled with the kinds' pastels, and the colours marked what was no kind: the blue of
+ * fish "Verschiedene Gerichte", the red of meat "Nicht gekauft" (audit, 24 November 2026).
+ * One that leads somewhere has its words as a link.
+ */
 export function Figure({
   value,
   label,
   detail,
-  tone = "",
   href,
 }: {
   value: string;
   label: string;
   detail?: string | null;
-  tone?: string;
   href?: string;
 }) {
   const body = (
     <>
       <span className="stat-number">{value}</span>
-      <span className="mt-1 block font-semibold leading-snug">{label}</span>
-      {detail && <span className="mt-0.5 block text-sm leading-snug opacity-80">{detail}</span>}
+      <span
+        className={`mt-1 block text-sm leading-snug ${href ? "font-bold text-accent underline underline-offset-4" : "text-muted"}`}
+      >
+        {label}
+      </span>
+      {detail && <span className="mt-0.5 block text-xs leading-snug text-muted">{detail}</span>}
     </>
   );
   return href ? (
-    <Link href={href} className={`stat-figure lift ${tone}`}>
+    <Link href={href} className="stat-figure">
       {body}
     </Link>
   ) : (
-    <div className={`stat-figure ${tone}`}>{body}</div>
+    <div className="stat-figure">{body}</div>
   );
 }
 

@@ -80,7 +80,10 @@ are in [SHOPPING.md](SHOPPING.md).
   the moment of what was there (`plannedWhen`). Null for what was planned before each was
   recorded.
 - "Alle Wochen" (`/woche/verlauf`) lists every week with a plan, month by month and newest
-  first, with its calendar week, its meals day by day and its count per kind. A week counts
+  first, with its calendar week, its meals day by day and its count per kind, as the week's
+  count says it: a dot, the number and the kind's name (`.balance-row`); bare dots with
+  numbers said little, and a rule under each month's name was one line more (audit, 24
+  November 2026). A week counts
   for the month most of its days are in. The week being planned is always listed. Its days
   stand in seven columns only from `lg` on; below, each day is a line: on an iPad upright a
   column cut nearly every dish to seven to nine letters, "Käsespät…" (audit, 24 November
@@ -93,7 +96,10 @@ are in [SHOPPING.md](SHOPPING.md).
   (main dish, soup, salad, cold supper, or no category), so a cake is no vegetarian dinner.
 - What the household aims for per week (`DEFAULT_TARGETS`): at least 3 vegetarian meals and
   1 fish meal, at most 2 with poultry and 2 with red meat. The household sets its own on
-  `/woche/ziele` (`household.balance_targets`, read with `readTargets`). Every device is shown
+  `/woche/ziele` (`household.balance_targets`, read with `readTargets`). "höchstens" offers
+  nothing below "mindestens" and rises with it (`TargetsFields`): a pair that did not fit was
+  refused only after "Speichern", and the page came back without every other change (audit,
+  24 November 2026). Every device is shown
   that page once before the plan, remembered in the cookie `ziele-gesehen`: each person
   should see the goals and be able to change them, but they belong to the household. The
   admin is asked on `/woche/ziele?start=1`; every other member is welcomed on `/willkommen`.
@@ -126,7 +132,12 @@ are in [SHOPPING.md](SHOPPING.md).
   (`plan_slot_food.quantity`; "1 Dinkelbaguette", "1x Dinkelbaguette" on the note). Such a
   side stored before foods had a number counts as one too (`asSide`, when a week is read). It may name where it is bought
   for that meal (`VESPER_FOODS`: bread from the Bäcker, cold cuts from the Metzger), whatever
-  the catalog says for cooking. Foods are copied with the meal to the next week.
+  the catalog says for cooking. Foods are copied with the meal to the next week. Each of
+  those foods is a chip that stays in its place, on once chosen and off again with a second
+  tap; only what was typed is listed as chosen, with its amount and shop, also a chip's food
+  typed with an amount or shop its chip would not add ("8 Brötchen" from the Metzger). A chosen chip
+  went from its row, the rest moved up under the thumb, and a quick next tap added the
+  wrong food (audit, 24 November 2026). The same holds for "Dazu, ohne Rezept".
 - A meal with recipes can carry foods too, what goes with it and has no recipe: a spelt
   baguette with Sunday's soup (`PlanSlot.foods` on a "recipes" meal, the same
   `plan_slot_food`). The recipe chooser offers them under "Dazu, ohne Rezept" once the meal
@@ -157,6 +168,9 @@ are in [SHOPPING.md](SHOPPING.md).
 - A plan the household is done with is saved (`week_plan.saved_at`, "Plan speichern"). A
   saved plan is read: the meals stand there without the controls for planning, without
   suggestions, and each with a small pen that opens that one meal (`?stift=<date>.<meal>`).
+  The pen stays open while the meal is changed, its persons, extra portions and "Mehr
+  kochen", until "Fertig": one step of the persons closed it, and the next tap landed on a
+  meal to read (audit, 24 November 2026).
   "Plan bearbeiten" opens the whole plan again. Saving is a decision, not a date: a week
   that has begun is not locked by itself. A saved meal shows beside its dish for how many it
   is cooked, a person's sign and the number as on the stepper; a recipe's own unit stands
@@ -179,7 +193,11 @@ are in [SHOPPING.md](SHOPPING.md).
   ("Noch nie gekocht"), and -2 for each main ingredient or kind of dish the week has already
   ("Schon Hackfleisch diese Woche": the tags of "Hauptzutat" and "Gericht", `varietyTags`,
   `tagsOfWeek`; a cuisine may come twice). A suggestion names its two strongest reasons,
-  what speaks for it first (`whyText`); more made a box of small print. Favourites are no
+  what speaks for it first (`whyText`); more made a box of small print. A reason against
+  after one for follows an "aber", "Auf der Wunschliste, aber erst vor einer Woche gekocht":
+  joined by the same dot as two reasons for, it read as one more reason to cook it, and a
+  wish said "Möchtest du kochen" to whoever looked, though someone else may have marked it
+  (audit, 24 November 2026). Favourites are no
   more than a third of any list of suggestions (`mixFavorites`, `FAVORITE_SHARE`): with +2
   they won every tie, and the household was offered its favourites over and over. A
   favourite someone wants to cook counts as a wish. Equal recipes are ordered by a seed (week, meal), so the
@@ -242,7 +260,11 @@ are in [SHOPPING.md](SHOPPING.md).
 - "Mehr kochen" on a planned meal cooks extra portions for leftovers. They are the meal's own
   number (`plan_slot.extra_servings`, `PlanSlot.extra`), apart from its persons: the meal
   shows "4 Personen" and below "2 Extra-Portionen" with minus and plus, so a third person at
-  the leftovers makes it 3; zero cooks the meal as planned again. The list buys them with
+  the leftovers makes it 3; zero cooks the meal as planned again. They stand over a dashed
+  rule with the meal they are for beside them, and "Mehr kochen" opens under a dashed rule
+  with its two fields in one row: a dashed box and a tinted card were boxes in the sheet,
+  and the card's fields stacked and pushed "Übernehmen" under the strip (audit, 24 November
+  2026). The list buys them with
   every recipe of the meal that is cooked for persons (`cookedServings`); a cake for one tin
   is not baked twice. The later meal picked for the leftovers, an open lunch or dinner of the
   next three days (`openMealsAfter`, `LEFTOVER_DAYS`), becomes "Reste" with the meal it is
@@ -277,7 +299,12 @@ are in [SHOPPING.md](SHOPPING.md).
 - A planned meal is two lines: its dish with the persons as a small stepper beside it ("− 4
   +", a person's sign and the number, "4 Personen" for a screen reader; a recipe with a unit
   of its own shows that below the dish), and its actions as signs in one row, each with its
-  words as label and title: a pen to change it, a plus for a side, a bin to empty it;
+  words as label and title: a pen to change it, a plus for a side, a bin to empty it at
+  once, with "Mo Abend geleert · Widerrufen" at the foot for five seconds (`MealSection`,
+  `restoreSlot`), also when its last recipe is stepped to nothing. The way back writes the
+  meal again, persons, foods and extra portions, unless it was planned meanwhile, and the
+  leftovers planned from it are its again. One tap beside the plus had erased all of it for
+  good, while the whole week asks first (audit, 24 November 2026);
   "Mehr kochen" is the one word among them, a quiet grey word (`.link-quiet`: as a green
   pill it outshone the meal) that opens its form under the row
   (`?mehr=<date>.<meal>`, "Übernehmen" or "Abbrechen"), the way a suggestion is asked for.
@@ -352,7 +379,11 @@ are in [SHOPPING.md](SHOPPING.md).
   "Zum ersten Mal" four weeks of plans before the period, "Mal wieder" eight weeks of plans.
 - Charts are HTML drawn on the server in the kinds' pastels (`stats-charts.tsx`), the
   supermarket a warm grey beside the market's green. Nothing grows or counts up: the
-  figures are read. A new period or view fades in where the old one stood (`.stats-in`).
+  figures are read. A figure is its number on the paper with what it is muted below
+  (`Figure`), a weekly goal a row as the week's count is, with a 44px dot per week, and a
+  statistic with too little behind it one muted line, without the kinds' pastels (why:
+  [DESIGN.md](DESIGN.md#colours-of-kinds)). The arrows of the period stand beside its
+  name, as the week's beside its range: on a phone they took a third row of controls. A new period or view fades in where the old one stood (`.stats-in`).
   Not counted yet: wishes fulfilled (the mark goes when a recipe is planned), amounts bought,
   spending, and what ran out at home.
 - "Entdeckt", as wide as the large cards (`discoveryStats`, `src/domain/stats/discovery.ts`):

@@ -94,3 +94,15 @@ test.describe("statistics", () => {
     await shot("statistik-einkauf");
   });
 });
+
+// From sm on a segmented control stands inline, and the period's stood beside the area's on
+// an iPad and a desktop (review, 24 November 2026).
+test("the area and the period are chosen on rows of their own", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/woche/statistik");
+  const area = await page.getByRole("navigation", { name: "Bereich", exact: true }).boundingBox();
+  const period = await page
+    .getByRole("navigation", { name: "Zeitraum", exact: true })
+    .boundingBox();
+  expect(period!.y).toBeGreaterThanOrEqual(area!.y + area!.height);
+});

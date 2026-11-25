@@ -60,13 +60,11 @@ export function ShoppingView({
           value={String(stats.bought)}
           label={stats.bought === 1 ? "Eintrag gekauft" : "Einträge gekauft"}
           detail={errands > 0 ? `${num(stats.bought / errands)} pro Einkauf` : null}
-          tone="kind-vegetarian"
         />
         <Figure
           value={String(stats.places.length)}
           label={stats.places.length === 1 ? "Geschäft" : "Geschäfte"}
           detail={stats.places.map((row) => PLACE_NAME[row.place]).join(", ") || null}
-          tone="kind-fish"
         />
         <Figure
           value={deviations ? percent(deviations.removed, deviations.decided) : "–"}
@@ -76,7 +74,6 @@ export function ShoppingView({
               ? `${deviations.removed} von ${deviations.decided} entschiedenen Einträgen`
               : null
           }
-          tone="kind-red_meat"
         />
       </div>
 

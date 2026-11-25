@@ -598,13 +598,24 @@ export async function changeItem(
   recipeId: string,
   servings: number | null,
 ): Promise<void> {
+  // Other servings change the recipe's row in place. Written anew, the meal read as empty on
+  // other devices for a moment, and an insert that failed took the whole meal with it (audit,
+  // 24 November 2026).
+  if (servings !== null) {
+    const found = await findSlot(db, householdId, weekStart, date, meal);
+    if (found.slot?.kind !== "recipes") return;
+    const changed = await db
+      .from("plan_slot_item")
+      .update({ servings })
+      .eq("plan_slot_id", found.slot.id)
+      .eq("recipe_id", recipeId);
+    if (changed.error) throw new Error(`change servings: ${changed.error.message}`);
+    return;
+  }
   const loaded = await loadSlot(db, householdId, weekStart, date, meal);
   const existing = loaded.slot;
   if (existing?.kind !== "recipes") return;
-  const items = existing.items.flatMap((item) => {
-    if (item.recipeId !== recipeId) return [item];
-    return servings === null ? [] : [{ ...item, servings }];
-  });
+  const items = existing.items.filter((item) => item.recipeId !== recipeId);
   await writeSlot(
     db,
     householdId,

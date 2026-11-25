@@ -13,11 +13,13 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   await signIn(page, "first");
   await expect(page.getByRole("heading", { name: "Ziele der Woche" })).toBeVisible();
 
-  // What makes no sense is refused with a reason.
+  // "höchstens" offers nothing below "mindestens", and rises with it: a pair that did not
+  // fit was refused only after "Speichern" (audit, 24 November 2026).
+  const most = page.getByLabel("Fisch höchstens");
+  await most.selectOption("2");
   await page.getByLabel("Fisch mindestens").selectOption("5");
-  await page.getByLabel("Fisch höchstens").selectOption("2");
-  await page.getByRole("button", { name: "Speichern" }).click();
-  await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
+  await expect(most).toHaveValue("5");
+  await expect(most.locator("option", { hasText: /^2 mal$/ })).toHaveCount(0);
 
   await page.getByLabel("Fisch mindestens").selectOption("2");
   await page.getByLabel("Fisch höchstens").selectOption("");
@@ -35,6 +37,20 @@ test("the first visit on a device asks what a week should contain", async ({ pag
   await expect(page).toHaveURL(/\/woche$/);
   await page.getByRole("link", { name: "Ziele ändern" }).click();
   await expect(page.getByLabel("Fisch mindestens")).toHaveValue("2");
+});
+
+// Before the page's script has run, "höchstens" still offers what lies below a new
+// "mindestens": the server refuses such a pair (review, 24 November 2026). Without the script
+// the page never shows (it streams in), so the pair is put into the form by hand.
+test("goals that do not fit together are refused with a reason", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/woche/ziele");
+  await page.getByLabel("Fisch mindestens").selectOption("5");
+  await page.getByLabel("Fisch höchstens").evaluate((select: HTMLSelectElement) => {
+    select.add(new Option("2 mal", "2", true, true));
+  });
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
 });
 
 test("the goals can be left as they are", async ({ page }) => {
@@ -106,11 +122,13 @@ test("a cold supper gets the things to buy for it", async ({ page }) => {
   await page.getByRole("link", { name: "Montag Abend: Lebensmittel" }).click();
   await expect(page.getByRole("heading", { name: "Lebensmittel für Vesper" })).toBeVisible();
 
-  // One tap, and bread for a cold supper comes from the bakery.
+  // One tap, and bread for a cold supper comes from the bakery: its chip is on.
   await page.getByRole("button", { name: "Brot hinzufügen" }).click();
-  const chosen = page.getByRole("region", { name: "Ausgewählt" });
-  await expect(chosen).toContainText("Brot · Bäcker");
+  await expect(page.getByRole("button", { name: "Brot entfernen" })).toContainText("Bäcker");
   await expect(page.getByRole("button", { name: "Brot hinzufügen" })).toHaveCount(0);
+
+  // What is typed is listed as chosen, with where it is bought.
+  const chosen = page.getByRole("region", { name: "Ausgewählt" });
 
   await page.getByLabel("Anderes Lebensmittel").fill("Obatzter");
   await page.getByLabel("Wo wird es gekauft?").selectOption("Metzger");
@@ -118,7 +136,16 @@ test("a cold supper gets the things to buy for it", async ({ page }) => {
   await expect(chosen).toContainText("Obatzter · Metzger");
   await page.getByRole("button", { name: "Gurke hinzufügen" }).click();
   await page.getByRole("button", { name: "Obatzter entfernen" }).click();
-  await expect(chosen).not.toContainText("Obatzter");
+  await expect(chosen).toHaveCount(0);
+
+  // A chip's food typed with an amount and a shop of its own is listed too: its chip, on,
+  // shows neither.
+  await page.getByLabel("Anderes Lebensmittel").fill("8 Brötchen");
+  await page.getByLabel("Wo wird es gekauft?").selectOption("Metzger");
+  await page.getByRole("button", { name: "Hinzufügen", exact: true }).click();
+  await expect(chosen).toContainText("8 Brötchen · Metzger");
+  await page.getByRole("button", { name: "Brötchen entfernen" }).first().click();
+  await expect(chosen).toHaveCount(0);
 
   await page.getByRole("link", { name: "Fertig" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("Brot, Gurke");
@@ -136,7 +163,7 @@ test("a meal with a recipe takes bread to go with it, which the bakery's note bu
   const sides = page.getByRole("region", { name: "Dazu, ohne Rezept" });
   await sides.getByRole("button", { name: "Dinkelbaguette dazu" }).click();
   await expect(page.getByRole("status").first()).toContainText("Pilzrisotto + 1 Dinkelbaguette");
-  await expect(sides.getByRole("button", { name: "Dinkelbaguette dazu" })).toHaveCount(0);
+  await expect(sides.getByRole("button", { name: "Dinkelbaguette entfernen" })).toBeVisible();
 
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   const sunday = meal(page, "Sonntag Mittag");

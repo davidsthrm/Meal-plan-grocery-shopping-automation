@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plannedAtText, targetText } from "./plan-text";
+import { plannedAtText, targetText, whyText } from "./plan-text";
 
 describe("plannedAtText", () => {
   it("names the meal and its day", () => {
@@ -35,5 +35,33 @@ describe("targetText", () => {
     expect(targetText(line(0, null, 2))).toBe("max. 2");
     expect(targetText(line(2, null, 2))).toBe("max. 2");
     expect(targetText(line(0, null, null))).toBe("");
+  });
+});
+
+describe("whyText", () => {
+  it("joins two reasons for a recipe with a dot", () => {
+    expect(whyText([{ kind: "wanted" }, { kind: "favorite" }])).toBe(
+      "Auf der Wunschliste · Favorit",
+    );
+  });
+
+  // Audit, 24 November 2026: "Möchtest du kochen · Erst vor einer Woche gekocht" read as two
+  // reasons for it.
+  it("says a reason against after one for with an aber", () => {
+    expect(whyText([{ kind: "wanted" }, { kind: "recent", weeks: 1 }])).toBe(
+      "Auf der Wunschliste, aber erst vor einer Woche gekocht",
+    );
+    expect(whyText([{ kind: "never_cooked" }, { kind: "repeats", tag: "Hackfleisch" }])).toBe(
+      "Noch nie gekocht, aber schon Hackfleisch diese Woche",
+    );
+  });
+
+  it("joins two reasons against with a dot", () => {
+    expect(
+      whyText([
+        { kind: "recent", weeks: 2 },
+        { kind: "group_full", group: "fish" },
+      ]),
+    ).toBe("Erst vor 2 Wochen gekocht · Schon genug Fisch diese Woche");
   });
 });

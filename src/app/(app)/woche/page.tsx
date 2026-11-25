@@ -49,6 +49,7 @@ import { firstName, salutation } from "@/domain/family";
 import type { RecipeSummary } from "@/domain/library/summary";
 import { openingWeek } from "@/domain/planned";
 import {
+  contentOf,
   cookedServings,
   LEFTOVER_DAYS,
   mealsOf,
@@ -91,6 +92,7 @@ import { loadSeasonalFoods, withSeason } from "@/server/season";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { CookMore, ExtraPortions } from "./cook-more";
+import { MealSection, MealUndoBar } from "./meal-undo";
 import {
   acceptSuggestions,
   changeExtraServings,
@@ -165,13 +167,12 @@ export default async function WeekPage(props: PageProps<"/woche">) {
   const taken = new Set([...slots, ...nextSlots].map((slot) => slotKey(slot.date, slot.meal)));
   const laterMeals = (date: IsoDate, meal: Meal) =>
     openMealsAfter({ date, meal }, taken, addDays(date, LEFTOVER_DAYS));
-  // A meal cooked for leftovers says on which meal they are eaten.
-  const leftoversOn = (slot: PlanSlot | undefined) => {
-    const on = [...slots, ...nextSlots].find(
-      (other) => other.kind === "leftovers" && slot && other.ofSlotId === slot.id,
-    );
-    return on ? { date: on.date, meal: on.meal } : null;
-  };
+  // A meal cooked for leftovers says on which meal they are eaten: mostly one, more where
+  // "Mehr kochen" was used again once its extra portions were back to none.
+  const leftoversOn = (slot: PlanSlot | undefined) =>
+    [...slots, ...nextSlots]
+      .filter((other) => other.kind === "leftovers" && slot && other.ofSlotId === slot.id)
+      .map((on) => ({ date: on.date, meal: on.meal }));
   // Leftovers say which meal they are from, where it is in this week.
   const leftoversOf = (slot: PlanSlot | undefined) => {
     const from =
@@ -395,6 +396,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     <div className="mx-auto max-w-5xl">
       {/* Back from a recipe, the plan stands where it was left: at the meal being planned. */}
       <ListMemory />
+      <MealUndoBar />
       {showToday ? (
         /*
          * Once something is planned for today or the weekend, it stands next to the greeting
@@ -435,7 +437,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
               <input type="hidden" name="recipe" value={placing.id} />
               <SubmitButton className="btn btn-small">Zu keiner Mahlzeit</SubmitButton>
             </form>
-            <Link href={`/woche?w=${week}`} className="link">
+            <Link href={`/woche?w=${week}`} className="link min-h-11">
               Abbrechen
             </Link>
           </span>
@@ -468,7 +470,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           {!showExtras && (
             /* One row at 375px too: the signs are round and as wide as a finger, the words
                 hug theirs closer, and nothing stands between them (23 November 2026). */
-            <div className="flex flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end sm:gap-2">
+            <div className="plan-actions flex flex-wrap items-center gap-1.5 sm:ml-auto sm:justify-end sm:gap-2">
               {picks.length > 0 && (
                 <form action={acceptSuggestions}>
                   <input type="hidden" name="week" value={week} />
@@ -1059,8 +1061,8 @@ interface CellProps {
   servings: number;
   /** For leftovers: the meal they are from, "von Mo Mittag", where it is known. */
   leftoversOf: string | undefined;
-  /** For a meal cooked for leftovers: the meal they are eaten at, where one is planned. */
-  leftoversOn: { date: IsoDate; meal: Meal } | null;
+  /** For a meal cooked for leftovers: the meals they are eaten at, where planned. */
+  leftoversOn: { date: IsoDate; meal: Meal }[];
   /** "Mehr kochen" is open under this meal. */
   cookingMore: boolean;
 }
@@ -1181,12 +1183,29 @@ function MealCell({
     );
   }
 
+  // A saved meal keeps its pen while it is changed: only "Fertig" puts it down.
+  const pen = withPen ? `${date}.${meal}` : null;
   return (
-    <section aria-label={what} className={cell}>
+    <MealSection
+      label={what}
+      className={cell}
+      week={week}
+      date={date}
+      meal={meal}
+      said={`${weekdayShort(date)} ${MEAL_NAME[meal]}`}
+      was={slot ? contentOf(slot) : null}
+      leftovers={leftoversOn.map((on) => `${on.date}.${on.meal}`)}
+    >
       <p className="eyebrow flex items-center justify-between gap-2">
         {MEAL_NAME[meal]}
         {withPen && (
-          <Link href={`/woche?w=${week}#tag-${date}`} scroll={false} className="link">
+          // As tall as a finger, as the pen it stands for: at 36 by 17 it was the smallest
+          // way out of the meal (audit, 24 November 2026).
+          <Link
+            href={`/woche?w=${week}#tag-${date}`}
+            scroll={false}
+            className="link link-quiet -my-2 inline-flex min-h-11 items-center px-2"
+          >
             Fertig
           </Link>
         )}
@@ -1215,7 +1234,7 @@ function MealCell({
                 />
                 <ServingsStepper
                   action={changeServings}
-                  fields={{ week, date, meal, recipe: item.recipeId }}
+                  fields={{ week, date, meal, recipe: item.recipeId, ...(pen && { stift: pen }) }}
                   servings={item.servings}
                   unit={recipe?.servings?.unit ?? null}
                   title={recipe?.title ?? "dem Rezept"}
@@ -1244,8 +1263,9 @@ function MealCell({
           date={date}
           meal={meal}
           extra={slot.extra ?? 0}
-          leftoversOn={leftoversOn}
+          leftoversOn={leftoversOn[0] ?? null}
           what={what}
+          pen={pen}
         />
       )}
 
@@ -1313,8 +1333,11 @@ function MealCell({
               {where}
               <input type="hidden" name="recipe" value={shown.recipe.id} />
               <input type="hidden" name="mode" value="replace" />
+              {/* Green words on the green's pastel: as a solid green button it stood up to five
+                  times on an empty week, and "Speichern" was no longer the one (D9, audit, 24
+                  November 2026). Still apart from the grey "Was anderes". */}
               <SubmitButton
-                className="btn btn-primary btn-small"
+                className="btn btn-small bg-accent-soft text-accent"
                 label={`${what}: ${shown.recipe.title} einplanen`}
               >
                 Gute Idee!
@@ -1385,11 +1408,7 @@ function MealCell({
                 is not cooked "more". */}
             {canCookMore && (
               <Link
-                href={
-                  cookingMore
-                    ? `/woche?w=${week}#tag-${date}`
-                    : `/woche?w=${week}&mehr=${date}.${meal}#tag-${date}`
-                }
+                href={`/woche?w=${week}${cookingMore ? "" : `&mehr=${date}.${meal}`}${pen ? `&stift=${pen}` : ""}#tag-${date}`}
                 scroll={false}
                 className={`link link-quiet inline-flex min-h-11 items-center rounded-full px-2 text-sm whitespace-nowrap ${cookingMore ? "bg-accent-soft text-accent" : "text-muted"}`}
                 aria-label={`${what}: mehr kochen`}
@@ -1428,9 +1447,10 @@ function MealCell({
           meal={meal}
           servings={servings}
           later={later}
-          close={`/woche?w=${week}#tag-${date}`}
+          close={`/woche?w=${week}${pen ? `&stift=${pen}` : ""}#tag-${date}`}
+          pen={pen}
         />
       )}
-    </section>
+    </MealSection>
   );
 }

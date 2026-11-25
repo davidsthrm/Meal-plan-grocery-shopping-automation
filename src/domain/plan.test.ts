@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   weekPlanned,
   byDayAndMeal,
+  contentOf,
   cookedServings,
   mealsOf,
   namedMeal,
@@ -186,5 +187,55 @@ describe("weekPlanned", () => {
     expect(weekPlanned([...all.slice(1), { date: "2026-11-09", meal: "lunch" }], MONDAY)).toBe(
       false,
     );
+  });
+});
+
+describe("contentOf", () => {
+  it("is what a meal holds, to write it again where it was", () => {
+    const soup: PlanSlot = {
+      id: "s1",
+      date: "2027-05-11",
+      meal: "lunch",
+      kind: "recipes",
+      items: [{ recipeId: "r1", servings: 5, plannedOn: "2026-11-20", plannedAt: 1 }],
+      extra: 4,
+      foods: [{ label: "Dinkelbaguette", quantity: 1, ingredientId: null, shopId: "b1" }],
+    };
+    expect(contentOf(soup)).toEqual({
+      kind: "recipes",
+      items: [{ recipeId: "r1", servings: 5, plannedOn: "2026-11-20", plannedAt: 1 }],
+      extra: 4,
+      foods: [{ label: "Dinkelbaguette", quantity: 1, ingredientId: null, shopId: "b1" }],
+    });
+  });
+
+  it("gives a meal without foods none, so that none are kept from before", () => {
+    const vesper: PlanSlot = {
+      id: "s2",
+      date: "2027-05-10",
+      meal: "dinner",
+      kind: "free_text",
+      label: "Vesper",
+    };
+    expect(contentOf(vesper)).toEqual({ kind: "free_text", label: "Vesper", foods: [] });
+  });
+
+  it("keeps the meal leftovers are from", () => {
+    const leftovers: PlanSlot = {
+      id: "s3",
+      date: "2027-05-11",
+      meal: "dinner",
+      kind: "leftovers",
+      ofSlotId: "s1",
+    };
+    expect(contentOf(leftovers)).toEqual({ kind: "leftovers", ofSlotId: "s1" });
+    const away: PlanSlot = {
+      id: "s4",
+      date: "2027-05-12",
+      meal: "dinner",
+      kind: "away",
+      label: "Oma Heidrun",
+    };
+    expect(contentOf(away)).toEqual({ kind: "away", label: "Oma Heidrun" });
   });
 });

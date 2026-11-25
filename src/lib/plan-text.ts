@@ -137,7 +137,7 @@ const weeksText = (weeks: number) => (weeks === 1 ? "einer Woche" : `${weeks} Wo
 export function reasonText(reason: Reason): string {
   switch (reason.kind) {
     case "wanted":
-      return "Möchtest du kochen";
+      return "Auf der Wunschliste";
     case "fills_gap":
       return `${GROUP_NAME[reason.group]} fehlt diese Woche noch`;
     case "favorite":
@@ -164,13 +164,30 @@ export function reasonText(reason: Reason): string {
 /** How many reasons a suggestion names: more made a box of small print. */
 export const SHOWN_REASONS = 2;
 
+/** The reasons that count against a recipe. */
+const AGAINST: ReadonlySet<Reason["kind"]> = new Set([
+  "recent",
+  "group_full",
+  "repeats",
+  "out_of_season",
+]);
+
 /**
  * Why a recipe is suggested, in one line: the strongest two of its reasons, what speaks for
- * it before what speaks against it. A recipe that is there only because the week needs one
- * more meal has no reason, and then nothing is said.
+ * it before what speaks against it. A reason against after one for follows an "aber":
+ * joined by the same dot, "Möchtest du kochen · Erst vor einer Woche gekocht" read as two
+ * reasons for it (audit, 24 November 2026). A recipe that is there only because the week
+ * needs one more meal has no reason, and then nothing is said.
  */
 export function whyText(reasons: readonly Reason[]): string {
-  return reasons.slice(0, SHOWN_REASONS).map(reasonText).join(" · ");
+  const [first, second] = reasons.slice(0, SHOWN_REASONS);
+  if (!first) return "";
+  if (!second) return reasonText(first);
+  if (!AGAINST.has(first.kind) && AGAINST.has(second.kind)) {
+    const against = reasonText(second);
+    return `${reasonText(first)}, aber ${against[0].toLowerCase()}${against.slice(1)}`;
+  }
+  return `${reasonText(first)} · ${reasonText(second)}`;
 }
 
 /** A planned amount: "4 Personen", "1 Springform (Ø 26 cm)". */

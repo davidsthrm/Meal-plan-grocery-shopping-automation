@@ -502,12 +502,16 @@ summary,
     display: flex;
     height: 1.5rem;
     flex: none;
-    align-items: center;
+    /* A hole that does not fit whole goes to a second row, which is cut off: at most widths
+       the last hole was cut in half at the sheet's right edge (audit, 24 November 2026). The
+       row stays at the height it had when centred. */
+    flex-wrap: wrap;
+    align-content: flex-start;
     gap: 1.04rem;
     /* As wide as the sheet: the holes that do not fit neither show nor widen it. */
     contain: inline-size;
     overflow: hidden;
-    padding: 0.15rem 0 0 0.72rem;
+    padding: calc((1.5rem + 0.15rem - 1px - 0.66rem) / 2) 0.72rem 0;
     border-bottom: 1px solid var(--color-rule);
   }
   .sheet-holes > span {
@@ -1054,6 +1058,13 @@ summary,
     .tiles > li > *:hover {
       rotate: 0deg;
     }
+  }
+
+  /* While "Woche leeren?" is asked, the question and its two answers stand in place of the
+     plan's other actions: beside them they broke the row onto four (audit, 24 November
+     2026). */
+  .plan-actions:has(> [data-asking]) > :not([data-asking]) {
+    display: none;
   }
 
   /*
@@ -1792,13 +1803,11 @@ summary,
       gap: 0.8rem;
     }
   }
+  /* A figure on the paper: its number in the ink, what it is muted below. The kinds' pastels
+     are for the charts only (audit, 24 November 2026). */
   .stat-figure {
     display: block;
     min-width: 0;
-    padding: 0.85rem 0.9rem 0.95rem;
-    border-radius: 1rem;
-    background: color-mix(in srgb, var(--kind, var(--color-accent-soft)) 75%, var(--color-surface));
-    color: var(--kind-ink, var(--color-accent));
   }
   .stat-number {
     display: block;
@@ -1808,10 +1817,9 @@ summary,
     letter-spacing: -0.015em;
     font-variant-numeric: tabular-nums;
   }
+  /* What a statistic still needs: a muted line, not a dashed box in the card (audit, 24
+     November 2026). */
   .not-yet {
-    border: 1px dashed var(--color-line);
-    border-radius: 0.8rem;
-    padding: 0.85rem 1rem;
     font-size: var(--text-sm);
     color: var(--color-muted);
   }
@@ -4206,6 +4214,9 @@ html[data-going="back"] .page > * {
 /*
  * On to the next meal: the meal's page is torn off like a sheet of a pad. It stays on top,
  * turns from its upper corner and is pulled away, and the next one settles in underneath.
+ * Both at once in 240ms on the house's curve: on curves of its own, the next one coming
+ * 120ms late, it took 460ms on the step a week is planned with, up to fourteen times in a
+ * row (D20, audit, 24 November 2026).
  */
 ::view-transition-group(.note-off) {
   z-index: 1;
@@ -4215,11 +4226,11 @@ html[data-going="back"] .page > * {
   background: var(--color-paper);
   box-shadow: 0 18px 30px -18px rgb(35 33 29 / 0.45);
   transform-origin: 100% 0;
-  animation: note-off 0.42s cubic-bezier(0.45, 0, 0.7, 0.4) both;
+  animation: note-off 240ms var(--ease-out) both;
 }
 ::view-transition-new(.note-on) {
   transform-origin: 50% 0;
-  animation: note-on 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) 0.12s both;
+  animation: note-on 240ms var(--ease-out) both;
 }
 @keyframes note-off {
   60% {
@@ -4300,7 +4311,8 @@ html[data-going="back"] .page > * {
   ::view-transition-old(.nav-back),
   ::view-transition-old(.nav-swap),
   ::view-transition-old(.nav-tab-forward),
-  ::view-transition-old(.nav-tab-back) {
+  ::view-transition-old(.nav-tab-back),
+  ::view-transition-old(.note-off) {
     display: none;
   }
   ::view-transition-new(.nav-forward),
@@ -4309,6 +4321,11 @@ html[data-going="back"] .page > * {
   ::view-transition-new(.nav-tab-forward),
   ::view-transition-new(.nav-tab-back) {
     animation: fade-in 180ms ease both !important;
+  }
+  /* The next meal's page fades in where the torn one stood, without travel (D18, audit, 24
+     November 2026): it was a cut. */
+  ::view-transition-new(.note-on) {
+    animation: fade-in 160ms ease both !important;
   }
   main > *,
   .page > *,

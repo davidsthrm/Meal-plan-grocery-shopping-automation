@@ -142,9 +142,11 @@ test("a week is rubbed out as a whole, after asking", async ({ page }) => {
   await plan(page, "Mittwoch Abend", "Tomatensalat");
 
   await page.getByRole("button", { name: "Ganze Woche leeren" }).click();
-  // Asked first, and "no" leaves everything.
+  // Asked first, in place of the plan's other actions, and "no" leaves everything.
+  await expect(page.getByRole("button", { name: "Plan speichern" })).toBeHidden();
   await page.getByRole("button", { name: "Abbrechen" }).click();
   await expect(meal(page, "Montag Mittag")).toContainText("Pilzrisotto");
+  await expect(page.getByRole("button", { name: "Plan speichern" })).toBeVisible();
 
   await page.getByRole("button", { name: "Ganze Woche leeren" }).click();
   await page.getByRole("button", { name: "Ja, leeren" }).click();

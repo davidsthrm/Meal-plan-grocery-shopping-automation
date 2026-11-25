@@ -76,7 +76,7 @@ test("what someone wants to cook is suggested first, until it is planned", async
   const monday = meal(page, "Montag Mittag");
   await page.goto(`/woche?w=${WEEK}&frage=${WEEK}.lunch&v=0`);
   await expect(monday).toContainText("Forelle Müllerin");
-  await expect(monday).toContainText("Möchtest du kochen");
+  await expect(monday).toContainText("Auf der Wunschliste");
 
   await monday.getByRole("button", { name: /einplanen/ }).click();
   await expect(monday).toContainText("4 Personen");

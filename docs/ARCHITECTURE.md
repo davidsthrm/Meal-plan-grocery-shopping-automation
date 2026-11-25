@@ -215,11 +215,14 @@ decisions, code layout, routes, data access and tests of Essensplan.
   side by side. Until November 2026 every write went one after the other: "Gute Idee!" 6
   to 9 round trips and now 4, the stepper 7 and now 5, "Leeren" 3 and now 2, "Mehr
   kochen" with leftovers 7 and now 2. A wish is fulfilled once its recipe is stored, not
-  beside it.
+  beside it. A step of the persons changes the recipe's row in place, two round trips
+  (`changeItem`): written anew, the meal read as empty on other devices for a moment, and an
+  insert that failed took the whole meal with it (audit, 24 November 2026).
 - The plan answers a tap before the server does (see
   [DESIGN.md](DESIGN.md#controls-and-sizes)): its forms stay plain forms, and styles on
   the pending button show what the tap did. The stepper shows the number of the tap on its
-  way and sends each tap's own number, so quick taps add up.
+  way and sends each tap's own number, so quick taps add up; the extra portions' stepper
+  too, since the audit of 24 November 2026 (a form per sign refused a quick second tap).
 - A decision from the shop looks each note's list up once, and reads the lists and the
   week's notes together; what follows from it is written side by side, except writes to
   the same row of `shopping_line_state`. A line moved to another note waited for about 16
