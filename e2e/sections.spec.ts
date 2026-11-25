@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { resetLibrary, signIn } from "./fixtures";
 
 // On a phone the five sections stand at the top, a row under the logo, the Merkzettel and
-// the account, in one block that stays there while the page scrolls (David, 24 November
-// 2026). He did not want it to slide away on the way down.
+// the account, in one block that stays there while the page scrolls (decided on 24
+// November 2026, over a block that slid away on the way down).
 test("every section is one tap away far down a long page on a phone @webkit", async ({
   page,
   isMobile,

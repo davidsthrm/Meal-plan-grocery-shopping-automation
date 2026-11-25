@@ -753,8 +753,8 @@ summary,
 
   /*
    * The sections, five words in the header, no signs, no box, no pill: the open one in ink at
-   * 700 with a stroke of the green highlighter under it, the others muted. David chose them
-   * on 24 November 2026 from drafts in the real app, over a strip of signs at the foot of a
+   * 700 with a stroke of the green highlighter under it, the others muted. Chosen on 24
+   * November 2026 from drafts in the real app, over a strip of signs at the foot of a
    * phone's screen (22 November 2026), register tabs and three sections.
    */
   .sections ul {
@@ -802,8 +802,8 @@ summary,
   /*
    * On a phone a row of their own under the logo, the Merkzettel and the account, as wide as
    * the screen, the words shared out over it: one sticky block at the top, 109px at 390px.
-   * David rejected a block that slid away while the page scrolled down: the sections stay
-   * one tap away at any scroll position.
+   * Not a block that slides away while the page scrolls down (24 November 2026): the
+   * sections stay one tap away at any scroll position.
    */
   @media (width < 40rem) {
     .app-header > .sections {

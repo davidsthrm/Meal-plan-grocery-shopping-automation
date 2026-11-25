@@ -256,7 +256,7 @@ The paper metaphors in motion:
   under it, the others in the muted ink. On a phone they are a row of their own under the
   logo, the Merkzettel and the account, as wide as the screen, the words shared out over
   it; from `sm` on they stand in the header's line. Every word is at least 44px tall. Chosen
-  by David on 24 November 2026 from drafts injected into the real app: the words over
+  on 24 November 2026 from drafts injected into the real app: the words over
   register tabs and three sections, and on a phone at the top, fixed with the header, over
   a block that slides away while the page scrolls down (which would break the header's rule
   below). The header with its row is one block of 109px at 390px: header and strip took
