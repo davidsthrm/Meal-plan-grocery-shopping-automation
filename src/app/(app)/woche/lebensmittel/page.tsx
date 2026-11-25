@@ -87,10 +87,8 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
         <h1 className="title mt-1">Lebensmittel für {dish}</h1>
       )}
 
-      <section className="mt-5" aria-label="Ausgewählt">
-        {foods.length === 0 ? (
-          <p className="text-muted">Noch nichts ausgewählt.</p>
-        ) : (
+      {foods.length > 0 && (
+        <section className="mt-5" aria-label="Ausgewählt">
           <ul className="card divide-y divide-line">
             {foods.map((food) => (
               <li key={food.label} className="flex items-center justify-between gap-3 px-4 py-2">
@@ -113,8 +111,8 @@ export default async function FoodsPage(props: PageProps<"/woche/lebensmittel">)
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="mt-6" aria-label="Lebensmittel hinzufügen">
         <h2 className="eyebrow">Lebensmittel hinzufügen</h2>

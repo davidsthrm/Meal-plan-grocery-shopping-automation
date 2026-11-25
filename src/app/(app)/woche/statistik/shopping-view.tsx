@@ -81,15 +81,9 @@ export function ShoppingView({
       </div>
 
       {period.kind !== "year" && (
-        <StatCard
-          title="Einkaufskalender"
-          counts="Jeder Tag, an dem etwas abgehakt wurde, mit dem Geschäft"
-        >
+        <StatCard title="Einkaufskalender">
           {errands === 0 ? (
-            <NotYet>
-              In diesem Zeitraum wurde noch nichts in der App abgehakt. Ein Einkauf vom Papierzettel
-              zählt hier nicht.
-            </NotYet>
+            <NotYet>In diesem Zeitraum wurde noch nichts in der App abgehakt.</NotYet>
           ) : (
             <Calendar days={stats.days} today={today} errands={stats.errands} />
           )}
@@ -199,7 +193,7 @@ export function ShoppingView({
           )}
         </StatCard>
 
-        <StatCard title="Einkaufstage" counts="Einkäufe je Wochentag">
+        <StatCard title="Einkaufstage">
           {stats.weekdays.enough ? (
             <Weekdays counts={stats.weekdays.value} />
           ) : (
@@ -233,7 +227,7 @@ export function ShoppingView({
           )}
         </StatCard>
 
-        <StatCard title="Anders als geplant" counts="Was im Laden anders kam">
+        <StatCard title="Anders als geplant">
           {deviations ? (
             <>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -274,7 +268,7 @@ export function ShoppingView({
           )}
         </StatCard>
 
-        <StatCard title="Selbst geschrieben" counts="Einträge, die nicht aus dem Plan kamen">
+        <StatCard title="Selbst geschrieben">
           {stats.typed.enough ? (
             <>
               <p className="flex items-baseline gap-2">

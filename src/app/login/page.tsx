@@ -43,7 +43,6 @@ export default async function LoginPage(props: PageProps<"/login">) {
           Passwort vergessen?
         </Link>
       </p>
-      <p className="mt-2 text-sm text-muted">Zugang gibt es nur auf Einladung.</p>
       <ForgetSignedOut />
     </main>
   );

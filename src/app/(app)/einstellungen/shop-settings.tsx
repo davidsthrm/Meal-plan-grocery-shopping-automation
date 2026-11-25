@@ -127,9 +127,6 @@ export function SupermarketsCard({
               <SearchPending />
             </form>
           </div>
-          <p className="text-sm text-muted">
-            Tippe die Märkte an, in denen ihr einkauft. Der mit dem Stern ist der Hauptmarkt.
-          </p>
           {tiles.length === 0 ? (
             <p className="mt-2 text-muted">
               Keine Supermärkte gefunden. „Neu suchen“ versucht es noch einmal, oder unten von Hand

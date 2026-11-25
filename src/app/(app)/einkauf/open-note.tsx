@@ -19,10 +19,7 @@ export function OpenNote({ week, days }: { week: IsoDate; days: readonly IsoDate
         <PlusIcon />
         Neuer Zettel
       </summary>
-      <p className="text-sm text-muted">
-        Für dm, den Bäcker oder ein anderes Geschäft, an einem Tag deiner Wahl. Was der Plan
-        braucht, bleibt auf seinen Zetteln.
-      </p>
+      <p className="text-sm text-muted">Was der Plan braucht, bleibt auf seinen Zetteln.</p>
       <form action={openListNote} className="mt-3 space-y-4 pb-3">
         <input type="hidden" name="week" value={week} />
         <fieldset>

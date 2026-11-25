@@ -30,9 +30,7 @@ export default async function ProposalsPage() {
       ) : (
         <>
           <p className="mt-1 text-muted">
-            Diese Zutaten kommen in eingelesenen Rezepten vor und stehen noch nicht im Katalog. Jede
-            Zeile hat schon einen Vorschlag. Ändere, was nicht stimmt, und übernimm dann alles auf
-            einmal. Die Rezepte selbst sind davon unabhängig schon übernommen.
+            Jede Zeile hat schon einen Vorschlag. Die Rezepte sind schon übernommen.
           </p>
           <ProposalList
             // After saving, the remaining proposals start from their own suggestions again.

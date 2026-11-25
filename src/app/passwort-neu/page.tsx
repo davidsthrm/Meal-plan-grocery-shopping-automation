@@ -12,10 +12,7 @@ export default function NewPasswordPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6">
       <LogoMark className="mb-4 h-14 w-14" />
-      <h1 className="text-3xl font-bold tracking-tight">Neues Passwort</h1>
-      <p className="mt-1 mb-8 text-muted">
-        Mit diesem Passwort meldest du dich ab jetzt auf allen Geräten an.
-      </p>
+      <h1 className="mb-8 text-3xl font-bold tracking-tight">Neues Passwort</h1>
       <NewPasswordForm />
     </main>
   );

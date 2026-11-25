@@ -280,13 +280,7 @@ export function AddRecipe({
             ),
           )}
         </datalist>
-        {book.trim() ? (
-          <SourcePlacement text={book} sources={sources} />
-        ) : (
-          <p className="mt-1 text-sm text-muted">
-            Ein Heft mit seiner Ausgabe: „Einfach Hausgemacht 06/2020“.
-          </p>
-        )}
+        {book.trim() && <SourcePlacement text={book} sources={sources} />}
       </div>
 
       {error && (

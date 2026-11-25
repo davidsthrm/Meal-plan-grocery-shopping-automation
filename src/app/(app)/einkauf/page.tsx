@@ -280,7 +280,6 @@ export default async function ShoppingPage(props: PageProps<"/einkauf">) {
                 <NoteIcon />
                 Merkzettel
               </span>
-              <span className="muted text-sm">Was zu Hause ausgegangen ist</span>
               <span className="note-lines mt-2 block flex-1">
                 {noted.slice(0, PREVIEW).map((item) => (
                   <span key={item.id} className="block truncate py-1">

@@ -73,25 +73,15 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
         </Link>
       </nav>
 
-      {pasting ? (
-        <>
-          <p className="mt-4 mb-5 text-muted">
-            Ein Rezept von einer Webseite oder aus einer Nachricht kopieren und hier einfügen.
-            Zutaten und Mengen werden herausgelesen; du siehst sie, bevor etwas gespeichert wird.
-          </p>
+      <div className="mt-5">
+        {pasting ? (
           <PastedRecipeForm
             categories={categories}
             extra={forMeal ? meal : {}}
             submitLabel={submitLabel}
             again={way("text")}
           />
-        </>
-      ) : (
-        <>
-          <p className="mt-4 mb-5 text-muted">
-            Zutaten so schreiben wie auf einem Einkaufszettel: Menge, Einheit, Zutat. Die Menge kann
-            fehlen.
-          </p>
+        ) : (
           <TypedRecipeForm
             initial={{
               title,
@@ -109,8 +99,8 @@ export default async function NewRecipePage(props: PageProps<"/rezepte/neu">) {
             extra={forMeal ? meal : {}}
             submitLabel={submitLabel}
           />
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -201,7 +201,7 @@ export function MealsView({
             <p className="mt-3 text-sm text-muted">
               {period.kind === "year"
                 ? "Ein Strich je Woche: voll im Ziel, blass daneben."
-                : "Ein Punkt je Woche: voll im Ziel, leer daneben, gestrichelt läuft noch. Ein Tipp öffnet die Woche."}
+                : "Ein Punkt je Woche: voll im Ziel, leer daneben, gestrichelt läuft noch."}
             </p>
           </>
         ) : (
@@ -279,8 +279,8 @@ export function MealsView({
         >
           {!stats.newTried.enough ? (
             <NotYet>
-              Neu heißt neu gegenüber dem, was vorher gekocht wurde. Dafür braucht es{" "}
-              {stats.newTried.need} Wochen Plan vor diesem Zeitraum, bisher {stats.newTried.have}.
+              Ab {stats.newTried.need} Wochen Plan vor diesem Zeitraum, bisher {stats.newTried.have}
+              .
             </NotYet>
           ) : stats.newTried.value.length === 0 ? (
             <NotYet>In diesem Zeitraum war alles schon einmal dran.</NotYet>
@@ -469,7 +469,6 @@ export function MealsView({
               <Figure
                 value={String(stats.leftovers.extraPortions)}
                 label={stats.leftovers.extraPortions === 1 ? "Extra-Portion" : "Extra-Portionen"}
-                detail="mit „Mehr kochen“"
                 tone="kind-poultry"
               />
               <Figure
@@ -514,7 +513,7 @@ export function MealsView({
           )}
         </StatCard>
 
-        <StatCard title="Neu im Kochbuch" counts="Rezepte, die in diesem Zeitraum dazukamen">
+        <StatCard title="Neu im Kochbuch">
           {stats.library.added === 0 ? (
             <NotYet>Keine neuen Rezepte in diesem Zeitraum.</NotYet>
           ) : (
@@ -571,7 +570,7 @@ function EffortBar({ title, counts }: { title: string; counts: EffortCounts }) {
 function DiscoveryCard({ discovery }: { discovery: DiscoveryStats }) {
   const share = discovery.library === 0 ? 0 : discovery.everCooked / discovery.library;
   return (
-    <StatCard title="Entdeckt" counts="Neu Gekochtes, das Kochbuch und die Küchen">
+    <StatCard title="Entdeckt">
       <div className="stat-figures discovery-figures">
         <Figure
           value={String(discovery.newDishes)}

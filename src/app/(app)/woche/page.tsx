@@ -910,9 +910,8 @@ function Extras({
   return (
     <section aria-label="Außerdem" className="mt-4">
       <p className="text-muted">
-        Was diese Woche gebraucht wird und zu keiner Mahlzeit gehört, etwa ein Kuchen für eine
-        Einladung. Mit einem Tag wird es für diesen Tag eingekauft wie eine Mahlzeit, ohne Tag beim
-        ersten Einkauf der Woche.
+        Was zu keiner Mahlzeit gehört, etwa ein Kuchen für eine Einladung. Mit Tag wird es für
+        diesen Tag eingekauft, ohne Tag beim ersten Einkauf der Woche.
       </p>
       {extras.length > 0 && (
         <ul className="card mt-3 divide-y divide-line">

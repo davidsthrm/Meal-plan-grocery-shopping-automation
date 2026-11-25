@@ -52,7 +52,6 @@ export default async function AddRecipePage(props: PageProps<"/rezepte/hinzufueg
       </BackLink>
       {forMeal && <p className="eyebrow mt-1">Für {forMeal.when}</p>}
       <h1 className="title mt-1">{forMeal ? forMeal.label : "Rezept hinzufügen"}</h1>
-      {forMeal && <p className="mt-2 text-muted">Noch kein Rezept dazu. Wie kommt es herein?</p>}
       <AddRecipe
         sources={sources}
         forMeal={forMeal && { date, meal: forMeal.meal, week: forMeal.week, when: forMeal.when }}
