@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { editLine } from "@/app/(app)/einkauf/actions";
+import { ActionSheet, lessMotion, useCloseSheet } from "./action-sheet";
 import { addDays, type IsoDate } from "@/domain/dates";
 import { parseQuantity, quantityText } from "@/domain/quantity";
 import {
@@ -199,11 +200,6 @@ function restAfter(planned: Amount | null, bought: Amount): Amount | null {
   return { quantity: Math.round((planned.quantity - inPlanned) * 1000) / 1000, unit: planned.unit };
 }
 
-/** Whether whoever is looking asked for less motion. */
-function lessMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 /**
  * The actions of the lines of one note: their menu, their two sheets and the bar to take
  * a decision back. One of each for the whole note, opened for the line they are about.
@@ -272,7 +268,7 @@ export function LineActions({
       {children}
       {menu && <RowMenu key={menu.line.key} {...menu} onClose={closeMenu} />}
       {sheet && (
-        <ActionSheet
+        <LineSheet
           key={`${sheet.kind}-${sheet.line.key}-${sheet.kind === "move" && sheet.rest ? "rest" : ""}`}
           sheet={sheet}
           onClose={closeSheet}
@@ -962,87 +958,8 @@ function stepOf(unit: Unit, quantity: number): number {
   return 1;
 }
 
-/**
- * A sheet from the foot of the screen over the note: what was bought instead, where it is
- * bought, or on a note how much of it to buy. It comes from below and goes back down; pulled
- * down by its top, it follows the finger and goes once let go on its way down.
- */
-function ActionSheet({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const grip = useRef<HTMLDivElement>(null);
-
-  const close = useCallback(() => {
-    const element = dialog.current;
-    if (!element?.open) return onClose();
-    if (element.classList.contains("going")) return;
-    element.classList.add("going");
-    window.setTimeout(
-      () => {
-        element.close();
-        onClose();
-      },
-      lessMotion() ? 0 : 200,
-    );
-  }, [onClose]);
-
-  useEffect(() => {
-    if (dialog.current && !dialog.current.open) dialog.current.showModal();
-  }, []);
-
-  // Pulled down by its top, it follows the finger.
-  useEffect(() => {
-    const handle = grip.current;
-    const element = dialog.current;
-    if (!handle || !element) return;
-    let start: { y: number; t: number; id: number } | null = null;
-    let last = { y: 0, t: 0 };
-    const down = (event: PointerEvent) => {
-      if ((event.target as Element).closest("button")) return;
-      start = { y: event.clientY, t: event.timeStamp, id: event.pointerId };
-      last = { y: event.clientY, t: event.timeStamp };
-      handle.setPointerCapture(event.pointerId);
-      element.style.transition = "none";
-    };
-    const move = (event: PointerEvent) => {
-      if (!start || event.pointerId !== start.id) return;
-      const dy = event.clientY - start.y;
-      // Upwards it gives a little, and no more.
-      const y = dy > 0 ? dy : -Math.sqrt(-dy) * 2;
-      element.style.transform = `translateY(${y}px)`;
-      last = { y: event.clientY, t: event.timeStamp };
-    };
-    const up = (event: PointerEvent) => {
-      if (!start || event.pointerId !== start.id) return;
-      const dy = event.clientY - start.y;
-      const velocity = last.t > start.t ? ((last.y - start.y) / (last.t - start.t)) * 1000 : 0;
-      start = null;
-      const projected = dy + ((velocity / 1000) * 0.99) / 0.01;
-      element.style.transition = lessMotion() ? "none" : "transform 200ms var(--ease-out)";
-      if (projected > element.offsetHeight * 0.4) {
-        element.style.transform = `translateY(${element.offsetHeight}px)`;
-        window.setTimeout(
-          () => {
-            element.close();
-            onClose();
-          },
-          lessMotion() ? 0 : 200,
-        );
-      } else {
-        element.style.transform = "";
-      }
-    };
-    handle.addEventListener("pointerdown", down);
-    handle.addEventListener("pointermove", move);
-    handle.addEventListener("pointerup", up);
-    handle.addEventListener("pointercancel", up);
-    return () => {
-      handle.removeEventListener("pointerdown", down);
-      handle.removeEventListener("pointermove", move);
-      handle.removeEventListener("pointerup", up);
-      handle.removeEventListener("pointercancel", up);
-    };
-  }, [onClose]);
-
+/** The sheet a line opens: what was bought instead, where it is bought, or how much of it. */
+function LineSheet({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) {
   const title =
     sheet.kind !== "move"
       ? sheet.line.label
@@ -1051,38 +968,20 @@ function ActionSheet({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) 
         : `${sheet.line.label} verschieben`;
 
   return (
-    <dialog
-      ref={dialog}
-      className="action-sheet"
-      aria-label={title}
-      onCancel={(event) => {
-        event.preventDefault();
-        close();
-      }}
-      onClick={(event) => {
-        // A tap beside the sheet, on the dimmed note.
-        if (event.target === dialog.current) close();
-      }}
-    >
-      <div className="action-sheet-body">
-        <div ref={grip} className="action-sheet-head">
-          <span className="action-sheet-grip" aria-hidden />
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="min-w-0 truncate text-lg font-bold tracking-tight">{title}</h2>
-            <button type="button" className="btn btn-small shrink-0" onClick={close}>
-              Abbrechen
-            </button>
-          </div>
-        </div>
-        {sheet.kind === "edit" ? (
-          <EditForm line={sheet.line} onDone={close} />
-        ) : sheet.kind === "note" ? (
-          <NoteForm line={sheet.line} edit={sheet.edit} onDone={close} />
-        ) : (
-          <MoveForm line={sheet.line} rest={sheet.rest} onDone={close} />
-        )}
-      </div>
-    </dialog>
+    <ActionSheet title={title} onClose={onClose}>
+      <SheetForm sheet={sheet} />
+    </ActionSheet>
+  );
+}
+
+function SheetForm({ sheet }: { sheet: Sheet }) {
+  const close = useCloseSheet();
+  return sheet.kind === "edit" ? (
+    <EditForm line={sheet.line} onDone={close} />
+  ) : sheet.kind === "note" ? (
+    <NoteForm line={sheet.line} edit={sheet.edit} onDone={close} />
+  ) : (
+    <MoveForm line={sheet.line} rest={sheet.rest} onDone={close} />
   );
 }
 
