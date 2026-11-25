@@ -50,7 +50,7 @@ test.describe("without the page's script", () => {
     await page.getByLabel("Fisch mindestens").selectOption("5");
     await page.getByLabel("Fisch höchstens").selectOption("2");
     await page.getByRole("button", { name: "Speichern" }).click();
-    await expect(page.getByText("Das passt nicht zusammen")).toBeVisible();
+    await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
   });
 });
 
