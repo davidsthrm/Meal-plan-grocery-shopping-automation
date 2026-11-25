@@ -371,8 +371,8 @@ summary,
 
   /*
    * Each section has a pastel of its own at the top of its pages, fading into the paper over
-   * 22rem, and the header's strip in it: Woche sage, Einkauf a misty blue, Rezepte peach,
-   * Favoriten blush, Import lavender. Back on 23 November 2026: the paper alone (palette C1)
+   * 22rem, and the header's strip in it: Woche sage, Einkauf a misty blue, Rezepte peach
+   * (the import's pages too, which belong to it), Favoriten blush. Back on 23 November 2026: the paper alone (palette C1)
    * was too plain for the household; on 24 November David chose the clearer of the drafts
    * (each pastel's chroma doubled) over the softer one. Read from the section the header
    * marks as current, so it is there from the first paint and fades over the moment a section
@@ -396,9 +396,6 @@ summary,
   }
   html:has(nav[aria-label="Hauptbereiche"] [href="/favoriten"][aria-current="page"]) .app-shell {
     --section: #ffd8e2;
-  }
-  html:has(nav[aria-label="Hauptbereiche"] [href="/import"][aria-current="page"]) .app-shell {
-    --section: #ebe1ff;
   }
   @media print {
     .app-shell {
@@ -752,10 +749,11 @@ summary,
   }
 
   /*
-   * The sections, five words in the header, no signs, no box, no pill: the open one in ink at
+   * The sections, four words in the header, no signs, no box, no pill: the open one in ink at
    * 700 with a stroke of the green highlighter under it, the others muted. Chosen on 24
    * November 2026 from drafts in the real app, over a strip of signs at the foot of a
-   * phone's screen (22 November 2026), register tabs and three sections.
+   * phone's screen (22 November 2026), register tabs and three sections. Four since 25
+   * November 2026: Import, a task done now and then, is "+ Rezept" on Rezepte.
    */
   .sections ul {
     display: flex;
@@ -801,9 +799,12 @@ summary,
   }
   /*
    * On a phone a row of their own under the logo, the Merkzettel and the account, as wide as
-   * the screen, the words shared out over it: one sticky block at the top, 109px at 390px.
-   * Not a block that slides away while the page scrolls down (24 November 2026): the
-   * sections stay one tap away at any scroll position.
+   * the screen: one sticky block at the top, 109px at 390px. Not a block that slides away
+   * while the page scrolls down (24 November 2026): the sections stay one tap away at any
+   * scroll position. Each of the four words has a quarter of the row, its word in the middle:
+   * a tap anywhere in it counts, 80px wide even at 320px. Five words shared out the room
+   * left over between them: a fifth of a 375px row would not have held "Favoriten" in bold
+   * (25 November 2026).
    */
   @media (width < 40rem) {
     .app-header > .sections {
@@ -818,7 +819,7 @@ summary,
       gap: 0;
     }
     .sections li {
-      flex: 1 1 auto;
+      flex: 1 1 0;
     }
     .section-link {
       padding-inline: 0.2rem;

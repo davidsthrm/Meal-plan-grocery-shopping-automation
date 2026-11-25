@@ -5,21 +5,29 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { sideways } from "@/lib/transitions";
 
-const SECTIONS: { href: string; label: string }[] = [
+/**
+ * The places the household goes every week. Bringing recipes in is done now and then: it is
+ * "+ Rezept" on Rezepte, and its pages (`also`) belong to Rezepte (25 November 2026).
+ */
+const SECTIONS: { href: string; label: string; also?: string }[] = [
   { href: "/woche", label: "Woche" },
   { href: "/einkauf", label: "Einkauf" },
-  { href: "/rezepte", label: "Rezepte" },
+  { href: "/rezepte", label: "Rezepte", also: "/import" },
   { href: "/favoriten", label: "Favoriten" },
-  { href: "/import", label: "Import" },
 ];
+
+const under = (pathname: string, href: string) =>
+  pathname === href || pathname.startsWith(`${href}/`);
 
 /** The section a path belongs to, by its place in the row; -1 for none (the settings). */
 function sectionOf(pathname: string): number {
-  return SECTIONS.findIndex(({ href }) => pathname === href || pathname.startsWith(`${href}/`));
+  return SECTIONS.findIndex(
+    ({ href, also }) => under(pathname, href) || (also !== undefined && under(pathname, also)),
+  );
 }
 
 /**
- * The main sections, five words in the header: on a phone a row of their own under the
+ * The main sections, four words in the header: on a phone a row of their own under the
  * logo, the Merkzettel and the account, on a wider screen beside them. The open one is in
  * ink under a stroke of the highlighter, the others muted (`.sections`).
  *
