@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { plannedItems, resetLibrary, signIn } from "./fixtures";
-import { meal, plan } from "./helpers";
+import { meal, openPen, persons, plan } from "./helpers";
 
 // Changes to one meal of the week: its persons, its extra portions, emptying it and taking
 // that back (audit, 24 November 2026).
@@ -20,27 +20,33 @@ test("an emptied meal comes back with Widerrufen, with its persons and its lefto
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Dienstag Mittag", "Kartoffelsuppe");
   const lunch = meal(page, "Dienstag Mittag");
-  await lunch.getByRole("button", { name: "Mehr von Kartoffelsuppe" }).click();
+  // On a phone the meal is one line: its persons are stepped in the pen's sheet, which stays
+  // open while they are.
+  const pen = await openPen(page, "Dienstag Mittag");
+  await pen.getByRole("button", { name: "Mehr von Kartoffelsuppe" }).click();
+  await expect(pen).toContainText("5 Personen");
+  await expect(pen.locator('[aria-busy="true"]')).toHaveCount(0);
   await expect(lunch).toContainText("5 Personen");
-  await expect(lunch.locator('[aria-busy="true"]')).toHaveCount(0);
-  await lunch.getByRole("link", { name: "Dienstag Mittag: mehr kochen" }).click();
-  await lunch.getByRole("button", { name: "Übernehmen" }).click();
+  await pen.getByRole("button", { name: "Mehr kochen für Reste" }).click();
+  await pen.getByRole("button", { name: "Übernehmen" }).click();
   const evening = meal(page, "Dienstag Abend");
   await expect(evening).toContainText("Reste von Di Mittag");
+  await expect(lunch).toContainText("4 Extra-Portionen für Reste am Di Abend");
   // Back to no extra portions and cooked for leftovers again: a second meal of leftovers.
-  const fewer = lunch.getByRole("button", { name: "Dienstag Mittag: eine Extra-Portion weniger" });
+  const again = await openPen(page, "Dienstag Mittag");
+  const fewer = again.getByRole("button", { name: "Dienstag Mittag: eine Extra-Portion weniger" });
   for (const left of ["3 Extra-Portionen", "2 Extra-Portionen", "1 Extra-Portion"]) {
     await fewer.click();
-    await expect(lunch).toContainText(left);
+    await expect(again).toContainText(left);
   }
   await fewer.click();
-  await lunch.getByRole("link", { name: "Dienstag Mittag: mehr kochen" }).click();
-  await lunch.getByRole("button", { name: "Übernehmen" }).click();
+  await again.getByRole("button", { name: "Mehr kochen für Reste" }).click();
+  await again.getByRole("button", { name: "Übernehmen" }).click();
   const wednesday = meal(page, "Mittwoch Mittag");
   await expect(wednesday).toContainText("Reste von Di Mittag");
 
-  // The bin empties it at once, and says so with a way back.
-  await lunch.getByRole("button", { name: "Dienstag Mittag leeren" }).click();
+  // "Entfernen" empties it at once, and says so with a way back.
+  await (await openPen(page, "Dienstag Mittag")).getByRole("button", { name: "Entfernen" }).click();
   const bar = page.getByRole("status").filter({ hasText: "Di Mittag geleert" });
   await expect(bar).toBeVisible();
   await expect(lunch.getByRole("link", { name: "Dienstag Mittag planen" })).toBeVisible();
@@ -62,7 +68,9 @@ test("the last recipe stepped to nothing empties the meal with the same way back
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Mittwoch Mittag", "Pilzrisotto");
   const lunch = meal(page, "Mittwoch Mittag");
-  const fewer = lunch.getByRole("button", { name: "Weniger von Pilzrisotto" });
+  const fewer = (await openPen(page, "Mittwoch Mittag")).getByRole("button", {
+    name: "Weniger von Pilzrisotto",
+  });
   for (let tap = 0; tap < 4; tap++) await fewer.click();
   const bar = page.getByRole("status").filter({ hasText: "Mi Mittag geleert" });
   await expect(bar).toBeVisible();
@@ -75,7 +83,11 @@ test("a step of the persons changes the recipe's row, not a new one", async ({ p
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Montag Mittag", "Pilzrisotto");
   const [before] = await plannedItems();
-  await meal(page, "Montag Mittag").getByRole("button", { name: "Mehr von Pilzrisotto" }).click();
+  await (
+    await persons(page, "Montag Mittag")
+  )
+    .getByRole("button", { name: "Mehr von Pilzrisotto" })
+    .click();
   await expect.poll(plannedItems).toEqual([{ id: before.id, servings: 5 }]);
 });
 
@@ -83,14 +95,16 @@ test("quick taps on the extra portions all count", async ({ page }) => {
   await page.goto(`/woche?w=${WEEK}`);
   await plan(page, "Montag Mittag", "Pilzrisotto");
   const lunch = meal(page, "Montag Mittag");
-  await lunch.getByRole("link", { name: "Montag Mittag: mehr kochen" }).click();
-  await lunch.getByRole("button", { name: "Übernehmen" }).click();
+  const pen = await openPen(page, "Montag Mittag");
+  await pen.getByRole("button", { name: "Mehr kochen für Reste" }).click();
+  await pen.getByRole("button", { name: "Übernehmen" }).click();
   await expect(lunch).toContainText("4 Extra-Portionen");
-  const more = lunch.getByRole("button", { name: "Montag Mittag: eine Extra-Portion mehr" });
+  const sheet = await openPen(page, "Montag Mittag");
+  const more = sheet.getByRole("button", { name: "Montag Mittag: eine Extra-Portion mehr" });
   // One after the other without waiting for the server: none of them is refused.
   for (let tap = 0; tap < 3; tap++) await more.click({ force: true });
-  await expect(lunch).toContainText("7 Extra-Portionen");
-  await expect(lunch.locator('[aria-busy="true"]')).toHaveCount(0);
+  await expect(sheet).toContainText("7 Extra-Portionen");
+  await expect(sheet.locator('[aria-busy="true"]')).toHaveCount(0);
   await page.reload();
   await expect(meal(page, "Montag Mittag")).toContainText("7 Extra-Portionen");
 });
@@ -100,7 +114,7 @@ test("food chips stay where they are and are tapped on and off", async ({ page }
   await page.getByRole("link", { name: "Montag Abend planen" }).click();
   await page.getByRole("button", { name: "Vesper" }).click();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
-  await page.getByRole("link", { name: "Montag Abend: Lebensmittel" }).click();
+  await (await openPen(page, "Montag Abend")).getByRole("link", { name: "Lebensmittel" }).click();
 
   const where = async (name: string) => {
     const box = await page.getByRole("button", { name }).boundingBox();

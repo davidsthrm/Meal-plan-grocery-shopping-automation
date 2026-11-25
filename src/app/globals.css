@@ -3644,6 +3644,171 @@ summary,
     border-radius: 999px;
     background: rgb(35 33 29 / 0.18);
   }
+  /*
+   * From the tablet width on, a sheet opened by a pen hangs at it as a panel (`ActionSheet`
+   * with an anchor, placed by script): across the whole width of an iPad it was far from
+   * the meal it was about (decided on 25 November 2026). No dimming, as the row's menu.
+   */
+  .action-sheet[data-at-anchor] {
+    position: fixed;
+    width: 21rem;
+    max-width: calc(100vw - 1.5rem);
+    max-height: calc(100dvh - 1rem);
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-line);
+    border-radius: 1rem;
+    box-shadow: 0 16px 34px -14px rgb(35 33 29 / 0.45);
+  }
+  .action-sheet[data-at-anchor][open] {
+    animation: menu-in 160ms var(--ease-out) both;
+  }
+  .action-sheet[data-at-anchor]::backdrop {
+    background: transparent;
+  }
+  .action-sheet[data-at-anchor].going {
+    animation: fade-out 160ms ease both;
+  }
+  .action-sheet[data-at-anchor] .action-sheet-grip {
+    display: none;
+  }
+  .action-sheet[data-at-anchor] .action-sheet-head {
+    padding-top: 0.75rem;
+    touch-action: auto;
+  }
+  /* Opened again as it was after the page came back: no entrance. */
+  .action-sheet[data-still][open],
+  .action-sheet[data-still][open]::backdrop {
+    animation: none;
+  }
+
+  /*
+   * The one pen of a planned meal, as large as a finger, without making the line taller.
+   * What it opens is a sheet of rows (`MealPen`), as the menu of a row on a note is.
+   */
+  .pen-button {
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    margin: -0.55rem -0.6rem -0.55rem 0;
+    border-radius: 999px;
+    color: var(--color-muted);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pen-button:active,
+  .pen-button[aria-expanded="true"] {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+  }
+  .pen-button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  /* Beside the stepper, as tall as it, where the stepper stays on the line. */
+  @media (width >= 46rem) and (height >= 30rem) {
+    .pen-button {
+      margin-block: 0;
+    }
+  }
+  .pen-rows {
+    display: flex;
+    flex-direction: column;
+    padding: 0 0.5rem 0.75rem;
+  }
+  .pen-row,
+  .pen-row-block {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+    border-radius: 0.65rem;
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pen-row-block {
+    padding-block: 0.35rem;
+  }
+  .pen-row > svg,
+  .pen-row-block > svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    flex: none;
+    color: var(--color-muted);
+  }
+  .pen-row:active,
+  .pen-row[aria-expanded="true"] {
+    background: rgb(35 33 29 / 0.07);
+  }
+  .pen-row:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  .pen-row.text-danger > svg {
+    color: var(--color-danger);
+  }
+  .pen-fold {
+    padding: 0.25rem 0.75rem 0.75rem;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .pen-button:hover {
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
+    }
+    .pen-row:hover {
+      background: rgb(35 33 29 / 0.05);
+    }
+    .move-place:not([data-own]):hover {
+      background: rgb(35 33 29 / 0.09);
+    }
+  }
+
+  /*
+   * "Auf einen anderen Tag": the week as a small grid, each day a row of its lunch and
+   * dinner. Each place is a radio button, as tall as a finger, its dish cut to one line.
+   */
+  .move-grid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .move-place {
+    display: flex;
+    min-width: 0;
+    min-height: 2.75rem;
+    align-items: center;
+    padding: 0 0.6rem;
+    border-radius: 0.6rem;
+    background: rgb(35 33 29 / 0.05);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .move-place:has(input:checked) {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
+    font-weight: 700;
+  }
+  .move-place:has(input:focus-visible) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  /* The meal's own place: marked, and not a place to go. */
+  .move-place[data-own] {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--color-accent);
+    font-weight: 700;
+    cursor: default;
+  }
   .choice-row {
     display: flex;
     min-height: 2.75rem;
@@ -3745,6 +3910,9 @@ summary,
   }
   .action-sheet.going {
     animation: fade-out 160ms ease both;
+  }
+  .action-sheet[data-still][open] {
+    animation: none;
   }
 }
 

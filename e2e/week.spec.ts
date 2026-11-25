@@ -61,9 +61,12 @@ test("a saved plan is read, with what there is today on top and a pen for a chan
   await page.getByRole("link", { name: "Fertig" }).click();
   await expect(page.getByRole("button", { name: `${lunch} leeren` })).toHaveCount(0);
 
-  // Taking the pen to the whole plan opens it for planning again.
+  // Taking the pen to the whole plan opens it for planning again: each meal one line with
+  // its pen.
   await page.getByRole("button", { name: "Plan bearbeiten" }).click();
-  await expect(page.getByRole("button", { name: `${lunch} leeren` })).toBeVisible();
+  await expect(
+    meal(page, lunch).getByRole("button", { name: `${lunch} bearbeiten` }),
+  ).toBeVisible();
 });
 
 /** The Monday `weeks` weeks after `monday`. */

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { planAsExtra, resetHousehold, resetLibrary, signIn } from "./fixtures";
-import { plan, sheet, tile } from "./helpers";
+import { openPen, plan, sheet, tile } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -168,7 +168,7 @@ test("the week becomes a note for every errand, to pick up and work through @web
   await expect(sheet(page, BUTCHER)).toContainText("1 gekauft");
   await expect(sheet(page, BUTCHER).getByRole("status")).toContainText("Erledigt");
   await page.goto(`/woche?w=${WEEK}`);
-  await page.getByRole("button", { name: "Dienstag Mittag leeren" }).click();
+  await (await openPen(page, "Dienstag Mittag")).getByRole("button", { name: "Entfernen" }).click();
   // The meal is open again. The soup may still show there as a pale idea, so that is what
   // is looked for, not the absence of its name.
   await expect(page.getByRole("link", { name: "Dienstag Mittag planen" })).toBeVisible();

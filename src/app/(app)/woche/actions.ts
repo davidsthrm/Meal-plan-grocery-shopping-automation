@@ -26,6 +26,7 @@ import {
   removeFood,
   loadSlot,
   loadWeek,
+  moveSlotTo,
   planOpenSlots,
   resetWeek,
   savePlan,
@@ -283,6 +284,30 @@ export async function clearSlot(form: FormData): Promise<void> {
   const db = await createSessionClient();
   await writeSlot(db, household.id, input.week, input.date, input.meal, null);
   backToWeek(input.week, input.date);
+}
+
+/**
+ * "Auf einen anderen Tag": a meal to another lunch or dinner of its week (`to`,
+ * "<date>.<meal>"), swapped with the meal there.
+ */
+export async function moveSlot(form: FormData): Promise<void> {
+  const input = read(
+    z.intersection(
+      place,
+      z.object({ to: z.string().regex(/^\d{4}-\d{2}-\d{2}\.(lunch|dinner)$/) }),
+    ),
+    form,
+  );
+  const [day, meal] = input.to.split(".") as [string, "lunch" | "dinner"];
+  if (!isIsoDate(day) || mondayOf(day) !== input.week) backToWeek(input.week, input.date);
+  await requireHousehold();
+  await moveSlotTo(
+    await createSessionClient(),
+    input.week,
+    { date: input.date, meal: input.meal },
+    { date: day, meal },
+  );
+  backToWeek(input.week, day);
 }
 
 /** What a meal held, as `MealSection` sends it back to undo emptying it. */

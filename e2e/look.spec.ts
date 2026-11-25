@@ -59,7 +59,7 @@ test("screens @look @webkit", async ({ page }, info) => {
   const complete = page.getByRole("button", { name: "Plan vervollständigen" });
   if (await complete.count()) {
     await complete.click();
-    await page.getByRole("link", { name: "Montag Mittag ändern" }).waitFor();
+    await page.getByRole("button", { name: "Montag Mittag bearbeiten" }).waitFor();
   }
   await shot("2-woche-geplant");
   // Choosing a recipe for one meal: on an iPad the week stands beside it.

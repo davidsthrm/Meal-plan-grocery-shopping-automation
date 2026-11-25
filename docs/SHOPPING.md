@@ -94,6 +94,15 @@ specification of the receipt upload (not built yet).
   and check-offs belong to the note and the key and survive. A meal moved to another
   shopping day is a new line there: a tick on Monday's note does not say it was bought for
   Friday. A change is reported only when the quantity shown changes.
+- A meal moved or swapped on the plan ("Auf einen anderen Tag", see
+  [PLANNING.md](PLANNING.md#moving-a-meal)) writes nothing of the notes, so no tick and no
+  amount bought is lost. Where the errand that buys for its new day is the same, its lines
+  stay on that note under the same key, ticked as they were. Where another errand buys for
+  it, its lines leave the old note and stand open on the other one: what was bought already
+  for it is bought again there unless it is ticked or marked "Haben wir schon". What was
+  ticked on the old note stays stored with its key, shows again on that line where other
+  meals still need it, and comes back whole when the meal moves back. A meal keeps when it
+  was planned, so an errand done before the move still counts as having bought for it.
 - The notes are worked out from the plan every time they are shown (`loadShoppingNotes`), so
   they cannot disagree with the plan. Stored are only what the household does by hand, per
   note (`shopping_list` has one row per household, date and place): typed entries

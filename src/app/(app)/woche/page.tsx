@@ -7,12 +7,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   ArrowIcon,
+  BookIcon,
   CalendarIcon,
   ChartIcon,
+  ListIcon,
+  MoveIcon,
   PenIcon,
   PersonIcon,
   PlusIcon,
   PrinterIcon,
+  StackIcon,
   TrashIcon,
   WishIcon,
 } from "@/components/icons";
@@ -77,6 +81,7 @@ import {
   GROUP_NAME,
   kindGroupName,
   MEAL_NAME,
+  mealPlaceText,
   recipeTone,
   plannedText,
   slotText,
@@ -92,7 +97,9 @@ import { loadSeasonalFoods, withSeason } from "@/server/season";
 import { isSaved, loadExtras, loadHistory, loadWeek } from "@/server/planning/week";
 import { createSessionClient } from "@/server/supabase/server";
 import { CookMore, ExtraPortions } from "./cook-more";
+import { MealPen, PenFold } from "./meal-pen";
 import { MealSection, MealUndoBar } from "./meal-undo";
+import { MoveMeal, type GridMeal } from "./move-meal";
 import {
   acceptSuggestions,
   changeExtraServings,
@@ -182,6 +189,18 @@ export default async function WeekPage(props: PageProps<"/woche">) {
     return from ? `von ${weekdayShort(from.date)} ${MEAL_NAME[from.meal]}` : undefined;
   };
 
+  // Every meal of the week in a word, for the grid of "Auf einen anderen Tag".
+  const moves: GridMeal[] = slots.map((slot) => ({
+    id: slot.id,
+    date: slot.date,
+    meal: slot.meal,
+    kind: slot.kind,
+    ofSlotId: slot.kind === "leftovers" ? slot.ofSlotId : null,
+    name:
+      slot.kind === "recipes"
+        ? (recipeOf.get(slot.items[0]?.recipeId ?? "")?.title ?? "Rezept")
+        : slotText(slot),
+  }));
   const balance = weekBalance(slots, (id) => recipeOf.get(id), household.targets);
   const days = weekDates(week);
   // In the running week the sheet starts with today; the days that are over go to its foot.
@@ -290,6 +309,7 @@ export default async function WeekPage(props: PageProps<"/woche">) {
           leftoversOf={leftoversOf(slotAt(date, meal))}
           leftoversOn={leftoversOn(slotAt(date, meal))}
           cookingMore={cookingMore === `${date}.${meal}`}
+          moves={moves}
         />
       ))}
     </li>
@@ -1031,6 +1051,22 @@ function ServingsSaid({ servings, unit }: { servings: number; unit: string | nul
   );
 }
 
+/**
+ * How much a meal is cooked for while it is planned, on a phone: "4 Pers." beside the dish,
+ * a recipe's own unit below it. The stepper is in the pen's sheet there, and on the line
+ * from the tablet width on (decided on 25 November 2026).
+ */
+function ServingsQuiet({ servings, unit }: { servings: number; unit: string | null }) {
+  const amount = plannedText(servings, unit);
+  if (unit !== null) return <p className="text-sm text-muted tablet:hidden">{amount}</p>;
+  return (
+    <span className="pt-0.5 text-sm whitespace-nowrap text-muted tabular-nums tablet:hidden">
+      <span aria-hidden>{servings} Pers.</span>
+      <span className="sr-only">{amount}</span>
+    </span>
+  );
+}
+
 /** A meal's action shown as a sign: round, large enough for a finger. */
 const ICON_ACTION =
   "-mx-1 flex size-11 items-center justify-center rounded-full text-muted hover:bg-accent-soft hover:text-accent";
@@ -1065,6 +1101,8 @@ interface CellProps {
   leftoversOn: { date: IsoDate; meal: Meal }[];
   /** "Mehr kochen" is open under this meal. */
   cookingMore: boolean;
+  /** Every meal of the week, for "Auf einen anderen Tag". */
+  moves: GridMeal[];
 }
 
 function MealCell({
@@ -1085,6 +1123,7 @@ function MealCell({
   leftoversOf,
   leftoversOn,
   cookingMore,
+  moves,
 }: CellProps) {
   // The suggestion the meal shows: the one asked for, or else an idea offered unasked.
   const shown = proposal ?? hint;
@@ -1185,44 +1224,35 @@ function MealCell({
 
   // A saved meal keeps its pen while it is changed: only "Fertig" puts it down.
   const pen = withPen ? `${date}.${meal}` : null;
-  return (
-    <MealSection
-      label={what}
-      className={cell}
-      week={week}
-      date={date}
-      meal={meal}
-      said={`${weekdayShort(date)} ${MEAL_NAME[meal]}`}
-      was={slot ? contentOf(slot) : null}
-      leftovers={leftoversOn.map((on) => `${on.date}.${on.meal}`)}
-    >
-      <p className="eyebrow flex items-center justify-between gap-2">
-        {MEAL_NAME[meal]}
-        {withPen && (
-          // As tall as a finger, as the pen it stands for: at 36 by 17 it was the smallest
-          // way out of the meal (audit, 24 November 2026).
-          <Link
-            href={`/woche?w=${week}#tag-${date}`}
-            scroll={false}
-            className="link link-quiet -my-2 inline-flex min-h-11 items-center px-2"
-          >
-            Fertig
-          </Link>
-        )}
-      </p>
-
+  // While planning, a planned meal is one line: its dish, how many it is for and one pen;
+  // what the row of signs under it held is in the pen's sheet (decided on 25 November 2026).
+  const calm = !!slot && !withPen && !placing;
+  const body = (
+    <>
       {slot?.kind === "recipes" && (
-        <ul className="mt-1 space-y-2">
+        <ul className={calm ? "space-y-1.5" : "mt-1 space-y-2"}>
           {slot.items.map((item) => {
             const recipe = recipeOf.get(item.recipeId);
+            const unit = recipe?.servings?.unit ?? null;
+            const stepper = (
+              <ServingsStepper
+                action={changeServings}
+                fields={{ week, date, meal, recipe: item.recipeId, ...(pen && { stift: pen }) }}
+                servings={item.servings}
+                unit={unit}
+                title={recipe?.title ?? "dem Rezept"}
+              />
+            );
             return (
-              // The stepper next to the name; one with a unit of its own goes below it.
+              // The stepper next to the name; one with a unit of its own goes below it. While
+              // planning on a phone the persons are a quiet word there, the stepper is in the
+              // pen's sheet; from the tablet width on it stays on the line.
               <li
                 key={item.recipeId}
                 className={
-                  recipe?.servings?.unit
+                  unit
                     ? "space-y-1.5"
-                    : "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2"
+                    : `grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 ${calm ? "items-start tablet:items-center" : "items-center"}`
                 }
               >
                 <KindTitle
@@ -1232,20 +1262,36 @@ function MealCell({
                   day={date}
                   servings={{ planned: item.servings, extra: slot.extra }}
                 />
-                <ServingsStepper
-                  action={changeServings}
-                  fields={{ week, date, meal, recipe: item.recipeId, ...(pen && { stift: pen }) }}
-                  servings={item.servings}
-                  unit={recipe?.servings?.unit ?? null}
-                  title={recipe?.title ?? "dem Rezept"}
-                />
+                {calm ? (
+                  <>
+                    <ServingsQuiet servings={item.servings} unit={unit} />
+                    <div className="hidden tablet:block">{stepper}</div>
+                  </>
+                ) : (
+                  stepper
+                )}
               </li>
             );
           })}
         </ul>
       )}
-      {/* What goes with the recipes and has none, a tap away from being changed. */}
-      {slot?.kind === "recipes" && (slot.foods?.length ?? 0) > 0 && (
+      {/* What goes with the recipes and has none: words on the line while planning, the
+          pen's sheet changes it; a tap away from being changed on a saved meal's pen. */}
+      {calm && slot?.kind === "recipes" && (slot.foods?.length ?? 0) > 0 && (
+        <p className="mt-1 text-sm">
+          <span className="text-muted">Dazu: </span>
+          {slot.foods?.map(foodText).join(", ")}
+        </p>
+      )}
+      {calm && slot?.kind === "recipes" && (slot.extra ?? 0) > 0 && (
+        <p className="mt-1 text-sm font-semibold text-accent">
+          + {slot.extra === 1 ? "1 Extra-Portion" : `${slot.extra} Extra-Portionen`} für Reste
+          {leftoversOn[0] && (
+            <span className="font-normal text-muted"> am {mealPlaceText(leftoversOn[0])}</span>
+          )}
+        </p>
+      )}
+      {!calm && slot?.kind === "recipes" && (slot.foods?.length ?? 0) > 0 && (
         <Link
           href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
           className="mt-1.5 flex min-h-11 items-center text-sm"
@@ -1257,7 +1303,7 @@ function MealCell({
           </span>
         </Link>
       )}
-      {slot?.kind === "recipes" && (slot.extra ?? 0) > 0 && (
+      {!calm && slot?.kind === "recipes" && (slot.extra ?? 0) > 0 && (
         <ExtraPortions
           week={week}
           date={date}
@@ -1270,7 +1316,9 @@ function MealCell({
       )}
 
       {slot && slot.kind !== "recipes" && (
-        <SlotName className={`mt-1 font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}>
+        <SlotName
+          className={`${calm ? "" : "mt-1"} font-semibold ${slot.kind === "skipped" ? "text-muted" : ""}`}
+        >
           {slotText(slot)}
           {leftoversOf && <span className="font-normal text-muted"> {leftoversOf}</span>}
         </SlotName>
@@ -1306,6 +1354,138 @@ function MealCell({
             </form>
           </span>
         </div>
+      )}
+    </>
+  );
+  // What the row of signs held, each a row of the pen's sheet. The persons are on the line
+  // from the tablet width on.
+  const penRows = slot && (
+    <>
+      {slot.kind === "recipes" && (
+        <div className="pen-row-block tablet:hidden">
+          <PersonIcon />
+          <ul className="min-w-0 flex-1 space-y-2">
+            {slot.items.map((item) => {
+              const recipe = recipeOf.get(item.recipeId);
+              return (
+                <li key={item.recipeId} className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate">
+                    {slot.items.length > 1
+                      ? (recipe?.title ?? "Rezept")
+                      : recipe?.servings?.unit
+                        ? "Menge"
+                        : "Personen"}
+                  </span>
+                  <ServingsStepper
+                    action={changeServings}
+                    fields={{ week, date, meal, recipe: item.recipeId }}
+                    servings={item.servings}
+                    unit={recipe?.servings?.unit ?? null}
+                    title={recipe?.title ?? "dem Rezept"}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      <Link href={choose("replace")} className="pen-row">
+        <BookIcon />
+        Anderes Gericht
+      </Link>
+      {slot.kind === "recipes" && (
+        <Link href={choose("add")} className="pen-row">
+          <PlusIcon />
+          Etwas dazu
+        </Link>
+      )}
+      {(slot.kind === "free_text" ||
+        (slot.kind === "recipes" && (slot.foods?.length ?? 0) > 0)) && (
+        <Link href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`} className="pen-row">
+          <ListIcon />
+          Lebensmittel
+        </Link>
+      )}
+      {slot.kind === "recipes" && (slot.extra ?? 0) > 0 && (
+        <div className="pen-row-block">
+          <StackIcon />
+          <ExtraPortions
+            week={week}
+            date={date}
+            meal={meal}
+            extra={slot.extra ?? 0}
+            leftoversOn={leftoversOn[0] ?? null}
+            what={what}
+            pen={null}
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1"
+          />
+        </div>
+      )}
+      {canCookMore && (
+        <PenFold icon={<StackIcon />} label="Mehr kochen für Reste">
+          <CookMore
+            week={week}
+            date={date}
+            meal={meal}
+            servings={servings}
+            later={later}
+            pen={null}
+          />
+        </PenFold>
+      )}
+      {meal !== "coffee" && (
+        <PenFold icon={<MoveIcon />} label="Auf einen anderen Tag">
+          <MoveMeal week={week} date={date} meal={meal} days={weekDates(week)} meals={moves} />
+        </PenFold>
+      )}
+      <form action={clearSlot} data-does="clear">
+        {where}
+        <SubmitButton className="pen-row text-danger">
+          <TrashIcon />
+          Entfernen
+        </SubmitButton>
+      </form>
+    </>
+  );
+  return (
+    <MealSection
+      label={what}
+      className={`${cell} ${calm ? "max-sm:grid max-sm:grid-cols-[3.5rem_minmax(0,1fr)]" : ""}`}
+      week={week}
+      date={date}
+      meal={meal}
+      said={`${weekdayShort(date)} ${MEAL_NAME[meal]}`}
+      was={slot ? contentOf(slot) : null}
+      leftovers={leftoversOn.map((on) => `${on.date}.${on.meal}`)}
+    >
+      {/* On a phone the kind stands beside the dish, so that a meal is one line; where lunch
+          and dinner stand side by side, above it, as on an open meal. */}
+      <p
+        className={`eyebrow flex items-center justify-between gap-2 ${calm ? "max-sm:pt-[0.3rem]" : ""}`}
+      >
+        {MEAL_NAME[meal]}
+        {withPen && (
+          // As tall as a finger, as the pen it stands for: at 36 by 17 it was the smallest
+          // way out of the meal (audit, 24 November 2026).
+          <Link
+            href={`/woche?w=${week}#tag-${date}`}
+            scroll={false}
+            className="link link-quiet -my-2 inline-flex min-h-11 items-center px-2"
+          >
+            Fertig
+          </Link>
+        )}
+      </p>
+
+      {calm && slot ? (
+        <div className="flex items-start gap-1">
+          <div className="min-w-0 flex-1">{body}</div>
+          <MealPen slot={slot.id} what={what}>
+            {penRows}
+          </MealPen>
+        </div>
+      ) : (
+        body
       )}
 
       {/*
@@ -1353,94 +1533,103 @@ function MealCell({
 
       {/* While a recipe is placed, the row names it: it shows where the recipe lands as soon
           as its button is tapped (`data-landing`, `data-does="place"` or "add"). */}
-      <div
-        className={`meal-actions mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 ${placing ? (recipeTone(placing)?.className ?? "kind-none") : ""}`}
-        data-landing={placing?.title}
-      >
-        {placing ? (
-          <form action={planRecipe} data-does={slot?.kind === "recipes" ? "add" : "place"}>
-            {where}
-            <input type="hidden" name="recipe" value={placing.id} />
-            <input type="hidden" name="mode" value={slot?.kind === "recipes" ? "add" : "replace"} />
-            <SubmitButton className="btn btn-primary btn-small" label={`${what}: hier einplanen`}>
-              {slot?.kind === "recipes" ? "Dazu einplanen" : slot ? "Ersetzen" : "Hier einplanen"}
-            </SubmitButton>
-          </form>
-        ) : slot ? (
-          <>
-            {/* Signs instead of words, so that the row stays one line: what each does is in
-                its label, and in its title for a mouse. */}
-            <Link
-              href={choose("replace")}
-              className={ICON_ACTION}
-              aria-label={`${what} ändern`}
-              title="Ändern"
-            >
-              <PenIcon />
-            </Link>
-            {slot.kind === "recipes" && (
-              <Link
-                href={choose("add")}
-                className={ICON_ACTION}
-                aria-label={`${what}: etwas dazu`}
-                title="Etwas dazu"
-              >
-                <PlusIcon />
-              </Link>
-            )}
-            {slot.kind === "free_text" && (
-              <Link
-                href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
-                className="link text-sm"
-                aria-label={`${what}: Lebensmittel`}
-              >
-                Lebensmittel
-              </Link>
-            )}
-            <form action={clearSlot} data-does="clear">
+      {!calm && (
+        <div
+          className={`meal-actions mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 ${placing ? (recipeTone(placing)?.className ?? "kind-none") : ""}`}
+          data-landing={placing?.title}
+        >
+          {placing ? (
+            <form action={planRecipe} data-does={slot?.kind === "recipes" ? "add" : "place"}>
               {where}
-              <SubmitButton className={`${ICON_ACTION} hover:text-danger`} label={`${what} leeren`}>
-                <TrashIcon />
+              <input type="hidden" name="recipe" value={placing.id} />
+              <input
+                type="hidden"
+                name="mode"
+                value={slot?.kind === "recipes" ? "add" : "replace"}
+              />
+              <SubmitButton className="btn btn-primary btn-small" label={`${what}: hier einplanen`}>
+                {slot?.kind === "recipes" ? "Dazu einplanen" : slot ? "Ersetzen" : "Hier einplanen"}
               </SubmitButton>
             </form>
-            {/* Cooked for more than the household: leftovers for a later meal. Once cooked
+          ) : slot ? (
+            <>
+              {/* Signs instead of words, so that the row stays one line: what each does is in
+                its label, and in its title for a mouse. */}
+              <Link
+                href={choose("replace")}
+                className={ICON_ACTION}
+                aria-label={`${what} ändern`}
+                title="Ändern"
+              >
+                <PenIcon />
+              </Link>
+              {slot.kind === "recipes" && (
+                <Link
+                  href={choose("add")}
+                  className={ICON_ACTION}
+                  aria-label={`${what}: etwas dazu`}
+                  title="Etwas dazu"
+                >
+                  <PlusIcon />
+                </Link>
+              )}
+              {slot.kind === "free_text" && (
+                <Link
+                  href={`/woche/lebensmittel?w=${week}&d=${date}&m=${meal}`}
+                  className="link text-sm"
+                  aria-label={`${what}: Lebensmittel`}
+                >
+                  Lebensmittel
+                </Link>
+              )}
+              <form action={clearSlot} data-does="clear">
+                {where}
+                <SubmitButton
+                  className={`${ICON_ACTION} hover:text-danger`}
+                  label={`${what} leeren`}
+                >
+                  <TrashIcon />
+                </SubmitButton>
+              </form>
+              {/* Cooked for more than the household: leftovers for a later meal. Once cooked
                 more, the extra portions stand under the recipes instead. A cake for one tin
                 is not cooked "more". */}
-            {canCookMore && (
+              {canCookMore && (
+                <Link
+                  href={`/woche?w=${week}${cookingMore ? "" : `&mehr=${date}.${meal}`}${pen ? `&stift=${pen}` : ""}#tag-${date}`}
+                  scroll={false}
+                  className={`link link-quiet inline-flex min-h-11 items-center rounded-full px-2 text-sm whitespace-nowrap ${cookingMore ? "bg-accent-soft text-accent" : "text-muted"}`}
+                  aria-label={`${what}: mehr kochen`}
+                  aria-expanded={cookingMore}
+                >
+                  Mehr kochen
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
               <Link
-                href={`/woche?w=${week}${cookingMore ? "" : `&mehr=${date}.${meal}`}${pen ? `&stift=${pen}` : ""}#tag-${date}`}
-                scroll={false}
-                className={`link link-quiet inline-flex min-h-11 items-center rounded-full px-2 text-sm whitespace-nowrap ${cookingMore ? "bg-accent-soft text-accent" : "text-muted"}`}
-                aria-label={`${what}: mehr kochen`}
-                aria-expanded={cookingMore}
+                href={choose("replace")}
+                className={shown ? "link text-sm" : "btn btn-small"}
+                aria-label={`${what} planen`}
               >
-                Mehr kochen
+                {shown ? "Selbst wählen" : "Planen"}
               </Link>
-            )}
-          </>
-        ) : (
-          <>
-            <Link
-              href={choose("replace")}
-              className={shown ? "link text-sm" : "btn btn-small"}
-              aria-label={`${what} planen`}
-            >
-              {shown ? "Selbst wählen" : "Planen"}
-            </Link>
-            {canAsk && !shown && (
-              <Link
-                href={ask(0)}
-                scroll={false}
-                className="link text-sm"
-                aria-label={`${what}: Was könnten wir kochen?`}
-              >
-                Was könnten wir kochen?
-              </Link>
-            )}
-          </>
-        )}
-      </div>
-      {canCookMore && cookingMore && !placing && (
+              {canAsk && !shown && (
+                <Link
+                  href={ask(0)}
+                  scroll={false}
+                  className="link text-sm"
+                  aria-label={`${what}: Was könnten wir kochen?`}
+                >
+                  Was könnten wir kochen?
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {canCookMore && cookingMore && !calm && !placing && (
         <CookMore
           week={week}
           date={date}

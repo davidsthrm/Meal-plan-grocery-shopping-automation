@@ -163,6 +163,35 @@ are in [SHOPPING.md](SHOPPING.md).
   reasons under it, green read as a link, and a line of facts cut at its edge read
   "4 Portion" (audit, 24 November 2026).
 
+## Moving a meal
+
+- "Auf einen anderen Tag" in a meal's pen shows the open week as a small grid, a row per day
+  with its lunch and dinner, each place with its dish cut to one line or "frei", the meal's
+  own place marked and not to be picked (`MoveMeal`). A tap on a place says what would
+  happen, "Frei." or "Tauscht mit Putengeschnetzeltes.", and "Verschieben" or "Tauschen"
+  does it. Each place is a radio button, so arrows choose on a laptop. Decided on 25
+  November 2026 from drawn drafts: plans change, and a meal moved by hand was emptied and
+  planned anew, persons, side and all.
+- A free place takes the meal, a planned one swaps with it (`moveMeal`,
+  `src/domain/move-meal.ts`). The meal's row moves, not what it holds, so everything that
+  belongs to it goes along: its recipes with their persons, what goes with them, its foods,
+  a typed text, "braucht kein Rezept", its extra portions, and when each was planned. The
+  two meals of a swap change places in one write (`move_plan_slot`, a function of the
+  database): a place is unique in its week, which Postgres checks row by row, so the moving
+  meal waits on a date no meal has while the other takes its place, in one transaction.
+- Leftovers never come before the meal they are cooked with, nor at its place: such a move
+  is refused before it is made, with the reason ("Die Reste am Di Abend sind von Di Mittag
+  und müssen danach kommen."), and its button stays off; the server asks again. Only the
+  links of the two meals that move are asked, so an older mix-up does not block every move.
+  Leftovers of a meal in the week before can go anywhere in theirs. The three days of "Mehr
+  kochen" (`LEFTOVER_DAYS`) are for picking where leftovers go and are not asked here.
+- Any lunch or dinner of the open week is a place, also on a day that is over, as any meal
+  of it can be changed. Sunday's coffee does not move and is no place to go to. A saved plan
+  moves nothing: its pen opens the meal without the sheet.
+- The shopping notes are worked out from the plan, so they follow by themselves: see
+  [SHOPPING.md](SHOPPING.md#lines-and-amounts) for a line already ticked or bought when its
+  meal moves to a day another errand buys for.
+
 ## Saved plans
 
 - A plan the household is done with is saved (`week_plan.saved_at`, "Plan speichern"). A
@@ -170,7 +199,8 @@ are in [SHOPPING.md](SHOPPING.md).
   suggestions, and each with a small pen that opens that one meal (`?stift=<date>.<meal>`).
   The pen stays open while the meal is changed, its persons, extra portions and "Mehr
   kochen", until "Fertig": one step of the persons closed it, and the next tap landed on a
-  meal to read (audit, 24 November 2026).
+  meal to read (audit, 24 November 2026). It opens the meal as a meal was planned before 25
+  November 2026, its stepper beside the dish and its signs under it, not the pen's sheet.
   "Plan bearbeiten" opens the whole plan again. Saving is a decision, not a date: a week
   that has begun is not locked by itself. A saved meal shows beside its dish for how many it
   is cooked, a person's sign and the number as on the stepper; a recipe's own unit stands
@@ -270,7 +300,8 @@ are in [SHOPPING.md](SHOPPING.md).
   next three days (`openMealsAfter`, `LEFTOVER_DAYS`), becomes "Reste" with the meal it is
   from (`plan_slot.leftovers_of_slot_id`), and the extra portions say for which meal they
   are. A meal planned meanwhile is left alone. A meal written again keeps its id
-  (`writeSlot` updates in place), so the link holds.
+  (`writeSlot` updates in place), so the link holds. A meal moved keeps it too, and does not
+  move behind its leftovers (see "Moving a meal").
 
 ## The plan on screen
 
@@ -296,21 +327,39 @@ are in [SHOPPING.md](SHOPPING.md).
   (`slotPictogram`): the bread of a "Vesper", the pot of leftovers, a pin with a plate for
   a meal away ("Auswärts", "Oma Heidrun"), on grey. An open meal has no edge and says
   "noch offen".
-- A planned meal is two lines: its dish with the persons as a small stepper beside it ("− 4
-  +", a person's sign and the number, "4 Personen" for a screen reader; a recipe with a unit
-  of its own shows that below the dish), and its actions as signs in one row, each with its
-  words as label and title: a pen to change it, a plus for a side, a bin to empty it at
-  once, with "Mo Abend geleert · Widerrufen" at the foot for five seconds (`MealSection`,
-  `restoreSlot`), also when its last recipe is stepped to nothing. The way back writes the
-  meal again, persons, foods and extra portions, unless it was planned meanwhile, and the
-  leftovers planned from it are its again. One tap beside the plus had erased all of it for
-  good, while the whole week asks first (audit, 24 November 2026);
-  "Mehr kochen" is the one word among them, a quiet grey word (`.link-quiet`: as a green
-  pill it outshone the meal) that opens its form under the row
-  (`?mehr=<date>.<meal>`, "Übernehmen" or "Abbrechen"), the way a suggestion is asked for.
-  The household found the row of words, and "Mehr kochen" on a line of its own, took too
-  much room in the plan; folded open inside the row it stood beside the signs in Safari.
-  With the persons on a line of their own, a planned week was 3,800 points tall on a phone.
+- While planning, a planned meal is one line: its kind's edge and name ("Mittag" beside the
+  dish on a phone, above it from `sm` on, as on an open meal), the dot and the dish's name
+  (`.dish-name`, two lines at most), how many it is for as a quiet word ("4 Pers.", "4
+  Personen" for a screen reader; only for a recipe cooked for persons, a recipe with a unit
+  of its own says that below the dish), and one pen of 44px (`MealPen`). From the tablet
+  width on the persons stay a stepper on the line ("− 4 +", a person's sign and the number):
+  the household plans on the iPad, and there is room. Below the line stands only what else
+  the meal holds, as words: "Dazu: 1 Dinkelbaguette", "+ 4 Extra-Portionen für Reste am Di
+  Abend", a typed meal's foods, and "Noch kein Rezept dazu" with its two ways. Decided on 25
+  November 2026 from drawn drafts: with its stepper and a row of five signs a planned meal
+  was about 150 points tall on a phone, the page held about 80 controls, and a week was four
+  screens long.
+- The pen opens what the row of signs under the meal held, each a row with its sign and its
+  words: Personen (the stepper, on a phone only), "Anderes Gericht", "Etwas dazu" (with
+  recipes), "Lebensmittel" (a typed meal, or recipes with foods), the extra portions or
+  "Mehr kochen für Reste" (its form folds out in the row), "Auf einen anderen Tag" (see
+  "Moving a meal") and "Entfernen". On a phone it is a sheet from the foot of the screen,
+  from the tablet width on a panel at the pen ([DESIGN.md](DESIGN.md#controls-and-sizes)). A
+  step of the persons or of the extra portions leaves it open, also when the page comes back
+  from the server and draws the meal afresh: it opens again as it was, without its entrance.
+  Every other row is done with it. The server actions are the same as before the pen.
+- "Entfernen" empties the meal at once, with "Mo Abend geleert · Widerrufen" at the foot for
+  five seconds (`MealSection`, `restoreSlot`), also when its last recipe is stepped to
+  nothing. The way back writes the meal again, persons, foods and extra portions, unless it
+  was planned meanwhile, and the leftovers planned from it are its again. One tap beside the
+  plus had erased all of it for good, while the whole week asks first (audit, 24 November
+  2026).
+- Until 25 November 2026 the meal was its dish with the stepper beside it and a row of signs
+  under it (pen, plus, Lebensmittel, bin), "Mehr kochen" a quiet grey word among them that
+  opened its form under the row (`?mehr=<date>.<meal>`). A saved meal's pen still opens it
+  that way (see "Saved plans"). Before that the household found a row of words, and "Mehr
+  kochen" on a line of its own, took too much room; with the persons on a line of their own,
+  a planned week was 3,800 points tall on a phone.
 - A week ahead planned to its last lunch and dinner (`weekPlanned`) is celebrated once per
   device (`WeekDone`): a stamp, "Woche steht!", is pressed onto the screen and the colours
   of the kinds of meals fly off it, 1.8 seconds, meant to be seen. Only a week the device

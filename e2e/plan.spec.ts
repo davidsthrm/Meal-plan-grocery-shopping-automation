@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openFilters, resetLibrary, signIn } from "./fixtures";
-import { meal } from "./helpers";
+import { meal, openPen, persons } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -92,14 +92,18 @@ test("a meal can be something without a recipe, and be emptied again", async ({ 
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("Vesper");
 
-  await page.getByRole("link", { name: "Montag Abend ändern" }).click();
+  await (
+    await openPen(page, "Montag Abend")
+  )
+    .getByRole("link", { name: "Anderes Gericht" })
+    .click();
   await page.getByLabel("Eigener Eintrag").fill("bei Oma");
   await page.getByRole("button", { name: "Eintragen" }).click();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, "Montag Abend")).toContainText("bei Oma");
   await expect(meal(page, "Montag Abend")).not.toContainText("Vesper");
 
-  await page.getByRole("button", { name: "Montag Abend leeren" }).click();
+  await (await openPen(page, "Montag Abend")).getByRole("button", { name: "Entfernen" }).click();
   await expect(page.getByRole("link", { name: "Montag Abend planen" })).toBeVisible();
   await expect(meal(page, "Montag Abend")).not.toContainText("bei Oma");
 });
@@ -151,10 +155,14 @@ test("a cake is planned as written, and a side dish can join a meal", async ({ p
   // One cake tin, not four of them for four persons.
   const tuesday = meal(page, "Dienstag Mittag");
   await expect(tuesday).toContainText("1 Springform (Ø 26 cm)");
-  await page.getByRole("button", { name: "Mehr von Zitronen-Mohn-Kuchen" }).click();
+  await (
+    await persons(page, "Dienstag Mittag")
+  )
+    .getByRole("button", { name: "Mehr von Zitronen-Mohn-Kuchen" })
+    .click();
   await expect(tuesday).toContainText("2 Springform (Ø 26 cm)");
 
-  await page.getByRole("link", { name: "Dienstag Mittag: etwas dazu" }).click();
+  await (await openPen(page, "Dienstag Mittag")).getByRole("link", { name: "Etwas dazu" }).click();
   await expect(page.getByRole("heading", { name: "Zum Mittagessen dazu" })).toBeVisible();
   // The filters of the chooser are a sheet, whatever the screen.
   const close = await openFilters(page);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plannedAtText, targetText, whyText } from "./plan-text";
+import { leftoversFirstText, plannedAtText, targetText, whyText } from "./plan-text";
 
 describe("plannedAtText", () => {
   it("names the meal and its day", () => {
@@ -63,5 +63,16 @@ describe("whyText", () => {
         { kind: "group_full", group: "fish" },
       ]),
     ).toBe("Erst vor 2 Wochen gekocht · Schon genug Fisch diese Woche");
+  });
+});
+
+describe("leftoversFirstText", () => {
+  it("names where the leftovers are and the meal they are from", () => {
+    expect(
+      leftoversFirstText(
+        { date: "2026-11-25", meal: "lunch" },
+        { date: "2026-11-24", meal: "dinner" },
+      ),
+    ).toBe("Die Reste am Mi Mittag sind von Di Abend und müssen danach kommen.");
   });
 });

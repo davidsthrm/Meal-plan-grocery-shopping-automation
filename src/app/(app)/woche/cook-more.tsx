@@ -63,8 +63,8 @@ export function CookMore({
   servings: number;
   /** The open meals the leftovers can be eaten at, in order. */
   later: { date: IsoDate; meal: Meal }[];
-  /** Where "Abbrechen" leads: the week, at this day. */
-  close: string;
+  /** Where "Abbrechen" leads: the week, at this day. None in the pen's sheet, which closes. */
+  close?: string;
   /** The pen of a saved meal, "<date>.<meal>", that stays open. */
   pen: string | null;
 }) {
@@ -101,9 +101,11 @@ export function CookMore({
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <SubmitButton className="btn btn-primary btn-small">Übernehmen</SubmitButton>
-        <Link href={close} scroll={false} className="link min-h-11">
-          Abbrechen
-        </Link>
+        {close && (
+          <Link href={close} scroll={false} className="link min-h-11">
+            Abbrechen
+          </Link>
+        )}
       </div>
     </form>
   );
@@ -133,6 +135,7 @@ export function ExtraPortions({
   leftoversOn,
   what,
   pen,
+  className = "mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-b-[1.5px] border-dashed border-accent/45 pb-2",
 }: {
   week: IsoDate;
   date: IsoDate;
@@ -143,9 +146,11 @@ export function ExtraPortions({
   what: string;
   /** The pen of a saved meal, "<date>.<meal>", that stays open. */
   pen: string | null;
+  /** Its place: over a dashed rule under the meal, or a row of the pen's sheet. */
+  className?: string;
 }) {
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-b-[1.5px] border-dashed border-accent/45 pb-2">
+    <div className={className}>
       <form action={changeExtraPortions} className="stepper">
         <Where week={week} date={date} meal={meal} pen={pen} />
         <ExtraSteps extra={extra} what={what} />
