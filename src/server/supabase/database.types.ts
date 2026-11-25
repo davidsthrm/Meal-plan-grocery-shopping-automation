@@ -2117,6 +2117,14 @@ export type Database = {
         Args: { drop_id: string; keep_id: string }
         Returns: undefined
       }
+      move_plan_slot: {
+        Args: {
+          slot_id: string
+          to_date: string
+          to_meal: Database["public"]["Enums"]["meal"]
+        }
+        Returns: string
+      }
       remember_shop_choice: {
         Args: { chosen: string; home: string; item: string }
         Returns: undefined
