@@ -12,6 +12,7 @@ import {
   type SlotItem,
 } from "@/domain/plan";
 import { findIngredient } from "@/domain/catalog";
+import { moveMeal, type Place } from "@/domain/move-meal";
 import { currentWeeks, lastCooked, plannedAt, type PlannedAt } from "@/domain/planned";
 import { asSide } from "@/domain/vesper";
 import { today } from "@/lib/today";
@@ -586,6 +587,41 @@ export async function setExtraPortions(
     { kind: "leftovers", ofSlotId: done.id },
     later,
   );
+}
+
+/**
+ * Moves a meal of a week to another place of it, swapping with the meal there, in one write
+ * (`move_plan_slot`): the meal's row moves with everything that is its or points to it.
+ * Nothing is done where nothing is planned at `from` any more, or where leftovers would come
+ * before the meal they are from (`moveMeal`): the sheet said so before.
+ */
+export async function moveSlotTo(
+  db: Db,
+  weekStart: IsoDate,
+  from: Place,
+  to: Place,
+): Promise<void> {
+  const rows = await allRows(
+    (first, last) =>
+      db
+        .from("plan_slot")
+        .select("id, date, meal, kind, leftovers_of_slot_id, week_plan!inner(week_start)")
+        .eq("week_plan.week_start", weekStart)
+        .order("id")
+        .range(first, last),
+    "load the week's meals",
+  );
+  const meals = rows.map((row) => ({ ...row, ofSlotId: row.leftovers_of_slot_id }));
+  const moving = meals.find((row) => row.date === from.date && row.meal === from.meal);
+  if (!moving) return;
+  const move = moveMeal(meals, moving, to);
+  if (move.kind !== "move" && move.kind !== "swap") return;
+  const moved = await db.rpc("move_plan_slot", {
+    slot_id: moving.id,
+    to_date: to.date,
+    to_meal: to.meal,
+  });
+  if (moved.error) throw new Error(`move meal: ${moved.error.message}`);
 }
 
 /** Changes one recipe of a meal: other servings, or none of it any more. */

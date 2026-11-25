@@ -1,4 +1,4 @@
-import { dayAndMonth, weekdayLong } from "@/domain/dates";
+import { dayAndMonth, weekdayLong, weekdayShort, type IsoDate } from "@/domain/dates";
 import type { Diet } from "@/domain/library/filter";
 import type { PlannedAt } from "@/domain/planned";
 import { VOLUME_UNIT } from "@/domain/import/servings";
@@ -205,6 +205,19 @@ export function plannedAtText(planned: PlannedAt): string {
   if (planned.date === null)
     return `Eingeplant: Außerdem in der Woche vom ${dayAndMonth(planned.week)}`;
   return `Eingeplant: ${weekdayLong(planned.date)} ${MEAL_NAME[planned.meal]}, ${dayAndMonth(planned.date)}`;
+}
+
+/** A meal in a few words: "Di Abend". Within a week the weekday says which one. */
+export function mealPlaceText(place: { date: IsoDate; meal: Meal }): string {
+  return `${weekdayShort(place.date)} ${MEAL_NAME[place.meal]}`;
+}
+
+/** Why a meal does not move there: its leftovers, or it as leftovers, would come first. */
+export function leftoversFirstText(
+  leftovers: { date: IsoDate; meal: Meal },
+  source: { date: IsoDate; meal: Meal },
+): string {
+  return `Die Reste am ${mealPlaceText(leftovers)} sind von ${mealPlaceText(source)} und müssen danach kommen.`;
 }
 
 /** What a meal without a recipe says on the plan. */
