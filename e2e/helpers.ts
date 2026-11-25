@@ -45,6 +45,9 @@ export async function keptWith(page: Page, text: string): Promise<boolean> {
 export async function expectSearchRowWithAdd(page: Page) {
   const field = page.getByPlaceholder("Titel oder Zutat");
   const add = page.getByRole("link", { name: "Rezept hinzufügen", exact: true });
+  // While the page streams in, the row stands in a hidden part of it and has no box yet.
+  await expect(field).toBeVisible();
+  await expect(add).toBeVisible();
   const fieldBox = (await field.boundingBox())!;
   const addBox = (await add.boundingBox())!;
   const middle = (box: { y: number; height: number }) => box.y + box.height / 2;
@@ -53,6 +56,8 @@ export async function expectSearchRowWithAdd(page: Page) {
   const filter = page.getByRole("button", { name: "Filter", exact: true });
   if (await filter.isVisible()) expect(addBox.x).toBeGreaterThan((await filter.boundingBox())!.x);
   expect(addBox.height).toBeGreaterThanOrEqual(44);
+  // The words measured as drawn. WebKit's clear button would take about 15px more, which the
+  // canvas does not see: the field keeps it out while it is empty (globals.css).
   const room = await field.evaluate((input: HTMLInputElement) => {
     const style = getComputedStyle(input);
     const context = document.createElement("canvas").getContext("2d")!;
