@@ -3710,6 +3710,14 @@ summary,
     }
   }
   /*
+   * In "Jetzt einkaufen" it stands above the view's own button at the foot ("Fertig",
+   * "Einkauf erledigt"), which it covered for five seconds after each decision on a phone
+   * (25 November 2026).
+   */
+  body:has(.store-view[open]) .undo-bar {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+  /*
    * It rises when it first appears and goes down when it goes. While it stays, the next
    * decision only changes its words: shown afresh for each, its rise started again from
    * nothing, and quick swipes made it jump (October 2026). A transition, not keyframes.

@@ -289,7 +289,10 @@ The paper metaphors in motion:
   ticked recipes, "Widerrufen", "Fertig" of a photographed recipe, "Speichern" of the recipe
   form, the button under the import's proposals), keep clear of the iPhone's home bar
   (`env(safe-area-inset-bottom)`, which needs `viewport-fit=cover`). Until 24 November 2026
-  they stood on the strip of the sections. The Rezept-Stapel's deck takes what the screen
+  they stood on the strip of the sections. In "Jetzt einkaufen" "Widerrufen" stands higher,
+  above the view's own button at its foot ("Einkauf erledigt", "Fertig"): at the screen's
+  foot it covered that button for five seconds after each decision (25 November 2026,
+  `e2e/shop-deviations.spec.ts`). The Rezept-Stapel's deck takes what the screen
   has left between the header and its three buttons, both insets taken off: at its old
   height they lay under the strip on a 375px phone (November 2026); its "Zurück" stands
   above the card for the same reason, all of its 44px: its foot lay over the card, and a
