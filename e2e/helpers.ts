@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 // Helpers on the page that several spec files share. What puts the database into a known
 // state is in fixtures.ts.
@@ -16,6 +16,39 @@ export async function plan(page: Page, name: string, recipe: string) {
     .click();
   await page.getByRole("link", { name: "← Wochenplan" }).click();
   await expect(meal(page, name)).toContainText(recipe);
+}
+
+/**
+ * The pen of a planned meal, opened: everything that is done with the meal is a row of what
+ * it opens, a sheet on a phone and a panel at the pen on a wider screen. Opened already, it
+ * is that one.
+ */
+export async function openPen(page: Page, name: string): Promise<Locator> {
+  const pen = page.getByRole("dialog", { name, exact: true });
+  if (!(await pen.isVisible())) {
+    await meal(page, name)
+      .getByRole("button", { name: `${name} bearbeiten` })
+      .click();
+  }
+  await expect(pen).toBeVisible();
+  return pen;
+}
+
+/** Closes the pen's sheet or panel that is open, if one is. */
+export async function closePen(page: Page) {
+  const open = page.getByRole("dialog");
+  if (await open.isVisible()) await page.keyboard.press("Escape");
+  await expect(open).toHaveCount(0);
+}
+
+/**
+ * Where a planned meal's persons are stepped: on its line from the tablet width on, in its
+ * pen's sheet on a phone.
+ */
+export async function persons(page: Page, name: string): Promise<Locator> {
+  const line = meal(page, name);
+  const onLine = line.getByRole("button", { name: /^Mehr von / }).first();
+  return (await onLine.isVisible()) ? line : openPen(page, name);
 }
 
 /** A shopping note among the others: the notes still to do, or those done at the foot. */

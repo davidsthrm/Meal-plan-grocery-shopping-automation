@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { resetLibrary, signIn } from "./fixtures";
-import { meal } from "./helpers";
+import { closePen, meal, persons } from "./helpers";
 
 // A week far enough ahead that every meal of it is still to come.
 const WEEK = "2027-03-01";
@@ -169,12 +169,14 @@ test("a meal with a recipe takes bread to go with it, which the bakery's note bu
   const sunday = meal(page, "Sonntag Mittag");
   await expect(sunday).toContainText("Dazu: 1 Dinkelbaguette");
   // Another person at the table keeps the bread.
-  await sunday.getByRole("button", { name: "Mehr von Pilzrisotto" }).click();
+  const steps = await persons(page, "Sonntag Mittag");
+  await steps.getByRole("button", { name: "Mehr von Pilzrisotto" }).click();
   await expect(sunday).toContainText("5 Personen");
   await expect(sunday).toContainText("Dazu: 1 Dinkelbaguette");
   // The number changes with the tap; the link to the recipe carries it once the server has
   // answered.
   await expect(sunday.locator('[aria-busy="true"]')).toHaveCount(0);
+  await closePen(page);
   // The recipe's page starts with as much as the meal cooks.
   await sunday.getByRole("link", { name: "Pilzrisotto" }).click();
   await expect(page.getByRole("group", { name: "Menge" })).toContainText("5 Personen");
