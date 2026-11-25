@@ -65,6 +65,16 @@ measurements. Checking the whole library is in
   those go through `heic-decode` first. See `src/server/import/normalize-image.ts`.
 - A 24 megapixel page loses more than half its resolution at the model's size limit. The
   import can send enlarged full-resolution parts along with the page (`prepareForModel`).
+- Storage is the free plan's 1 GB, and on 25 November 2026 it stood at 1.5 GB: 771 MB of page
+  photos, 297 MB of cut-outs and 441 MB of full-size copies that seven batches of October had
+  left behind. So the full-size copy of a page goes as soon as every recipe of its batch is
+  read (`removeFullCopies`), not at the batch's very end, which is only reached while its
+  page stays open. And a cut-out, which is only looked at, is stored at quality 76 with
+  mozjpeg (`VIEW_JPEG`): less than half the bytes, no difference to see in the print at full
+  size. The stored page photos were saved again the same way that day; the pictures as they
+  were are kept outside the repository. A page photo of a new import is still stored at
+  quality 88, because the models read it: storing it smaller needs a measurement first
+  (`npm run import:eval`).
 - The photo bucket has no storage policies. Uploads and views go through signed URLs from the
   server. The upload from the phone is deleted as soon as the clean JPEG is stored.
 - A photo may show several recipes, such as a double page with four. Each becomes its own

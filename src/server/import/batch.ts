@@ -520,8 +520,13 @@ export async function processNext(
   );
   if (busyJobs.length > 0) return "waiting";
 
-  // Every recipe is read. What is left is to make the page photos presentable: upright, and
-  // cut to the recipe where a page shows several. One page per request.
+  // Every recipe is read: the full-size copies have done their work. They go here and not at
+  // the very end, which a batch only reaches while its page stays open: 140 copies of seven
+  // batches from October 2026 stayed for a month and took 441 MB of the storage's free 1 GB.
+  await removeFullCopies(db, batchId);
+
+  // What is left is to make the page photos presentable: upright, and cut to the recipe
+  // where a page shows several. One page per request.
   try {
     const framed = await frameNextPage(
       db,
@@ -554,7 +559,6 @@ export async function processNext(
   } catch (error) {
     if (!(error instanceof RecipeReadError)) throw error;
   }
-  await removeFullCopies(db, batchId);
   return "done";
 }
 
@@ -594,7 +598,7 @@ export async function deleteBatch(db: Db, householdId: string, batchId: string):
   await removeFolder(`${householdId}/${batchId}`);
 }
 
-/** The full-size copies were only needed for reading. They go once the batch is through. */
+/** The full-size copies were only needed for reading. They go once every recipe is read. */
 async function removeFullCopies(db: Db, batchId: string): Promise<void> {
   const kept = must(
     await db

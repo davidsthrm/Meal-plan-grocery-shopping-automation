@@ -10,6 +10,13 @@ import sharp, { type Sharp } from "sharp";
 /** Longest edge the vision models make use of. Larger images are scaled down by the API. */
 export const MODEL_MAX_EDGE = 2576;
 
+/**
+ * How a picture that is only looked at is stored: less than half the bytes of quality 90,
+ * with no difference to see in a page's print at full size (measured on ten stored photos,
+ * 25 November 2026, when the storage stood at 1.5 GB of its free 1 GB).
+ */
+const VIEW_JPEG = { quality: 76, mozjpeg: true } as const;
+
 export interface PreparedImage {
   /** Tells the model what it is looking at: "Page 1", or an enlarged part of it. */
   label: string;
@@ -157,6 +164,6 @@ export async function cropImage(
       width: Math.max(1, Math.min(width - left, Math.round(part.width * width))),
       height: Math.max(1, Math.min(height - top, Math.round(part.height * height))),
     })
-    .jpeg({ quality: 90 })
+    .jpeg(VIEW_JPEG)
     .toBuffer();
 }
