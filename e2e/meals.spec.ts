@@ -40,18 +40,17 @@ test("the first visit on a device asks what a week should contain", async ({ pag
 });
 
 // Before the page's script has run, "höchstens" still offers what lies below a new
-// "mindestens": the server refuses such a pair (review, 24 November 2026).
-test.describe("without the page's script", () => {
-  test.use({ javaScriptEnabled: false });
-
-  test("goals that do not fit together are refused with a reason", async ({ page }) => {
-    await signIn(page);
-    await page.goto("/woche/ziele");
-    await page.getByLabel("Fisch mindestens").selectOption("5");
-    await page.getByLabel("Fisch höchstens").selectOption("2");
-    await page.getByRole("button", { name: "Speichern" }).click();
-    await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
+// "mindestens": the server refuses such a pair (review, 24 November 2026). Without the script
+// the page never shows (it streams in), so the pair is put into the form by hand.
+test("goals that do not fit together are refused with a reason", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/woche/ziele");
+  await page.getByLabel("Fisch mindestens").selectOption("5");
+  await page.getByLabel("Fisch höchstens").evaluate((select: HTMLSelectElement) => {
+    select.add(new Option("2 mal", "2", true, true));
   });
+  await page.getByRole("button", { name: "Speichern" }).click();
+  await expect(page.getByText("darf nicht größer sein als")).toBeVisible();
 });
 
 test("the goals can be left as they are", async ({ page }) => {
