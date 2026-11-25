@@ -319,7 +319,9 @@ after.
   end; it leads to the import's page (`/import`), which was a section of its own until 25
   November 2026 ([DESIGN.md](DESIGN.md#sections-and-header)). On a phone "Filter" is its
   sign alone beside it (`action` of `FilterBar`): with both words the field was too narrow
-  for "Titel oder Zutat" at 375px. An empty library has the button in the same place, under
+  for "Titel oder Zutat" at 375px. There, in WebKit, the field's clear button kept its room
+  while the field was empty and cut the words to "Titel oder Zut" (25 November 2026): a
+  search field shows it only once something is typed. An empty library has the button in the same place, under
   the switch.
 
 ## Regal

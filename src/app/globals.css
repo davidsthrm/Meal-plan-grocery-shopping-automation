@@ -418,6 +418,14 @@ summary,
     padding: 0.5rem 0.75rem;
     color: var(--color-ink);
   }
+  /*
+   * The clear button of a search field keeps its room while the field is empty: in WebKit
+   * the library's field beside "Filter" and "+ Rezept" read "Titel oder Zut" on a 375px
+   * phone (25 November 2026). Typed in, the field has it again.
+   */
+  .field[type="search"]:placeholder-shown::-webkit-search-cancel-button {
+    display: none;
+  }
   .field:focus,
   .btn:focus-visible {
     outline: 2px solid var(--color-accent);
