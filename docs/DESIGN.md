@@ -173,6 +173,19 @@ The paper metaphors in motion:
   pastel, apart from the grey "Was anderes": as a solid green button it stood up to five
   times on an empty week, and "Speichern" was no longer the one green button (D9, audit, 24
   November 2026).
+- A meal's pen on the week opens a sheet of rows (`ActionSheet` in
+  `src/components/action-sheet.tsx`, the same as a note's pen): on a phone from the foot of
+  the screen, from the `tablet` variant on a panel 21rem wide that hangs at the pen, below
+  it where it fits and else above, its right edge at the pen's, never past the screen's
+  edges, placed again when a row unfolds, the page scrolls or the screen turns, as the menu
+  of a row and the Merkzettel place themselves. The panel dims nothing; a tap beside it or
+  Escape closes it, and the tap lands on nothing under it. Tab stays inside it, Enter on the
+  pen opens it, and the focus goes back to the pen. Its rows are 44px, a sign in front of
+  the words, with a tint for a mouse (`.pen-row`). Decided on 25 November 2026: the household
+  plans on the iPad and wanted the app thought out for an iPad and a laptop, where a sheet
+  across the whole width stood far from the pen it came from. Asked for less motion, it
+  fades. Where planning happens and there is room, the persons' stepper stays on the meal's
+  line from the tablet width on, and the sheet leaves it out.
 - Every control gives a little the moment a finger lands on it (`:active`, a scale of 0.96),
   not only when it lifts, also for whoever asked for less motion: nothing travels. Hover is
   for a mouse or trackpad only, and a press answers on every screen (`:active`).
